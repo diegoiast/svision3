@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_tostring.hpp>
 #include "toolkit/table_view.hpp"
 
 using namespace toolkit;
@@ -19,12 +20,12 @@ TEST_CASE("StringTableModel basics", "[tableview]") {
     auto m = make_model();
     REQUIRE(m->row_count() == 5);
     REQUIRE(m->column_count() == 3);
-    REQUIRE(m->header_text(0) == "Name");
-    REQUIRE(m->header_text(1) == "Age");
-    REQUIRE(m->header_text(2) == "City");
-    REQUIRE(m->cell_text(0, 0) == "Alice");
-    REQUIRE(m->cell_text(0, 2) == "London");
-    REQUIRE(m->cell_text(4, 1) == "32");
+    REQUIRE(std::string(m->header_text(0)) == "Name");
+    REQUIRE(std::string(m->header_text(1)) == "Age");
+    REQUIRE(std::string(m->header_text(2)) == "City");
+    REQUIRE(std::string(m->cell_text(0, 0)) == "Alice");
+    REQUIRE(std::string(m->cell_text(0, 2)) == "London");
+    REQUIRE(std::string(m->cell_text(4, 1)) == "32");
 }
 
 TEST_CASE("StringTableModel out of range", "[tableview]") {
@@ -45,13 +46,13 @@ TEST_CASE("StringTableModel append and remove", "[tableview]") {
 
     m->append_row({"Frank", "40", "Rome"});
     REQUIRE(m->row_count() == 6);
-    REQUIRE(m->cell_text(5, 0) == "Frank");
+    REQUIRE(std::string(m->cell_text(5, 0)) == "Frank");
     REQUIRE(notified);
 
     notified = false;
     m->remove_row(0);
     REQUIRE(m->row_count() == 5);
-    REQUIRE(m->cell_text(0, 0) == "Bob");
+    REQUIRE(std::string(m->cell_text(0, 0)) == "Bob");
     REQUIRE(notified);
 }
 
@@ -64,8 +65,8 @@ TEST_CASE("StringTableModel set_data", "[tableview]") {
     REQUIRE(notified);
     REQUIRE(m->column_count() == 2);
     REQUIRE(m->row_count() == 2);
-    REQUIRE(m->header_text(0) == "X");
-    REQUIRE(m->cell_text(1, 1) == "4");
+    REQUIRE(std::string(m->header_text(0)) == "X");
+    REQUIRE(std::string(m->cell_text(1, 1)) == "4");
 }
 
 TEST_CASE("TableView default state", "[tableview]") {

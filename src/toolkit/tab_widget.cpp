@@ -76,6 +76,8 @@ void TabWidget::set_window(Window *w) {
 void TabWidget::paint(Painter &painter) {
     if (tabs_.empty()) return;
 
+    painter.push_clip(rect_);
+
     auto const &style = Theme::current().tab_widget;
     float bar_h = tab_bar_height();
     auto fm = painter.font_metrics(style.font_size);
@@ -161,6 +163,7 @@ void TabWidget::paint(Painter &painter) {
         content->paint(painter);
         painter.pop_clip();
     }
+    painter.pop_clip();
 }
 
 bool TabWidget::handle_mouse(MouseEvent const &event) {

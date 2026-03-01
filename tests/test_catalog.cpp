@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_tostring.hpp>
 #include "i18n/catalog.hpp"
 
 using namespace i18n;
@@ -53,58 +54,58 @@ TEST_CASE("Catalog loads from string", "[i18n]") {
 TEST_CASE("Simple lookup", "[i18n]") {
     Catalog cat;
     cat.load_string(FR_PO);
-    REQUIRE(cat.lookup("Save") == "Enregistrer");
-    REQUIRE(cat.lookup("Cancel") == "Annuler");
+    REQUIRE(std::string(cat.lookup("Save")) == "Enregistrer");
+    REQUIRE(std::string(cat.lookup("Cancel")) == "Annuler");
 }
 
 TEST_CASE("Lookup with context", "[i18n]") {
     Catalog cat;
     cat.load_string(FR_PO);
-    REQUIRE(cat.lookup("Open", "file-dialog") == "Ouvrir");
-    REQUIRE(cat.lookup("Open", "status") == "Ouvert");
+    REQUIRE(std::string(cat.lookup("Open", "file-dialog")) == "Ouvrir");
+    REQUIRE(std::string(cat.lookup("Open", "status")) == "Ouvert");
 }
 
 TEST_CASE("Context-free lookup for contextual string falls back", "[i18n]") {
     Catalog cat;
     cat.load_string(FR_PO);
-    REQUIRE(cat.lookup("Open") == "Open");
+    REQUIRE(std::string(cat.lookup("Open")) == "Open");
 }
 
 TEST_CASE("Missing translation falls back to source", "[i18n]") {
     Catalog cat;
     cat.load_string(FR_PO);
-    REQUIRE(cat.lookup("Untranslated") == "Untranslated");
-    REQUIRE(cat.lookup("Not in catalog") == "Not in catalog");
+    REQUIRE(std::string(cat.lookup("Untranslated")) == "Untranslated");
+    REQUIRE(std::string(cat.lookup("Not in catalog")) == "Not in catalog");
 }
 
 TEST_CASE("French plurals (n > 1)", "[i18n]") {
     Catalog cat;
     cat.load_string(FR_PO);
-    REQUIRE(cat.lookup_plural("{} item", "{} items", 0) == "{} élément");
-    REQUIRE(cat.lookup_plural("{} item", "{} items", 1) == "{} élément");
-    REQUIRE(cat.lookup_plural("{} item", "{} items", 2) == "{} éléments");
-    REQUIRE(cat.lookup_plural("{} item", "{} items", 100) == "{} éléments");
+    REQUIRE(std::string(cat.lookup_plural("{} item", "{} items", 0)) == "{} élément");
+    REQUIRE(std::string(cat.lookup_plural("{} item", "{} items", 1)) == "{} élément");
+    REQUIRE(std::string(cat.lookup_plural("{} item", "{} items", 2)) == "{} éléments");
+    REQUIRE(std::string(cat.lookup_plural("{} item", "{} items", 100)) == "{} éléments");
 }
 
 TEST_CASE("Plural fallback when not in catalog", "[i18n]") {
     Catalog cat;
     cat.load_string(FR_PO);
-    REQUIRE(cat.lookup_plural("unknown singular", "unknown plural", 1) ==
+    REQUIRE(std::string(cat.lookup_plural("unknown singular", "unknown plural", 1)) ==
             "unknown singular");
-    REQUIRE(cat.lookup_plural("unknown singular", "unknown plural", 5) ==
+    REQUIRE(std::string(cat.lookup_plural("unknown singular", "unknown plural", 5)) ==
             "unknown plural");
 }
 
 TEST_CASE("Escaped characters", "[i18n]") {
     Catalog cat;
     cat.load_string(FR_PO);
-    REQUIRE(cat.lookup("Line one\nLine two") == "Ligne un\nLigne deux");
+    REQUIRE(std::string(cat.lookup("Line one\nLine two")) == "Ligne un\nLigne deux");
 }
 
 TEST_CASE("Multi-line string concatenation", "[i18n]") {
     Catalog cat;
     cat.load_string(FR_PO);
-    REQUIRE(cat.lookup("Multi line id") == "Multi ligne id");
+    REQUIRE(std::string(cat.lookup("Multi line id")) == "Multi ligne id");
 }
 
 static const char *PL_PO = R"po(
@@ -126,17 +127,17 @@ TEST_CASE("Polish 3-form plurals", "[i18n]") {
     REQUIRE(cat.language() == "pl");
     REQUIRE(cat.nplurals() == 3);
 
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 1) == "{} plik");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 2) == "{} pliki");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 3) == "{} pliki");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 4) == "{} pliki");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 5) == "{} plików");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 12) == "{} plików");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 22) == "{} pliki");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 23) == "{} pliki");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 25) == "{} plików");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 112) == "{} plików");
-    REQUIRE(cat.lookup_plural("{} file", "{} files", 122) == "{} pliki");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 1)) == "{} plik");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 2)) == "{} pliki");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 3)) == "{} pliki");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 4)) == "{} pliki");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 5)) == "{} plików");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 12)) == "{} plików");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 22)) == "{} pliki");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 23)) == "{} pliki");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 25)) == "{} plików");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 112)) == "{} plików");
+    REQUIRE(std::string(cat.lookup_plural("{} file", "{} files", 122)) == "{} pliki");
 }
 
 TEST_CASE("Load from file", "[i18n]") {
@@ -147,9 +148,9 @@ TEST_CASE("Load from file", "[i18n]") {
               cat.load("tests/testdata/fr.po");
     REQUIRE(ok);
     REQUIRE(cat.language() == "fr");
-    REQUIRE(cat.lookup("Save") == "Enregistrer");
-    REQUIRE(cat.lookup("Open", "file-dialog") == "Ouvrir");
-    REQUIRE(cat.lookup_plural("{} item", "{} items", 5) == "{} éléments");
+    REQUIRE(std::string(cat.lookup("Save")) == "Enregistrer");
+    REQUIRE(std::string(cat.lookup("Open", "file-dialog")) == "Ouvrir");
+    REQUIRE(std::string(cat.lookup_plural("{} item", "{} items", 5)) == "{} éléments");
 }
 
 TEST_CASE("Load nonexistent file fails", "[i18n]") {
@@ -161,7 +162,7 @@ TEST_CASE("Empty catalog", "[i18n]") {
     Catalog cat;
     REQUIRE(cat.empty());
     REQUIRE(cat.size() == 0);
-    REQUIRE(cat.lookup("anything") == "anything");
+    REQUIRE(std::string(cat.lookup("anything")) == "anything");
 }
 
 // ── Merge tests ─────────────────────────────────────────────────────────────
@@ -200,7 +201,7 @@ TEST_CASE("Merge: app overrides library entries", "[i18n][merge]") {
     cat.load_string(LIB_PO);
     cat.merge_string(APP_PO);
 
-    REQUIRE(cat.lookup("Cancel") == "Annuler (app)");
+    REQUIRE(std::string(cat.lookup("Cancel")) == "Annuler (app)");
 }
 
 TEST_CASE("Merge: library-only entries survive", "[i18n][merge]") {
@@ -208,8 +209,8 @@ TEST_CASE("Merge: library-only entries survive", "[i18n][merge]") {
     cat.load_string(LIB_PO);
     cat.merge_string(APP_PO);
 
-    REQUIRE(cat.lookup("OK") == "OK (lib)");
-    REQUIRE(cat.lookup("Apply") == "Appliquer");
+    REQUIRE(std::string(cat.lookup("OK")) == "OK (lib)");
+    REQUIRE(std::string(cat.lookup("Apply")) == "Appliquer");
 }
 
 TEST_CASE("Merge: app-only entries are added", "[i18n][merge]") {
@@ -217,7 +218,7 @@ TEST_CASE("Merge: app-only entries are added", "[i18n][merge]") {
     cat.load_string(LIB_PO);
     cat.merge_string(APP_PO);
 
-    REQUIRE(cat.lookup("Settings") == "Paramètres");
+    REQUIRE(std::string(cat.lookup("Settings")) == "Paramètres");
 }
 
 TEST_CASE("Merge: total entry count is union", "[i18n][merge]") {
@@ -246,8 +247,8 @@ TEST_CASE("Merge: plural entries can be overridden", "[i18n][merge]") {
     cat.load_string(FR_PO);
     cat.merge_string(APP_PO_2);
 
-    REQUIRE(cat.lookup_plural("{} item", "{} items", 1) == "{} élément (app)");
-    REQUIRE(cat.lookup_plural("{} item", "{} items", 5) == "{} éléments (app)");
+    REQUIRE(std::string(cat.lookup_plural("{} item", "{} items", 1)) == "{} élément (app)");
+    REQUIRE(std::string(cat.lookup_plural("{} item", "{} items", 5)) == "{} éléments (app)");
 }
 
 TEST_CASE("Merge: three catalogs stack correctly", "[i18n][merge]") {
@@ -268,11 +269,11 @@ msgstr "Exporter"
 )po";
     cat.merge_string(PLUGIN_PO);
 
-    REQUIRE(cat.lookup("OK") == "OK (plugin)");
-    REQUIRE(cat.lookup("Cancel") == "Annuler (app)");
-    REQUIRE(cat.lookup("Apply") == "Appliquer");
-    REQUIRE(cat.lookup("Settings") == "Paramètres");
-    REQUIRE(cat.lookup("Export") == "Exporter");
+    REQUIRE(std::string(cat.lookup("OK")) == "OK (plugin)");
+    REQUIRE(std::string(cat.lookup("Cancel")) == "Annuler (app)");
+    REQUIRE(std::string(cat.lookup("Apply")) == "Appliquer");
+    REQUIRE(std::string(cat.lookup("Settings")) == "Paramètres");
+    REQUIRE(std::string(cat.lookup("Export")) == "Exporter");
     REQUIRE(cat.size() == 5);
 }
 
@@ -301,6 +302,6 @@ msgstr "Ouvrir (overlay)"
     cat.load_string(BASE);
     cat.merge_string(OVERLAY);
 
-    REQUIRE(cat.lookup("Open", "menu") == "Ouvrir (overlay)");
-    REQUIRE(cat.lookup("Open", "button") == "Ouvrir bouton (base)");
+    REQUIRE(std::string(cat.lookup("Open", "menu")) == "Ouvrir (overlay)");
+    REQUIRE(std::string(cat.lookup("Open", "button")) == "Ouvrir bouton (base)");
 }

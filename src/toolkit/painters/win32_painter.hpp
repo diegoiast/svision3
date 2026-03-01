@@ -2,8 +2,11 @@
 
 #include "toolkit/painters/gl_painter.hpp"
 #include <memory>
+#include <string>
 
 namespace toolkit {
+
+class Window;
 
 class Win32TextRasterizer : public TextRasterizer {
   public:

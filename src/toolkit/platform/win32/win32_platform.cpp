@@ -6,6 +6,8 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
+#include <GL/gl.h>
+
 #ifdef TOOLKIT_HAS_CAIRO
 #include <cairo.h>
 #endif
@@ -87,7 +89,7 @@ static Key vk_to_key(WPARAM vk) {
     case VK_RETURN: return Key::Enter;
     case VK_ESCAPE: return Key::Escape;
     case VK_TAB:    return Key::Tab;
-    default:        return Key::None;
+    default:        return Key::NoKey;
     }
 }
 
@@ -139,9 +141,6 @@ static void paint_window(HWND hwnd, Window *win) {
     }
     int pw = static_cast<int>(std::ceil(lw * scale));
     int ph = static_cast<int>(std::ceil(lh * scale));
-
-    spdlog::debug("Win32 painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph,
-                  scale);
 
     auto *win_plat = static_cast<Win32PlatformWindow *>(win->platform_window());
     if (win_plat->hglrc) {
@@ -331,7 +330,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         bool alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
         bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         Key key = vk_to_key(wp);
-        if (key != Key::None || ctrl || alt) {
+        if (key != Key::NoKey || ctrl || alt) {
             KeyEvent ke;
             ke.type = KeyEvent::Type::Press;
             ke.key = key;
@@ -339,7 +338,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             ke.ctrl = ctrl;
             ke.alt = alt;
             ke.super = ctrl;
-            if ((ctrl || alt) && key == Key::None) {
+            if ((ctrl || alt) && key == Key::NoKey) {
                 char ch = vk_to_base_char(wp);
                 if (ch) ke.text = std::string(1, ch);
             }
@@ -395,11 +394,11 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
     }
     case WM_CLOSE:
-        win->close();
+        DestroyWindow(hwnd);
         return 0;
     case WM_DESTROY: {
-        auto map_it = app->window_map.find(hwnd);
-        if (map_it != app->window_map.end()) app->window_map.erase(map_it);
+        bool managed = (app->window_map.find(hwnd) != app->window_map.end());
+        if (managed) app->window_map.erase(hwnd);
         if (app->window_map.empty()) PostQuitMessage(0);
         return 0;
     }
@@ -581,7 +580,6 @@ Win32PlatformWindow::~Win32PlatformWindow() {
         } else { ++it; }
     }
     if (hwnd) {
-        app_->window_map.erase(hwnd);
         if (hglrc) {
             wglDeleteContext(hglrc);
         }
@@ -597,7 +595,6 @@ void Win32PlatformWindow::show() {
 
 void Win32PlatformWindow::close() {
     if (hwnd) {
-        app_->window_map.erase(hwnd);
         DestroyWindow(hwnd);
         hwnd = nullptr;
     }

@@ -11,6 +11,7 @@
 #include <gdiplus.h>
 
 #include "toolkit/painters/win32_painter.hpp"
+#include "toolkit/window.hpp"
 #include <cmath>
 #include <cstring>
 #include <string>
@@ -65,7 +66,7 @@ Win32TextRasterizer::~Win32TextRasterizer() {
     if (impl_->hdc) DeleteDC(impl_->hdc);
 }
 
-TextRasterizer::RasterizedText
+RasterizedText
 Win32TextRasterizer::rasterize(std::string_view text, float font_size,
                                float scale, FontFamily font) {
     auto wtext = to_wide(text);
@@ -272,7 +273,7 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c,
     if (wtext.empty()) return;
     
     const wchar_t *face = (family == FontFamily::Monospace) ? L"Consolas" : L"Segoe UI";
-    Gdiplus::Font font(face, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPoint);
+    Gdiplus::Font font(face, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
     
     // Gdiplus::DrawString uses top-left. We need to subtract the ascent to align with our baseline 'pos.y'.
@@ -301,7 +302,7 @@ Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, Fo
     auto wtext = to_wide(text);
     if (wtext.empty()) return {0, 0};
     const wchar_t *face = (family == FontFamily::Monospace) ? L"Consolas" : L"Segoe UI";
-    Gdiplus::Font font(face, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPoint);
+    Gdiplus::Font font(face, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
     Gdiplus::RectF layoutRect(0, 0, 10000, 10000);
     Gdiplus::RectF boundRect;
     

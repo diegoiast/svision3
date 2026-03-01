@@ -9,7 +9,7 @@ class ToolkitRecipe(ConanFile):
     default_options = {"with_cairo": False}
 
     def requirements(self):
-        if self.settings.os != "Macos" or self.options.with_cairo:
+        if self.settings.os not in ["Macos", "Windows"] or self.options.with_cairo:
             self.requires("cairo/1.18.0")
         self.requires("spdlog/1.14.1")
         self.requires("catch2/3.7.1")

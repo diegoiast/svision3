@@ -76,17 +76,30 @@ conan install . --build=missing
 
 ### Configure and build
 
+For single-config generators (Ninja, Makefiles):
+
 ```bash
 cmake --preset conan-release
 cmake --build build/Release
+```
+
+For multi-config generators (Visual Studio on Windows):
+
+```bash
+cmake --preset conan-default
+cmake --build --preset conan-release
 ```
 
 For a debug build:
 
 ```bash
 conan install . -s build_type=Debug --build=missing
+# If on Windows (Visual Studio):
+cmake --preset conan-default
+cmake --build --preset conan-debug
+# If on Linux/macOS (Ninja/Make):
 cmake --preset conan-debug
-cmake --build build/Debug
+cmake --build --preset conan-debug
 ```
 
 ### Run
