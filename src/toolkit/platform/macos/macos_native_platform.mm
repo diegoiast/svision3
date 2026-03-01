@@ -320,7 +320,7 @@ class CoreGraphicsPainter : public Painter {
     }
     bool has_mod = ke.alt || ke.super || ke.ctrl;
     NSString *chars = has_mod ? [event charactersIgnoringModifiers] : [event characters];
-    if (chars.length > 0 && ke.key == toolkit::Key::None) {
+    if (chars.length > 0 && ke.key == toolkit::Key::NoKey) {
         unichar c = [chars characterAtIndex:0];
         if (c >= 32 && c < 127) ke.text = [chars UTF8String];
     }
