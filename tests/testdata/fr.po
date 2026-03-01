@@ -1,0 +1,45 @@
+# French translations for test suite
+msgid ""
+msgstr ""
+"Language: fr\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Hello, World"
+msgstr "Bonjour, le monde"
+
+# Context disambiguation
+msgctxt "file-dialog"
+msgid "Open"
+msgstr "Ouvrir"
+
+msgctxt "status"
+msgid "Open"
+msgstr "Ouvert"
+
+# Plurals
+msgid "{} item"
+msgid_plural "{} items"
+msgstr[0] "{} élément"
+msgstr[1] "{} éléments"
+
+# Multi-line string
+msgid "This is a long "
+"string that spans "
+"multiple lines"
+msgstr "Ceci est une longue "
+"chaîne qui s'étend "
+"sur plusieurs lignes"
+
+# Entry with no translation (should fall back to source)
+msgid "Untranslated"
+msgstr ""
+
+# Escaped characters
+msgid "Line one\nLine two"
+msgstr "Ligne un\nLigne deux"

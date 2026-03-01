@@ -1,0 +1,163 @@
+#pragma once
+
+#include "toolkit/platform.hpp"
+#include <chrono>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <vector>
+
+struct wl_display;
+struct wl_compositor;
+struct wl_shm;
+struct wl_seat;
+struct wl_pointer;
+struct wl_keyboard;
+struct wl_surface;
+struct wl_buffer;
+struct wl_callback;
+struct wl_cursor_theme;
+struct wl_data_device_manager;
+struct wl_data_device;
+struct xdg_wm_base;
+struct xdg_surface;
+struct xdg_toplevel;
+struct wl_output;
+struct xkb_context;
+struct xkb_keymap;
+struct xkb_state;
+struct wl_egl_window;
+struct wp_fractional_scale_manager_v1;
+struct wp_fractional_scale_v1;
+struct wp_viewporter;
+struct wp_viewport;
+
+namespace toolkit {
+
+class WaylandPlatformWindow;
+
+class WaylandPlatformApplication : public PlatformApplication {
+  public:
+    WaylandPlatformApplication();
+    ~WaylandPlatformApplication() override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title,
+                                                   Size size,
+                                                   Window *owner) override;
+    int run() override;
+    void quit() override;
+    void post_to_main_thread(std::function<void()> fn) override;
+    std::string clipboard_get_text() override;
+    void clipboard_set_text(std::string const &text) override;
+    Size measure_text(std::string_view text, float font_size,
+                      FontFamily font = FontFamily::System) override;
+    Painter::FontMetrics measure_font_metrics(
+        float font_size, FontFamily font = FontFamily::System) override;
+    std::string_view name() const override { return "Wayland"; }
+    std::string_view painter_name() const override;
+
+    wl_display *display = nullptr;
+    wl_compositor *compositor = nullptr;
+    wl_shm *shm = nullptr;
+    wl_seat *seat = nullptr;
+    wl_pointer *pointer = nullptr;
+    wl_keyboard *keyboard = nullptr;
+    xdg_wm_base *wm_base = nullptr;
+    wp_fractional_scale_manager_v1 *fractional_scale_manager = nullptr;
+    wp_viewporter *viewporter = nullptr;
+    wl_cursor_theme *cursor_theme = nullptr;
+    wl_surface *cursor_surface = nullptr;
+    wl_data_device_manager *data_device_manager = nullptr;
+    wl_data_device *data_device = nullptr;
+    xkb_context *xkb_ctx = nullptr;
+    xkb_keymap *xkb_map = nullptr;
+    xkb_state *xkb_st = nullptr;
+    bool running = false;
+
+    std::vector<WaylandPlatformWindow *> windows;
+    WaylandPlatformWindow *pointer_focus = nullptr;
+    WaylandPlatformWindow *keyboard_focus = nullptr;
+    float pointer_x = 0, pointer_y = 0;
+    uint32_t pointer_enter_serial = 0;
+
+    bool mod_shift = false, mod_ctrl = false;
+    bool mod_alt = false, mod_super = false;
+
+    uint32_t last_click_time = 0, last_click_button = 0;
+    float last_click_x = 0, last_click_y = 0;
+    int click_count = 0;
+    int pressed_button = -1;
+
+    struct TimerEntry {
+        int id;
+        float interval_sec;
+        bool repeats;
+        std::function<void()> callback;
+        std::chrono::steady_clock::time_point next_fire;
+    };
+    std::vector<TimerEntry> timers;
+    int next_timer_id = 1;
+
+    int wakeup_pipe[2] = {-1, -1};
+    std::mutex posted_mutex;
+    std::vector<std::function<void()>> posted_fns;
+    std::string clipboard_content;
+    std::vector<wl_output *> outputs;
+    float output_scale = 1.0f;
+
+    int32_t repeat_rate = 25;
+    int32_t repeat_delay = 600;
+    uint32_t repeating_key = 0;
+    int repeat_timer_id = 0;
+
+    void *egl_display = nullptr;
+    void *egl_config = nullptr;
+    void *egl_context = nullptr;
+    bool opengl_requested = false;
+};
+
+class WaylandPlatformWindow : public PlatformWindow {
+  public:
+    WaylandPlatformWindow(WaylandPlatformApplication *app,
+                          std::string_view title, Size size, Window *owner);
+    ~WaylandPlatformWindow() override;
+    void show() override;
+    void close() override;
+    void request_redraw() override;
+    void set_min_size(Size s) override;
+    void set_max_size(Size s) override;
+    int start_timer(float interval_sec, std::function<void()> callback,
+                    bool repeats) override;
+    void stop_timer(int timer_id) override;
+    void set_cursor(CursorShape shape) override;
+    void show_tooltip_window(std::string const &text, Point pos) override;
+    void hide_tooltip_window() override;
+    bool save_to_png(std::string const &path) override;
+    float scale_factor() const override;
+
+    void do_paint();
+    void create_buffer(int width, int height);
+
+    WaylandPlatformApplication *app_;
+    Window *owner_;
+    wl_surface *surface = nullptr;
+    xdg_surface *xdg_surf = nullptr;
+    xdg_toplevel *toplevel = nullptr;
+    wl_callback *frame_cb = nullptr;
+    wp_fractional_scale_v1 *fractional_scale = nullptr;
+    wp_viewport *viewport = nullptr;
+    wl_buffer *buffer = nullptr;
+    void *shm_data = nullptr;
+    int shm_fd = -1;
+    size_t shm_size = 0;
+    int buf_width = 0, buf_height = 0;
+    float scale = 1.0f;
+    bool configured = false;
+    bool needs_redraw = true;
+    int pending_width = 0, pending_height = 0;
+    CursorShape current_cursor = CursorShape::Arrow;
+
+    wl_egl_window *egl_window = nullptr;
+    void *egl_surface = nullptr;
+};
+
+} // namespace toolkit

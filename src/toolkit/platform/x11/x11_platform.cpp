@@ -1,0 +1,918 @@
+#include "x11_platform.hpp"
+#include "toolkit/painters/cairo_painter.hpp"
+#include "toolkit/painters/gl_painter.hpp"
+#include "toolkit/theme.hpp"
+#include "toolkit/window.hpp"
+
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#include <X11/Xresource.h>
+#include <X11/Xutil.h>
+#include <X11/cursorfont.h>
+#include <X11/keysym.h>
+#include <GL/gl.h>
+#include <GL/glx.h>
+#include <cairo-xlib.h>
+#include <cairo.h>
+#include <spdlog/spdlog.h>
+
+#undef None
+#undef CursorShape
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <fcntl.h>
+#include <functional>
+#include <mutex>
+#include <poll.h>
+#include <string>
+#include <unistd.h>
+#include <unordered_map>
+#include <vector>
+
+namespace toolkit {
+
+// ── Impl structs ────────────────────────────────────────────────────────────
+
+struct X11PlatformApplication::Impl {
+    Display *display = nullptr;
+    int screen = 0;
+    ::Window root = 0L;
+    Visual *visual = nullptr;
+    int depth = 0;
+    Colormap colormap = 0;
+    float scale = 1.0f;
+    bool running = false;
+    Atom wm_delete_window, wm_protocols, net_wm_name, utf8_string;
+    Atom clipboard_atom, targets_atom, tk_sel;
+    XIM xim = nullptr;
+
+    struct WindowData {
+        Window *owner = nullptr;
+        XIC xic = nullptr;
+        Time last_press_time = 0;
+        int last_press_x = 0, last_press_y = 0;
+        int click_count = 0;
+    };
+    std::unordered_map<::Window, WindowData> window_map;
+
+    struct TimerEntry {
+        int id;
+        float interval_sec;
+        bool repeats;
+        std::function<void()> callback;
+        std::chrono::steady_clock::time_point next_fire;
+    };
+    std::vector<TimerEntry> timers;
+    int next_timer_id = 1;
+
+    int wakeup_pipe[2] = {-1, -1};
+    std::mutex posted_mutex;
+    std::vector<std::function<void()>> posted_fns;
+    std::string clipboard_content;
+    ::Window clipboard_owner_window = 0L;
+    bool opengl_requested = false;
+};
+
+struct X11PlatformWindow::Impl {
+    ::Window xwindow = 0L;
+    ::Window tooltip_xwindow = 0L;
+    Cursor arrow_cursor = 0L, ibeam_cursor = 0L;
+    Cursor hand_cursor = 0L, not_allowed_cursor = 0L;
+    GLXContext glx_context = nullptr;
+};
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+static float detect_x11_scale(Display *display) {
+    if (const char *env = std::getenv("GDK_SCALE")) {
+        float s = std::strtof(env, nullptr);
+        if (s > 0) {
+            return s;
+        }
+    }
+    if (const char *env = std::getenv("QT_SCALE_FACTOR")) {
+        float s = std::strtof(env, nullptr);
+        if (s > 0) {
+            return s;
+        }
+    }
+    XrmInitialize();
+    char *rms = XResourceManagerString(display);
+    if (rms) {
+        XrmDatabase db = XrmGetStringDatabase(rms);
+        if (db) {
+            XrmValue value;
+            char *type = nullptr;
+            if (XrmGetResource(db, "Xft.dpi", "Xft.Dpi", &type, &value)) {
+                float dpi = std::strtof(value.addr, nullptr);
+                XrmDestroyDatabase(db);
+                if (dpi > 0) {
+                    return dpi / 96.0f;
+                }
+            }
+            XrmDestroyDatabase(db);
+        }
+    }
+    return 1.0f;
+}
+
+static Key keysym_to_key(KeySym ks) {
+    switch (ks) {
+    case XK_BackSpace:
+        return Key::Backspace;
+    case XK_Delete:
+        return Key::Delete;
+    case XK_Left:
+        return Key::Left;
+    case XK_Right:
+        return Key::Right;
+    case XK_Up:
+        return Key::Up;
+    case XK_Down:
+        return Key::Down;
+    case XK_Home:
+        return Key::Home;
+    case XK_End:
+        return Key::End;
+    case XK_Return:
+    case XK_KP_Enter:
+        return Key::Enter;
+    case XK_Escape:
+        return Key::Escape;
+    case XK_Tab:
+    case XK_ISO_Left_Tab:
+        return Key::Tab;
+    default:
+        return Key::NoKey;
+    }
+}
+
+static int detect_click_count(X11PlatformApplication::Impl::WindowData &data, XButtonEvent &btn) {
+    constexpr Time double_click_ms = 400;
+    constexpr int double_click_dist = 4;
+    bool in_time = (btn.time - data.last_press_time) < double_click_ms;
+    bool in_range = std::abs(btn.x - data.last_press_x) < double_click_dist &&
+                    std::abs(btn.y - data.last_press_y) < double_click_dist;
+    data.click_count = (in_time && in_range) ? data.click_count + 1 : 1;
+    data.last_press_time = btn.time;
+    data.last_press_x = btn.x;
+    data.last_press_y = btn.y;
+    return data.click_count;
+}
+
+static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
+                               X11PlatformApplication::Impl::WindowData &data, XEvent &xev) {
+    Window *win = data.owner;
+
+    switch (xev.type) {
+    case Expose: {
+        if (xev.xexpose.count != 0) {
+            break;
+        }
+        float scale = app->scale;
+        int lw = static_cast<int>(win->size().width);
+        int lh = static_cast<int>(win->size().height);
+        if (lw <= 0 || lh <= 0) {
+            break;
+        }
+        int pw = static_cast<int>(std::ceil(lw * scale));
+        int ph = static_cast<int>(std::ceil(lh * scale));
+
+        spdlog::debug("X11 painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph, scale);
+
+        auto *xwin_plat = static_cast<X11PlatformWindow *>(win->platform_window());
+        auto *w = xwin_plat->impl_.get();
+
+        if (w->glx_context) {
+            glXMakeCurrent(app->display, xwin, w->glx_context);
+            glViewport(0, 0, pw, ph);
+            glMatrixMode(GL_PROJECTION);
+            glLoadIdentity();
+            glOrtho(0, lw, lh, 0, -1, 1);
+            glMatrixMode(GL_MODELVIEW);
+            glLoadIdentity();
+
+            glClearColor(1, 1, 1, 1);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+            CairoTextRasterizer rasterizer;
+            GLPainter painter(static_cast<float>(lh), scale, rasterizer);
+            win->handle_paint(painter);
+
+            glXSwapBuffers(app->display, xwin);
+        } else {
+            cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
+            cairo_t *cr = cairo_create(surface);
+            cairo_scale(cr, scale, scale);
+            CairoPainter painter(cr);
+            win->handle_paint(painter);
+            cairo_surface_flush(surface);
+            cairo_surface_t *xs = cairo_xlib_surface_create(app->display, xwin, app->visual, pw, ph);
+            cairo_t *xcr = cairo_create(xs);
+            cairo_set_source_surface(xcr, surface, 0, 0);
+            cairo_paint(xcr);
+            cairo_destroy(xcr);
+            cairo_surface_destroy(xs);
+            cairo_destroy(cr);
+            cairo_surface_destroy(surface);
+        }
+        break;
+    }
+    case ConfigureNotify: {
+        float scale = app->scale;
+        float nw = static_cast<float>(xev.xconfigure.width) / scale;
+        float nh = static_cast<float>(xev.xconfigure.height) / scale;
+        if (nw != win->size().width || nh != win->size().height) {
+            win->handle_resize({nw, nh});
+            win->request_redraw();
+        }
+        break;
+    }
+    case ButtonPress: {
+        auto &btn = xev.xbutton;
+        float scale = app->scale;
+        Point pos{static_cast<float>(btn.x) / scale, static_cast<float>(btn.y) / scale};
+        if (btn.button >= 4 && btn.button <= 7) {
+            MouseEvent e{};
+            e.type = MouseEvent::Type::Scroll;
+            e.position = pos;
+            switch (btn.button) {
+            case 4:
+                e.scroll_dy = 20.0f;
+                break;
+            case 5:
+                e.scroll_dy = -20.0f;
+                break;
+            case 6:
+                e.scroll_dx = -20.0f;
+                break;
+            case 7:
+                e.scroll_dx = 20.0f;
+                break;
+            }
+            win->handle_mouse(e);
+            break;
+        }
+        MouseEvent e{};
+        e.type = MouseEvent::Type::Press;
+        e.position = pos;
+        e.button = (btn.button == Button1) ? 0 : (btn.button == Button3) ? 1 : 2;
+        e.click_count = detect_click_count(data, btn);
+        e.shift = (btn.state & ShiftMask) != 0;
+        e.ctrl = (btn.state & ControlMask) != 0;
+        e.super = (btn.state & ControlMask) != 0;
+        win->handle_mouse(e);
+        break;
+    }
+    case ButtonRelease: {
+        auto &btn = xev.xbutton;
+        float scale = app->scale;
+        if (btn.button >= 4 && btn.button <= 7) {
+            break;
+        }
+        MouseEvent e{};
+        e.type = MouseEvent::Type::Release;
+        e.position = {static_cast<float>(btn.x) / scale, static_cast<float>(btn.y) / scale};
+        e.button = (btn.button == Button1) ? 0 : (btn.button == Button3) ? 1 : 2;
+        win->handle_mouse(e);
+        break;
+    }
+    case MotionNotify: {
+        auto &m = xev.xmotion;
+        float scale = app->scale;
+        MouseEvent e{};
+        bool held = (m.state & (Button1Mask | Button2Mask | Button3Mask)) != 0;
+        e.type = held ? MouseEvent::Type::Drag : MouseEvent::Type::Move;
+        e.position = {static_cast<float>(m.x) / scale, static_cast<float>(m.y) / scale};
+        win->handle_mouse(e);
+        break;
+    }
+    case KeyPress: {
+        auto &key = xev.xkey;
+        KeyEvent ke;
+        ke.type = KeyEvent::Type::Press;
+        unsigned st = key.state;
+        ke.shift = (st & ShiftMask) != 0;
+        ke.ctrl = (st & ControlMask) != 0;
+        ke.alt = (st & Mod1Mask) != 0;
+        ke.super = (st & ControlMask) != 0;
+        KeySym keysym = NoSymbol;
+        char buf[64] = {};
+        int len = 0;
+        if (data.xic) {
+            Status status;
+            len = Xutf8LookupString(data.xic, &key, buf, sizeof(buf) - 1, &keysym, &status);
+            if (len > 0) {
+                buf[len] = '\0';
+            }
+        } else {
+            len = XLookupString(&key, buf, sizeof(buf) - 1, &keysym, nullptr);
+            if (len > 0) {
+                buf[len] = '\0';
+            }
+        }
+        ke.key = keysym_to_key(keysym);
+        if (ke.alt || ke.ctrl) {
+            unsigned saved = key.state;
+            key.state = 0;
+            char bb[64] = {};
+            KeySym bs;
+            int bl = XLookupString(&key, bb, sizeof(bb) - 1, &bs, nullptr);
+            key.state = saved;
+            if (bl > 0) {
+                bb[bl] = '\0';
+                if (static_cast<unsigned char>(bb[0]) >= 32 &&
+                    static_cast<unsigned char>(bb[0]) < 127 && ke.key == Key::NoKey) {
+                    ke.text = bb;
+                }
+            }
+        } else if (len > 0 && ke.key == Key::NoKey) {
+            if (static_cast<unsigned char>(buf[0]) >= 32) {
+                ke.text = buf;
+            }
+        }
+        win->handle_key(ke);
+        break;
+    }
+    case ClientMessage:
+        if (xev.xclient.message_type == app->wm_protocols &&
+            static_cast<Atom>(xev.xclient.data.l[0]) == app->wm_delete_window) {
+            win->close();
+        }
+        break;
+    case FocusOut:
+        win->hide_tooltip();
+        break;
+    default:
+        break;
+    }
+}
+
+static ::Window extract_event_window(XEvent &ev) {
+    switch (ev.type) {
+    case Expose:
+        return ev.xexpose.window;
+    case ConfigureNotify:
+        return ev.xconfigure.window;
+    case ButtonPress:
+    case ButtonRelease:
+        return ev.xbutton.window;
+    case MotionNotify:
+        return ev.xmotion.window;
+    case KeyPress:
+    case KeyRelease:
+        return ev.xkey.window;
+    case ClientMessage:
+        return ev.xclient.window;
+    case FocusIn:
+    case FocusOut:
+        return ev.xfocus.window;
+    default:
+        return 0L;
+    }
+}
+
+static void handle_selection_request(X11PlatformApplication::Impl *d, XSelectionRequestEvent &req) {
+    XSelectionEvent resp = {};
+    resp.type = SelectionNotify;
+    resp.requestor = req.requestor;
+    resp.selection = req.selection;
+    resp.target = req.target;
+    resp.time = req.time;
+    resp.property = 0L;
+    if (req.target == d->targets_atom) {
+        Atom sup[] = {d->targets_atom, d->utf8_string, XA_STRING};
+        XChangeProperty(d->display, req.requestor, req.property, XA_ATOM, 32, PropModeReplace,
+                        reinterpret_cast<unsigned char *>(sup), 3);
+        resp.property = req.property;
+    } else if (req.target == d->utf8_string || req.target == XA_STRING) {
+        XChangeProperty(d->display, req.requestor, req.property, req.target, 8, PropModeReplace,
+                        reinterpret_cast<unsigned char const *>(d->clipboard_content.data()),
+                        static_cast<int>(d->clipboard_content.size()));
+        resp.property = req.property;
+    }
+    XSendEvent(d->display, req.requestor, False, 0, reinterpret_cast<XEvent *>(&resp));
+}
+
+static void process_pending_events(X11PlatformApplication::Impl *d) {
+    while (XPending(d->display)) {
+        XEvent ev;
+        XNextEvent(d->display, &ev);
+        if (ev.type == SelectionRequest) {
+            handle_selection_request(d, ev.xselectionrequest);
+            continue;
+        }
+        if (ev.type == SelectionNotify || ev.type == SelectionClear) {
+            continue;
+        }
+        ::Window xw = extract_event_window(ev);
+        if (xw == 0L) {
+            continue;
+        }
+        auto it = d->window_map.find(xw);
+        if (it != d->window_map.end()) {
+            dispatch_x11_event(d, xw, it->second, ev);
+        }
+    }
+}
+
+// ── X11PlatformApplication ──────────────────────────────────────────────────
+
+X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>()) {
+    auto *d = impl_.get();
+    XInitThreads();
+    d->display = XOpenDisplay(nullptr);
+    if (!d->display) {
+        spdlog::error("Failed to open X11 display");
+        return;
+    }
+    d->screen = DefaultScreen(d->display);
+    d->root = RootWindow(d->display, d->screen);
+    d->visual = DefaultVisual(d->display, d->screen);
+    d->depth = DefaultDepth(d->display, d->screen);
+    d->colormap = DefaultColormap(d->display, d->screen);
+    d->wm_delete_window = XInternAtom(d->display, "WM_DELETE_WINDOW", False);
+    d->wm_protocols = XInternAtom(d->display, "WM_PROTOCOLS", False);
+    d->net_wm_name = XInternAtom(d->display, "_NET_WM_NAME", False);
+    d->utf8_string = XInternAtom(d->display, "UTF8_STRING", False);
+    d->clipboard_atom = XInternAtom(d->display, "CLIPBOARD", False);
+    d->targets_atom = XInternAtom(d->display, "TARGETS", False);
+    d->tk_sel = XInternAtom(d->display, "TK_SELECTION", False);
+    XSetLocaleModifiers("");
+    d->xim = XOpenIM(d->display, nullptr, nullptr, nullptr);
+    if (!d->xim) {
+        XSetLocaleModifiers("@im=none");
+        d->xim = XOpenIM(d->display, nullptr, nullptr, nullptr);
+    }
+    d->scale = detect_x11_scale(d->display);
+    if (pipe(d->wakeup_pipe) == 0) {
+        fcntl(d->wakeup_pipe[0], F_SETFL, O_NONBLOCK);
+        fcntl(d->wakeup_pipe[1], F_SETFL, O_NONBLOCK);
+    }
+
+    if (const char *env = std::getenv("SVISION_PAINT")) {
+        if (std::string_view(env) == "opengl") {
+            d->opengl_requested = true;
+        }
+    }
+
+    spdlog::debug("X11 backend initialized (scale={:.2f}, opengl={})", d->scale, d->opengl_requested);
+}
+
+X11PlatformApplication::~X11PlatformApplication() {
+    auto *d = impl_.get();
+    if (d->xim) {
+        XCloseIM(d->xim);
+    }
+    if (d->display) {
+        XCloseDisplay(d->display);
+    }
+    if (d->wakeup_pipe[0] >= 0) {
+        ::close(d->wakeup_pipe[0]);
+    }
+    if (d->wakeup_pipe[1] >= 0) {
+        ::close(d->wakeup_pipe[1]);
+    }
+}
+
+std::unique_ptr<PlatformWindow> X11PlatformApplication::create_window(std::string_view title,
+                                                                      Size size, Window *owner) {
+    return std::make_unique<X11PlatformWindow>(this, title, size, owner);
+}
+
+int X11PlatformApplication::run() {
+    auto *d = impl_.get();
+    d->running = true;
+    spdlog::info("Starting run loop (X11)");
+    while (d->running) {
+        {
+            std::vector<std::function<void()>> fns;
+            {
+                std::lock_guard lock(d->posted_mutex);
+                fns.swap(d->posted_fns);
+            }
+            for (auto &fn : fns) {
+                fn();
+            }
+        }
+        process_pending_events(d);
+        int timeout_ms = -1;
+        if (!d->timers.empty()) {
+            auto now = std::chrono::steady_clock::now();
+            for (auto &t : d->timers) {
+                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now)
+                              .count();
+                if (ms < 0) {
+                    ms = 0;
+                }
+                if (timeout_ms < 0 || ms < timeout_ms) {
+                    timeout_ms = static_cast<int>(ms);
+                }
+            }
+        }
+        struct pollfd fds[2];
+        fds[0] = {ConnectionNumber(d->display), POLLIN, 0};
+        fds[1] = {d->wakeup_pipe[0], POLLIN, 0};
+        poll(fds, 2, timeout_ms);
+        if (fds[1].revents & POLLIN) {
+            char buf[64];
+            while (::read(d->wakeup_pipe[0], buf, sizeof(buf)) > 0) {
+            }
+        }
+        process_pending_events(d);
+        auto now = std::chrono::steady_clock::now();
+        for (auto it = d->timers.begin(); it != d->timers.end();) {
+            if (now >= it->next_fire) {
+                auto cb = it->callback;
+                if (it->repeats) {
+                    it->next_fire =
+                        now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                  std::chrono::duration<float>(it->interval_sec));
+                    ++it;
+                } else {
+                    it = d->timers.erase(it);
+                }
+                cb();
+            } else {
+                ++it;
+            }
+        }
+        if (d->window_map.empty()) {
+            d->running = false;
+        }
+    }
+    return 0;
+}
+
+void X11PlatformApplication::quit() { impl_->running = false; }
+
+void X11PlatformApplication::post_to_main_thread(std::function<void()> fn) {
+    auto *d = impl_.get();
+    {
+        std::lock_guard lock(d->posted_mutex);
+        d->posted_fns.push_back(std::move(fn));
+    }
+    char c = 1;
+    (void)::write(d->wakeup_pipe[1], &c, 1);
+}
+
+std::string X11PlatformApplication::clipboard_get_text() {
+    auto *d = impl_.get();
+    if (!d->display) {
+        return {};
+    }
+    ::Window owner = XGetSelectionOwner(d->display, d->clipboard_atom);
+    if (owner == d->clipboard_owner_window && owner != 0L) {
+        return d->clipboard_content;
+    }
+    if (d->window_map.empty()) {
+        return {};
+    }
+    ::Window receiver = d->window_map.begin()->first;
+    XConvertSelection(d->display, d->clipboard_atom, d->utf8_string, d->tk_sel, receiver,
+                      CurrentTime);
+    XFlush(d->display);
+    XEvent ev;
+    for (int i = 0; i < 50; ++i) {
+        if (XCheckTypedWindowEvent(d->display, receiver, SelectionNotify, &ev)) {
+            break;
+        }
+        struct timespec ts = {0, 20'000'000};
+        nanosleep(&ts, nullptr);
+    }
+    if (ev.type != SelectionNotify || ev.xselection.property == 0L) {
+        return {};
+    }
+    Atom at;
+    int af;
+    unsigned long ni, bl;
+    unsigned char *data = nullptr;
+    XGetWindowProperty(d->display, receiver, d->tk_sel, 0, 1 << 20, True, AnyPropertyType, &at, &af,
+                       &ni, &bl, &data);
+    std::string result;
+    if (data && ni > 0) {
+        result.assign(reinterpret_cast<char *>(data), ni);
+    }
+    if (data) {
+        XFree(data);
+    }
+    return result;
+}
+
+void X11PlatformApplication::clipboard_set_text(std::string const &text) {
+    auto *d = impl_.get();
+    if (!d->display) {
+        return;
+    }
+    d->clipboard_content = text;
+    if (d->window_map.empty()) {
+        return;
+    }
+    ::Window owner = d->window_map.begin()->first;
+    d->clipboard_owner_window = owner;
+    XSetSelectionOwner(d->display, d->clipboard_atom, owner, CurrentTime);
+    XFlush(d->display);
+}
+
+Size X11PlatformApplication::measure_text(std::string_view text, float font_size, FontFamily font) {
+    return cairo_measure_text(text, font_size, font);
+}
+
+Painter::FontMetrics X11PlatformApplication::measure_font_metrics(float font_size,
+                                                                  FontFamily font) {
+    return cairo_measure_font_metrics(font_size, font);
+}
+
+std::string_view X11PlatformApplication::painter_name() const {
+    return impl_->opengl_requested ? "OpenGL" : "Cairo";
+}
+
+// ── X11PlatformWindow ───────────────────────────────────────────────────────
+
+X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
+                                     Window *owner)
+    : impl_(std::make_unique<Impl>()), app_(app), owner_(owner) {
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
+
+    Visual *visual = d->visual;
+    int depth = d->depth;
+    Colormap colormap = d->colormap;
+
+    if (d->opengl_requested) {
+        GLint att[] = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, 0};
+        XVisualInfo *vi = glXChooseVisual(d->display, d->screen, att);
+        if (vi) {
+            visual = vi->visual;
+            depth = vi->depth;
+            colormap = XCreateColormap(d->display, d->root, visual, AllocNone);
+            w->glx_context = glXCreateContext(d->display, vi, nullptr, GL_TRUE);
+            XFree(vi);
+        } else {
+            spdlog::warn("Failed to choose GLX visual, falling back to Cairo");
+        }
+    }
+
+    XSetWindowAttributes swa = {};
+    swa.event_mask = ExposureMask | StructureNotifyMask | ButtonPressMask | ButtonReleaseMask |
+                     PointerMotionMask | KeyPressMask | KeyReleaseMask | FocusChangeMask;
+    swa.colormap = colormap;
+    float scale = d->scale;
+    w->xwindow = XCreateWindow(d->display, d->root, 0, 0, static_cast<unsigned>(size.width * scale),
+                               static_cast<unsigned>(size.height * scale), 0, depth, InputOutput,
+                               visual, CWEventMask | CWColormap, &swa);
+    std::string t(title);
+    XStoreName(d->display, w->xwindow, t.c_str());
+    XChangeProperty(d->display, w->xwindow, d->net_wm_name, d->utf8_string, 8, PropModeReplace,
+                    reinterpret_cast<unsigned char const *>(t.c_str()), static_cast<int>(t.size()));
+    XSetWMProtocols(d->display, w->xwindow, &d->wm_delete_window, 1);
+    XIC xic = nullptr;
+    if (d->xim) {
+        xic = XCreateIC(d->xim, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow,
+                        w->xwindow, XNFocusWindow, w->xwindow, nullptr);
+    }
+    w->arrow_cursor = XCreateFontCursor(d->display, XC_left_ptr);
+    w->ibeam_cursor = XCreateFontCursor(d->display, XC_xterm);
+    w->hand_cursor = XCreateFontCursor(d->display, XC_hand2);
+    w->not_allowed_cursor = XCreateFontCursor(d->display, XC_X_cursor);
+    d->window_map[w->xwindow] = {owner, xic};
+}
+
+X11PlatformWindow::~X11PlatformWindow() {
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
+    auto &timers = d->timers;
+    timers.erase(std::remove_if(timers.begin(), timers.end(), [](auto &t) { return t.id < 0; }),
+                 timers.end());
+    if (w->xwindow != 0L) {
+        auto it = d->window_map.find(w->xwindow);
+        if (it != d->window_map.end()) {
+            if (it->second.xic) {
+                XDestroyIC(it->second.xic);
+            }
+            d->window_map.erase(it);
+        }
+    }
+    if (w->arrow_cursor) {
+        XFreeCursor(d->display, w->arrow_cursor);
+    }
+    if (w->ibeam_cursor) {
+        XFreeCursor(d->display, w->ibeam_cursor);
+    }
+    if (w->hand_cursor) {
+        XFreeCursor(d->display, w->hand_cursor);
+    }
+    if (w->not_allowed_cursor) {
+        XFreeCursor(d->display, w->not_allowed_cursor);
+    }
+    if (w->glx_context) {
+        glXDestroyContext(d->display, w->glx_context);
+    }
+    if (w->tooltip_xwindow != 0L) {
+        XDestroyWindow(d->display, w->tooltip_xwindow);
+    }
+    if (w->xwindow != 0L) {
+        XDestroyWindow(d->display, w->xwindow);
+    }
+}
+
+void X11PlatformWindow::show() {
+    XMapRaised(app_->impl_->display, impl_->xwindow);
+    XFlush(app_->impl_->display);
+}
+
+void X11PlatformWindow::close() {
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
+    if (w->xwindow != 0L) {
+        auto it = d->window_map.find(w->xwindow);
+        if (it != d->window_map.end()) {
+            if (it->second.xic) {
+                XDestroyIC(it->second.xic);
+            }
+            d->window_map.erase(it);
+        }
+        XDestroyWindow(d->display, w->xwindow);
+        w->xwindow = 0L;
+    }
+}
+
+void X11PlatformWindow::request_redraw() {
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
+    if (w->xwindow == 0L) {
+        return;
+    }
+    XEvent ev = {};
+    ev.type = Expose;
+    ev.xexpose.window = w->xwindow;
+    ev.xexpose.width = static_cast<int>(owner_->size().width);
+    ev.xexpose.height = static_cast<int>(owner_->size().height);
+    XSendEvent(d->display, w->xwindow, False, ExposureMask, &ev);
+    XFlush(d->display);
+}
+
+void X11PlatformWindow::set_min_size(Size s) {
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
+    float scale = d->scale;
+    XSizeHints hints = {};
+    long supplied;
+    XGetWMNormalHints(d->display, w->xwindow, &hints, &supplied);
+    hints.flags |= PMinSize;
+    hints.min_width = static_cast<int>(s.width * scale);
+    hints.min_height = static_cast<int>(s.height * scale);
+    auto mx = owner_->max_size();
+    if (mx.width > 0 && mx.height > 0) {
+        hints.flags |= PMaxSize;
+        hints.max_width = static_cast<int>(mx.width * scale);
+        hints.max_height = static_cast<int>(mx.height * scale);
+    }
+    XSetWMNormalHints(d->display, w->xwindow, &hints);
+}
+
+void X11PlatformWindow::set_max_size(Size s) {
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
+    float scale = d->scale;
+    if (s.width <= 0 || s.height <= 0) {
+        return;
+    }
+    XSizeHints hints = {};
+    long supplied;
+    XGetWMNormalHints(d->display, w->xwindow, &hints, &supplied);
+    hints.flags |= PMaxSize;
+    hints.max_width = static_cast<int>(s.width * scale);
+    hints.max_height = static_cast<int>(s.height * scale);
+    auto mn = owner_->min_size();
+    if (mn.width > 0 || mn.height > 0) {
+        hints.flags |= PMinSize;
+        hints.min_width = static_cast<int>(mn.width * scale);
+        hints.min_height = static_cast<int>(mn.height * scale);
+    }
+    XSetWMNormalHints(d->display, w->xwindow, &hints);
+}
+
+int X11PlatformWindow::start_timer(float interval_sec, std::function<void()> callback,
+                                   bool repeats) {
+    auto *d = app_->impl_.get();
+    int tid = d->next_timer_id++;
+    X11PlatformApplication::Impl::TimerEntry entry;
+    entry.id = tid;
+    entry.interval_sec = interval_sec;
+    entry.repeats = repeats;
+    entry.callback = std::move(callback);
+    entry.next_fire = std::chrono::steady_clock::now() +
+                      std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                          std::chrono::duration<float>(interval_sec));
+    d->timers.push_back(std::move(entry));
+    return tid;
+}
+
+void X11PlatformWindow::stop_timer(int timer_id) {
+    auto &timers = app_->impl_->timers;
+    timers.erase(std::remove_if(timers.begin(), timers.end(),
+                                [timer_id](auto &t) { return t.id == timer_id; }),
+                 timers.end());
+}
+
+void X11PlatformWindow::set_cursor(CursorShape shape) {
+    auto *w = impl_.get();
+    Cursor c;
+    switch (shape) {
+    case CursorShape::IBeam:
+        c = w->ibeam_cursor;
+        break;
+    case CursorShape::Hand:
+        c = w->hand_cursor;
+        break;
+    case CursorShape::NotAllowed:
+        c = w->not_allowed_cursor;
+        break;
+    default:
+        c = w->arrow_cursor;
+        break;
+    }
+    XDefineCursor(app_->impl_->display, w->xwindow, c);
+}
+
+void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local_pos) {
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
+    float scale = d->scale;
+    auto const &style = Theme::current().tooltip;
+    float pad = style.padding, fs = style.font_size;
+    auto tsz = Painter::measure_text(text, fs);
+    auto fm = Painter::measure_font_metrics(fs);
+    float tw = tsz.width + pad * 2, th = fm.height + pad * 2;
+    int sx, sy;
+    ::Window child;
+    XTranslateCoordinates(d->display, w->xwindow, d->root, static_cast<int>(local_pos.x * scale),
+                          static_cast<int>(local_pos.y * scale), &sx, &sy, &child);
+    int piw = std::max(1, static_cast<int>(std::ceil(tw * scale)));
+    int pih = std::max(1, static_cast<int>(std::ceil(th * scale)));
+    sy -= pih + 4;
+    int screen_w = DisplayWidth(d->display, d->screen);
+    if (sx + piw > screen_w) {
+        sx = screen_w - piw - 2;
+    }
+    if (sx < 0) {
+        sx = 2;
+    }
+    if (sy < 0) {
+        sy = sy + pih + 24;
+    }
+    if (w->tooltip_xwindow == 0L) {
+        XSetWindowAttributes sa = {};
+        sa.override_redirect = True;
+        sa.save_under = True;
+        w->tooltip_xwindow =
+            XCreateWindow(d->display, d->root, sx, sy, piw, pih, 0, d->depth, InputOutput,
+                          d->visual, CWOverrideRedirect | CWSaveUnder, &sa);
+    } else {
+        XMoveResizeWindow(d->display, w->tooltip_xwindow, sx, sy, piw, pih);
+    }
+    XMapRaised(d->display, w->tooltip_xwindow);
+    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, piw, pih);
+    cairo_t *cr = cairo_create(surf);
+    cairo_scale(cr, scale, scale);
+    CairoPainter painter(cr);
+    Rect r{0, 0, tw, th};
+    painter.fill_rounded_rect(r, style.background, style.corner_radius);
+    painter.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
+    painter.draw_text(text, {pad, pad + fm.ascent}, style.text, fs);
+    cairo_surface_flush(surf);
+    cairo_surface_t *xs =
+        cairo_xlib_surface_create(d->display, w->tooltip_xwindow, d->visual, piw, pih);
+    cairo_t *xcr = cairo_create(xs);
+    cairo_set_source_surface(xcr, surf, 0, 0);
+    cairo_paint(xcr);
+    cairo_destroy(xcr);
+    cairo_surface_destroy(xs);
+    cairo_destroy(cr);
+    cairo_surface_destroy(surf);
+    XFlush(d->display);
+}
+
+void X11PlatformWindow::hide_tooltip_window() {
+    auto *w = impl_.get();
+    if (w->tooltip_xwindow != 0L) {
+        XUnmapWindow(app_->impl_->display, w->tooltip_xwindow);
+        XFlush(app_->impl_->display);
+    }
+}
+
+bool X11PlatformWindow::save_to_png(std::string const &path) {
+    return cairo_save_to_png(owner_, path);
+}
+
+float X11PlatformWindow::scale_factor() const { return app_->impl_->scale; }
+
+} // namespace toolkit

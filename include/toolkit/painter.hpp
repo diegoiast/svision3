@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
+#pragma once
+
+#include "toolkit/types.hpp"
+#include <string_view>
+
+namespace toolkit {
+
+struct WidgetStyle;
+
+class Painter {
+  public:
+    virtual ~Painter() = default;
+
+    struct FontMetrics {
+        float ascent;
+        float descent;
+        float height;
+    };
+
+    virtual void push_clip(Rect const &rect) = 0;
+    virtual void pop_clip() = 0;
+
+    virtual void fill_rect(Rect const &rect, Color const &color) = 0;
+    virtual void draw_rect(Rect const &rect, Color const &color, float line_width = 1.0f) = 0;
+    virtual void fill_rounded_rect(Rect const &rect, Color const &color, float radius) = 0;
+    virtual void draw_rounded_rect(Rect const &rect, Color const &color, float radius,
+                                   float line_width = 1.0f) = 0;
+    virtual void draw_line(Point from, Point to, Color const &color, float line_width = 1.0f) = 0;
+    virtual void fill_circle(Point center, float radius, Color const &color) = 0;
+    virtual void draw_circle(Point center, float radius, Color const &color,
+                             float line_width = 1.0f) = 0;
+    virtual void draw_text(std::string_view text, Point position, Color const &color,
+                           float font_size = 14.0f, FontFamily font = FontFamily::System) = 0;
+
+    virtual Size text_size(std::string_view text, float font_size = 14.0f,
+                           FontFamily font = FontFamily::System) = 0;
+    virtual FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) = 0;
+
+    virtual std::string_view name() const = 0;
+
+    // Non-virtual convenience methods implemented in terms of the above
+    void draw_frame(Rect const &rect, Color bg, Color border, WidgetStyle const &style,
+                    bool sunken = false);
+    void draw_focus_ring(Rect const &rect, float corner_radius);
+
+    // Global text measurement -- delegates to current platform
+    static Size measure_text(std::string_view text, float font_size = 14.0f,
+                             FontFamily font = FontFamily::System);
+    static FontMetrics measure_font_metrics(float font_size, FontFamily font = FontFamily::System);
+
+    static float snap_to_pixel(float val, float scale);
+};
+
+} // namespace toolkit

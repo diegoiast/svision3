@@ -1,0 +1,1093 @@
+#include "wl_platform.hpp"
+#include "toolkit/painters/cairo_painter.hpp"
+#include "toolkit/theme.hpp"
+#include "toolkit/window.hpp"
+
+#include "xdg-shell-client-protocol.h"
+#include "fractional-scale-v1-client-protocol.h"
+#include "viewporter-client-protocol.h"
+#include <wayland-client.h>
+#include <wayland-cursor.h>
+#include <wayland-egl.h>
+#include <EGL/egl.h>
+#include <GL/gl.h>
+#include <xkbcommon/xkbcommon.h>
+
+#include <cairo.h>
+#include <spdlog/spdlog.h>
+
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <fcntl.h>
+#include <poll.h>
+#include <stdexcept>
+#include <sys/mman.h>
+#include <unistd.h>
+
+#ifdef __linux__
+#include <sys/syscall.h>
+#endif
+
+namespace toolkit {
+
+// --- Shared memory helper ---
+
+static int create_shm_file(size_t size) {
+    int fd = -1;
+#ifdef __linux__
+    fd = static_cast<int>(syscall(SYS_memfd_create, "tk-shm", 1u /*MFD_CLOEXEC*/));
+#endif
+    if (fd < 0) {
+        char name[] = "/dev/shm/tk-shm-XXXXXX";
+        fd = mkstemp(name);
+        if (fd >= 0) {
+            unlink(name);
+        }
+    }
+    if (fd >= 0 && ftruncate(fd, static_cast<off_t>(size)) < 0) {
+        ::close(fd);
+        return -1;
+    }
+    return fd;
+}
+
+// --- Forward declarations for listeners ---
+
+static void registry_global(void *data, wl_registry *reg, uint32_t name, const char *iface,
+                            uint32_t version);
+static void registry_global_remove(void *, wl_registry *, uint32_t) {}
+static const wl_registry_listener registry_listener = {registry_global, registry_global_remove};
+
+static void xdg_wm_base_ping(void *, xdg_wm_base *base, uint32_t serial) {
+    xdg_wm_base_pong(base, serial);
+}
+static const xdg_wm_base_listener wm_base_listener = {xdg_wm_base_ping};
+
+static void xdg_surface_configure(void *data, xdg_surface *surf, uint32_t serial);
+static const xdg_surface_listener xdg_surf_listener = {xdg_surface_configure};
+
+static void xdg_toplevel_configure(void *data, xdg_toplevel *tl, int32_t w, int32_t h,
+                                   wl_array *states);
+static void xdg_toplevel_close(void *data, xdg_toplevel *tl);
+static const xdg_toplevel_listener toplevel_listener = {xdg_toplevel_configure, xdg_toplevel_close};
+
+static void pointer_enter(void *data, wl_pointer *ptr, uint32_t serial, wl_surface *surf,
+                          wl_fixed_t sx, wl_fixed_t sy);
+static void pointer_leave(void *data, wl_pointer *, uint32_t, wl_surface *);
+static void pointer_motion(void *data, wl_pointer *, uint32_t time, wl_fixed_t sx, wl_fixed_t sy);
+static void pointer_button(void *data, wl_pointer *, uint32_t serial, uint32_t time,
+                           uint32_t button, uint32_t state);
+static void pointer_axis(void *data, wl_pointer *, uint32_t time, uint32_t axis, wl_fixed_t value);
+static void pointer_frame(void *data, wl_pointer *ptr) {}
+static void pointer_axis_source(void *data, wl_pointer *ptr, uint32_t source) {}
+static void pointer_axis_stop(void *data, wl_pointer *ptr, uint32_t time, uint32_t axis) {}
+static void pointer_axis_discrete(void *data, wl_pointer *ptr, uint32_t axis, int32_t discrete) {}
+static const wl_pointer_listener pointer_listener = {
+    pointer_enter, pointer_leave, pointer_motion, pointer_button,
+    pointer_axis,  pointer_frame, pointer_axis_source,
+    pointer_axis_stop, pointer_axis_discrete};
+
+static void keyboard_keymap(void *data, wl_keyboard *, uint32_t format, int32_t fd, uint32_t size);
+static void keyboard_enter(void *data, wl_keyboard *, uint32_t serial, wl_surface *surf,
+                           wl_array *keys);
+static void keyboard_leave(void *data, wl_keyboard *, uint32_t, wl_surface *surf);
+static void keyboard_key(void *data, wl_keyboard *, uint32_t serial, uint32_t time, uint32_t key,
+                         uint32_t state);
+static void keyboard_modifiers(void *data, wl_keyboard *, uint32_t serial, uint32_t depressed,
+                               uint32_t latched, uint32_t locked, uint32_t group);
+static void keyboard_repeat_info(void *data, wl_keyboard *, int32_t rate, int32_t delay) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    app->repeat_rate = rate;
+    app->repeat_delay = delay;
+}
+static const wl_keyboard_listener keyboard_listener = {keyboard_keymap,    keyboard_enter,
+                                                       keyboard_leave,     keyboard_key,
+                                                       keyboard_modifiers, keyboard_repeat_info};
+
+static void seat_capabilities(void *data, wl_seat *seat, uint32_t caps);
+static void seat_name(void *, wl_seat *, const char *) {}
+static const wl_seat_listener seat_listener = {seat_capabilities, seat_name};
+
+static void frame_done(void *data, wl_callback *cb, uint32_t time);
+static const wl_callback_listener frame_listener = {frame_done};
+
+// --- wl_output listener ---
+
+static void output_geometry(void *, wl_output *, int32_t, int32_t, int32_t, int32_t, int32_t,
+                            const char *, const char *, int32_t) {}
+static void output_mode(void *, wl_output *, uint32_t, int32_t, int32_t, int32_t) {}
+static void output_done(void *, wl_output *) {}
+static void output_scale(void *data, wl_output *, int32_t factor) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    float f = static_cast<float>(factor);
+    if (f > app->output_scale) {
+        app->output_scale = f;
+    }
+}
+static const wl_output_listener output_listener = {output_geometry, output_mode, output_done,
+                                                   output_scale};
+
+static void fractional_scale_preferred_scale(void *data, wp_fractional_scale_v1 *,
+                                             uint32_t scale) {
+    auto *win = static_cast<WaylandPlatformWindow *>(data);
+    float f = static_cast<float>(scale) / 120.0f;
+    if (std::abs(f - win->scale) > 0.01f) {
+        win->scale = f;
+        win->needs_redraw = true;
+        win->request_redraw();
+    }
+}
+
+static const wp_fractional_scale_v1_listener fractional_scale_listener = {
+    fractional_scale_preferred_scale};
+
+// --- Key mapping ---
+
+static Key xkb_to_key(xkb_keysym_t sym) {
+    switch (sym) {
+    case XKB_KEY_BackSpace:
+        return Key::Backspace;
+    case XKB_KEY_Delete:
+        return Key::Delete;
+    case XKB_KEY_Left:
+        return Key::Left;
+    case XKB_KEY_Right:
+        return Key::Right;
+    case XKB_KEY_Up:
+        return Key::Up;
+    case XKB_KEY_Down:
+        return Key::Down;
+    case XKB_KEY_Home:
+        return Key::Home;
+    case XKB_KEY_End:
+        return Key::End;
+    case XKB_KEY_Return:
+    case XKB_KEY_KP_Enter:
+        return Key::Enter;
+    case XKB_KEY_Escape:
+        return Key::Escape;
+    case XKB_KEY_Tab:
+    case XKB_KEY_ISO_Left_Tab:
+        return Key::Tab;
+    default:
+        return Key::NoKey;
+    }
+}
+
+// --- Helpers ---
+
+static WaylandPlatformWindow *find_window(WaylandPlatformApplication *app, wl_surface *surf) {
+    for (auto *w : app->windows) {
+        if (w->surface == surf) {
+            return w;
+        }
+    }
+    return nullptr;
+}
+
+static const char *cursor_name_for(CursorShape shape) {
+    switch (shape) {
+    case CursorShape::IBeam:
+        return "text";
+    case CursorShape::Hand:
+        return "pointer";
+    case CursorShape::NotAllowed:
+        return "not-allowed";
+    default:
+        return "left_ptr";
+    }
+}
+
+static void apply_cursor(WaylandPlatformApplication *app, const char *name) {
+    if (!app->cursor_theme || !app->pointer || !app->cursor_surface) {
+        return;
+    }
+    wl_cursor *cursor = wl_cursor_theme_get_cursor(app->cursor_theme, name);
+    if (!cursor || cursor->image_count == 0) {
+        return;
+    }
+    wl_cursor_image *img = cursor->images[0];
+    wl_buffer *buf = wl_cursor_image_get_buffer(img);
+    if (!buf) {
+        return;
+    }
+    wl_surface_attach(app->cursor_surface, buf, 0, 0);
+    wl_surface_damage(app->cursor_surface, 0, 0, static_cast<int32_t>(img->width),
+                      static_cast<int32_t>(img->height));
+    wl_surface_commit(app->cursor_surface);
+    wl_pointer_set_cursor(app->pointer, app->pointer_enter_serial, app->cursor_surface,
+                          static_cast<int32_t>(img->hotspot_x),
+                          static_cast<int32_t>(img->hotspot_y));
+}
+
+// --- Registry ---
+
+static void registry_global(void *data, wl_registry *reg, uint32_t name, const char *iface,
+                            uint32_t version) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if (strcmp(iface, "wl_compositor") == 0) {
+        app->compositor = static_cast<wl_compositor *>(
+            wl_registry_bind(reg, name, &wl_compositor_interface, std::min(version, 4u)));
+    } else if (strcmp(iface, "xdg_wm_base") == 0) {
+        app->wm_base = static_cast<xdg_wm_base *>(
+            wl_registry_bind(reg, name, &xdg_wm_base_interface, std::min(version, 2u)));
+        xdg_wm_base_add_listener(app->wm_base, &wm_base_listener, app);
+    } else if (strcmp(iface, "wl_shm") == 0) {
+        app->shm = static_cast<wl_shm *>(wl_registry_bind(reg, name, &wl_shm_interface, 1));
+    } else if (strcmp(iface, "wl_seat") == 0) {
+        app->seat = static_cast<wl_seat *>(
+            wl_registry_bind(reg, name, &wl_seat_interface, std::min(version, 5u)));
+        wl_seat_add_listener(app->seat, &seat_listener, app);
+    } else if (strcmp(iface, "wl_data_device_manager") == 0) {
+        app->data_device_manager = static_cast<wl_data_device_manager *>(
+            wl_registry_bind(reg, name, &wl_data_device_manager_interface, std::min(version, 3u)));
+    } else if (strcmp(iface, "wl_output") == 0) {
+        auto *output = static_cast<wl_output *>(
+            wl_registry_bind(reg, name, &wl_output_interface, std::min(version, 2u)));
+        wl_output_add_listener(output, &output_listener, app);
+        app->outputs.push_back(output);
+    } else if (strcmp(iface, "wp_fractional_scale_manager_v1") == 0) {
+        app->fractional_scale_manager = static_cast<wp_fractional_scale_manager_v1 *>(
+            wl_registry_bind(reg, name, &wp_fractional_scale_manager_v1_interface, 1));
+    } else if (strcmp(iface, "wp_viewporter") == 0) {
+        app->viewporter = static_cast<wp_viewporter *>(
+            wl_registry_bind(reg, name, &wp_viewporter_interface, 1));
+    }
+}
+
+// --- Seat ---
+
+static void seat_capabilities(void *data, wl_seat *seat, uint32_t caps) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if ((caps & WL_SEAT_CAPABILITY_POINTER) && !app->pointer) {
+        app->pointer = wl_seat_get_pointer(seat);
+        wl_pointer_add_listener(app->pointer, &pointer_listener, app);
+    }
+    if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !app->keyboard) {
+        app->keyboard = wl_seat_get_keyboard(seat);
+        wl_keyboard_add_listener(app->keyboard, &keyboard_listener, app);
+    }
+}
+
+// --- Pointer ---
+
+static void pointer_enter(void *data, wl_pointer *, uint32_t serial, wl_surface *surf,
+                          wl_fixed_t sx, wl_fixed_t sy) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    app->pointer_enter_serial = serial;
+    app->pointer_focus = find_window(app, surf);
+    app->pointer_x = static_cast<float>(wl_fixed_to_double(sx));
+    app->pointer_y = static_cast<float>(wl_fixed_to_double(sy));
+    if (app->pointer_focus) {
+        apply_cursor(app, cursor_name_for(app->pointer_focus->current_cursor));
+    }
+}
+
+static void pointer_leave(void *data, wl_pointer *, uint32_t, wl_surface *) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    app->pointer_focus = nullptr;
+}
+
+static void pointer_motion(void *data, wl_pointer *, uint32_t, wl_fixed_t sx, wl_fixed_t sy) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    app->pointer_x = static_cast<float>(wl_fixed_to_double(sx));
+    app->pointer_y = static_cast<float>(wl_fixed_to_double(sy));
+    if (!app->pointer_focus) {
+        return;
+    }
+    MouseEvent e{};
+    if (app->pressed_button != -1) {
+        e.type = MouseEvent::Type::Drag;
+        e.button = app->pressed_button;
+    } else {
+        e.type = MouseEvent::Type::Move;
+    }
+    e.position = {app->pointer_x, app->pointer_y};
+    e.shift = app->mod_shift;
+    e.ctrl = app->mod_ctrl;
+    e.super = app->mod_ctrl;
+    app->pointer_focus->owner_->handle_mouse(e);
+}
+
+static void pointer_button(void *data, wl_pointer *, uint32_t, uint32_t time, uint32_t button,
+                           uint32_t state) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if (!app->pointer_focus) {
+        return;
+    }
+    int btn = 0;
+    if (button == 0x110) {
+        btn = 0; // BTN_LEFT
+    } else if (button == 0x111) {
+        btn = 1; // BTN_RIGHT
+    } else if (button == 0x112) {
+        btn = 2; // BTN_MIDDLE
+    }
+
+    MouseEvent e{};
+    e.position = {app->pointer_x, app->pointer_y};
+    e.button = btn;
+    e.shift = app->mod_shift;
+    e.ctrl = app->mod_ctrl;
+    e.super = app->mod_ctrl;
+
+    if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+        app->pressed_button = btn;
+        e.type = MouseEvent::Type::Press;
+        constexpr uint32_t dblclick_ms = 400;
+        constexpr float dblclick_dist = 4.0f;
+        bool same = (static_cast<uint32_t>(btn) == app->last_click_button);
+        bool in_time = (time - app->last_click_time) < dblclick_ms;
+        bool in_range = std::abs(app->pointer_x - app->last_click_x) < dblclick_dist &&
+                        std::abs(app->pointer_y - app->last_click_y) < dblclick_dist;
+        app->click_count = (same && in_time && in_range) ? app->click_count + 1 : 1;
+        app->last_click_time = time;
+        app->last_click_x = app->pointer_x;
+        app->last_click_y = app->pointer_y;
+        app->last_click_button = static_cast<uint32_t>(btn);
+        e.click_count = app->click_count;
+    } else {
+        app->pressed_button = -1;
+        e.type = MouseEvent::Type::Release;
+    }
+    app->pointer_focus->owner_->handle_mouse(e);
+}
+
+static void pointer_axis(void *data, wl_pointer *, uint32_t, uint32_t axis, wl_fixed_t value) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if (!app->pointer_focus) {
+        return;
+    }
+    MouseEvent e{};
+    e.type = MouseEvent::Type::Scroll;
+    e.position = {app->pointer_x, app->pointer_y};
+    float v = static_cast<float>(wl_fixed_to_double(value));
+    if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
+        e.scroll_dy = -v * 0.5f;
+    } else {
+        e.scroll_dx = v * 0.5f;
+    }
+    app->pointer_focus->owner_->handle_mouse(e);
+}
+
+// --- Keyboard ---
+
+static void keyboard_keymap(void *data, wl_keyboard *, uint32_t format, int32_t fd, uint32_t size) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+        ::close(fd);
+        return;
+    }
+    char *map_str = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
+    if (map_str == MAP_FAILED) {
+        ::close(fd);
+        return;
+    }
+    if (app->xkb_st) {
+        xkb_state_unref(app->xkb_st);
+        app->xkb_st = nullptr;
+    }
+    if (app->xkb_map) {
+        xkb_keymap_unref(app->xkb_map);
+        app->xkb_map = nullptr;
+    }
+    app->xkb_map = xkb_keymap_new_from_string(app->xkb_ctx, map_str, XKB_KEYMAP_FORMAT_TEXT_V1,
+                                              XKB_KEYMAP_COMPILE_NO_FLAGS);
+    munmap(map_str, size);
+    ::close(fd);
+    if (app->xkb_map) {
+        app->xkb_st = xkb_state_new(app->xkb_map);
+    }
+}
+
+static void keyboard_enter(void *data, wl_keyboard *, uint32_t, wl_surface *surf, wl_array *) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    app->keyboard_focus = find_window(app, surf);
+}
+
+static void stop_keyboard_repeat(WaylandPlatformApplication *app) {
+    if (app->repeat_timer_id) {
+        for (auto it = app->timers.begin(); it != app->timers.end(); ++it) {
+            if (it->id == app->repeat_timer_id) {
+                app->timers.erase(it);
+                break;
+            }
+        }
+        app->repeat_timer_id = 0;
+        app->repeating_key = 0;
+    }
+}
+
+static void keyboard_leave(void *data, wl_keyboard *, uint32_t, wl_surface *) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if (app->keyboard_focus) {
+        app->keyboard_focus->owner_->hide_tooltip();
+    }
+    app->keyboard_focus = nullptr;
+    stop_keyboard_repeat(app);
+}
+
+static void process_key(WaylandPlatformApplication *app, uint32_t key) {
+    if (!app->keyboard_focus || !app->xkb_st) {
+        return;
+    }
+    uint32_t keycode = key + 8;
+    xkb_keysym_t sym = xkb_state_key_get_one_sym(app->xkb_st, keycode);
+
+    KeyEvent ke;
+    ke.type = KeyEvent::Type::Press;
+    ke.shift = app->mod_shift;
+    ke.ctrl = app->mod_ctrl;
+    ke.alt = app->mod_alt;
+    ke.super = app->mod_ctrl;
+    ke.key = xkb_to_key(sym);
+
+    if (ke.ctrl || ke.alt) {
+        xkb_keysym_t base = xkb_state_key_get_one_sym(app->xkb_st, keycode);
+        char buf[8] = {};
+        xkb_keysym_to_utf8(base, buf, sizeof(buf));
+        if (buf[0] >= 32 && static_cast<unsigned char>(buf[0]) < 127 && ke.key == Key::NoKey) {
+            char lower = static_cast<char>(std::tolower(buf[0]));
+            ke.text = std::string(1, lower);
+        }
+    } else if (ke.key == Key::NoKey) {
+        char buf[8] = {};
+        int len = xkb_state_key_get_utf8(app->xkb_st, keycode, buf, sizeof(buf));
+        if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
+            ke.text = std::string(buf, static_cast<size_t>(len));
+        }
+    }
+    app->keyboard_focus->owner_->handle_key(ke);
+}
+
+static void keyboard_key(void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t key,
+                         uint32_t state) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+
+    if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+        if (app->repeating_key == key) {
+            stop_keyboard_repeat(app);
+        }
+        return;
+    }
+
+    if (state != WL_KEYBOARD_KEY_STATE_PRESSED) {
+        return;
+    }
+
+    process_key(app, key);
+
+    stop_keyboard_repeat(app);
+
+    if (app->repeat_rate > 0) {
+        app->repeating_key = key;
+        float delay = static_cast<float>(app->repeat_delay) / 1000.0f;
+
+        WaylandPlatformApplication::TimerEntry entry;
+        entry.id = app->next_timer_id++;
+        app->repeat_timer_id = entry.id;
+        entry.interval_sec = 1.0f / static_cast<float>(app->repeat_rate);
+        entry.repeats = true;
+        entry.callback = [app, key] {
+            if (app->repeating_key == key) {
+                process_key(app, key);
+            }
+        };
+        entry.next_fire = std::chrono::steady_clock::now() +
+                          std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                              std::chrono::duration<float>(delay));
+        app->timers.push_back(std::move(entry));
+    }
+}
+
+static void keyboard_modifiers(void *data, wl_keyboard *, uint32_t, uint32_t depressed,
+                               uint32_t latched, uint32_t locked, uint32_t group) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if (!app->xkb_st) {
+        return;
+    }
+    xkb_state_update_mask(app->xkb_st, depressed, latched, locked, 0, 0, group);
+    app->mod_shift =
+        xkb_state_mod_name_is_active(app->xkb_st, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE);
+    app->mod_ctrl =
+        xkb_state_mod_name_is_active(app->xkb_st, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE);
+    app->mod_alt =
+        xkb_state_mod_name_is_active(app->xkb_st, XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE);
+    app->mod_super =
+        xkb_state_mod_name_is_active(app->xkb_st, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE);
+}
+
+// --- xdg_surface / xdg_toplevel ---
+
+static void xdg_surface_configure(void *data, xdg_surface *surf, uint32_t serial) {
+    auto *win = static_cast<WaylandPlatformWindow *>(data);
+    xdg_surface_ack_configure(surf, serial);
+    win->configured = true;
+    if (win->pending_width > 0 && win->pending_height > 0) {
+        float nw = static_cast<float>(win->pending_width);
+        float nh = static_cast<float>(win->pending_height);
+        win->owner_->handle_resize({nw, nh});
+    }
+    win->needs_redraw = true;
+    if (win->configured && !win->frame_cb) {
+        win->do_paint();
+    }
+}
+
+static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_t h, wl_array *) {
+    auto *win = static_cast<WaylandPlatformWindow *>(data);
+    if (w > 0 && h > 0) {
+        win->pending_width = w;
+        win->pending_height = h;
+    }
+}
+
+static void xdg_toplevel_close(void *data, xdg_toplevel *) {
+    auto *win = static_cast<WaylandPlatformWindow *>(data);
+    win->owner_->close();
+}
+
+// --- Frame callback ---
+
+static void frame_done(void *data, wl_callback *cb, uint32_t) {
+    auto *win = static_cast<WaylandPlatformWindow *>(data);
+    wl_callback_destroy(cb);
+    win->frame_cb = nullptr;
+    if (win->needs_redraw) {
+        win->do_paint();
+    }
+}
+
+// --- WaylandPlatformApplication ---
+
+WaylandPlatformApplication::WaylandPlatformApplication() {
+    display = wl_display_connect(nullptr);
+    if (!display) {
+        throw std::runtime_error("Failed to connect to Wayland display");
+    }
+
+    xkb_ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+
+    wl_registry *registry = wl_display_get_registry(display);
+    wl_registry_add_listener(registry, &registry_listener, this);
+    wl_display_roundtrip(display);
+
+    if (!compositor || !wm_base || !shm) {
+        wl_display_disconnect(display);
+        display = nullptr;
+        throw std::runtime_error("Wayland compositor missing required globals");
+    }
+
+    repeat_rate = 25;
+    repeat_delay = 600;
+    output_scale = 1;
+
+    if (const char *env = std::getenv("SVISION_PAINT")) {
+        if (std::string_view(env) == "opengl") {
+            opengl_requested = true;
+        }
+    }
+
+    if (opengl_requested) {
+        egl_display = eglGetDisplay((EGLNativeDisplayType)display);
+        if (egl_display != EGL_NO_DISPLAY) {
+            EGLint major, minor;
+            if (eglInitialize(egl_display, &major, &minor)) {
+                EGLint attr[] = {EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+                                 EGL_RED_SIZE, 8,
+                                 EGL_GREEN_SIZE, 8,
+                                 EGL_BLUE_SIZE, 8,
+                                 EGL_ALPHA_SIZE, 8,
+                                 EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+                                 EGL_NONE};
+                EGLint count;
+                if (eglChooseConfig(egl_display, attr, (EGLConfig *)&egl_config, 1, &count) && count > 0) {
+                    eglBindAPI(EGL_OPENGL_API);
+                    EGLint ctx_attr[] = {EGL_NONE};
+                    egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, ctx_attr);
+                }
+            }
+        }
+        if (!egl_context) {
+            spdlog::warn("Failed to initialize EGL, falling back to Cairo");
+            opengl_requested = false;
+        }
+    }
+
+    cursor_theme = wl_cursor_theme_load(nullptr, 24, shm);
+    if (compositor) {
+        cursor_surface = wl_compositor_create_surface(compositor);
+    }
+
+    if (pipe(wakeup_pipe) == 0) {
+        fcntl(wakeup_pipe[0], F_SETFL, O_NONBLOCK);
+        fcntl(wakeup_pipe[1], F_SETFL, O_NONBLOCK);
+    }
+
+    wl_registry_destroy(registry);
+    spdlog::debug("Wayland backend initialized (scale={}, opengl={})", output_scale, opengl_requested);
+}
+
+WaylandPlatformApplication::~WaylandPlatformApplication() {
+    if (xkb_st) {
+        xkb_state_unref(xkb_st);
+    }
+    if (xkb_map) {
+        xkb_keymap_unref(xkb_map);
+    }
+    if (xkb_ctx) {
+        xkb_context_unref(xkb_ctx);
+    }
+    for (auto *o : outputs) {
+        wl_output_destroy(o);
+    }
+    if (cursor_surface) {
+        wl_surface_destroy(cursor_surface);
+    }
+    if (cursor_theme) {
+        wl_cursor_theme_destroy(cursor_theme);
+    }
+    if (pointer) {
+        wl_pointer_destroy(pointer);
+    }
+    if (keyboard) {
+        wl_keyboard_destroy(keyboard);
+    }
+    if (data_device) {
+        wl_data_device_destroy(data_device);
+    }
+    if (seat) {
+        wl_seat_destroy(seat);
+    }
+    if (wm_base) {
+        xdg_wm_base_destroy(wm_base);
+    }
+    if (shm) {
+        wl_shm_destroy(shm);
+    }
+    if (compositor) {
+        wl_compositor_destroy(compositor);
+    }
+    if (display) {
+        if (egl_display) {
+            if (egl_context) eglDestroyContext(egl_display, egl_context);
+            eglTerminate(egl_display);
+        }
+        wl_display_disconnect(display);
+    }
+    if (wakeup_pipe[0] >= 0) {
+        ::close(wakeup_pipe[0]);
+    }
+    if (wakeup_pipe[1] >= 0) {
+        ::close(wakeup_pipe[1]);
+    }
+}
+
+std::unique_ptr<PlatformWindow>
+WaylandPlatformApplication::create_window(std::string_view title, Size size, Window *owner) {
+    return std::make_unique<WaylandPlatformWindow>(this, title, size, owner);
+}
+
+int WaylandPlatformApplication::run() {
+    running = true;
+    spdlog::info("Starting run loop (Wayland)");
+    int wl_fd = wl_display_get_fd(display);
+
+    while (running) {
+        {
+            std::vector<std::function<void()>> fns;
+            {
+                std::lock_guard lock(posted_mutex);
+                fns.swap(posted_fns);
+            }
+            for (auto &fn : fns) {
+                fn();
+            }
+        }
+
+        for (auto *win : windows) {
+            if (win->configured && win->needs_redraw && !win->frame_cb) {
+                win->do_paint();
+            }
+        }
+
+        wl_display_flush(display);
+
+        int timeout_ms = -1;
+        if (!timers.empty()) {
+            auto now = std::chrono::steady_clock::now();
+            for (auto &t : timers) {
+                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now)
+                              .count();
+                if (ms < 0) {
+                    ms = 0;
+                }
+                if (timeout_ms < 0 || ms < timeout_ms) {
+                    timeout_ms = static_cast<int>(ms);
+                }
+            }
+        }
+
+        struct pollfd fds[2];
+        fds[0] = {wl_fd, POLLIN, 0};
+        fds[1] = {wakeup_pipe[0], POLLIN, 0};
+        poll(fds, 2, timeout_ms);
+
+        if (fds[1].revents & POLLIN) {
+            char buf[64];
+            while (::read(wakeup_pipe[0], buf, sizeof(buf)) > 0) {
+            }
+        }
+
+        if (fds[0].revents & POLLIN) {
+            wl_display_dispatch(display);
+        } else {
+            wl_display_dispatch_pending(display);
+        }
+
+        auto now = std::chrono::steady_clock::now();
+        for (auto it = timers.begin(); it != timers.end();) {
+            if (now >= it->next_fire) {
+                auto cb = it->callback;
+                if (it->repeats) {
+                    it->next_fire =
+                        now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                  std::chrono::duration<float>(it->interval_sec));
+                    ++it;
+                } else {
+                    it = timers.erase(it);
+                }
+                cb();
+            } else {
+                ++it;
+            }
+        }
+
+        if (windows.empty()) {
+            running = false;
+        }
+    }
+    return 0;
+}
+
+void WaylandPlatformApplication::quit() { running = false; }
+
+void WaylandPlatformApplication::post_to_main_thread(std::function<void()> fn) {
+    {
+        std::lock_guard lock(posted_mutex);
+        posted_fns.push_back(std::move(fn));
+    }
+    char c = 1;
+    (void)::write(wakeup_pipe[1], &c, 1);
+}
+
+std::string WaylandPlatformApplication::clipboard_get_text() {
+    // TODO: implement via wl_data_device/wl_data_offer for cross-client paste
+    return clipboard_content;
+}
+
+void WaylandPlatformApplication::clipboard_set_text(std::string const &text) {
+    clipboard_content = text;
+    // TODO: implement via wl_data_source for cross-client copy
+}
+
+// --- WaylandPlatformWindow ---
+
+WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
+                                             std::string_view title, Size size, Window *owner)
+    : app_(app), owner_(owner) {
+    surface = wl_compositor_create_surface(app_->compositor);
+    xdg_surf = xdg_wm_base_get_xdg_surface(app_->wm_base, surface);
+    xdg_surface_add_listener(xdg_surf, &xdg_surf_listener, this);
+    toplevel = xdg_surface_get_toplevel(xdg_surf);
+    xdg_toplevel_add_listener(toplevel, &toplevel_listener, this);
+
+    std::string t(title);
+    xdg_toplevel_set_title(toplevel, t.c_str());
+    xdg_toplevel_set_app_id(toplevel, "toolkit-app");
+
+    pending_width = static_cast<int>(size.width);
+    pending_height = static_cast<int>(size.height);
+    scale = app_->output_scale;
+
+    if (app_->fractional_scale_manager) {
+        fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(
+            app_->fractional_scale_manager, surface);
+        wp_fractional_scale_v1_add_listener(fractional_scale, &fractional_scale_listener, this);
+    }
+    if (app_->viewporter) {
+        viewport = wp_viewporter_get_viewport(app_->viewporter, surface);
+    }
+
+    if (app_->opengl_requested) {
+        int pw = static_cast<int>(size.width) * app_->output_scale;
+        int ph = static_cast<int>(size.height) * app_->output_scale;
+        egl_window = wl_egl_window_create(surface, pw, ph);
+        egl_surface = eglCreateWindowSurface(app_->egl_display, app_->egl_config, (EGLNativeWindowType)egl_window, nullptr);
+        buf_width = pw;
+        buf_height = ph;
+    }
+
+    wl_surface_set_buffer_scale(surface, app_->output_scale);
+    wl_surface_commit(surface);
+    wl_display_roundtrip(app_->display);
+    app_->windows.push_back(this);
+}
+
+WaylandPlatformWindow::~WaylandPlatformWindow() {
+    auto &w = app_->windows;
+    w.erase(std::remove(w.begin(), w.end(), this), w.end());
+    if (app_->pointer_focus == this) {
+        app_->pointer_focus = nullptr;
+    }
+    if (app_->keyboard_focus == this) {
+        app_->keyboard_focus = nullptr;
+    }
+    if (frame_cb) {
+        wl_callback_destroy(frame_cb);
+    }
+    if (buffer) {
+        wl_buffer_destroy(buffer);
+    }
+    if (shm_data && shm_size > 0) {
+        munmap(shm_data, shm_size);
+    }
+    if (shm_fd >= 0) {
+        ::close(shm_fd);
+    }
+    if (toplevel) {
+        xdg_toplevel_destroy(toplevel);
+    }
+    if (fractional_scale) {
+        wp_fractional_scale_v1_destroy(fractional_scale);
+    }
+    if (viewport) {
+        wp_viewport_destroy(viewport);
+    }
+    if (xdg_surf) {
+        xdg_surface_destroy(xdg_surf);
+    }
+    if (egl_surface) {
+        eglDestroySurface(app_->egl_display, egl_surface);
+    }
+    if (egl_window) {
+        wl_egl_window_destroy(egl_window);
+    }
+    if (surface) {
+        wl_surface_destroy(surface);
+    }
+}
+
+void WaylandPlatformWindow::show() {
+    wl_surface_commit(surface);
+    wl_display_roundtrip(app_->display);
+}
+
+void WaylandPlatformWindow::close() {
+    auto &w = app_->windows;
+    w.erase(std::remove(w.begin(), w.end(), this), w.end());
+    if (app_->pointer_focus == this) {
+        app_->pointer_focus = nullptr;
+    }
+    if (app_->keyboard_focus == this) {
+        app_->keyboard_focus = nullptr;
+    }
+}
+
+void WaylandPlatformWindow::request_redraw() { needs_redraw = true; }
+
+void WaylandPlatformWindow::set_min_size(Size s) {
+    if (toplevel) {
+        xdg_toplevel_set_min_size(toplevel, static_cast<int32_t>(s.width),
+                                  static_cast<int32_t>(s.height));
+    }
+}
+
+void WaylandPlatformWindow::set_max_size(Size s) {
+    if (toplevel && s.width > 0 && s.height > 0) {
+        xdg_toplevel_set_max_size(toplevel, static_cast<int32_t>(s.width),
+                                  static_cast<int32_t>(s.height));
+    }
+}
+
+int WaylandPlatformWindow::start_timer(float interval_sec, std::function<void()> callback,
+                                       bool repeats) {
+    int tid = app_->next_timer_id++;
+    WaylandPlatformApplication::TimerEntry entry;
+    entry.id = tid;
+    entry.interval_sec = interval_sec;
+    entry.repeats = repeats;
+    entry.callback = std::move(callback);
+    entry.next_fire = std::chrono::steady_clock::now() +
+                      std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                          std::chrono::duration<float>(interval_sec));
+    app_->timers.push_back(std::move(entry));
+    return tid;
+}
+
+void WaylandPlatformWindow::stop_timer(int timer_id) {
+    auto &timers = app_->timers;
+    timers.erase(std::remove_if(timers.begin(), timers.end(),
+                                [timer_id](auto &t) { return t.id == timer_id; }),
+                 timers.end());
+}
+
+void WaylandPlatformWindow::set_cursor(CursorShape shape) {
+    current_cursor = shape;
+    apply_cursor(app_, cursor_name_for(shape));
+}
+
+void WaylandPlatformWindow::show_tooltip_window(std::string const &, Point) {
+    // TODO: implement Wayland tooltips via xdg_popup or subsurface
+}
+
+void WaylandPlatformWindow::hide_tooltip_window() {
+    // TODO: destroy tooltip popup
+}
+
+void WaylandPlatformWindow::create_buffer(int width, int height) {
+    if (buffer) {
+        wl_buffer_destroy(buffer);
+        buffer = nullptr;
+    }
+    if (shm_data && shm_size > 0) {
+        munmap(shm_data, shm_size);
+        shm_data = nullptr;
+    }
+    if (shm_fd >= 0) {
+        ::close(shm_fd);
+        shm_fd = -1;
+    }
+
+    int stride = width * 4;
+    size_t total = static_cast<size_t>(stride) * static_cast<size_t>(height);
+    shm_fd = create_shm_file(total);
+    if (shm_fd < 0) {
+        return;
+    }
+    shm_data = mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (shm_data == MAP_FAILED) {
+        shm_data = nullptr;
+        ::close(shm_fd);
+        shm_fd = -1;
+        return;
+    }
+    shm_size = total;
+    wl_shm_pool *pool = wl_shm_create_pool(app_->shm, shm_fd, static_cast<int32_t>(total));
+    buffer = wl_shm_pool_create_buffer(pool, 0, width, height, stride, WL_SHM_FORMAT_ARGB8888);
+    wl_shm_pool_destroy(pool);
+    buf_width = width;
+    buf_height = height;
+}
+
+void WaylandPlatformWindow::do_paint() {
+    needs_redraw = false;
+    float current_scale = scale;
+    int lw = static_cast<int>(owner_->size().width);
+    int lh = static_cast<int>(owner_->size().height);
+    if (lw <= 0 || lh <= 0) {
+        return;
+    }
+    int pw = static_cast<int>(std::ceil(static_cast<float>(lw) * current_scale));
+    int ph = static_cast<int>(std::ceil(static_cast<float>(lh) * current_scale));
+
+    spdlog::debug("Wayland painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph, current_scale);
+
+    if (app_->opengl_requested && egl_surface) {
+        eglMakeCurrent(app_->egl_display, egl_surface, egl_surface, app_->egl_context);
+        if (pw != buf_width || ph != buf_height) {
+            wl_egl_window_resize(egl_window, pw, ph, 0, 0);
+            buf_width = pw;
+            buf_height = ph;
+        }
+
+        if (viewport) {
+            wp_viewport_set_destination(viewport, lw, lh);
+            wl_surface_set_buffer_scale(surface, 1);
+        } else {
+            wl_surface_set_buffer_scale(surface, static_cast<int32_t>(std::ceil(current_scale)));
+        }
+
+        glViewport(0, 0, pw, ph);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0, lw, lh, 0, -1, 1);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+
+        glClearColor(1, 1, 1, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        CairoTextRasterizer rasterizer;
+        GLPainter painter(static_cast<float>(lh), current_scale, rasterizer);
+        owner_->handle_paint(painter);
+
+        frame_cb = wl_surface_frame(surface);
+        wl_callback_add_listener(frame_cb, &frame_listener, this);
+
+        eglSwapBuffers(app_->egl_display, egl_surface);
+        wl_surface_commit(surface);
+        return;
+    }
+
+    if (pw != buf_width || ph != buf_height) {
+        create_buffer(pw, ph);
+    }
+    if (!shm_data || !buffer) {
+        return;
+    }
+
+    int stride = pw * 4;
+    cairo_surface_t *cs = cairo_image_surface_create_for_data(
+        static_cast<unsigned char *>(shm_data), CAIRO_FORMAT_ARGB32, pw, ph, stride);
+    cairo_t *cr = cairo_create(cs);
+    cairo_scale(cr, static_cast<double>(current_scale), static_cast<double>(current_scale));
+
+    CairoPainter painter(cr);
+    owner_->handle_paint(painter);
+
+    cairo_surface_flush(cs);
+    cairo_destroy(cr);
+    cairo_surface_destroy(cs);
+
+    if (viewport) {
+        wp_viewport_set_destination(viewport, lw, lh);
+        wl_surface_set_buffer_scale(surface, 1);
+    } else {
+        wl_surface_set_buffer_scale(surface, static_cast<int32_t>(std::ceil(current_scale)));
+    }
+
+    wl_surface_attach(surface, buffer, 0, 0);
+    wl_surface_damage(surface, 0, 0, lw, lh);
+
+    frame_cb = wl_surface_frame(surface);
+    wl_callback_add_listener(frame_cb, &frame_listener, this);
+    wl_surface_commit(surface);
+}
+
+bool WaylandPlatformWindow::save_to_png(std::string const &path) {
+    return cairo_save_to_png(owner_, path);
+}
+
+float WaylandPlatformWindow::scale_factor() const { return static_cast<float>(app_->output_scale); }
+
+Size WaylandPlatformApplication::measure_text(std::string_view text, float font_size,
+                                              FontFamily font) {
+    return cairo_measure_text(text, font_size, font);
+}
+
+Painter::FontMetrics
+WaylandPlatformApplication::measure_font_metrics(float font_size,
+                                                 FontFamily font) {
+    return cairo_measure_font_metrics(font_size, font);
+}
+
+std::string_view WaylandPlatformApplication::painter_name() const {
+    return opengl_requested ? "OpenGL" : "Cairo";
+}
+
+} // namespace toolkit
+

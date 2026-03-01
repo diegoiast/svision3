@@ -1,0 +1,58 @@
+{
+    "activeExecutableName": "",
+    "activeTaskName": "",
+    "build_directory": "${source_directory}/build",
+    "displayFilter": "",
+    "executables": [
+        {
+            "executables": {
+                "linux": "SVISION_PAINT=cairo SVISION_BACKEND=x11 ${build_directory}/Debug/demo",
+                "windows": "${build_directory}\\Debug\\demo.exe"
+            },
+            "name": "Demo",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "executables": {
+                "linux": "${build_directory}/Debug/tests",
+                "windows": "${build_directory}\\Debug\\tests.exe"
+            },
+            "name": "Unit tests",
+            "runDirectory": "${source_directory}"
+        }
+    ],
+    "hideFilter": ".git;.vscode;.vs;cbuild;dist;out;build",
+    "tasks": [
+        {
+            "commands": {
+                "linux": [
+                    "~/.local/bin/conan install . -s build_type=Debug --build=missing",
+                    "mkdir -p ${build_directory}/Debug/.cmake/api/v1/query/",
+                    "touch ${build_directory}/Debug/.cmake/api/v1/query/codemodel-v2",
+                    "cmake --preset conan-debug -G Ninja"
+                ],
+                "windows": [
+                    "conan install . -s build_type=Debug --build=missing",
+                    "mkdir -p ${build_directory}/Debug/.cmake/api/v1/query/",
+                    "touch ${build_directory}/Debug/.cmake/api/v1/query/codemodel-v2",
+                    "cmake --preset conan-debug -G Ninja"
+                ]
+            },
+            "isBuild": true,
+            "name": "CMake (configure/Debug)",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "commands": "cmake --build ${build_directory}/Debug/ --parallel",
+            "isBuild": true,
+            "name": "CMake Build (parallel)",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "commands": "cmake --build ${build_directory}/Debug --verbose",
+            "isBuild": true,
+            "name": "CMake Build (single thread)",
+            "runDirectory": "${source_directory}"
+        }
+    ]
+}

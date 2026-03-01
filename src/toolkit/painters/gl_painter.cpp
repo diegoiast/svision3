@@ -1,0 +1,258 @@
+#if defined(__APPLE__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#include <OpenGL/gl.h>
+#elif defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <GL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
+
+#include "toolkit/painters/gl_painter.hpp"
+#include <algorithm>
+#include <cmath>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+namespace toolkit {
+
+static std::vector<std::pair<float, float>>
+rounded_rect_verts(float x, float y, float w, float h, float rad,
+                   int seg = 8) {
+    std::vector<std::pair<float, float>> pts;
+    for (int i = 0; i <= seg; i++) {
+        float a = (float)M_PI + (float)M_PI / 2.0f * i / seg;
+        pts.push_back({x + rad + rad * cosf(a), y + rad + rad * sinf(a)});
+    }
+    for (int i = 0; i <= seg; i++) {
+        float a = 3.0f * (float)M_PI / 2.0f + (float)M_PI / 2.0f * i / seg;
+        pts.push_back(
+            {x + w - rad + rad * cosf(a), y + rad + rad * sinf(a)});
+    }
+    for (int i = 0; i <= seg; i++) {
+        float a = (float)M_PI / 2.0f * i / seg;
+        pts.push_back(
+            {x + w - rad + rad * cosf(a), y + h - rad + rad * sinf(a)});
+    }
+    for (int i = 0; i <= seg; i++) {
+        float a = (float)M_PI / 2.0f + (float)M_PI / 2.0f * i / seg;
+        pts.push_back(
+            {x + rad + rad * cosf(a), y + h - rad + rad * sinf(a)});
+    }
+    return pts;
+}
+
+GLPainter::GLPainter(float viewport_h, float scale, TextRasterizer &rasterizer)
+    : vh_(viewport_h), scale_(scale), rasterizer_(rasterizer) {}
+
+void GLPainter::push_clip(Rect const &r) {
+    Rect eff = r;
+    if (!clips_.empty()) {
+        auto &top = clips_.back();
+        float x0 = std::max(r.x, top.x);
+        float y0 = std::max(r.y, top.y);
+        float x1 = std::min(r.x + r.width, top.x + top.width);
+        float y1 = std::min(r.y + r.height, top.y + top.height);
+        eff = {x0, y0, std::max(0.f, x1 - x0), std::max(0.f, y1 - y0)};
+    }
+    clips_.push_back(eff);
+    apply_scissor(eff);
+}
+
+void GLPainter::pop_clip() {
+    clips_.pop_back();
+    if (clips_.empty())
+        glDisable(GL_SCISSOR_TEST);
+    else
+        apply_scissor(clips_.back());
+}
+
+void GLPainter::fill_rect(Rect const &r, Color const &c) {
+    set_color(c);
+    float x = Painter::snap_to_pixel(r.x, scale_);
+    float y = Painter::snap_to_pixel(r.y, scale_);
+    float w = Painter::snap_to_pixel(r.width, scale_);
+    float h = Painter::snap_to_pixel(r.height, scale_);
+    glBegin(GL_QUADS);
+    glVertex2f(x, y);
+    glVertex2f(x + w, y);
+    glVertex2f(x + w, y + h);
+    glVertex2f(x, y + h);
+    glEnd();
+}
+
+void GLPainter::draw_rect(Rect const &r, Color const &c, float lw) {
+    set_color(c);
+    glLineWidth(lw * scale_);
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    
+    float offset = (static_cast<int>(lw * scale_) % 2) == 1 ? (0.5f / scale_) : 0.0f;
+    float x = Painter::snap_to_pixel(r.x, scale_) + offset;
+    float y = Painter::snap_to_pixel(r.y, scale_) + offset;
+    float w = Painter::snap_to_pixel(r.width, scale_) - (offset * 2.0f);
+    float h = Painter::snap_to_pixel(r.height, scale_) - (offset * 2.0f);
+    
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(x, y);
+    glVertex2f(x + w, y);
+    glVertex2f(x + w, y + h);
+    glVertex2f(x, y + h);
+    glEnd();
+    glDisable(GL_LINE_SMOOTH);
+}
+
+void GLPainter::fill_rounded_rect(Rect const &r, Color const &c,
+                                   float radius) {
+    float x = Painter::snap_to_pixel(r.x, scale_);
+    float y = Painter::snap_to_pixel(r.y, scale_);
+    float w = Painter::snap_to_pixel(r.width, scale_);
+    float h = Painter::snap_to_pixel(r.height, scale_);
+    float rad = std::min({radius, w / 2.0f, h / 2.0f});
+    if (rad <= 0) { fill_rect({x, y, w, h}, c); return; }
+    set_color(c);
+    auto pts = rounded_rect_verts(x, y, w, h, rad);
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(x + w / 2, y + h / 2);
+    for (auto &[px, py] : pts) glVertex2f(px, py);
+    glVertex2f(pts[0].first, pts[0].second);
+    glEnd();
+}
+
+void GLPainter::draw_rounded_rect(Rect const &r, Color const &c,
+                                   float radius, float lw) {
+    float offset = (static_cast<int>(lw * scale_) % 2) == 1 ? (0.5f / scale_) : 0.0f;
+    float x = Painter::snap_to_pixel(r.x, scale_) + offset;
+    float y = Painter::snap_to_pixel(r.y, scale_) + offset;
+    float w = Painter::snap_to_pixel(r.width, scale_) - (offset * 2.0f);
+    float h = Painter::snap_to_pixel(r.height, scale_) - (offset * 2.0f);
+    
+    float rad = std::min({radius, w / 2.0f, h / 2.0f});
+    if (rad <= 0) { draw_rect({x - offset, y - offset, w + offset * 2, h + offset * 2}, c, lw); return; }
+    
+    set_color(c);
+    glLineWidth(lw * scale_);
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    auto pts = rounded_rect_verts(x, y, w, h, rad);
+    glBegin(GL_LINE_LOOP);
+    for (auto &[px, py] : pts) glVertex2f(px, py);
+    glEnd();
+    glDisable(GL_LINE_SMOOTH);
+}
+
+void GLPainter::draw_line(Point a, Point b, Color const &c, float lw) {
+    set_color(c);
+    glLineWidth(lw * scale_);
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    
+    float offset = (static_cast<int>(lw * scale_) % 2) == 1 ? (0.5f / scale_) : 0.0f;
+    
+    glBegin(GL_LINES);
+    glVertex2f(Painter::snap_to_pixel(a.x, scale_) + offset, Painter::snap_to_pixel(a.y, scale_) + offset);
+    glVertex2f(Painter::snap_to_pixel(b.x, scale_) + offset, Painter::snap_to_pixel(b.y, scale_) + offset);
+    glEnd();
+    glDisable(GL_LINE_SMOOTH);
+}
+
+void GLPainter::fill_circle(Point center, float radius, Color const &c) {
+    set_color(c);
+    glEnable(GL_POLYGON_SMOOTH);
+    glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+    int seg = 24;
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(center.x, center.y);
+    for (int i = 0; i <= seg; i++) {
+        float a = 2.0f * (float)M_PI * i / seg;
+        glVertex2f(center.x + radius * cosf(a),
+                   center.y + radius * sinf(a));
+    }
+    glEnd();
+    glDisable(GL_POLYGON_SMOOTH);
+}
+
+void GLPainter::draw_circle(Point center, float radius, Color const &c,
+                             float lw) {
+    set_color(c);
+    glLineWidth(lw * scale_);
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    int seg = 24;
+    glBegin(GL_LINE_LOOP);
+    for (int i = 0; i < seg; i++) {
+        float a = 2.0f * (float)M_PI * i / seg;
+        glVertex2f(center.x + radius * cosf(a),
+                   center.y + radius * sinf(a));
+    }
+    glEnd();
+    glDisable(GL_LINE_SMOOTH);
+}
+
+void GLPainter::draw_text(std::string_view text, Point pos, Color const &c,
+                           float font_size, FontFamily font) {
+    auto rt = rasterizer_.rasterize(text, font_size, scale_, font);
+    if (rt.width <= 0 || rt.height <= 0) return;
+
+    GLuint tex;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rt.width, rt.height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, rt.pixels.data());
+
+    glEnable(GL_TEXTURE_2D);
+    glColor4f(c.r * c.a, c.g * c.a, c.b * c.a, c.a);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    float top_y = Painter::snap_to_pixel(pos.y - rt.ascent, scale_);
+    float left_x = Painter::snap_to_pixel(pos.x, scale_);
+    float qw = static_cast<float>(rt.width) / scale_;
+    float qh = static_cast<float>(rt.height) / scale_;
+    glBegin(GL_QUADS);
+    glTexCoord2f(0, 0); glVertex2f(left_x, top_y);
+    glTexCoord2f(1, 0); glVertex2f(left_x + qw, top_y);
+    glTexCoord2f(1, 1); glVertex2f(left_x + qw, top_y + qh);
+    glTexCoord2f(0, 1); glVertex2f(left_x, top_y + qh);
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDeleteTextures(1, &tex);
+}
+
+Size GLPainter::text_size(std::string_view text, float font_size,
+                          FontFamily font) {
+    return rasterizer_.measure(text, font_size, font);
+}
+
+GLPainter::FontMetrics GLPainter::font_metrics(float font_size,
+                                                FontFamily font) {
+    return rasterizer_.metrics(font_size, font);
+}
+
+void GLPainter::set_color(Color const &c) {
+    glColor4f(c.r, c.g, c.b, c.a);
+}
+
+void GLPainter::apply_scissor(Rect const &r) {
+    glEnable(GL_SCISSOR_TEST);
+    int gy = static_cast<int>((vh_ - r.y - r.height) * scale_);
+    glScissor(static_cast<int>(r.x * scale_), gy,
+              static_cast<int>(r.width * scale_),
+              static_cast<int>(r.height * scale_));
+}
+
+} // namespace toolkit
+
+#if defined(__APPLE__)
+#pragma clang diagnostic pop
+#endif

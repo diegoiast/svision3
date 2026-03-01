@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
+#pragma once
+
+#include "toolkit/window.hpp"
+#include <memory>
+#include <string_view>
+#include <vector>
+
+namespace toolkit {
+
+class Application {
+  public:
+    Application();
+    ~Application();
+
+    Application(Application const &) = delete;
+    Application &operator=(Application const &) = delete;
+
+    Window *create_window(std::string_view title, Size size);
+    int run();
+    void quit();
+
+    std::string_view platform_name() const;
+    std::string_view painter_name() const;
+
+    static void post_to_main_thread(std::function<void()> fn);
+
+  private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+
+    std::vector<std::unique_ptr<Window>> windows_;
+};
+
+} // namespace toolkit

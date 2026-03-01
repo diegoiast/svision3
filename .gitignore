@@ -1,0 +1,5 @@
+build/
+cbuild/
+.cache/
+CMakeLists.txt.user
+.vs/
