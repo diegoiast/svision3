@@ -1,9 +1,14 @@
 #include "win32_platform.hpp"
+#ifdef TOOLKIT_HAS_CAIRO
 #include "toolkit/painters/cairo_painter.hpp"
+#endif
+#include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
+#ifdef TOOLKIT_HAS_CAIRO
 #include <cairo.h>
+#endif
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -103,20 +108,69 @@ static int detect_click_count(Win32PlatformApplication::WindowData &data,
     return data.click_count;
 }
 
+#ifndef TOOLKIT_HAS_CAIRO
+static void paint_window_gdiplus(HWND hwnd, Window *win, HDC hdc, float scale, int pw, int ph) {
+    HDC mem_dc = CreateCompatibleDC(hdc);
+    HBITMAP hbm = CreateCompatibleBitmap(hdc, pw, ph);
+    HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
+
+    {
+        GDIPainter painter(mem_dc, scale);
+        win->handle_paint(painter);
+    }
+
+    BitBlt(hdc, 0, 0, pw, ph, mem_dc, 0, 0, SRCCOPY);
+
+    SelectObject(mem_dc, old_bm);
+    DeleteObject(hbm);
+    DeleteDC(mem_dc);
+}
+#endif
+
 static void paint_window(HWND hwnd, Window *win) {
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
     float scale = get_window_scale(hwnd);
     int lw = static_cast<int>(win->size().width);
     int lh = static_cast<int>(win->size().height);
-    if (lw <= 0 || lh <= 0) { EndPaint(hwnd, &ps); return; }
+    if (lw <= 0 || lh <= 0) {
+        EndPaint(hwnd, &ps);
+        return;
+    }
     int pw = static_cast<int>(std::ceil(lw * scale));
     int ph = static_cast<int>(std::ceil(lh * scale));
 
-    spdlog::debug("Win32 painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph, scale);
+    spdlog::debug("Win32 painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph,
+                  scale);
 
-    cairo_surface_t *surface =
-        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
+    auto *win_plat = static_cast<Win32PlatformWindow *>(win->platform_window());
+    if (win_plat->hglrc) {
+        wglMakeCurrent(hdc, win_plat->hglrc);
+        glViewport(0, 0, pw, ph);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0, lw, lh, 0, -1, 1);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+
+        glClearColor(1, 1, 1, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        Win32TextRasterizer rasterizer;
+        GLPainter painter(static_cast<float>(lh), scale, rasterizer);
+        win->handle_paint(painter);
+
+        glFlush();
+        SwapBuffers(hdc);
+        wglMakeCurrent(nullptr, nullptr);
+        EndPaint(hwnd, &ps);
+        return;
+    }
+
+#ifdef TOOLKIT_HAS_CAIRO
+    cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
     cairo_t *cr = cairo_create(surface);
     cairo_scale(cr, scale, scale);
     CairoPainter painter(cr);
@@ -130,10 +184,12 @@ static void paint_window(HWND hwnd, Window *win) {
     bmi.bmiHeader.biPlanes = 1;
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
-    SetDIBitsToDevice(hdc, 0, 0, pw, ph, 0, 0, 0, ph, data, &bmi,
-                      DIB_RGB_COLORS);
+    SetDIBitsToDevice(hdc, 0, 0, pw, ph, 0, 0, 0, ph, data, &bmi, DIB_RGB_COLORS);
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
+#else
+    paint_window_gdiplus(hwnd, win, hdc, scale, pw, ph);
+#endif
     EndPaint(hwnd, &ps);
 }
 
@@ -354,11 +410,18 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
 // --- Win32PlatformApplication ---
 
+#include <objidl.h>
+#include <gdiplus.h>
+
 Win32PlatformApplication::Win32PlatformApplication() {
     enable_dpi_awareness();
     s_win32_app = this;
     hinstance = GetModuleHandleW(nullptr);
     main_thread_id = GetCurrentThreadId();
+
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    Gdiplus::GdiplusStartup(&gdiplus_token, &gdiplusStartupInput, nullptr);
+
     WNDCLASSEXW wc = {};
     wc.cbSize = sizeof(wc);
     wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -373,13 +436,31 @@ Win32PlatformApplication::Win32PlatformApplication() {
     tc.hInstance = hinstance;
     tc.lpszClassName = kTooltipClassName;
     RegisterClassExW(&tc);
-    spdlog::debug("Win32 backend initialized");
+
+    if (const char *env = std::getenv("SVISION_PAINT")) {
+        if (std::string_view(env) == "opengl") {
+            opengl_requested = true;
+        }
+    }
+
+    spdlog::debug("Win32 backend initialized (opengl={})", opengl_requested);
 }
 
 Win32PlatformApplication::~Win32PlatformApplication() {
     UnregisterClassW(kWindowClassName, hinstance);
     UnregisterClassW(kTooltipClassName, hinstance);
+    if (gdiplus_token) {
+        Gdiplus::GdiplusShutdown(gdiplus_token);
+    }
     s_win32_app = nullptr;
+}
+
+std::string_view Win32PlatformApplication::painter_name() const {
+#ifdef TOOLKIT_HAS_CAIRO
+    return "Cairo";
+#else
+    return "GDI+";
+#endif
 }
 
 std::unique_ptr<PlatformWindow>
@@ -469,6 +550,27 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app,
                            r.right - r.left, r.bottom - r.top,
                            nullptr, nullptr, app_->hinstance, nullptr);
     app_->window_map[hwnd] = {owner, arrow_cursor};
+
+    if (app_->opengl_requested) {
+        HDC hdc = GetDC(hwnd);
+        PIXELFORMATDESCRIPTOR pfd = {};
+        pfd.nSize = sizeof(pfd);
+        pfd.nVersion = 1;
+        pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+        pfd.iPixelType = PFD_TYPE_RGBA;
+        pfd.cColorBits = 32;
+        pfd.cDepthBits = 24;
+        pfd.cStencilBits = 8;
+        pfd.iLayerType = PFD_MAIN_PLANE;
+
+        int pf = ChoosePixelFormat(hdc, &pfd);
+        SetPixelFormat(hdc, pf, &pfd);
+        hglrc = wglCreateContext(hdc);
+        if (!hglrc) {
+            spdlog::warn("Failed to create WGL context, falling back to Cairo/GDI+");
+        }
+        ReleaseDC(hwnd, hdc);
+    }
 }
 
 Win32PlatformWindow::~Win32PlatformWindow() {
@@ -480,6 +582,9 @@ Win32PlatformWindow::~Win32PlatformWindow() {
     }
     if (hwnd) {
         app_->window_map.erase(hwnd);
+        if (hglrc) {
+            wglDeleteContext(hglrc);
+        }
         DestroyWindow(hwnd);
         hwnd = nullptr;
     }
@@ -579,6 +684,8 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text,
     } else {
         MoveWindow(tooltip_hwnd, sx, sy, piw, pih, FALSE);
     }
+
+#ifdef TOOLKIT_HAS_CAIRO
     cairo_surface_t *surface =
         cairo_image_surface_create(CAIRO_FORMAT_ARGB32, piw, pih);
     cairo_t *cr = cairo_create(surface);
@@ -607,10 +714,10 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text,
     std::memcpy(bits, data, stride * pih);
     HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
     POINT pt_pos = {sx, sy};
-    SIZE sz = {piw, pih};
+    SIZE tsz = {piw, pih};
     POINT pt_src = {0, 0};
     BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-    UpdateLayeredWindow(tooltip_hwnd, screen_dc, &pt_pos, &sz, mem_dc, &pt_src,
+    UpdateLayeredWindow(tooltip_hwnd, screen_dc, &pt_pos, &tsz, mem_dc, &pt_src,
                         0, &blend, ULW_ALPHA);
     SelectObject(mem_dc, old_bm);
     DeleteObject(hbm);
@@ -618,6 +725,39 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text,
     ReleaseDC(nullptr, screen_dc);
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
+#else
+    HDC screen_dc = GetDC(nullptr);
+    HDC mem_dc = CreateCompatibleDC(screen_dc);
+    BITMAPINFO bmi = {};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = piw;
+    bmi.bmiHeader.biHeight = -pih;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+    void *bits = nullptr;
+    HBITMAP hbm = CreateDIBSection(mem_dc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
+
+    {
+        GDIPainter painter(mem_dc, scale);
+        Rect r{0, 0, w, h};
+        painter.fill_rounded_rect(r, style.background, style.corner_radius);
+        painter.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
+        painter.draw_text(text, {pad, pad + fm.ascent}, style.text, font_sz);
+    }
+
+    POINT pt_pos = {sx, sy};
+    SIZE tsz = {piw, pih};
+    POINT pt_src = {0, 0};
+    BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+    UpdateLayeredWindow(tooltip_hwnd, screen_dc, &pt_pos, &tsz, mem_dc, &pt_src, 0, &blend, ULW_ALPHA);
+
+    SelectObject(mem_dc, old_bm);
+    DeleteObject(hbm);
+    DeleteDC(mem_dc);
+    ReleaseDC(nullptr, screen_dc);
+#endif
     ShowWindow(tooltip_hwnd, SW_SHOWNOACTIVATE);
 }
 
@@ -626,7 +766,11 @@ void Win32PlatformWindow::hide_tooltip_window() {
 }
 
 bool Win32PlatformWindow::save_to_png(std::string const &path) {
+#ifdef TOOLKIT_HAS_CAIRO
     return cairo_save_to_png(owner_, path);
+#else
+    return GDIPainter::save_to_png(owner_, path);
+#endif
 }
 
 float Win32PlatformWindow::scale_factor() const {
@@ -636,13 +780,21 @@ float Win32PlatformWindow::scale_factor() const {
 Size Win32PlatformApplication::measure_text(std::string_view text,
                                             float font_size,
                                             FontFamily font) {
+#ifdef TOOLKIT_HAS_CAIRO
     return cairo_measure_text(text, font_size, font);
+#else
+    return GDIPainter::measure_text_gdiplus(text, font_size, font);
+#endif
 }
 
 Painter::FontMetrics
 Win32PlatformApplication::measure_font_metrics(float font_size,
                                                FontFamily font) {
+#ifdef TOOLKIT_HAS_CAIRO
     return cairo_measure_font_metrics(font_size, font);
+#else
+    return GDIPainter::font_metrics_gdiplus(font_size, font);
+#endif
 }
 
 } // namespace toolkit

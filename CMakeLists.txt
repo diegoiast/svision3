@@ -7,14 +7,30 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(spdlog REQUIRED)
 
+if(WIN32)
+    option(TOOLKIT_WITH_CAIRO "Build with Cairo support" OFF)
+else()
+    option(TOOLKIT_WITH_CAIRO "Build with Cairo support" ON)
+endif()
+
 if(APPLE)
     option(TOOLKIT_USE_CAIRO "Enable Cairo rendering backend on macOS" OFF)
-    if(TOOLKIT_USE_CAIRO)
+    if(TOOLKIT_USE_CAIRO OR TOOLKIT_WITH_CAIRO)
         find_package(cairo REQUIRED)
+        add_definitions(-DTOOLKIT_HAS_CAIRO)
+        set(HAS_CAIRO ON)
+    endif()
+elseif(WIN32)
+    if(TOOLKIT_WITH_CAIRO)
+        find_package(cairo REQUIRED)
+        add_definitions(-DTOOLKIT_HAS_CAIRO)
+        set(HAS_CAIRO ON)
     endif()
 else()
+    # Linux/Unix
     find_package(cairo REQUIRED)
-    set(TOOLKIT_USE_CAIRO ON)
+    add_definitions(-DTOOLKIT_HAS_CAIRO)
+    set(HAS_CAIRO ON)
     find_package(OpenGL REQUIRED)
 endif()
 
@@ -40,7 +56,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/painters/gl_painter.cpp
 )
 
-if(TOOLKIT_USE_CAIRO)
+if(HAS_CAIRO)
     list(APPEND TOOLKIT_SOURCES src/toolkit/painters/cairo_painter.cpp)
 endif()
 
@@ -150,9 +166,8 @@ add_library(toolkit STATIC ${TOOLKIT_SOURCES})
 target_include_directories(toolkit PUBLIC include PRIVATE src)
 target_link_libraries(toolkit PUBLIC spdlog::spdlog)
 
-if(TOOLKIT_USE_CAIRO)
+if(HAS_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)
-    target_compile_definitions(toolkit PUBLIC TOOLKIT_HAS_CAIRO)
 endif()
 
 if(APPLE)
@@ -163,7 +178,7 @@ if(APPLE)
     target_include_directories(toolkit PRIVATE
         src/toolkit/platform/macos)
 elseif(WIN32)
-    target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32)
+    target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32 gdiplus)
     target_include_directories(toolkit PRIVATE src/toolkit/platform/win32)
 elseif(UNIX)
     target_link_libraries(toolkit PUBLIC OpenGL::GL)

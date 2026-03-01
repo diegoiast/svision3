@@ -33,10 +33,12 @@ class Win32PlatformApplication : public PlatformApplication {
     Painter::FontMetrics measure_font_metrics(
         float font_size, FontFamily font = FontFamily::System) override;
     std::string_view name() const override { return "Win32"; }
-    std::string_view painter_name() const override { return "Cairo"; }
+    std::string_view painter_name() const override;
 
     HINSTANCE hinstance = nullptr;
     DWORD main_thread_id = 0;
+    ULONG_PTR gdiplus_token = 0;
+    bool opengl_requested = false;
 
     struct WindowData {
         Window *owner = nullptr;
@@ -88,6 +90,7 @@ class Win32PlatformWindow : public PlatformWindow {
     Window *owner_;
     HWND hwnd = nullptr;
     HWND tooltip_hwnd = nullptr;
+    HGLRC hglrc = nullptr;
     HCURSOR arrow_cursor = nullptr, ibeam_cursor = nullptr;
     HCURSOR hand_cursor = nullptr, not_allowed_cursor = nullptr;
 };

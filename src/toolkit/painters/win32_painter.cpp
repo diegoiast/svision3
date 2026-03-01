@@ -1,7 +1,5 @@
 #ifdef _WIN32
 
-#include "toolkit/painters/win32_painter.hpp"
-
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -9,7 +7,10 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#include <objidl.h>
+#include <gdiplus.h>
 
+#include "toolkit/painters/win32_painter.hpp"
 #include <cmath>
 #include <cstring>
 #include <string>
@@ -26,6 +27,15 @@ static std::wstring to_wide(std::string_view s) {
                         result.data(), len);
     return result;
 }
+
+static Gdiplus::Color to_gdiplus_color(Color const &c) {
+    return Gdiplus::Color(static_cast<BYTE>(c.a * 255),
+                          static_cast<BYTE>(c.r * 255),
+                          static_cast<BYTE>(c.g * 255),
+                          static_cast<BYTE>(c.b * 255));
+}
+
+// ── Win32TextRasterizer ──────────────────────────────────────────────────────
 
 struct Win32TextRasterizer::Impl {
     HDC hdc = nullptr;
@@ -166,6 +176,199 @@ Painter::FontMetrics Win32TextRasterizer::metrics(float font_size,
     float ascent = static_cast<float>(tm.tmAscent);
     float descent = static_cast<float>(tm.tmDescent);
     return {ascent, descent, ascent + descent};
+}
+
+// ── GDIPainter ───────────────────────────────────────────────────────────────
+
+struct GDIPainter::Impl {
+    Gdiplus::Graphics graphics;
+    std::vector<Gdiplus::Region *> clip_stack;
+    float scale;
+
+    explicit Impl(HDC hdc, float s) : graphics(hdc), scale(s) {
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+        graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+        graphics.ScaleTransform(s, s);
+    }
+};
+
+GDIPainter::GDIPainter(void *hdc, float scale)
+    : impl_(std::make_unique<Impl>(static_cast<HDC>(hdc), scale)) {}
+
+GDIPainter::~GDIPainter() {
+    for (auto *r : impl_->clip_stack) delete r;
+}
+
+void GDIPainter::push_clip(Rect const &r) {
+    Gdiplus::Region *reg = new Gdiplus::Region(Gdiplus::RectF(r.x, r.y, r.width, r.height));
+    impl_->graphics.SetClip(reg, Gdiplus::CombineModeIntersect);
+    impl_->clip_stack.push_back(reg);
+}
+
+void GDIPainter::pop_clip() {
+    if (impl_->clip_stack.empty()) return;
+    delete impl_->clip_stack.back();
+    impl_->clip_stack.pop_back();
+    impl_->graphics.ResetClip();
+    for (auto *r : impl_->clip_stack) {
+        impl_->graphics.SetClip(r, Gdiplus::CombineModeIntersect);
+    }
+}
+
+void GDIPainter::fill_rect(Rect const &r, Color const &c) {
+    Gdiplus::SolidBrush brush(to_gdiplus_color(c));
+    impl_->graphics.FillRectangle(&brush, r.x, r.y, r.width, r.height);
+}
+
+void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
+    Gdiplus::Pen pen(to_gdiplus_color(c), lw);
+    impl_->graphics.DrawRectangle(&pen, r.x, r.y, r.width, r.height);
+}
+
+void GDIPainter::fill_rounded_rect(Rect const &r, Color const &c, float rad) {
+    if (rad <= 0) { fill_rect(r, c); return; }
+    Gdiplus::GraphicsPath path;
+    float d = rad * 2;
+    path.AddArc(r.x, r.y, d, d, 180, 90);
+    path.AddArc(r.x + r.width - d, r.y, d, d, 270, 90);
+    path.AddArc(r.x + r.width - d, r.y + r.height - d, d, d, 0, 90);
+    path.AddArc(r.x, r.y + r.height - d, d, d, 90, 90);
+    path.CloseFigure();
+    Gdiplus::SolidBrush brush(to_gdiplus_color(c));
+    impl_->graphics.FillPath(&brush, &path);
+}
+
+void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, float lw) {
+    if (rad <= 0) { draw_rect(r, c, lw); return; }
+    Gdiplus::GraphicsPath path;
+    float d = rad * 2;
+    path.AddArc(r.x, r.y, d, d, 180, 90);
+    path.AddArc(r.x + r.width - d, r.y, d, d, 270, 90);
+    path.AddArc(r.x + r.width - d, r.y + r.height - d, d, d, 0, 90);
+    path.AddArc(r.x, r.y + r.height - d, d, d, 90, 90);
+    path.CloseFigure();
+    Gdiplus::Pen pen(to_gdiplus_color(c), lw);
+    impl_->graphics.DrawPath(&pen, &path);
+}
+
+void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
+    Gdiplus::Pen pen(to_gdiplus_color(c), lw);
+    impl_->graphics.DrawLine(&pen, a.x, a.y, b.x, b.y);
+}
+
+void GDIPainter::fill_circle(Point center, float radius, Color const &c) {
+    Gdiplus::SolidBrush brush(to_gdiplus_color(c));
+    impl_->graphics.FillEllipse(&brush, center.x - radius, center.y - radius, radius * 2, radius * 2);
+}
+
+void GDIPainter::draw_circle(Point center, float radius, Color const &c, float lw) {
+    Gdiplus::Pen pen(to_gdiplus_color(c), lw);
+    impl_->graphics.DrawEllipse(&pen, center.x - radius, center.y - radius, radius * 2, radius * 2);
+}
+
+void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c,
+                           float font_size, FontFamily family) {
+    auto wtext = to_wide(text);
+    if (wtext.empty()) return;
+    
+    const wchar_t *face = (family == FontFamily::Monospace) ? L"Consolas" : L"Segoe UI";
+    Gdiplus::Font font(face, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPoint);
+    Gdiplus::SolidBrush brush(to_gdiplus_color(c));
+    
+    // Gdiplus::DrawString uses top-left. We need to subtract the ascent to align with our baseline 'pos.y'.
+    Gdiplus::FontFamily ff(face);
+    float em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
+    float asc = static_cast<float>(ff.GetCellAscent(Gdiplus::FontStyleRegular));
+    float ascent_pts = (asc * font_size) / em;
+    
+    Gdiplus::PointF origin(pos.x, pos.y - ascent_pts);
+    Gdiplus::StringFormat format;
+    format.SetAlignment(Gdiplus::StringAlignmentNear);
+    format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
+    
+    impl_->graphics.DrawString(wtext.c_str(), -1, &font, origin, &format, &brush);
+}
+
+Size GDIPainter::text_size(std::string_view text, float font_size, FontFamily family) {
+    return measure_text_gdiplus(text, font_size, family);
+}
+
+Painter::FontMetrics GDIPainter::font_metrics(float font_size, FontFamily family) {
+    return font_metrics_gdiplus(font_size, family);
+}
+
+Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, FontFamily family) {
+    auto wtext = to_wide(text);
+    if (wtext.empty()) return {0, 0};
+    const wchar_t *face = (family == FontFamily::Monospace) ? L"Consolas" : L"Segoe UI";
+    Gdiplus::Font font(face, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPoint);
+    Gdiplus::RectF layoutRect(0, 0, 10000, 10000);
+    Gdiplus::RectF boundRect;
+    
+    Gdiplus::StringFormat format;
+    format.SetAlignment(Gdiplus::StringAlignmentNear);
+    format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
+
+    HDC screen_dc = GetDC(nullptr);
+    {
+        Gdiplus::Graphics graphics(screen_dc);
+        graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+        graphics.MeasureString(wtext.c_str(), -1, &font, layoutRect, &format, &boundRect);
+    }
+    ReleaseDC(nullptr, screen_dc);
+    return {boundRect.Width, boundRect.Height};
+}
+
+Painter::FontMetrics GDIPainter::font_metrics_gdiplus(float font_size, FontFamily family) {
+    const wchar_t *face = (family == FontFamily::Monospace) ? L"Consolas" : L"Segoe UI";
+    Gdiplus::FontFamily ff(face);
+    float em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
+    float asc = static_cast<float>(ff.GetCellAscent(Gdiplus::FontStyleRegular));
+    float desc = static_cast<float>(ff.GetCellDescent(Gdiplus::FontStyleRegular));
+    float line = static_cast<float>(ff.GetLineSpacing(Gdiplus::FontStyleRegular));
+    
+    float scale = font_size / em;
+    return {asc * scale, desc * scale, line * scale};
+}
+
+static int GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
+    UINT num = 0;
+    UINT size = 0;
+    Gdiplus::GetImageEncodersSize(&num, &size);
+    if (size == 0) return -1;
+    Gdiplus::ImageCodecInfo *pImageCodecInfo = (Gdiplus::ImageCodecInfo *)(malloc(size));
+    if (pImageCodecInfo == nullptr) return -1;
+    Gdiplus::GetImageEncoders(num, size, pImageCodecInfo);
+    for (UINT j = 0; j < num; ++j) {
+        if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0) {
+            *pClsid = pImageCodecInfo[j].Clsid;
+            free(pImageCodecInfo);
+            return j;
+        }
+    }
+    free(pImageCodecInfo);
+    return -1;
+}
+
+bool GDIPainter::save_to_png(Window *window, std::string const &path) {
+    float scale = window->scale_factor();
+    int lw = static_cast<int>(window->size().width);
+    int lh = static_cast<int>(window->size().height);
+    if (lw <= 0 || lh <= 0) return false;
+    int pw = static_cast<int>(std::ceil(lw * scale));
+    int ph = static_cast<int>(std::ceil(lh * scale));
+
+    Gdiplus::Bitmap bitmap(pw, ph, PixelFormat32bppARGB);
+    Gdiplus::Graphics g(&bitmap);
+    g.Clear(Gdiplus::Color(255, 255, 255, 255));
+    
+    GDIPainter painter(&g, scale);
+    window->handle_paint(painter);
+
+    CLSID pngClsid;
+    if (GetEncoderClsid(L"image/png", &pngClsid) == -1) return false;
+    auto wpath = to_wide(path);
+    return bitmap.Save(wpath.c_str(), &pngClsid, nullptr) == Gdiplus::Ok;
 }
 
 } // namespace toolkit

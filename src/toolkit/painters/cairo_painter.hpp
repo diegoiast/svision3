@@ -3,6 +3,7 @@
 #include "toolkit/painter.hpp"
 #include "toolkit/painters/gl_painter.hpp"
 
+#ifdef TOOLKIT_HAS_CAIRO
 struct _cairo;
 using cairo_t = _cairo;
 
@@ -61,3 +62,4 @@ class CairoTextRasterizer : public TextRasterizer {
 };
 
 } // namespace toolkit
+#endif

@@ -24,7 +24,9 @@ macOS, Windows, and Linux (X11 and Wayland).
 | **macOS**| Cocoa/AppKit     | CoreGraphics      | `SVISION_PAINT=native` (Default) |
 | **macOS**| Cocoa/AppKit     | Cairo             | `SVISION_PAINT=cairo` |
 | **macOS**| Cocoa/AppKit     | OpenGL 2.1        | `SVISION_PAINT=opengl` |
-| **Windows**| Win32          | Cairo             | Default |
+| **Windows**| Win32          | Cairo             | `SVISION_PAINT=cairo` (Default) |
+| **Windows**| Win32          | GDI+              | Fallback if Cairo is OFF |
+| **Windows**| Win32          | OpenGL 2.1        | `SVISION_PAINT=opengl` |
 | **Linux**| X11              | Cairo             | `SVISION_PAINT=cairo` (Default) |
 | **Linux**| X11              | OpenGL 2.1        | `SVISION_PAINT=opengl` |
 | **Linux**| Wayland          | Cairo             | `SVISION_PAINT=cairo` (Default) |

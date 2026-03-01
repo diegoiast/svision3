@@ -1,3 +1,4 @@
+#ifdef TOOLKIT_HAS_CAIRO
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/window.hpp"
 #include <cairo.h>
@@ -251,3 +252,4 @@ Painter::FontMetrics CairoTextRasterizer::metrics(float font_size,
 }
 
 } // namespace toolkit
+#endif
