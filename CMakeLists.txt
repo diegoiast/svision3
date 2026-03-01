@@ -292,6 +292,10 @@ if(UNIX)
 endif()
 
 add_executable(demo demo/main.cpp)
+set_target_properties(demo PROPERTIES WIN32_EXECUTABLE ON)
+if(WIN32)
+    set_target_properties(demo PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+endif()
 target_link_libraries(demo PRIVATE toolkit nfd)
 
 # ── nfd (Native File Dialog) ──────────────────────────────────────────────────
@@ -314,6 +318,10 @@ elseif(UNIX)
 endif()
 
 add_executable(sqlite_viewer tools/sqlite_viewer.cpp)
+set_target_properties(sqlite_viewer PROPERTIES WIN32_EXECUTABLE ON)
+if(WIN32)
+    set_target_properties(sqlite_viewer PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+endif()
 target_link_libraries(sqlite_viewer PRIVATE toolkit db nfd)
 
 # ── Tests ─────────────────────────────────────────────────────────────────────

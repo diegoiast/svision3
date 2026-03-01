@@ -43,15 +43,40 @@
             "runDirectory": "${source_directory}"
         },
         {
-            "commands": "cmake --build --preset conan-debug",
+            "commands": {
+                "linux": [
+                    "~/.local/bin/conan install . -s build_type=Release --build=missing",
+                    "mkdir -p ${build_directory}/Release/.cmake/api/v1/query/",
+                    "touch ${build_directory}/Release/.cmake/api/v1/query/codemodel-v2",
+                    "cmake --preset conan-release -G Ninja"
+                ],
+                "windows": [
+                    "conan install . -s build_type=Release --build=missing",
+                    "if not exist \"${build_directory}/.cmake/api/v1/query\" mkdir \"${build_directory}/.cmake/api/v1/query\"",
+                    "type nul > \"${build_directory}/.cmake/api/v1/query/codemodel-v2\"",
+                    "cmake --preset conan-default"
+                ]
+            },
             "isBuild": true,
-            "name": "CMake Build (parallel)",
+            "name": "CMake (configure/Release)",
             "runDirectory": "${source_directory}"
         },
         {
-            "commands": "cmarke --build --preset conan-debug --verbose -j 1",
+            "commands": "cmake --build --preset conan-debug",
             "isBuild": true,
-            "name": "CMake Build (single thread)",
+            "name": "CMake Build Debug (parallel)",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "commands": "cmake --build --preset conan-release",
+            "isBuild": true,
+            "name": "CMake Build Release (parallel)",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "commands": "cmake --build --preset conan-debug --verbose -j 1",
+            "isBuild": true,
+            "name": "CMake Build Debug (single thread)",
             "runDirectory": "${source_directory}"
         }
     ]
