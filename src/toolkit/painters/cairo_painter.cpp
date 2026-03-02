@@ -18,6 +18,18 @@ void CairoPainter::push_clip(Rect const &rect) {
 
 void CairoPainter::pop_clip() { cairo_restore(cr_); }
 
+void CairoPainter::set_line_style(LineStyle style) {
+    if (style == LineStyle::Solid) {
+        cairo_set_dash(cr_, nullptr, 0, 0);
+    } else if (style == LineStyle::Dashed) {
+        double dashes[] = {4.0, 4.0};
+        cairo_set_dash(cr_, dashes, 2, 0);
+    } else if (style == LineStyle::Dotted) {
+        double dashes[] = {1.0, 2.0};
+        cairo_set_dash(cr_, dashes, 2, 0);
+    }
+}
+
 void CairoPainter::fill_rect(Rect const &rect, Color const &color) {
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     double x = std::round(rect.x);

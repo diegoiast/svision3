@@ -49,6 +49,7 @@ class GLPainter : public Painter {
     Painter::LineStyle style_ = Painter::LineStyle::Solid;
 
     void set_color(Color const &c);
+    void apply_line_style();
     void apply_scissor(Rect const &r);
 };
 

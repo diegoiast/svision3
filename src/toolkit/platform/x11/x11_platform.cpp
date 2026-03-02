@@ -843,6 +843,8 @@ void X11PlatformWindow::do_paint() {
         cairo_set_source_surface(xcr, w->cairo_surface, 0, 0);
         cairo_paint(xcr);
         cairo_destroy(xcr);
+        cairo_surface_flush(w->x11_surface);
+        XFlush(app->display);
     }
 }
 

@@ -18,6 +18,8 @@ class CairoPainter : public Painter {
     void push_clip(Rect const &rect) override;
     void pop_clip() override;
 
+    void set_line_style(LineStyle style) override;
+
     void fill_rect(Rect const &rect, Color const &color) override;
     void draw_rect(Rect const &rect, Color const &color,
                    float line_width) override;

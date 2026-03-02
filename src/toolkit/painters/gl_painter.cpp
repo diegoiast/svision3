@@ -77,8 +77,8 @@ void GLPainter::set_line_style(Painter::LineStyle style) {
     style_ = style;
 }
 
-static void apply_line_style(Painter::LineStyle style) {
-    switch (style) {
+void GLPainter::apply_line_style() {
+    switch (style_) {
     case Painter::LineStyle::Dashed:
         glEnable(GL_LINE_STIPPLE);
         glLineStipple(1, 0xF0F0);
@@ -112,7 +112,7 @@ void GLPainter::fill_rect(Rect const &r, Color const &c) {
 void GLPainter::draw_rect(Rect const &r, Color const &c, float lw) {
     set_color(c);
     glLineWidth(lw * scale_);
-    apply_line_style(style_);
+    apply_line_style();
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     
@@ -162,7 +162,7 @@ void GLPainter::draw_rounded_rect(Rect const &r, Color const &c,
     
     set_color(c);
     glLineWidth(lw * scale_);
-    apply_line_style(style_);
+    apply_line_style();
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     auto pts = rounded_rect_verts(x, y, w, h, rad);
@@ -175,7 +175,7 @@ void GLPainter::draw_rounded_rect(Rect const &r, Color const &c,
 void GLPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     set_color(c);
     glLineWidth(lw * scale_);
-    apply_line_style(style_);
+    apply_line_style();
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     
@@ -209,7 +209,7 @@ void GLPainter::draw_circle(Point center, float radius, Color const &c,
                              float lw) {
     set_color(c);
     glLineWidth(lw * scale_);
-    apply_line_style(style_);
+    apply_line_style();
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     int seg = 24;
