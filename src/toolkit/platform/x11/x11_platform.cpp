@@ -4,14 +4,14 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
+#include <GL/gl.h>
+#include <GL/glx.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
-#include <GL/gl.h>
-#include <GL/glx.h>
 #include <cairo-xlib.h>
 #include <cairo.h>
 #include <spdlog/spdlog.h>
@@ -183,8 +183,6 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
         int pw = static_cast<int>(std::ceil(lw * scale));
         int ph = static_cast<int>(std::ceil(lh * scale));
 
-        spdlog::debug("X11 painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph, scale);
-
         auto *xwin_plat = static_cast<X11PlatformWindow *>(win->platform_window());
         auto *w = xwin_plat->impl_.get();
 
@@ -214,7 +212,8 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
             CairoPainter painter(cr);
             win->handle_paint(painter);
             cairo_surface_flush(surface);
-            cairo_surface_t *xs = cairo_xlib_surface_create(app->display, xwin, app->visual, pw, ph);
+            cairo_surface_t *xs =
+                cairo_xlib_surface_create(app->display, xwin, app->visual, pw, ph);
             cairo_t *xcr = cairo_create(xs);
             cairo_set_source_surface(xcr, surface, 0, 0);
             cairo_paint(xcr);
@@ -463,7 +462,8 @@ X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>(
         }
     }
 
-    spdlog::debug("X11 backend initialized (scale={:.2f}, opengl={})", d->scale, d->opengl_requested);
+    spdlog::debug("X11 backend initialized (scale={:.2f}, opengl={})", d->scale,
+                  d->opengl_requested);
 }
 
 X11PlatformApplication::~X11PlatformApplication() {
