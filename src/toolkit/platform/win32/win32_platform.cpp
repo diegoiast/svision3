@@ -219,7 +219,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         float nh = static_cast<float>(HIWORD(lp)) / scale;
         if (nw != win->size().width || nh != win->size().height) {
             win->handle_resize({nw, nh});
-            InvalidateRect(hwnd, nullptr, FALSE);
+            paint_window(hwnd, win);
         }
         return 0;
     }
