@@ -15,4 +15,4 @@ class ToolkitRecipe(ConanFile):
         self.requires("catch2/3.7.1")
 
     def layout(self):
-        cmake_layout(self)
+        cmake_layout(self, build_folder="build")

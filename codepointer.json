@@ -7,7 +7,7 @@
         {
             "executables": {
                 "linux": "SVISION_PAINT=cairo SVISION_BACKEND=x11 build/Debug/demo",
-                "windows": "${build_directory}\\Debug\\demo.exe"
+                "windows": "build\\Debug\\demo.exe"
             },
             "name": "Demo (native)",
             "runDirectory": "${source_directory}"
@@ -15,15 +15,23 @@
         {
             "executables": {
                 "linux": "SVISION_PAINT=opengl SVISION_BACKEND=x11 build/Debug/demo",
-                "windows": "${build_dir}\\Debug\\demo.exe"
+                "windows": "Debug\\demo.exe"
             },
             "name": "Demo (opengl)",
             "runDirectory": "${source_directory}"
         },
         {
             "executables": {
-                "linux": "${build_directory}/Debug/tests",
-                "windows": "${build_directory}\\Debug\\tests.exe"
+                "linux": "build//Debug/sqlite_viewer",
+                "windows": "build\\Debug\\sqlite_viewer.exe"
+            },
+            "name": "SQLite viewer",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "executables": {
+                "linux": "build\\Debug/tests",
+                "windows": "build\\Debug\\tests.exe"
             },
             "name": "Unit tests",
             "runDirectory": "${source_directory}"
@@ -32,14 +40,19 @@
     "hideFilter": ".git;.vscode;.vs;cbuild;dist;out;build",
     "tasks": [
         {
+            "commands": "powershell -Command \"Remove-Item -Path build -Recurse -Force -ErrorAction SilentlyContinue\"",
+            "name": "Clean build directory",
+            "runDirectory": "${source_directory}"
+        },
+        {
             "commands": {
                 "linux": [
-                    "~/.local/bin/conan install . --output-folder=build --build=missing -s build_type=Debug",
+                    "conan install . --output-folder=. --build=missing -s build_type=Debug",
                     "cmake --preset conan-debug -G Ninja"
                 ],
                 "windows": [
-                    "conan install . --output-folder=build --build=missing -s build_type=Debug",
-                    "cmake --preset conan-debug"
+                    "conan install . --output-folder=. --build=missing -pr:h conan-debug",
+                    "cmake --preset conan-default"
                 ]
             },
             "isBuild": true,
@@ -49,12 +62,12 @@
         {
             "commands": {
                 "linux": [
-                    "~/.local/bin/conan install . --output-folder=build --build=missing -s build_type=Release",
+                    "conan install . --output-folder=. --build=missing -s build_type=Release",
                     "cmake --preset conan-release -G Ninja"
                 ],
                 "windows": [
-                    "conan install . --output-folder=build --build=missing -s build_type=Release",
-                    "cmake --preset conan-release"
+                    "conan install . --output-folder=. --build=missing -pr:h default",
+                    "cmake --preset conan-default"
                 ]
             },
             "isBuild": true,
@@ -62,19 +75,19 @@
             "runDirectory": "${source_directory}"
         },
         {
-            "commands": "cmake --build --preset conan-debug",
+            "commands": "cmake --build build --preset conan-debug",
             "isBuild": true,
             "name": "CMake Build Debug (parallel)",
             "runDirectory": "${source_directory}"
         },
         {
-            "commands": "cmake --build --preset conan-release",
+            "commands": "cmake --build build --preset conan-release",
             "isBuild": true,
             "name": "CMake Build Release (parallel)",
             "runDirectory": "${source_directory}"
         },
         {
-            "commands": "cmake --build --preset conan-debug --verbose -j 1",
+            "commands": "cmake --build build --preset conan-debug --verbose -j 1",
             "isBuild": true,
             "name": "CMake Build Debug (single thread)",
             "runDirectory": "${source_directory}"
