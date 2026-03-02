@@ -51,6 +51,9 @@ class X11PlatformWindow : public PlatformWindow {
 
     struct Impl;
     std::unique_ptr<Impl> impl_;
+
+  private:
+    void cleanup_resources();
     X11PlatformApplication *app_;
     Window *owner_;
 };

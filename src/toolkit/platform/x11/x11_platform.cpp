@@ -464,11 +464,16 @@ int X11PlatformApplication::run() {
         }
         process_pending_events(d);
 
-        for (auto &pair : d->window_map) {
-            auto *owner = pair.second.owner;
-            auto *plat = static_cast<X11PlatformWindow *>(owner->platform_window());
-            if (plat->impl_->needs_redraw) {
-                plat->do_paint();
+        {
+            std::vector<X11PlatformWindow *> active_windows;
+            for (auto &pair : d->window_map) {
+                active_windows.push_back(static_cast<X11PlatformWindow *>(pair.second.owner->platform_window()));
+            }
+            for (auto *plat : active_windows) {
+                // Check if still in map (might have been closed during iteration)
+                if (d->window_map.count(plat->impl_->xwindow) && plat->impl_->needs_redraw) {
+                    plat->do_paint();
+                }
             }
         }
 
@@ -658,47 +663,60 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
 }
 
 X11PlatformWindow::~X11PlatformWindow() {
+    cleanup_resources();
+}
+
+void X11PlatformWindow::cleanup_resources() {
     auto *d = app_->impl_.get();
     auto *w = impl_.get();
-    auto &timers = d->timers;
-    timers.erase(std::remove_if(timers.begin(), timers.end(), [](auto &t) { return t.id < 0; }),
-                 timers.end());
-    if (w->xwindow != 0L) {
-        auto it = d->window_map.find(w->xwindow);
-        if (it != d->window_map.end()) {
-            if (it->second.xic) {
-                XDestroyIC(it->second.xic);
-            }
-            d->window_map.erase(it);
-        }
-    }
+
+    if (w->xwindow == 0L) return;
+
+    // Destroy surfaces BEFORE the window
     if (w->cairo_surface) {
         cairo_surface_destroy(w->cairo_surface);
+        w->cairo_surface = nullptr;
     }
     if (w->x11_surface) {
         cairo_surface_destroy(w->x11_surface);
+        w->x11_surface = nullptr;
     }
+
+    auto it = d->window_map.find(w->xwindow);
+    if (it != d->window_map.end()) {
+        if (it->second.xic) {
+            XDestroyIC(it->second.xic);
+        }
+        d->window_map.erase(it);
+    }
+
     if (w->arrow_cursor) {
         XFreeCursor(d->display, w->arrow_cursor);
+        w->arrow_cursor = 0L;
     }
     if (w->ibeam_cursor) {
         XFreeCursor(d->display, w->ibeam_cursor);
+        w->ibeam_cursor = 0L;
     }
     if (w->hand_cursor) {
         XFreeCursor(d->display, w->hand_cursor);
+        w->hand_cursor = 0L;
     }
     if (w->not_allowed_cursor) {
         XFreeCursor(d->display, w->not_allowed_cursor);
+        w->not_allowed_cursor = 0L;
     }
     if (w->glx_context) {
         glXDestroyContext(d->display, w->glx_context);
+        w->glx_context = nullptr;
     }
     if (w->tooltip_xwindow != 0L) {
         XDestroyWindow(d->display, w->tooltip_xwindow);
+        w->tooltip_xwindow = 0L;
     }
-    if (w->xwindow != 0L) {
-        XDestroyWindow(d->display, w->xwindow);
-    }
+
+    XDestroyWindow(d->display, w->xwindow);
+    w->xwindow = 0L;
 }
 
 void X11PlatformWindow::show() {
@@ -707,19 +725,7 @@ void X11PlatformWindow::show() {
 }
 
 void X11PlatformWindow::close() {
-    auto *d = app_->impl_.get();
-    auto *w = impl_.get();
-    if (w->xwindow != 0L) {
-        auto it = d->window_map.find(w->xwindow);
-        if (it != d->window_map.end()) {
-            if (it->second.xic) {
-                XDestroyIC(it->second.xic);
-            }
-            d->window_map.erase(it);
-        }
-        XDestroyWindow(d->display, w->xwindow);
-        w->xwindow = 0L;
-    }
+    cleanup_resources();
 }
 
 void X11PlatformWindow::request_redraw() {
