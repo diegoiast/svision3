@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 
+namespace Gdiplus { class Graphics; }
+
 namespace toolkit {
 
 class Window;
@@ -28,6 +30,7 @@ class Win32TextRasterizer : public TextRasterizer {
   class GDIPainter : public Painter {
     public:
       explicit GDIPainter(void *hdc, float scale = 1.0f);
+      GDIPainter(Gdiplus::Graphics *g, float scale); // Internal use
       ~GDIPainter() override;
         void push_clip(Rect const &rect) override;
       void pop_clip() override;
