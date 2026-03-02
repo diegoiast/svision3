@@ -1,15 +1,23 @@
 {
     "activeExecutableName": "",
     "activeTaskName": "",
-    "build_directory": "${source_directory}/build",
+    "buildDir": "${source_directory}/build",
     "displayFilter": "",
     "executables": [
         {
             "executables": {
-                "linux": "SVISION_PAINT=cairo SVISION_BACKEND=x11 ${build_directory}/Debug/demo",
+                "linux": "SVISION_PAINT=cairo SVISION_BACKEND=x11 build/Debug/demo",
                 "windows": "${build_directory}\\Debug\\demo.exe"
             },
-            "name": "Demo",
+            "name": "Demo (native)",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "executables": {
+                "linux": "SVISION_PAINT=opengl SVISION_BACKEND=x11 build/Debug/demo",
+                "windows": "${build_dir}\\Debug\\demo.exe"
+            },
+            "name": "Demo (opengl)",
             "runDirectory": "${source_directory}"
         },
         {
@@ -26,16 +34,12 @@
         {
             "commands": {
                 "linux": [
-                    "~/.local/bin/conan install . -s build_type=Debug --build=missing",
-                    "mkdir -p ${build_directory}/Debug/.cmake/api/v1/query/",
-                    "touch ${build_directory}/Debug/.cmake/api/v1/query/codemodel-v2",
+                    "~/.local/bin/conan install . --output-folder=build --build=missing -s build_type=Debug",
                     "cmake --preset conan-debug -G Ninja"
                 ],
                 "windows": [
-                    "conan install . -s build_type=Debug --build=missing",
-                    "if not exist \"${build_directory}/.cmake/api/v1/query\" mkdir \"${build_directory}/.cmake/api/v1/query\"",
-                    "type nul > \"${build_directory}/.cmake/api/v1/query/codemodel-v2\"",
-                    "cmake --preset conan-default"
+                    "conan install . --output-folder=build --build=missing -s build_type=Debug",
+                    "cmake --preset conan-debug"
                 ]
             },
             "isBuild": true,
@@ -45,16 +49,12 @@
         {
             "commands": {
                 "linux": [
-                    "~/.local/bin/conan install . -s build_type=Release --build=missing",
-                    "mkdir -p ${build_directory}/Release/.cmake/api/v1/query/",
-                    "touch ${build_directory}/Release/.cmake/api/v1/query/codemodel-v2",
+                    "~/.local/bin/conan install . --output-folder=build --build=missing -s build_type=Release",
                     "cmake --preset conan-release -G Ninja"
                 ],
                 "windows": [
-                    "conan install . -s build_type=Release --build=missing",
-                    "if not exist \"${build_directory}/.cmake/api/v1/query\" mkdir \"${build_directory}/.cmake/api/v1/query\"",
-                    "type nul > \"${build_directory}/.cmake/api/v1/query/codemodel-v2\"",
-                    "cmake --preset conan-default"
+                    "conan install . --output-folder=build --build=missing -s build_type=Release",
+                    "cmake --preset conan-release"
                 ]
             },
             "isBuild": true,
