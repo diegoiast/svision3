@@ -11,9 +11,9 @@ namespace toolkit {
 void Painter::draw_frame(Rect const &rect, Color bg, Color border, WidgetStyle const &style,
                          bool sunken) {
     if (sunken) {
-        // Simple sunken effect
+        // Simple sunken effect - darkened border but original background
         draw_rect(rect, border.darken(0.2f), style.border_width);
-        fill_rect(rect.inset(style.border_width), bg.darken(0.05f));
+        fill_rect(rect.inset(style.border_width), bg);
     } else {
         if (style.corner_radius > 0.0f) {
             fill_rounded_rect(rect, bg, style.corner_radius);

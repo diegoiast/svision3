@@ -49,13 +49,13 @@ void TextEdit::reset_cursor_blink() {
 static constexpr FontFamily kFont = FontFamily::Monospace;
 
 float TextEdit::line_height() const {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().text_edit;
     auto fm = Painter::measure_font_metrics(style.font_size, kFont);
     return fm.height + 2.0f;
 }
 
 float TextEdit::gutter_width() const {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().text_edit;
     int digits = 1;
     int n = static_cast<int>(lines_.size());
     while (n >= 10) { digits++; n /= 10; }
@@ -64,7 +64,7 @@ float TextEdit::gutter_width() const {
 }
 
 TextEdit::Pos TextEdit::pos_from_point(Point p) const {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().text_edit;
     float lh = line_height();
     float gw = gutter_width();
 
@@ -91,7 +91,7 @@ void TextEdit::clamp_scroll() {
     scroll_y_ = std::clamp(scroll_y_, 0.0f, std::max(0.0f, content_h - visible_h));
 
     float max_line_w = 0;
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().text_edit;
     for (auto const &ln : lines_) {
         float w = Painter::measure_text(ln, style.font_size, kFont).width;
         if (w > max_line_w) max_line_w = w;
@@ -102,7 +102,7 @@ void TextEdit::clamp_scroll() {
 }
 
 void TextEdit::ensure_cursor_visible() {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().text_edit;
     float lh = line_height();
     float gw = gutter_width();
 
@@ -210,7 +210,7 @@ void TextEdit::move_word_right(bool extend) {
 // ── Paint ───────────────────────────────────────────────────────────────────
 
 void TextEdit::paint(Painter &painter) {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().text_edit;
     float lh = line_height();
     float gw = gutter_width();
     auto fm = painter.font_metrics(style.font_size, kFont);

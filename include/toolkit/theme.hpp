@@ -117,6 +117,7 @@ struct WindowStyle {
 struct Palette {
     Color window_bg;
     Color widget_bg = Color::rgb(1, 1, 1);
+    Color input_bg = Color::rgb(1, 1, 1);
     Color text;
     Color border;
     Color accent;
@@ -141,6 +142,7 @@ struct Theme {
     ButtonStyle button;
     LabelStyle label;
     LineInputStyle line_input;
+    LineInputStyle text_edit;
     ToggleStyle checkbox;
     ToggleStyle radio;
     ComboboxStyle combobox;

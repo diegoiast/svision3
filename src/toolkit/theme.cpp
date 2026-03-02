@@ -60,10 +60,13 @@ Theme Theme::from_palette(std::string name, Palette const &p) {
     }
 
     apply_base(t.line_input, p);
-    t.line_input.background_focused = p.widget_bg;
+    t.line_input.background         = p.input_bg;
+    t.line_input.background_focused = p.input_bg;
     t.line_input.border_focused     = p.accent;
-    t.line_input.placeholder        = mid(p.text, p.widget_bg);
+    t.line_input.placeholder        = mid(p.text, p.input_bg);
     t.line_input.cursor             = p.accent;
+
+    t.text_edit = t.line_input;
 
     apply_base(t.checkbox, p);
     t.checkbox.indicator     = p.accent;
@@ -76,9 +79,10 @@ Theme Theme::from_palette(std::string name, Palette const &p) {
 
     apply_base(t.combobox, p);
     bool is_dark_text = luma(p.text) > 0.5f;
+    t.combobox.background        = p.input_bg;
     t.combobox.border_focused    = p.accent;
     t.combobox.arrow             = is_dark_text ? p.text.darken(0.25f) : p.text.lighten(0.25f);
-    t.combobox.dropdown_bg       = p.widget_bg;
+    t.combobox.dropdown_bg       = p.input_bg;
     t.combobox.item_hovered      = p.accent;
     t.combobox.item_text_hovered = gray(1.0f);
 
@@ -153,6 +157,7 @@ static void apply_scheme_colors(Palette &p, ColorScheme scheme,
                   : (scheme == ColorScheme::Pink) ? pink : light;
     p.window_bg    = s.win;
     p.widget_bg    = s.wid;
+    p.input_bg     = s.wid;
     p.text         = s.txt;
     p.border       = s.brd;
     p.accent       = s.acc;
@@ -197,13 +202,13 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
         p.beveled   = true;
         switch (scheme) {
         case ColorScheme::Light:
-            p.window_bg = gray(0.75f);  p.widget_bg = gray(0.75f);
+            p.window_bg = gray(0.75f);  p.widget_bg = gray(0.75f); p.input_bg = gray(1.0f);
             p.text = gray(0.0f);        p.border = gray(0.0f);  p.accent = gray(0.0f);
             p.highlight = gray(1.0f);   p.shadow = gray(0.50f);
             p.alternate_bg = gray(0.90f);
             break;
         case ColorScheme::Dark:
-            p.window_bg = gray(0.25f);  p.widget_bg = gray(0.30f);
+            p.window_bg = gray(0.25f);  p.widget_bg = gray(0.30f); p.input_bg = gray(0.10f);
             p.text = gray(0.90f);       p.border = gray(0.10f); p.accent = gray(0.90f);
             p.highlight = gray(0.45f);  p.shadow = gray(0.12f);
             p.alternate_bg = gray(0.35f);
@@ -211,6 +216,7 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
         case ColorScheme::Pink:
             p.window_bg = Color::rgb(0.78f, 0.65f, 0.70f);
             p.widget_bg = Color::rgb(0.78f, 0.65f, 0.70f);
+            p.input_bg  = gray(1.0f);
             p.text = gray(0.0f);        p.border = gray(0.0f);  p.accent = gray(0.0f);
             p.highlight = Color::rgb(1.0f, 0.88f, 0.92f);
             p.shadow    = Color::rgb(0.50f, 0.35f, 0.40f);
