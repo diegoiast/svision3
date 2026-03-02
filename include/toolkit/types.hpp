@@ -13,6 +13,10 @@ struct Point {
 struct Size {
     float width = 0;
     float height = 0;
+
+    bool operator==(const Size &other) const {
+        return width == other.width && height == other.height;
+    }
 };
 
 struct Rect {
@@ -20,6 +24,10 @@ struct Rect {
     float y = 0;
     float width = 0;
     float height = 0;
+
+    bool operator==(const Rect &other) const {
+        return x == other.x && y == other.y && width == other.width && height == other.height;
+    }
 
     bool contains(Point p) const {
         return p.x >= x && p.x <= x + width && p.y >= y && p.y <= y + height;

@@ -47,6 +47,8 @@ class X11PlatformWindow : public PlatformWindow {
     bool save_to_png(std::string const &path) override;
     float scale_factor() const override;
 
+    void do_paint();
+
     struct Impl;
     std::unique_ptr<Impl> impl_;
     X11PlatformApplication *app_;

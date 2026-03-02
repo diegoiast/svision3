@@ -25,9 +25,16 @@ class Widget {
     }
     virtual Size size_hint() const { return {0, 0}; }
 
-    virtual void set_rect(Rect const &rect) { rect_ = rect; }
+    virtual void set_rect(Rect const &rect) {
+        if (rect_ == rect) return;
+        rect_ = rect;
+        layout_dirty = true;
+    }
     Rect const &rect() const { return rect_; }
     bool hit_test(Point p) const { return rect_.contains(p); }
+
+    void set_layout_dirty(bool dirty) { layout_dirty = dirty; }
+    bool is_layout_dirty() const { return layout_dirty; }
 
     virtual bool focusable() const { return false; }
     virtual void set_focused(bool focused) { focused_ = focused; }
@@ -79,6 +86,7 @@ class Widget {
 
   protected:
     Rect rect_;
+    bool layout_dirty = true;
     bool focused_ = false;
     bool enabled_ = true;
     bool visible_ = true;

@@ -530,9 +530,6 @@ static void xdg_surface_configure(void *data, xdg_surface *surf, uint32_t serial
         win->owner_->handle_resize({nw, nh});
     }
     win->needs_redraw = true;
-    if (win->configured && !win->frame_cb) {
-        win->do_paint();
-    }
 }
 
 static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_t h, wl_array *) {

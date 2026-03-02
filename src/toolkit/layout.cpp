@@ -27,12 +27,11 @@ void VBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
 }
 
 void VBoxLayout::set_rect(Rect const &rect) {
-    rect_ = rect;
-    apply_layout();
+    Widget::set_rect(rect);
 }
 
 void VBoxLayout::set_window(Window *w) {
-    window_ = w;
+    Widget::set_window(w);
     for (auto &item : items_) {
         item.widget->set_window(w);
     }
@@ -61,7 +60,7 @@ void VBoxLayout::apply_layout() {
 
     auto total_spacing = spacing_ * static_cast<float>(visible_count - 1);
     auto available = ch - total_spacing;
-    auto fixed_h = 0;
+    auto fixed_h = 0.0f;
     auto total_stretch = 0;
 
     for (auto const &item : items_) {
@@ -76,7 +75,7 @@ void VBoxLayout::apply_layout() {
     }
 
     auto remaining = std::max(0.0f, available - fixed_h);
-    auto stretch_unit = total_stretch > 0 ? remaining / static_cast<float>(total_stretch) : 0;
+    auto stretch_unit = total_stretch > 0 ? remaining / static_cast<float>(total_stretch) : 0.0f;
     auto y = cy;
 
     for (auto &item : items_) {
@@ -116,7 +115,10 @@ void VBoxLayout::apply_layout() {
 }
 
 void VBoxLayout::paint(Painter &painter) {
-    apply_layout();
+    if (layout_dirty) {
+        apply_layout();
+        layout_dirty = false;
+    }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
@@ -218,12 +220,11 @@ void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
 }
 
 void HBoxLayout::set_rect(Rect const &rect) {
-    rect_ = rect;
-    apply_layout();
+    Widget::set_rect(rect);
 }
 
 void HBoxLayout::set_window(Window *w) {
-    window_ = w;
+    Widget::set_window(w);
     for (auto &item : items_) {
         item.widget->set_window(w);
     }
@@ -265,7 +266,7 @@ void HBoxLayout::apply_layout() {
     }
 
     auto remaining = std::max(0.0f, available - fixed_w);
-    auto stretch_unit = total_stretch > 0 ? remaining / static_cast<float>(total_stretch) : 0;
+    auto stretch_unit = total_stretch > 0 ? remaining / static_cast<float>(total_stretch) : 0.0f;
     auto x = cx;
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
@@ -305,7 +306,10 @@ void HBoxLayout::apply_layout() {
 }
 
 void HBoxLayout::paint(Painter &painter) {
-    apply_layout();
+    if (layout_dirty) {
+        apply_layout();
+        layout_dirty = false;
+    }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
