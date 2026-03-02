@@ -641,10 +641,17 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     swa.background_pixmap = 0L; // None
     swa.bit_gravity = StaticGravity;
     swa.backing_store = WhenMapped;
+
+    // Use theme background color for initial window background to avoid black blink
+    Color const &bg = Theme::current().window.background;
+    swa.background_pixel = (static_cast<unsigned long>(bg.r * 255) << 16) |
+                           (static_cast<unsigned long>(bg.g * 255) << 8) |
+                           (static_cast<unsigned long>(bg.b * 255));
+
     float scale = d->scale;
     w->xwindow = XCreateWindow(d->display, d->root, 0, 0, static_cast<unsigned>(size.width * scale),
                                static_cast<unsigned>(size.height * scale), 0, depth, InputOutput,
-                               visual, CWEventMask | CWColormap | CWBackPixmap | CWBitGravity | CWBackingStore, &swa);
+                               visual, CWEventMask | CWColormap | CWBackPixmap | CWBitGravity | CWBackingStore | CWBackPixel, &swa);
     std::string t(title);
     XStoreName(d->display, w->xwindow, t.c_str());
     XChangeProperty(d->display, w->xwindow, d->net_wm_name, d->utf8_string, 8, PropModeReplace,
@@ -660,6 +667,7 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     w->hand_cursor = XCreateFontCursor(d->display, XC_hand2);
     w->not_allowed_cursor = XCreateFontCursor(d->display, XC_X_cursor);
     d->window_map[w->xwindow] = {owner, xic};
+    impl_->needs_redraw = true;
 }
 
 X11PlatformWindow::~X11PlatformWindow() {
@@ -721,6 +729,10 @@ void X11PlatformWindow::cleanup_resources() {
 
 void X11PlatformWindow::show() {
     XMapRaised(app_->impl_->display, impl_->xwindow);
+    // Force first paint immediately after mapping to avoid blink
+    if (impl_->needs_redraw) {
+        do_paint();
+    }
     XFlush(app_->impl_->display);
 }
 
