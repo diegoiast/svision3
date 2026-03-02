@@ -119,6 +119,7 @@ void VBoxLayout::paint(Painter &painter) {
         apply_layout();
         layout_dirty = false;
     }
+
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
@@ -205,6 +206,12 @@ Widget *VBoxLayout::widget_at(Point p) {
         }
     }
     return nullptr;
+}
+
+void VBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
+    for (auto &item : items_) {
+        callback(item.widget.get());
+    }
 }
 
 // --- HBoxLayout ---
@@ -310,6 +317,7 @@ void HBoxLayout::paint(Painter &painter) {
         apply_layout();
         layout_dirty = false;
     }
+
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
@@ -395,6 +403,12 @@ Widget *HBoxLayout::widget_at(Point p) {
         }
     }
     return nullptr;
+}
+
+void HBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
+    for (auto &item : items_) {
+        callback(item.widget.get());
+    }
 }
 
 } // namespace toolkit

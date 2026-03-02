@@ -74,6 +74,8 @@ class Window {
     void show_tooltip_window(std::string const &text, Point screen_pos);
     void hide_tooltip_window();
 
+    void draw_debug_frames_recursive(Painter &painter, Widget *widget);
+
     std::string title_;
     Size size_;
     Size min_size_;

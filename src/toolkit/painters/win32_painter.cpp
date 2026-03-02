@@ -186,6 +186,7 @@ struct GDIPainter::Impl {
     bool owned;
     std::vector<Gdiplus::Region *> clip_stack;
     float scale;
+    Painter::LineStyle line_style = Painter::LineStyle::Solid;
 
     Impl(HDC hdc, float s) : owned(true), scale(s) {
         graphics = new Gdiplus::Graphics(hdc);
@@ -231,6 +232,25 @@ void GDIPainter::pop_clip() {
     }
 }
 
+void GDIPainter::set_line_style(Painter::LineStyle style) {
+    impl_->line_style = style;
+}
+
+static void apply_line_style(Gdiplus::Pen &pen, Painter::LineStyle style) {
+    switch (style) {
+    case Painter::LineStyle::Dashed:
+        pen.SetDashStyle(Gdiplus::DashStyleDash);
+        break;
+    case Painter::LineStyle::Dotted:
+        pen.SetDashStyle(Gdiplus::DashStyleDot);
+        break;
+    case Painter::LineStyle::Solid:
+    default:
+        pen.SetDashStyle(Gdiplus::DashStyleSolid);
+        break;
+    }
+}
+
 void GDIPainter::fill_rect(Rect const &r, Color const &c) {
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
     impl_->graphics->FillRectangle(&brush, r.x, r.y, r.width, r.height);
@@ -238,6 +258,7 @@ void GDIPainter::fill_rect(Rect const &r, Color const &c) {
 
 void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
+    apply_line_style(pen, impl_->line_style);
     impl_->graphics->DrawRectangle(&pen, r.x, r.y, r.width, r.height);
 }
 
@@ -264,11 +285,13 @@ void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, flo
     path.AddArc(r.x, r.y + r.height - d, d, d, 90, 90);
     path.CloseFigure();
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
+    apply_line_style(pen, impl_->line_style);
     impl_->graphics->DrawPath(&pen, &path);
 }
 
 void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
+    apply_line_style(pen, impl_->line_style);
     impl_->graphics->DrawLine(&pen, a.x, a.y, b.x, b.y);
 }
 
@@ -279,6 +302,7 @@ void GDIPainter::fill_circle(Point center, float radius, Color const &c) {
 
 void GDIPainter::draw_circle(Point center, float radius, Color const &c, float lw) {
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
+    apply_line_style(pen, impl_->line_style);
     impl_->graphics->DrawEllipse(&pen, center.x - radius, center.y - radius, radius * 2, radius * 2);
 }
 

@@ -302,4 +302,10 @@ void TabWidget::collect_mnemonics(std::vector<Widget *> &out) {
         tabs_[current_].content->collect_mnemonics(out);
 }
 
+void TabWidget::for_each_child(std::function<void(Widget *)> const &callback) {
+    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
+        callback(tabs_[current_].content.get());
+    }
+}
+
 } // namespace toolkit

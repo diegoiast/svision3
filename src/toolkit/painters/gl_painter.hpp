@@ -16,7 +16,10 @@ class GLPainter : public Painter {
 
     void push_clip(Rect const &rect) override;
     void pop_clip() override;
+    void set_line_style(Painter::LineStyle style) override;
+
     void fill_rect(Rect const &rect, Color const &color) override;
+
     void draw_rect(Rect const &rect, Color const &color,
                    float line_width) override;
     void fill_rounded_rect(Rect const &rect, Color const &color,
@@ -43,6 +46,7 @@ class GLPainter : public Painter {
     float scale_;
     TextRasterizer &rasterizer_;
     std::vector<Rect> clips_;
+    Painter::LineStyle style_ = Painter::LineStyle::Solid;
 
     void set_color(Color const &c);
     void apply_scissor(Rect const &r);

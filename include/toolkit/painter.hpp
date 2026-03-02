@@ -20,8 +20,16 @@ class Painter {
         float height;
     };
 
+    enum class LineStyle {
+        Solid,
+        Dashed,
+        Dotted
+    };
+
     virtual void push_clip(Rect const &rect) = 0;
     virtual void pop_clip() = 0;
+
+    virtual void set_line_style(LineStyle style) = 0;
 
     virtual void fill_rect(Rect const &rect, Color const &color) = 0;
     virtual void draw_rect(Rect const &rect, Color const &color, float line_width = 1.0f) = 0;

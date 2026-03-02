@@ -1,6 +1,7 @@
 #include "toolkit/application.hpp"
 #include "toolkit/clipboard.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/widget.hpp"
 
 #include <cstdlib>
 #include <spdlog/spdlog.h>
@@ -23,6 +24,8 @@
 #endif
 
 namespace toolkit {
+
+bool Widget::debug_show_frames = false;
 
 static PlatformApplication *s_platform = nullptr;
 

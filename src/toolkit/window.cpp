@@ -1,6 +1,8 @@
 #include "toolkit/window.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/layout.hpp"
+#include "toolkit/tab_widget.hpp"
 #include <cctype>
 #include <spdlog/spdlog.h>
 
@@ -111,6 +113,11 @@ void Window::handle_paint(Painter &painter) {
         painter.push_clip(widget->rect());
         widget->paint(painter);
         painter.pop_clip();
+    }
+
+    if (Widget::debug_show_frames) {
+        if (root_) draw_debug_frames_recursive(painter, root_.get());
+        for (auto &widget : widgets_) draw_debug_frames_recursive(painter, widget.get());
     }
 
     if (popup_ && popup_->on_paint) {
@@ -325,6 +332,28 @@ void Window::hide_tooltip() {
     }
     tooltip_widget_ = nullptr;
     tooltip_text_.clear();
+}
+
+void Window::draw_debug_frames_recursive(Painter &painter, Widget *widget) {
+    if (!widget || !widget->is_visible()) return;
+
+    // Draw for the widget itself
+    bool is_layout = dynamic_cast<VBoxLayout *>(widget) != nullptr ||
+                    dynamic_cast<HBoxLayout *>(widget) != nullptr ||
+                    dynamic_cast<TabWidget *>(widget) != nullptr;
+
+    if (is_layout) {
+        painter.set_line_style(Painter::LineStyle::Dotted);
+    } else {
+        painter.set_line_style(Painter::LineStyle::Dashed);
+    }
+    painter.draw_rect(widget->rect(), {1.0f, 0.0f, 0.0f, 1.0f}, 1.0f);
+    painter.set_line_style(Painter::LineStyle::Solid);
+
+    // Recurse into children
+    widget->for_each_child([&](Widget *child) {
+        draw_debug_frames_recursive(painter, child);
+    });
 }
 
 } // namespace toolkit

@@ -6,6 +6,7 @@
 #include "toolkit/events.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,8 @@ class Window;
 class Widget {
   public:
     virtual ~Widget() = default;
+
+    static bool debug_show_frames;
 
     virtual void paint(Painter &painter) = 0;
     virtual bool handle_mouse(MouseEvent const &event) = 0;
@@ -77,6 +80,8 @@ class Widget {
 
     virtual bool trigger_mnemonic(char /*key*/) { return false; }
     virtual void collect_mnemonics(std::vector<Widget *> &out) { (void)out; }
+
+    virtual void for_each_child(std::function<void(Widget *)> const &callback) { (void)callback; }
 
     virtual void set_window(Window *w) { window_ = w; }
     Window *window() const { return window_; }

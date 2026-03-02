@@ -30,6 +30,7 @@ class TabWidget : public Widget {
     Widget *widget_at(Point p) override;
     void collect_focusables(std::vector<Widget *> &out) override;
     void collect_mnemonics(std::vector<Widget *> &out) override;
+    void for_each_child(std::function<void(Widget *)> const &callback) override;
 
   private:
     struct Tab {

@@ -341,11 +341,15 @@ int main(int argc, char *argv[]) {
     tab1->add_widget(std::move(rb_dark));
     tab1->add_widget(std::move(rb_pink));
 
-    auto info_bar = std::make_unique<toolkit::HBoxLayout>();
-    info_bar->set_margins({20, 10, 20, 0});
-    info_bar->add_widget(std::make_unique<toolkit::Label>(
+    tab1->add_widget(std::make_unique<toolkit::Label>(
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), app.painter_name())));
-    tab1->add_widget(std::move(info_bar));
+
+    auto debug_toggle = std::make_unique<toolkit::Checkbox>("Show Debug Frames");
+    debug_toggle->on_toggle = [window](bool checked) {
+        toolkit::Widget::debug_show_frames = checked;
+        window->request_redraw();
+    };
+    tab1->add_widget(std::move(debug_toggle));
 
     tabs->add_tab("Main", std::move(tab1));
 
