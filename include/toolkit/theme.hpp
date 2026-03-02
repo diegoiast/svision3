@@ -161,6 +161,7 @@ struct Theme {
 
     static Theme const &current();
     static void set_current(Theme theme);
+    static ThemeStyle detect_system_style();
 };
 
 } // namespace toolkit

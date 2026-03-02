@@ -1,11 +1,15 @@
 #include "toolkit/theme.hpp"
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
 
 namespace toolkit {
 
 static Theme &mutable_current() {
-    static Theme instance = Theme::create(ThemeStyle::MacOS);
+    static Theme instance = Theme::create(Theme::detect_system_style());
     return instance;
 }
+
 
 Theme const &Theme::current() {
     return mutable_current();
@@ -333,6 +337,35 @@ Theme Theme::create(ThemeStyle style, Palette const &palette) {
 
 Theme Theme::create(ThemeStyle style, ColorScheme scheme) {
     return create(style, default_palette(style, scheme));
+}
+
+ThemeStyle Theme::detect_system_style() {
+#if defined(__APPLE__)
+    return ThemeStyle::MacOS;
+#elif defined(_WIN32)
+    return ThemeStyle::Win11;
+#else
+    const char *xdg = std::getenv("XDG_CURRENT_DESKTOP");
+    if (xdg) {
+        std::string s(xdg);
+        auto contains = [&](std::string_view sub) {
+            auto it = std::search(s.begin(), s.end(), sub.begin(), sub.end(),
+                                  [](char a, char b) {
+                                      return std::tolower(static_cast<unsigned char>(a)) ==
+                                             std::tolower(static_cast<unsigned char>(b));
+                                  });
+            return it != s.end();
+        };
+
+        if (contains("GNOME")) {
+            return ThemeStyle::GNOME;
+        }
+        if (contains("KDE") || contains("PLASMA")) {
+            return ThemeStyle::Plasma6;
+        }
+    }
+    return ThemeStyle::Material;
+#endif
 }
 
 } // namespace toolkit

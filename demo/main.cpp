@@ -21,7 +21,7 @@
 #include <spdlog/spdlog.h>
 
 static toolkit::RadioGroup scheme_group;
-static toolkit::ThemeStyle current_style = toolkit::ThemeStyle::MacOS;
+static toolkit::ThemeStyle current_style = toolkit::ThemeStyle::MacOS; // Placeholder, set in main
 static toolkit::ColorScheme current_scheme = toolkit::ColorScheme::Light;
 
 auto beatlesSongs = std::vector<std::string>{
@@ -277,6 +277,7 @@ int main(int argc, char *argv[]) {
             screenshot_path = arg.substr(13);
         }
     }
+    current_style = toolkit::Theme::detect_system_style();
     toolkit::Theme::set_current(toolkit::Theme::create(current_style, current_scheme));
 
     toolkit::Application app;
@@ -316,7 +317,7 @@ int main(int argc, char *argv[]) {
     }
 
     auto combo = std::make_unique<toolkit::Combobox>(style_names);
-    combo->set_selected(0);
+    combo->set_selected(static_cast<int>(current_style));
     combo->set_tooltip("Select a theme style");
     combo->on_change = [window](int index) {
         current_style = static_cast<toolkit::ThemeStyle>(index);
