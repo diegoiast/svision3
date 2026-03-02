@@ -1,7 +1,9 @@
 #include "toolkit/text_edit.hpp"
 #include "toolkit/clipboard.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <sstream>
@@ -75,13 +77,22 @@ TextEdit::Pos TextEdit::pos_from_point(Point p) const {
     if (click_x <= 0) return {line, 0};
 
     auto const &ln = lines_[line];
-    int col = 0;
-    for (size_t i = 1; i <= ln.size(); i++) {
-        float w = Painter::measure_text(ln.substr(0, i), style.font_size, kFont).width;
-        if (w > click_x) break;
-        col = static_cast<int>(i);
+    size_t col = 0;
+    while (col < ln.size()) {
+        size_t next_col = Utf8Iterator::next(ln, col);
+        float w = Painter::measure_text(ln.substr(0, next_col), style.font_size, kFont).width;
+        if (w > click_x) {
+            // Check if closer to current or next character
+            float prev_w = Painter::measure_text(ln.substr(0, col), style.font_size, kFont).width;
+            if (click_x - prev_w < w - click_x) {
+                return {line, static_cast<int>(col)};
+            } else {
+                return {line, static_cast<int>(next_col)};
+            }
+        }
+        col = next_col;
     }
-    return {line, col};
+    return {line, static_cast<int>(col)};
 }
 
 void TextEdit::clamp_scroll() {
@@ -458,8 +469,9 @@ bool TextEdit::handle_key(KeyEvent const &event) {
             cursor_ = old;
             delete_selection();
         } else if (cursor_.col > 0) {
-            lines_[cursor_.line].erase(cursor_.col - 1, 1);
-            cursor_.col--;
+            size_t prev = Utf8Iterator::prev(lines_[cursor_.line], cursor_.col);
+            lines_[cursor_.line].erase(prev, cursor_.col - prev);
+            cursor_.col = static_cast<int>(prev);
             anchor_ = cursor_;
             ensure_cursor_visible();
             if (on_change) on_change();
@@ -478,7 +490,8 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         if (has_selection()) {
             delete_selection();
         } else if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
-            lines_[cursor_.line].erase(cursor_.col, 1);
+            size_t next = Utf8Iterator::next(lines_[cursor_.line], cursor_.col);
+            lines_[cursor_.line].erase(cursor_.col, next - cursor_.col);
             ensure_cursor_visible();
             if (on_change) on_change();
         } else if (cursor_.line + 1 < nlines) {
@@ -495,7 +508,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         } else if (!event.shift && has_selection()) {
             move_cursor(sel_start(), false);
         } else if (cursor_.col > 0) {
-            move_cursor({cursor_.line, cursor_.col - 1}, event.shift);
+            move_cursor({cursor_.line, static_cast<int>(Utf8Iterator::prev(lines_[cursor_.line], cursor_.col))}, event.shift);
         } else if (cursor_.line > 0) {
             move_cursor(
                 {cursor_.line - 1,
@@ -511,7 +524,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
             move_cursor(sel_end(), false);
         } else if (cursor_.col <
                    static_cast<int>(lines_[cursor_.line].size())) {
-            move_cursor({cursor_.line, cursor_.col + 1}, event.shift);
+            move_cursor({cursor_.line, static_cast<int>(Utf8Iterator::next(lines_[cursor_.line], cursor_.col))}, event.shift);
         } else if (cursor_.line + 1 < nlines) {
             move_cursor({cursor_.line + 1, 0}, event.shift);
         }

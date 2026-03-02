@@ -4,7 +4,9 @@
 #include "toolkit/line_input.hpp"
 #include "toolkit/clipboard.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
+
 #include <algorithm>
 #include <cctype>
 
@@ -117,20 +119,28 @@ bool LineInput::hit_clear_btn(Point pos) const {
 size_t LineInput::pos_from_x(float x) const {
     auto const &style = Theme::current().line_input;
     auto click_x = x - (rect_.x + style.padding.left) + scroll_offset_;
-    auto pos = 0;
+    size_t last_pos = 0;
+    size_t current_pos = 0;
 
     if (click_x <= 0) {
         return 0;
     }
 
-    for (size_t i = 1; i <= text_.size(); i++) {
-        auto sz = Painter::measure_text(text_.substr(0, i), style.font_size);
+    while (current_pos < text_.size()) {
+        size_t next_pos = Utf8Iterator::next(text_, current_pos);
+        auto sz = Painter::measure_text(text_.substr(0, next_pos), style.font_size);
         if (sz.width > click_x) {
-            break;
+            // Check if we are closer to the previous or next character
+            auto prev_sz = Painter::measure_text(text_.substr(0, current_pos), style.font_size);
+            if (click_x - prev_sz.width < sz.width - click_x) {
+                return current_pos;
+            } else {
+                return next_pos;
+            }
         }
-        pos = i;
+        current_pos = next_pos;
     }
-    return pos;
+    return current_pos;
 }
 
 void LineInput::paint(Painter &painter) {
@@ -335,8 +345,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
                 on_change(text_);
             }
         } else if (cursor_pos_ > 0) {
-            text_.erase(cursor_pos_ - 1, 1);
-            cursor_pos_--;
+            size_t prev = Utf8Iterator::prev(text_, cursor_pos_);
+            text_.erase(prev, cursor_pos_ - prev);
+            cursor_pos_ = prev;
             sel_anchor_ = cursor_pos_;
             if (on_change) {
                 on_change(text_);
@@ -347,7 +358,8 @@ bool LineInput::handle_key(KeyEvent const &event) {
         if (has_selection()) {
             delete_selection();
         } else if (cursor_pos_ < text_.size()) {
-            text_.erase(cursor_pos_, 1);
+            size_t next = Utf8Iterator::next(text_, cursor_pos_);
+            text_.erase(cursor_pos_, next - cursor_pos_);
             if (on_change) {
                 on_change(text_);
             }
@@ -359,7 +371,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         } else if (!event.shift && has_selection()) {
             move_cursor(sel_start(), false);
         } else if (cursor_pos_ > 0) {
-            move_cursor(cursor_pos_ - 1, event.shift);
+            move_cursor(Utf8Iterator::prev(text_, cursor_pos_), event.shift);
         }
         return true;
     case Key::Right:
@@ -368,7 +380,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         } else if (!event.shift && has_selection()) {
             move_cursor(sel_end(), false);
         } else if (cursor_pos_ < text_.size()) {
-            move_cursor(cursor_pos_ + 1, event.shift);
+            move_cursor(Utf8Iterator::next(text_, cursor_pos_), event.shift);
         }
         return true;
     case Key::Home:
