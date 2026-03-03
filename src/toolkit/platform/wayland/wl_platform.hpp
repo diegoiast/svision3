@@ -22,6 +22,8 @@ struct wl_data_device;
 struct xdg_wm_base;
 struct xdg_surface;
 struct xdg_toplevel;
+struct xdg_popup;
+struct xdg_positioner;
 struct wl_output;
 struct xkb_context;
 struct xkb_keymap;
@@ -138,12 +140,16 @@ class WaylandPlatformWindow : public PlatformWindow {
 
     void do_paint();
     void create_buffer(int width, int height);
+    void paint_to_surface(wl_surface *target_surface, int pw, int ph, float scale);
 
     WaylandPlatformApplication *app_;
     Window *owner_;
     wl_surface *surface = nullptr;
     xdg_surface *xdg_surf = nullptr;
     xdg_toplevel *toplevel = nullptr;
+    xdg_popup *popup = nullptr;
+    xdg_positioner *positioner = nullptr;
+
     wl_callback *frame_cb = nullptr;
     wp_fractional_scale_v1 *fractional_scale = nullptr;
     wp_viewport *viewport = nullptr;
@@ -160,6 +166,20 @@ class WaylandPlatformWindow : public PlatformWindow {
 
     wl_egl_window *egl_window = nullptr;
     void *egl_surface = nullptr;
+
+    struct TooltipData {
+        std::string text;
+        wl_surface *surface = nullptr;
+        xdg_surface *xdg_surf = nullptr;
+        xdg_popup *popup = nullptr;
+        wp_viewport *viewport = nullptr;
+        wl_buffer *buffer = nullptr;
+        void *shm_data = nullptr;
+        int shm_fd = -1;
+        size_t shm_size = 0;
+        int width = 0, height = 0;
+    };
+    std::unique_ptr<TooltipData> tooltip_data;
 };
 
 } // namespace toolkit

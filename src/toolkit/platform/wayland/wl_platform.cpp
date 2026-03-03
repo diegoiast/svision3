@@ -551,6 +551,26 @@ static void frame_done(void *data, wl_callback *cb, uint32_t) {
     }
 }
 
+static void xdg_popup_surface_configure(void *data, xdg_surface *surf, uint32_t serial) {
+    xdg_surface_ack_configure(surf, serial);
+}
+static const xdg_surface_listener xdg_popup_surf_listener = {xdg_popup_surface_configure};
+
+static void xdg_popup_configure(void *data, struct xdg_popup *popup, int32_t x, int32_t y,
+                                int32_t width, int32_t height);
+static void xdg_popup_done(void *data, struct xdg_popup *popup);
+static const struct xdg_popup_listener xdg_popup_listener = {xdg_popup_configure, xdg_popup_done};
+
+static void xdg_popup_configure(void *data, struct xdg_popup *, int32_t, int32_t, int32_t, int32_t) {
+    auto *win = static_cast<WaylandPlatformWindow *>(data);
+    win->needs_redraw = true;
+}
+
+static void xdg_popup_done(void *data, struct xdg_popup *) {
+    auto *win = static_cast<WaylandPlatformWindow *>(data);
+    win->hide_tooltip_window();
+}
+
 // --- WaylandPlatformApplication ---
 
 WaylandPlatformApplication::WaylandPlatformApplication() {
@@ -881,6 +901,7 @@ WaylandPlatformWindow::~WaylandPlatformWindow() {
     if (surface) {
         wl_surface_destroy(surface);
     }
+    hide_tooltip_window();
 }
 
 void WaylandPlatformWindow::show() {
@@ -942,12 +963,67 @@ void WaylandPlatformWindow::set_cursor(CursorShape shape) {
     apply_cursor(app_, cursor_name_for(shape));
 }
 
-void WaylandPlatformWindow::show_tooltip_window(std::string const &, Point) {
-    // TODO: implement Wayland tooltips via xdg_popup or subsurface
+void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
+    if (tooltip_data && tooltip_data->text == text) return;
+    hide_tooltip_window();
+
+    tooltip_data = std::make_unique<TooltipData>();
+    tooltip_data->text = text;
+
+    auto const &style = Theme::current().tooltip;
+    float fs = style.font_size;
+    auto tsz = Painter::measure_text(text, fs);
+    auto fm = Painter::measure_font_metrics(fs);
+    float tw = tsz.width + style.padding * 2;
+    float th = fm.height + style.padding * 2;
+
+    tooltip_data->width = static_cast<int>(std::ceil(tw * scale));
+    tooltip_data->height = static_cast<int>(std::ceil(th * scale));
+
+    tooltip_data->surface = wl_compositor_create_surface(app_->compositor);
+    tooltip_data->xdg_surf = xdg_wm_base_get_xdg_surface(app_->wm_base, tooltip_data->surface);
+    xdg_surface_add_listener(tooltip_data->xdg_surf, &xdg_popup_surf_listener, this);
+
+    struct xdg_positioner *pos_obj = xdg_wm_base_create_positioner(app_->wm_base);
+    xdg_positioner_set_size(pos_obj, static_cast<int32_t>(std::ceil(tw)),
+                             static_cast<int32_t>(std::ceil(th)));
+    xdg_positioner_set_anchor_rect(pos_obj, static_cast<int32_t>(std::round(pos.x)),
+                                   static_cast<int32_t>(std::round(pos.y)), 1, 1);
+    xdg_positioner_set_gravity(pos_obj, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+    xdg_positioner_set_anchor(pos_obj, XDG_POSITIONER_ANCHOR_TOP_LEFT);
+    xdg_positioner_set_offset(pos_obj, 0, 10);
+
+    tooltip_data->popup =
+        xdg_surface_get_popup(tooltip_data->xdg_surf, xdg_surf, pos_obj);
+    xdg_popup_add_listener(tooltip_data->popup, &xdg_popup_listener, this);
+    xdg_positioner_destroy(pos_obj);
+
+    if (app_->viewporter) {
+        tooltip_data->viewport = wp_viewporter_get_viewport(app_->viewporter, tooltip_data->surface);
+        wp_viewport_set_destination(tooltip_data->viewport, static_cast<int>(std::ceil(tw)),
+                                    static_cast<int>(std::ceil(th)));
+        wl_surface_set_buffer_scale(tooltip_data->surface, 1);
+    } else {
+        wl_surface_set_buffer_scale(tooltip_data->surface, static_cast<int32_t>(std::ceil(scale)));
+    }
+
+    wl_surface_commit(tooltip_data->surface);
+    wl_display_roundtrip(app_->display);
+    needs_redraw = true;
 }
 
 void WaylandPlatformWindow::hide_tooltip_window() {
-    // TODO: destroy tooltip popup
+    if (!tooltip_data) return;
+
+    if (tooltip_data->popup) xdg_popup_destroy(tooltip_data->popup);
+    if (tooltip_data->viewport) wp_viewport_destroy(tooltip_data->viewport);
+    if (tooltip_data->xdg_surf) xdg_surface_destroy(tooltip_data->xdg_surf);
+    if (tooltip_data->buffer) wl_buffer_destroy(tooltip_data->buffer);
+    if (tooltip_data->shm_data) munmap(tooltip_data->shm_data, tooltip_data->shm_size);
+    if (tooltip_data->shm_fd >= 0) ::close(tooltip_data->shm_fd);
+    if (tooltip_data->surface) wl_surface_destroy(tooltip_data->surface);
+
+    tooltip_data.reset();
 }
 
 void WaylandPlatformWindow::create_buffer(int width, int height) {
@@ -985,6 +1061,65 @@ void WaylandPlatformWindow::create_buffer(int width, int height) {
     buf_height = height;
 }
 
+void WaylandPlatformWindow::paint_to_surface(wl_surface *target_surface, int pw, int ph,
+                                              float current_scale) {
+    if (pw <= 0 || ph <= 0) return;
+
+    int stride = pw * 4;
+    size_t total = static_cast<size_t>(stride) * static_cast<size_t>(ph);
+    int fd = create_shm_file(total);
+    if (fd < 0) return;
+
+    void *data = mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (data == MAP_FAILED) {
+        ::close(fd);
+        return;
+    }
+
+    wl_shm_pool *pool = wl_shm_create_pool(app_->shm, fd, static_cast<int32_t>(total));
+    wl_buffer *buf = wl_shm_pool_create_buffer(pool, 0, pw, ph, stride, WL_SHM_FORMAT_ARGB8888);
+    wl_shm_pool_destroy(pool);
+
+    cairo_surface_t *cs =
+        cairo_image_surface_create_for_data(static_cast<unsigned char *>(data),
+                                            CAIRO_FORMAT_ARGB32, pw, ph, stride);
+    cairo_t *cr = cairo_create(cs);
+    cairo_scale(cr, static_cast<double>(current_scale), static_cast<double>(current_scale));
+
+    if (target_surface == surface) {
+        CairoPainter painter(cr);
+        owner_->handle_paint(painter);
+    } else if (tooltip_data && target_surface == tooltip_data->surface) {
+        auto const &style = Theme::current().tooltip;
+        float fs = style.font_size;
+        auto fm = Painter::measure_font_metrics(fs);
+        float tw = static_cast<float>(pw) / current_scale;
+        float th = static_cast<float>(ph) / current_scale;
+
+        CairoPainter painter(cr);
+        Rect r{0, 0, tw, th};
+        painter.fill_rounded_rect(r, style.background, style.corner_radius);
+        painter.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
+        painter.draw_text(tooltip_data->text, {style.padding, style.padding + fm.ascent},
+                          style.text, fs);
+    }
+
+    cairo_surface_flush(cs);
+    cairo_destroy(cr);
+    cairo_surface_destroy(cs);
+
+    wl_surface_attach(target_surface, buf, 0, 0);
+    wl_surface_damage(target_surface, 0, 0, pw, ph);
+    wl_surface_commit(target_surface);
+
+    // Wait for compositor to process the attach/commit before we can safely destroy
+    wl_display_roundtrip(app_->display);
+
+    munmap(data, total);
+    ::close(fd);
+    wl_buffer_destroy(buf);
+}
+
 void WaylandPlatformWindow::do_paint() {
     needs_redraw = false;
     float current_scale = scale;
@@ -998,6 +1133,13 @@ void WaylandPlatformWindow::do_paint() {
 
     spdlog::debug("Wayland painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph,
                   current_scale);
+
+    // Always request frame callback BEFORE the commit that triggers it
+    if (frame_cb) {
+        wl_callback_destroy(frame_cb);
+    }
+    frame_cb = wl_surface_frame(surface);
+    wl_callback_add_listener(frame_cb, &frame_listener, this);
 
     if (app_->opengl_requested && egl_surface) {
         eglMakeCurrent(app_->egl_display, egl_surface, egl_surface, app_->egl_context);
@@ -1030,47 +1172,43 @@ void WaylandPlatformWindow::do_paint() {
         GLPainter painter(static_cast<float>(lh), current_scale, rasterizer);
         owner_->handle_paint(painter);
 
-        frame_cb = wl_surface_frame(surface);
-        wl_callback_add_listener(frame_cb, &frame_listener, this);
-
         eglSwapBuffers(app_->egl_display, egl_surface);
-        wl_surface_commit(surface);
-        return;
-    }
-
-    if (pw != buf_width || ph != buf_height) {
-        create_buffer(pw, ph);
-    }
-    if (!shm_data || !buffer) {
-        return;
-    }
-
-    int stride = pw * 4;
-    cairo_surface_t *cs = cairo_image_surface_create_for_data(
-        static_cast<unsigned char *>(shm_data), CAIRO_FORMAT_ARGB32, pw, ph, stride);
-    cairo_t *cr = cairo_create(cs);
-    cairo_scale(cr, static_cast<double>(current_scale), static_cast<double>(current_scale));
-
-    CairoPainter painter(cr);
-    owner_->handle_paint(painter);
-
-    cairo_surface_flush(cs);
-    cairo_destroy(cr);
-    cairo_surface_destroy(cs);
-
-    if (viewport) {
-        wp_viewport_set_destination(viewport, lw, lh);
-        wl_surface_set_buffer_scale(surface, 1);
     } else {
-        wl_surface_set_buffer_scale(surface, static_cast<int32_t>(std::ceil(current_scale)));
+        if (pw != buf_width || ph != buf_height) {
+            create_buffer(pw, ph);
+        }
+
+        if (viewport) {
+            wp_viewport_set_destination(viewport, lw, lh);
+            wl_surface_set_buffer_scale(surface, 1);
+        } else {
+            wl_surface_set_buffer_scale(surface, static_cast<int32_t>(std::ceil(current_scale)));
+        }
+
+        if (shm_data) {
+            int stride = pw * 4;
+            cairo_surface_t *cs = cairo_image_surface_create_for_data(
+                static_cast<unsigned char *>(shm_data), CAIRO_FORMAT_ARGB32, pw, ph, stride);
+            cairo_t *cr = cairo_create(cs);
+            cairo_scale(cr, static_cast<double>(current_scale), static_cast<double>(current_scale));
+
+            CairoPainter painter(cr);
+            owner_->handle_paint(painter);
+
+            cairo_surface_flush(cs);
+            cairo_destroy(cr);
+            cairo_surface_destroy(cs);
+
+            wl_surface_attach(surface, buffer, 0, 0);
+            wl_surface_damage(surface, 0, 0, pw, ph);
+            wl_surface_commit(surface);
+        }
     }
 
-    wl_surface_attach(surface, buffer, 0, 0);
-    wl_surface_damage(surface, 0, 0, lw, lh);
-
-    frame_cb = wl_surface_frame(surface);
-    wl_callback_add_listener(frame_cb, &frame_listener, this);
-    wl_surface_commit(surface);
+    if (tooltip_data && tooltip_data->surface) {
+        paint_to_surface(tooltip_data->surface, tooltip_data->width, tooltip_data->height,
+                         current_scale);
+    }
 }
 
 bool WaylandPlatformWindow::save_to_png(std::string const &path) {
