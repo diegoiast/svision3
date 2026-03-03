@@ -315,7 +315,7 @@ void GDIPainter::draw_circle(Point center, float radius, Color const &c, float l
 }
 
 void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
-                           FontFamily family) {
+                           FontFamily family, TextOrientation orientation) {
     auto wtext = to_wide(text);
     if (wtext.empty()) {
         return;
@@ -328,19 +328,26 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
     Gdiplus::Font font(wface.c_str(), font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
 
-    // Gdiplus::DrawString uses top-left. We need to subtract the ascent to align with our baseline
-    // 'pos.y'.
     Gdiplus::FontFamily ff(wface.c_str());
     float em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
     float asc = static_cast<float>(ff.GetCellAscent(Gdiplus::FontStyleRegular));
     float ascent_pts = (asc * font_size) / em;
 
-    Gdiplus::PointF origin(pos.x, pos.y - ascent_pts);
+    Gdiplus::GraphicsState state = impl_->graphics->Save();
+    impl_->graphics->TranslateTransform(pos.x, pos.y);
+    if (orientation == TextOrientation::VerticalCCW) {
+        impl_->graphics->RotateTransform(-90.0f);
+    } else if (orientation == TextOrientation::VerticalCW) {
+        impl_->graphics->RotateTransform(90.0f);
+    }
+
+    Gdiplus::PointF origin(0, -ascent_pts);
     Gdiplus::StringFormat format;
     format.SetAlignment(Gdiplus::StringAlignmentNear);
     format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
 
     impl_->graphics->DrawString(wtext.c_str(), -1, &font, origin, &format, &brush);
+    impl_->graphics->Restore(state);
 }
 
 Size GDIPainter::text_size(std::string_view text, float font_size, FontFamily family) {

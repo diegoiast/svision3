@@ -89,7 +89,8 @@ class CoreGraphicsPainter : public Painter {
     }
 
     void draw_text(std::string_view text, Point pos, Color const &c,
-                   float font_size, FontFamily family = FontFamily::System) override {
+                   float font_size, FontFamily family,
+                   TextOrientation orientation) override {
         NSFont *font = ns_font(font_size, family);
         NSString *str = [[NSString alloc] initWithBytes:text.data()
                                                  length:text.size()
@@ -106,6 +107,11 @@ class CoreGraphicsPainter : public Painter {
             CTLineCreateWithAttributedString((__bridge CFAttributedStringRef)astr);
         CGContextSaveGState(ctx_);
         CGContextTranslateCTM(ctx_, pos.x, pos.y);
+        if (orientation == TextOrientation::VerticalCCW) {
+            CGContextRotateCTM(ctx_, -M_PI / 2.0);
+        } else if (orientation == TextOrientation::VerticalCW) {
+            CGContextRotateCTM(ctx_, M_PI / 2.0);
+        }
         CGContextScaleCTM(ctx_, 1.0, -1.0);
         CGContextSetTextPosition(ctx_, 0, 0);
         CTLineDraw(line, ctx_);

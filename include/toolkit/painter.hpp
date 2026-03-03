@@ -26,6 +26,12 @@ class Painter {
         Dotted
     };
 
+    enum class TextOrientation {
+        Horizontal,
+        VerticalCCW, // 90 degrees counter-clockwise (bottom to top)
+        VerticalCW   // 90 degrees clockwise (top to bottom)
+    };
+
     virtual void push_clip(Rect const &rect) = 0;
     virtual void pop_clip() = 0;
 
@@ -41,7 +47,8 @@ class Painter {
     virtual void draw_circle(Point center, float radius, Color const &color,
                              float line_width = 1.0f) = 0;
     virtual void draw_text(std::string_view text, Point position, Color const &color,
-                           float font_size = 14.0f, FontFamily font = FontFamily::System) = 0;
+                           float font_size = 14.0f, FontFamily font = FontFamily::System,
+                           TextOrientation orientation = TextOrientation::Horizontal) = 0;
 
     virtual Size text_size(std::string_view text, float font_size = 14.0f,
                            FontFamily font = FontFamily::System) = 0;

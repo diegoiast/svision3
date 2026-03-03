@@ -100,16 +100,24 @@ static std::string cairo_font_face(FontFamily f) {
     return f == FontFamily::Monospace ? t.monospace_font : t.system_font;
 }
 
-void CairoPainter::draw_text(std::string_view text, Point position,
-                              Color const &color, float font_size,
-                              FontFamily font) {
+void CairoPainter::draw_text(std::string_view text, Point position, Color const &color,
+                             float font_size, FontFamily font, TextOrientation orientation) {
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_select_font_face(cr_, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr_, std::round(font_size));
+
+    cairo_save(cr_);
     cairo_move_to(cr_, position.x, position.y);
-    std::string str(text);
-    cairo_show_text(cr_, str.c_str());
+    if (orientation == TextOrientation::VerticalCCW) {
+        cairo_rotate(cr_, -M_PI / 2.0);
+    } else if (orientation == TextOrientation::VerticalCW) {
+        cairo_rotate(cr_, M_PI / 2.0);
+    }
+
+    std::string s{text};
+    cairo_show_text(cr_, s.c_str());
+    cairo_restore(cr_);
 }
 
 Size CairoPainter::text_size(std::string_view text, float font_size,

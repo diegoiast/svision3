@@ -34,7 +34,8 @@ class CairoPainter : public Painter {
     void draw_circle(Point center, float radius, Color const &color,
                      float line_width) override;
     void draw_text(std::string_view text, Point position, Color const &color,
-                   float font_size, FontFamily font = FontFamily::System) override;
+                   float font_size, FontFamily font = FontFamily::System,
+                   TextOrientation orientation = TextOrientation::Horizontal) override;
     Size text_size(std::string_view text, float font_size,
                    FontFamily font = FontFamily::System) override;
     FontMetrics font_metrics(float font_size,
