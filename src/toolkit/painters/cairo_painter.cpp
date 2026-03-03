@@ -1,6 +1,8 @@
 #ifdef TOOLKIT_HAS_CAIRO
 #include "toolkit/painters/cairo_painter.hpp"
+#include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+
 #include <cairo.h>
 #include <algorithm>
 #include <cmath>
@@ -112,17 +114,18 @@ void CairoPainter::draw_circle(Point center, float radius,
     cairo_stroke(cr_);
 }
 
-static const char *cairo_font_face(FontFamily f) {
-    return f == FontFamily::Monospace ? "monospace" : "sans-serif";
+static std::string cairo_font_face(FontFamily f) {
+    auto const &t = Theme::current();
+    return f == FontFamily::Monospace ? t.monospace_font : t.system_font;
 }
 
 void CairoPainter::draw_text(std::string_view text, Point position,
                               Color const &color, float font_size,
                               FontFamily font) {
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
-    cairo_select_font_face(cr_, cairo_font_face(font), CAIRO_FONT_SLANT_NORMAL,
+    cairo_select_font_face(cr_, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(cr_, font_size);
+    cairo_set_font_size(cr_, std::floor(font_size));
     cairo_move_to(cr_, position.x, position.y);
     std::string str(text);
     cairo_show_text(cr_, str.c_str());
@@ -130,9 +133,9 @@ void CairoPainter::draw_text(std::string_view text, Point position,
 
 Size CairoPainter::text_size(std::string_view text, float font_size,
                               FontFamily font) {
-    cairo_select_font_face(cr_, cairo_font_face(font), CAIRO_FONT_SLANT_NORMAL,
+    cairo_select_font_face(cr_, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(cr_, font_size);
+    cairo_set_font_size(cr_, std::floor(font_size));
     cairo_text_extents_t extents;
     std::string str(text);
     cairo_text_extents(cr_, str.c_str(), &extents);
@@ -142,9 +145,9 @@ Size CairoPainter::text_size(std::string_view text, float font_size,
 
 Painter::FontMetrics CairoPainter::font_metrics(float font_size,
                                                  FontFamily font) {
-    cairo_select_font_face(cr_, cairo_font_face(font), CAIRO_FONT_SLANT_NORMAL,
+    cairo_select_font_face(cr_, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(cr_, font_size);
+    cairo_set_font_size(cr_, std::floor(font_size));
     cairo_font_extents_t fe;
     cairo_font_extents(cr_, &fe);
     return {static_cast<float>(fe.ascent), static_cast<float>(fe.descent),
@@ -199,9 +202,9 @@ RasterizedText CairoTextRasterizer::rasterize(
 
     cairo_surface_t *temp_surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *temp_cr = cairo_create(temp_surf);
-    cairo_select_font_face(temp_cr, cairo_font_face(font), CAIRO_FONT_SLANT_NORMAL,
+    cairo_select_font_face(temp_cr, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(temp_cr, font_size);
+    cairo_set_font_size(temp_cr, std::floor(font_size));
     
     cairo_text_extents_t te;
     cairo_font_extents_t fe;
@@ -224,9 +227,9 @@ RasterizedText CairoTextRasterizer::rasterize(
     cairo_scale(cr, scale, scale);
 
     cairo_set_source_rgba(cr, 1, 1, 1, 1);
-    cairo_select_font_face(cr, cairo_font_face(font), CAIRO_FONT_SLANT_NORMAL,
+    cairo_select_font_face(cr, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(cr, font_size);
+    cairo_set_font_size(cr, std::floor(font_size));
     
     cairo_move_to(cr, 0, fe.ascent);
     cairo_show_text(cr, str.c_str());

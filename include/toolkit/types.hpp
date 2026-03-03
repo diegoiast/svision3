@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <string>
+
 namespace toolkit {
 
 struct Point {
@@ -69,5 +71,11 @@ enum class Alignment { Fill, Start, Center, End };
 enum class CursorShape { Arrow, IBeam, Hand, NotAllowed, ResizeEW };
 
 enum class FontFamily { System, Monospace };
+
+struct SystemFonts {
+    std::string system;
+    std::string monospace;
+    float font_size = 0;
+};
 
 } // namespace toolkit

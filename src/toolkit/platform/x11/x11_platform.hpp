@@ -23,6 +23,8 @@ class X11PlatformApplication : public PlatformApplication {
         float font_size, FontFamily font = FontFamily::System) override;
     std::string_view name() const override { return "X11"; }
     std::string_view painter_name() const override;
+    float scale_factor() const override;
+    SystemFonts system_fonts() const override;
 
     struct Impl;
     std::unique_ptr<Impl> impl_;

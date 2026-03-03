@@ -47,6 +47,8 @@ class PlatformApplication {
                                                       FontFamily font = FontFamily::System) = 0;
     virtual std::string_view name() const = 0;
     virtual std::string_view painter_name() const = 0;
+    virtual float scale_factor() const = 0;
+    virtual SystemFonts system_fonts() const = 0;
 };
 
 std::unique_ptr<PlatformApplication> create_platform_application();

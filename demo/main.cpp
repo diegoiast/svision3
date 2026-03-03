@@ -270,6 +270,8 @@ static void apply_theme(toolkit::Window *window) {
 int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
 
+    toolkit::Application app;
+
     std::string screenshot_path;
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -280,7 +282,6 @@ int main(int argc, char *argv[]) {
     current_style = toolkit::Theme::detect_system_style();
     toolkit::Theme::set_current(toolkit::Theme::create(current_style, current_scheme));
 
-    toolkit::Application app;
     auto *window = app.create_window("Demo", {600, 400});
 
     auto root = std::make_unique<toolkit::VBoxLayout>();

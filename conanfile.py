@@ -13,6 +13,7 @@ class ToolkitRecipe(ConanFile):
             self.requires("cairo/1.18.0")
         self.requires("spdlog/1.14.1")
         self.requires("catch2/3.7.1")
+        self.requires("tomlplusplus/3.4.0")
 
     def layout(self):
         cmake_layout(self, build_folder="build")

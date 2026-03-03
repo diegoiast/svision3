@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(spdlog REQUIRED)
+find_package(tomlplusplus CONFIG REQUIRED)
 
 if(WIN32)
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" OFF)
@@ -80,6 +81,9 @@ elseif(WIN32)
     )
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
+    list(APPEND TOOLKIT_SOURCES
+        src/toolkit/platform/linux_utils.cpp
+    )
 
     # --- X11 (optional) ---
     find_package(X11 QUIET)
@@ -165,7 +169,7 @@ endif()
 
 add_library(toolkit STATIC ${TOOLKIT_SOURCES})
 target_include_directories(toolkit PUBLIC include PRIVATE src)
-target_link_libraries(toolkit PUBLIC spdlog::spdlog)
+target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus)
 
 if(HAS_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)

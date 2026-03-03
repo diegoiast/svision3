@@ -54,6 +54,8 @@ class WaylandPlatformApplication : public PlatformApplication {
         float font_size, FontFamily font = FontFamily::System) override;
     std::string_view name() const override { return "Wayland"; }
     std::string_view painter_name() const override;
+    float scale_factor() const override;
+    SystemFonts system_fonts() const override;
 
     wl_display *display = nullptr;
     wl_compositor *compositor = nullptr;

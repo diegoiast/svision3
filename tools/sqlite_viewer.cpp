@@ -163,10 +163,11 @@ static void open_database(ViewerState &vs, std::string const &path) {
 int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
 
+    toolkit::Application app;
+
     toolkit::Theme::set_current(
         toolkit::Theme::create(toolkit::ThemeStyle::MacOS, toolkit::ColorScheme::Light));
 
-    toolkit::Application app;
     auto *window = app.create_window("SQLite Viewer", {800, 600});
 
     ViewerState vs;

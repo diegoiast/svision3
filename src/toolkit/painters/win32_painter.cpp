@@ -6,12 +6,14 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
-#include <objidl.h>
 #include <gdiplus.h>
+#include <objidl.h>
+#include <windows.h>
 
 #include "toolkit/painters/win32_painter.hpp"
+#include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+
 #include <cmath>
 #include <cstring>
 #include <string>
@@ -20,20 +22,18 @@
 namespace toolkit {
 
 static std::wstring to_wide(std::string_view s) {
-    if (s.empty()) return {};
-    int len = MultiByteToWideChar(CP_UTF8, 0, s.data(),
-                                  static_cast<int>(s.size()), nullptr, 0);
+    if (s.empty()) {
+        return {};
+    }
+    int len = MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), nullptr, 0);
     std::wstring result(len, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()),
-                        result.data(), len);
+    MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), result.data(), len);
     return result;
 }
 
 static Gdiplus::Color to_gdiplus_color(Color const &c) {
-    return Gdiplus::Color(static_cast<BYTE>(c.a * 255),
-                          static_cast<BYTE>(c.r * 255),
-                          static_cast<BYTE>(c.g * 255),
-                          static_cast<BYTE>(c.b * 255));
+    return Gdiplus::Color(static_cast<BYTE>(c.a * 255), static_cast<BYTE>(c.r * 255),
+                          static_cast<BYTE>(c.g * 255), static_cast<BYTE>(c.b * 255));
 }
 
 // ── Win32TextRasterizer ──────────────────────────────────────────────────────
@@ -41,43 +41,43 @@ static Gdiplus::Color to_gdiplus_color(Color const &c) {
 struct Win32TextRasterizer::Impl {
     HDC hdc = nullptr;
 
-    HFONT create_font(float font_size, float scale = 1.0f,
-                      FontFamily family = FontFamily::System) {
+    HFONT create_font(float font_size, float scale = 1.0f, FontFamily family = FontFamily::System) {
+        auto const &t = Theme::current();
+        std::string face_name =
+            (family == FontFamily::Monospace) ? t.monospace_font : t.system_font;
+        auto wface = to_wide(face_name);
         int height = -static_cast<int>(std::round(font_size * scale));
-        const wchar_t *face = (family == FontFamily::Monospace)
-                                  ? L"Consolas"
-                                  : L"Segoe UI";
-        DWORD pitch = (family == FontFamily::Monospace)
-                          ? FIXED_PITCH | FF_MODERN
-                          : DEFAULT_PITCH | FF_SWISS;
-        return CreateFontW(height, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                           DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
-                           CLEARTYPE_QUALITY, pitch, face);
+        DWORD pitch =
+            (family == FontFamily::Monospace) ? FIXED_PITCH | FF_MODERN : DEFAULT_PITCH | FF_SWISS;
+        return CreateFontW(height, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                           OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, pitch,
+                           wface.c_str());
     }
 };
 
-Win32TextRasterizer::Win32TextRasterizer()
-    : impl_(std::make_unique<Impl>()) {
+Win32TextRasterizer::Win32TextRasterizer() : impl_(std::make_unique<Impl>()) {
     impl_->hdc = CreateCompatibleDC(nullptr);
     SetBkMode(impl_->hdc, TRANSPARENT);
 }
 
 Win32TextRasterizer::~Win32TextRasterizer() {
-    if (impl_->hdc) DeleteDC(impl_->hdc);
+    if (impl_->hdc) {
+        DeleteDC(impl_->hdc);
+    }
 }
 
-RasterizedText
-Win32TextRasterizer::rasterize(std::string_view text, float font_size,
-                               float scale, FontFamily font) {
+RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_size, float scale,
+                                              FontFamily font) {
     auto wtext = to_wide(text);
-    if (wtext.empty()) return {};
+    if (wtext.empty()) {
+        return {};
+    }
 
     HFONT hfont = impl_->create_font(font_size, scale, font);
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
     SIZE sz;
-    GetTextExtentPoint32W(impl_->hdc, wtext.c_str(),
-                          static_cast<int>(wtext.size()), &sz);
+    GetTextExtentPoint32W(impl_->hdc, wtext.c_str(), static_cast<int>(wtext.size()), &sz);
 
     int w = sz.cx;
     int h = sz.cy;
@@ -99,8 +99,7 @@ Win32TextRasterizer::rasterize(std::string_view text, float font_size,
     bmi.bmiHeader.biCompression = BI_RGB;
 
     void *bits = nullptr;
-    HBITMAP hbm = CreateDIBSection(impl_->hdc, &bmi, DIB_RGB_COLORS, &bits,
-                                   nullptr, 0);
+    HBITMAP hbm = CreateDIBSection(impl_->hdc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
     if (!hbm || !bits) {
         SelectObject(impl_->hdc, old_font);
         DeleteObject(hfont);
@@ -110,13 +109,11 @@ Win32TextRasterizer::rasterize(std::string_view text, float font_size,
     HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(impl_->hdc, hbm));
 
     RECT rc = {0, 0, w, h};
-    FillRect(impl_->hdc, &rc,
-             static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+    FillRect(impl_->hdc, &rc, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
 
     SetTextColor(impl_->hdc, RGB(255, 255, 255));
     SetBkMode(impl_->hdc, TRANSPARENT);
-    TextOutW(impl_->hdc, 0, 0, wtext.c_str(),
-             static_cast<int>(wtext.size()));
+    TextOutW(impl_->hdc, 0, 0, wtext.c_str(), static_cast<int>(wtext.size()));
     GdiFlush();
 
     auto *src = static_cast<uint8_t *>(bits);
@@ -145,17 +142,17 @@ Win32TextRasterizer::rasterize(std::string_view text, float font_size,
     return result;
 }
 
-Size Win32TextRasterizer::measure(std::string_view text, float font_size,
-                                  FontFamily font) {
+Size Win32TextRasterizer::measure(std::string_view text, float font_size, FontFamily font) {
     auto wtext = to_wide(text);
-    if (wtext.empty()) return {0, 0};
+    if (wtext.empty()) {
+        return {0, 0};
+    }
 
     HFONT hfont = impl_->create_font(font_size, 1.0f, font);
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
     SIZE sz;
-    GetTextExtentPoint32W(impl_->hdc, wtext.c_str(),
-                          static_cast<int>(wtext.size()), &sz);
+    GetTextExtentPoint32W(impl_->hdc, wtext.c_str(), static_cast<int>(wtext.size()), &sz);
 
     SelectObject(impl_->hdc, old_font);
     DeleteObject(hfont);
@@ -163,8 +160,7 @@ Size Win32TextRasterizer::measure(std::string_view text, float font_size,
     return {static_cast<float>(sz.cx), static_cast<float>(sz.cy)};
 }
 
-Painter::FontMetrics Win32TextRasterizer::metrics(float font_size,
-                                                   FontFamily font) {
+Painter::FontMetrics Win32TextRasterizer::metrics(float font_size, FontFamily font) {
     HFONT hfont = impl_->create_font(font_size, 1.0f, font);
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
@@ -202,7 +198,9 @@ struct GDIPainter::Impl {
     }
 
     ~Impl() {
-        if (owned) delete graphics;
+        if (owned) {
+            delete graphics;
+        }
     }
 };
 
@@ -213,7 +211,9 @@ GDIPainter::GDIPainter(Gdiplus::Graphics *g, float scale)
     : impl_(std::make_unique<Impl>(g, scale)) {}
 
 GDIPainter::~GDIPainter() {
-    for (auto *r : impl_->clip_stack) delete r;
+    for (auto *r : impl_->clip_stack) {
+        delete r;
+    }
 }
 
 void GDIPainter::push_clip(Rect const &r) {
@@ -223,7 +223,9 @@ void GDIPainter::push_clip(Rect const &r) {
 }
 
 void GDIPainter::pop_clip() {
-    if (impl_->clip_stack.empty()) return;
+    if (impl_->clip_stack.empty()) {
+        return;
+    }
     delete impl_->clip_stack.back();
     impl_->clip_stack.pop_back();
     impl_->graphics->ResetClip();
@@ -232,9 +234,7 @@ void GDIPainter::pop_clip() {
     }
 }
 
-void GDIPainter::set_line_style(Painter::LineStyle style) {
-    impl_->line_style = style;
-}
+void GDIPainter::set_line_style(Painter::LineStyle style) { impl_->line_style = style; }
 
 static void apply_line_style(Gdiplus::Pen &pen, Painter::LineStyle style) {
     switch (style) {
@@ -263,7 +263,10 @@ void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
 }
 
 void GDIPainter::fill_rounded_rect(Rect const &r, Color const &c, float rad) {
-    if (rad <= 0) { fill_rect(r, c); return; }
+    if (rad <= 0) {
+        fill_rect(r, c);
+        return;
+    }
     Gdiplus::GraphicsPath path;
     float d = rad * 2;
     path.AddArc(r.x, r.y, d, d, 180, 90);
@@ -276,7 +279,10 @@ void GDIPainter::fill_rounded_rect(Rect const &r, Color const &c, float rad) {
 }
 
 void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, float lw) {
-    if (rad <= 0) { draw_rect(r, c, lw); return; }
+    if (rad <= 0) {
+        draw_rect(r, c, lw);
+        return;
+    }
     Gdiplus::GraphicsPath path;
     float d = rad * 2;
     path.AddArc(r.x, r.y, d, d, 180, 90);
@@ -297,35 +303,43 @@ void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
 
 void GDIPainter::fill_circle(Point center, float radius, Color const &c) {
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
-    impl_->graphics->FillEllipse(&brush, center.x - radius, center.y - radius, radius * 2, radius * 2);
+    impl_->graphics->FillEllipse(&brush, center.x - radius, center.y - radius, radius * 2,
+                                 radius * 2);
 }
 
 void GDIPainter::draw_circle(Point center, float radius, Color const &c, float lw) {
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
     apply_line_style(pen, impl_->line_style);
-    impl_->graphics->DrawEllipse(&pen, center.x - radius, center.y - radius, radius * 2, radius * 2);
+    impl_->graphics->DrawEllipse(&pen, center.x - radius, center.y - radius, radius * 2,
+                                 radius * 2);
 }
 
-void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c,
-                           float font_size, FontFamily family) {
+void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
+                           FontFamily family) {
     auto wtext = to_wide(text);
-    if (wtext.empty()) return;
-    
-    const wchar_t *face = (family == FontFamily::Monospace) ? L"Consolas" : L"Segoe UI";
-    Gdiplus::Font font(face, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    if (wtext.empty()) {
+        return;
+    }
+
+    auto const &t = Theme::current();
+    std::string face_name = (family == FontFamily::Monospace) ? t.monospace_font : t.system_font;
+    auto wface = to_wide(face_name);
+
+    Gdiplus::Font font(wface.c_str(), font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
-    
-    // Gdiplus::DrawString uses top-left. We need to subtract the ascent to align with our baseline 'pos.y'.
-    Gdiplus::FontFamily ff(face);
+
+    // Gdiplus::DrawString uses top-left. We need to subtract the ascent to align with our baseline
+    // 'pos.y'.
+    Gdiplus::FontFamily ff(wface.c_str());
     float em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
     float asc = static_cast<float>(ff.GetCellAscent(Gdiplus::FontStyleRegular));
     float ascent_pts = (asc * font_size) / em;
-    
+
     Gdiplus::PointF origin(pos.x, pos.y - ascent_pts);
     Gdiplus::StringFormat format;
     format.SetAlignment(Gdiplus::StringAlignmentNear);
     format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
-    
+
     impl_->graphics->DrawString(wtext.c_str(), -1, &font, origin, &format, &brush);
 }
 
@@ -339,12 +353,16 @@ Painter::FontMetrics GDIPainter::font_metrics(float font_size, FontFamily family
 
 Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, FontFamily family) {
     auto wtext = to_wide(text);
-    if (wtext.empty()) return {0, 0};
-    const wchar_t *face = (family == FontFamily::Monospace) ? L"Consolas" : L"Segoe UI";
-    Gdiplus::Font font(face, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    if (wtext.empty()) {
+        return {0, 0};
+    }
+    auto const &t = Theme::current();
+    std::string face_name = (family == FontFamily::Monospace) ? t.monospace_font : t.system_font;
+    auto wface = to_wide(face_name);
+    Gdiplus::Font font(wface.c_str(), font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
     Gdiplus::RectF layoutRect(0, 0, 10000, 10000);
     Gdiplus::RectF boundRect;
-    
+
     Gdiplus::StringFormat format;
     format.SetAlignment(Gdiplus::StringAlignmentNear);
     format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
@@ -360,13 +378,15 @@ Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, Fo
 }
 
 Painter::FontMetrics GDIPainter::font_metrics_gdiplus(float font_size, FontFamily family) {
-    const wchar_t *face = (family == FontFamily::Monospace) ? L"Consolas" : L"Segoe UI";
-    Gdiplus::FontFamily ff(face);
+    auto const &t = Theme::current();
+    std::string face_name = (family == FontFamily::Monospace) ? t.monospace_font : t.system_font;
+    auto wface = to_wide(face_name);
+    Gdiplus::FontFamily ff(wface.c_str());
     float em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
     float asc = static_cast<float>(ff.GetCellAscent(Gdiplus::FontStyleRegular));
     float desc = static_cast<float>(ff.GetCellDescent(Gdiplus::FontStyleRegular));
     float line = static_cast<float>(ff.GetLineSpacing(Gdiplus::FontStyleRegular));
-    
+
     float scale = font_size / em;
     return {asc * scale, desc * scale, line * scale};
 }
@@ -375,9 +395,13 @@ static int GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
     UINT num = 0;
     UINT size = 0;
     Gdiplus::GetImageEncodersSize(&num, &size);
-    if (size == 0) return -1;
+    if (size == 0) {
+        return -1;
+    }
     Gdiplus::ImageCodecInfo *pImageCodecInfo = (Gdiplus::ImageCodecInfo *)(malloc(size));
-    if (pImageCodecInfo == nullptr) return -1;
+    if (pImageCodecInfo == nullptr) {
+        return -1;
+    }
     Gdiplus::GetImageEncoders(num, size, pImageCodecInfo);
     for (UINT j = 0; j < num; ++j) {
         if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0) {
@@ -394,19 +418,23 @@ bool GDIPainter::save_to_png(Window *window, std::string const &path) {
     float scale = window->scale_factor();
     int lw = static_cast<int>(window->size().width);
     int lh = static_cast<int>(window->size().height);
-    if (lw <= 0 || lh <= 0) return false;
+    if (lw <= 0 || lh <= 0) {
+        return false;
+    }
     int pw = static_cast<int>(std::ceil(lw * scale));
     int ph = static_cast<int>(std::ceil(lh * scale));
 
     Gdiplus::Bitmap bitmap(pw, ph, PixelFormat32bppARGB);
     Gdiplus::Graphics g(&bitmap);
     g.Clear(Gdiplus::Color(255, 255, 255, 255));
-    
+
     GDIPainter painter(&g, scale);
     window->handle_paint(painter);
 
     CLSID pngClsid;
-    if (GetEncoderClsid(L"image/png", &pngClsid) == -1) return false;
+    if (GetEncoderClsid(L"image/png", &pngClsid) == -1) {
+        return false;
+    }
     auto wpath = to_wide(path);
     return bitmap.Save(wpath.c_str(), &pngClsid, nullptr) == Gdiplus::Ok;
 }

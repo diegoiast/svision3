@@ -462,6 +462,20 @@ std::string_view Win32PlatformApplication::painter_name() const {
 #endif
 }
 
+float Win32PlatformApplication::scale_factor() const {
+    return static_cast<float>(get_system_dpi()) / 96.0f;
+}
+
+SystemFonts Win32PlatformApplication::system_fonts() const {
+    NONCLIENTMETRICSW ncm = {sizeof(NONCLIENTMETRICSW)};
+    if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0)) {
+        float size = static_cast<float>(std::abs(ncm.lfMessageFont.lfHeight));
+        return {wide_to_utf8(ncm.lfMessageFont.lfFaceName), "Consolas", size};
+    }
+    // 12pt at 96 DPI = 16px
+    return {"Segoe UI", "Consolas", 16.0f};
+}
+
 std::unique_ptr<PlatformWindow>
 Win32PlatformApplication::create_window(std::string_view title, Size size,
                                         Window *owner) {

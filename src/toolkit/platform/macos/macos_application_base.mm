@@ -88,5 +88,15 @@ MacOSPlatformApplicationBase::measure_font_metrics(float font_size,
 
 std::string_view MacOSPlatformApplicationBase::name() const { return "macOS"; }
 std::string_view MacOSPlatformApplicationBase::painter_name() const { return "Native"; }
+float MacOSPlatformApplicationBase::scale_factor() const {
+    return static_cast<float>([[NSScreen mainScreen] backingScaleFactor]);
+}
+
+SystemFonts MacOSPlatformApplicationBase::system_fonts() const {
+    NSFont *sys = [NSFont systemFontOfSize:0];
+    NSFont *mono = [NSFont userFixedPitchFontOfSize:0];
+    return {[[sys familyName] UTF8String], [[mono familyName] UTF8String],
+            static_cast<float>([sys pointSize])};
+}
 
 } // namespace toolkit

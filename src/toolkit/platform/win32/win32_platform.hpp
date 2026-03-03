@@ -34,6 +34,8 @@ class Win32PlatformApplication : public PlatformApplication {
         float font_size, FontFamily font = FontFamily::System) override;
     std::string_view name() const override { return "Win32"; }
     std::string_view painter_name() const override;
+    float scale_factor() const override;
+    SystemFonts system_fonts() const override;
 
     HINSTANCE hinstance = nullptr;
     DWORD main_thread_id = 0;

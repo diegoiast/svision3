@@ -1,4 +1,5 @@
 #include "x11_platform.hpp"
+#include "../linux_utils.hpp"
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/painters/gl_painter.hpp"
 #include "toolkit/theme.hpp"
@@ -16,20 +17,15 @@
 #include <cairo.h>
 #include <spdlog/spdlog.h>
 
-#undef None
+// #undef None
 #undef CursorShape
 
-#include <algorithm>
-#include <chrono>
 #include <cmath>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
 #include <fcntl.h>
 #include <functional>
 #include <mutex>
 #include <poll.h>
-#include <string>
+#include <sstream>
 #include <unistd.h>
 #include <unordered_map>
 #include <vector>
@@ -467,7 +463,8 @@ int X11PlatformApplication::run() {
         {
             std::vector<X11PlatformWindow *> active_windows;
             for (auto &pair : d->window_map) {
-                active_windows.push_back(static_cast<X11PlatformWindow *>(pair.second.owner->platform_window()));
+                active_windows.push_back(
+                    static_cast<X11PlatformWindow *>(pair.second.owner->platform_window()));
             }
             for (auto *plat : active_windows) {
                 // Check if still in map (might have been closed during iteration)
@@ -649,9 +646,11 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
                            (static_cast<unsigned long>(bg.b * 255));
 
     float scale = d->scale;
-    w->xwindow = XCreateWindow(d->display, d->root, 0, 0, static_cast<unsigned>(size.width * scale),
-                               static_cast<unsigned>(size.height * scale), 0, depth, InputOutput,
-                               visual, CWEventMask | CWColormap | CWBackPixmap | CWBitGravity | CWBackingStore | CWBackPixel, &swa);
+    w->xwindow = XCreateWindow(
+        d->display, d->root, 0, 0, static_cast<unsigned>(size.width * scale),
+        static_cast<unsigned>(size.height * scale), 0, depth, InputOutput, visual,
+        CWEventMask | CWColormap | CWBackPixmap | CWBitGravity | CWBackingStore | CWBackPixel,
+        &swa);
     std::string t(title);
     XStoreName(d->display, w->xwindow, t.c_str());
     XChangeProperty(d->display, w->xwindow, d->net_wm_name, d->utf8_string, 8, PropModeReplace,
@@ -670,15 +669,15 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     impl_->needs_redraw = true;
 }
 
-X11PlatformWindow::~X11PlatformWindow() {
-    cleanup_resources();
-}
+X11PlatformWindow::~X11PlatformWindow() { cleanup_resources(); }
 
 void X11PlatformWindow::cleanup_resources() {
     auto *d = app_->impl_.get();
     auto *w = impl_.get();
 
-    if (w->xwindow == 0L) return;
+    if (w->xwindow == 0L) {
+        return;
+    }
 
     // Destroy surfaces BEFORE the window
     if (w->cairo_surface) {
@@ -736,13 +735,9 @@ void X11PlatformWindow::show() {
     XFlush(app_->impl_->display);
 }
 
-void X11PlatformWindow::close() {
-    cleanup_resources();
-}
+void X11PlatformWindow::close() { cleanup_resources(); }
 
-void X11PlatformWindow::request_redraw() {
-    impl_->needs_redraw = true;
-}
+void X11PlatformWindow::request_redraw() { impl_->needs_redraw = true; }
 
 void X11PlatformWindow::do_paint() {
     if (!impl_->needs_redraw || impl_->xwindow == 0L) {
@@ -1003,5 +998,11 @@ bool X11PlatformWindow::save_to_png(std::string const &path) {
 }
 
 float X11PlatformWindow::scale_factor() const { return app_->impl_->scale; }
+
+float X11PlatformApplication::scale_factor() const { return impl_->scale; }
+
+SystemFonts X11PlatformApplication::system_fonts() const {
+    return linux_utils::detect_system_fonts();
+}
 
 } // namespace toolkit

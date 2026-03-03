@@ -1,29 +1,26 @@
 #include "wl_platform.hpp"
+#include "../linux_utils.hpp"
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
-#include "xdg-shell-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
+#include "xdg-shell-client-protocol.h"
+
+#include <EGL/egl.h>
+#include <GL/gl.h>
+#include <cairo.h>
+#include <cmath>
+#include <fcntl.h>
+#include <poll.h>
+#include <spdlog/spdlog.h>
+#include <stdexcept>
+#include <sys/mman.h>
 #include <wayland-client.h>
 #include <wayland-cursor.h>
 #include <wayland-egl.h>
-#include <EGL/egl.h>
-#include <GL/gl.h>
 #include <xkbcommon/xkbcommon.h>
-
-#include <cairo.h>
-#include <spdlog/spdlog.h>
-
-#include <algorithm>
-#include <cmath>
-#include <cstring>
-#include <fcntl.h>
-#include <poll.h>
-#include <stdexcept>
-#include <sys/mman.h>
-#include <unistd.h>
 
 #ifdef __linux__
 #include <sys/syscall.h>
@@ -84,9 +81,8 @@ static void pointer_axis_source(void *data, wl_pointer *ptr, uint32_t source) {}
 static void pointer_axis_stop(void *data, wl_pointer *ptr, uint32_t time, uint32_t axis) {}
 static void pointer_axis_discrete(void *data, wl_pointer *ptr, uint32_t axis, int32_t discrete) {}
 static const wl_pointer_listener pointer_listener = {
-    pointer_enter, pointer_leave, pointer_motion, pointer_button,
-    pointer_axis,  pointer_frame, pointer_axis_source,
-    pointer_axis_stop, pointer_axis_discrete};
+    pointer_enter, pointer_leave,       pointer_motion,    pointer_button,       pointer_axis,
+    pointer_frame, pointer_axis_source, pointer_axis_stop, pointer_axis_discrete};
 
 static void keyboard_keymap(void *data, wl_keyboard *, uint32_t format, int32_t fd, uint32_t size);
 static void keyboard_enter(void *data, wl_keyboard *, uint32_t serial, wl_surface *surf,
@@ -128,8 +124,7 @@ static void output_scale(void *data, wl_output *, int32_t factor) {
 static const wl_output_listener output_listener = {output_geometry, output_mode, output_done,
                                                    output_scale};
 
-static void fractional_scale_preferred_scale(void *data, wp_fractional_scale_v1 *,
-                                             uint32_t scale) {
+static void fractional_scale_preferred_scale(void *data, wp_fractional_scale_v1 *, uint32_t scale) {
     auto *win = static_cast<WaylandPlatformWindow *>(data);
     float f = static_cast<float>(scale) / 120.0f;
     if (std::abs(f - win->scale) > 0.01f) {
@@ -251,8 +246,8 @@ static void registry_global(void *data, wl_registry *reg, uint32_t name, const c
         app->fractional_scale_manager = static_cast<wp_fractional_scale_manager_v1 *>(
             wl_registry_bind(reg, name, &wp_fractional_scale_manager_v1_interface, 1));
     } else if (strcmp(iface, "wp_viewporter") == 0) {
-        app->viewporter = static_cast<wp_viewporter *>(
-            wl_registry_bind(reg, name, &wp_viewporter_interface, 1));
+        app->viewporter =
+            static_cast<wp_viewporter *>(wl_registry_bind(reg, name, &wp_viewporter_interface, 1));
     }
 }
 
@@ -591,18 +586,26 @@ WaylandPlatformApplication::WaylandPlatformApplication() {
         if (egl_display != EGL_NO_DISPLAY) {
             EGLint major, minor;
             if (eglInitialize(egl_display, &major, &minor)) {
-                EGLint attr[] = {EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-                                 EGL_RED_SIZE, 8,
-                                 EGL_GREEN_SIZE, 8,
-                                 EGL_BLUE_SIZE, 8,
-                                 EGL_ALPHA_SIZE, 8,
-                                 EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+                EGLint attr[] = {EGL_SURFACE_TYPE,
+                                 EGL_WINDOW_BIT,
+                                 EGL_RED_SIZE,
+                                 8,
+                                 EGL_GREEN_SIZE,
+                                 8,
+                                 EGL_BLUE_SIZE,
+                                 8,
+                                 EGL_ALPHA_SIZE,
+                                 8,
+                                 EGL_RENDERABLE_TYPE,
+                                 EGL_OPENGL_BIT,
                                  EGL_NONE};
                 EGLint count;
-                if (eglChooseConfig(egl_display, attr, (EGLConfig *)&egl_config, 1, &count) && count > 0) {
+                if (eglChooseConfig(egl_display, attr, (EGLConfig *)&egl_config, 1, &count) &&
+                    count > 0) {
                     eglBindAPI(EGL_OPENGL_API);
                     EGLint ctx_attr[] = {EGL_NONE};
-                    egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, ctx_attr);
+                    egl_context =
+                        eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, ctx_attr);
                 }
             }
         }
@@ -623,7 +626,8 @@ WaylandPlatformApplication::WaylandPlatformApplication() {
     }
 
     wl_registry_destroy(registry);
-    spdlog::debug("Wayland backend initialized (scale={}, opengl={})", output_scale, opengl_requested);
+    spdlog::debug("Wayland backend initialized (scale={}, opengl={})", output_scale,
+                  opengl_requested);
 }
 
 WaylandPlatformApplication::~WaylandPlatformApplication() {
@@ -668,7 +672,9 @@ WaylandPlatformApplication::~WaylandPlatformApplication() {
     }
     if (display) {
         if (egl_display) {
-            if (egl_context) eglDestroyContext(egl_display, egl_context);
+            if (egl_context) {
+                eglDestroyContext(egl_display, egl_context);
+            }
             eglTerminate(egl_display);
         }
         wl_display_disconnect(display);
@@ -821,7 +827,8 @@ WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
         int pw = static_cast<int>(size.width) * app_->output_scale;
         int ph = static_cast<int>(size.height) * app_->output_scale;
         egl_window = wl_egl_window_create(surface, pw, ph);
-        egl_surface = eglCreateWindowSurface(app_->egl_display, app_->egl_config, (EGLNativeWindowType)egl_window, nullptr);
+        egl_surface = eglCreateWindowSurface(app_->egl_display, app_->egl_config,
+                                             (EGLNativeWindowType)egl_window, nullptr);
         buf_width = pw;
         buf_height = ph;
     }
@@ -989,7 +996,8 @@ void WaylandPlatformWindow::do_paint() {
     int pw = static_cast<int>(std::ceil(static_cast<float>(lw) * current_scale));
     int ph = static_cast<int>(std::ceil(static_cast<float>(lh) * current_scale));
 
-    spdlog::debug("Wayland painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph, current_scale);
+    spdlog::debug("Wayland painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph,
+                  current_scale);
 
     if (app_->opengl_requested && egl_surface) {
         eglMakeCurrent(app_->egl_display, egl_surface, egl_surface, app_->egl_context);
@@ -1076,9 +1084,8 @@ Size WaylandPlatformApplication::measure_text(std::string_view text, float font_
     return cairo_measure_text(text, font_size, font);
 }
 
-Painter::FontMetrics
-WaylandPlatformApplication::measure_font_metrics(float font_size,
-                                                 FontFamily font) {
+Painter::FontMetrics WaylandPlatformApplication::measure_font_metrics(float font_size,
+                                                                      FontFamily font) {
     return cairo_measure_font_metrics(font_size, font);
 }
 
@@ -1086,5 +1093,10 @@ std::string_view WaylandPlatformApplication::painter_name() const {
     return opengl_requested ? "OpenGL" : "Cairo";
 }
 
-} // namespace toolkit
+float WaylandPlatformApplication::scale_factor() const { return output_scale; }
 
+SystemFonts WaylandPlatformApplication::system_fonts() const {
+    return linux_utils::detect_system_fonts();
+}
+
+} // namespace toolkit

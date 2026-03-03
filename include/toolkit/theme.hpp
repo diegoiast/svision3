@@ -123,6 +123,8 @@ struct Palette {
     Color accent;
     Color alternate_bg = Color::rgb(0.94f, 0.94f, 0.94f);
     float font_size = 14.0f;
+    std::string system_font = "sans-serif";
+    std::string monospace_font = "monospace";
     float corner_radius = 0.0f;
     float border_width = 1.0f;
     bool beveled = false;
@@ -138,6 +140,8 @@ inline constexpr int theme_style_count = 6;
 
 struct Theme {
     std::string name;
+    std::string system_font;
+    std::string monospace_font;
     WindowStyle window;
     ButtonStyle button;
     LabelStyle label;

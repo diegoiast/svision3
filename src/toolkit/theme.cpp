@@ -1,6 +1,8 @@
 #include "toolkit/theme.hpp"
+#include "toolkit/platform.hpp"
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 
 namespace toolkit {
@@ -50,6 +52,8 @@ static void apply_base(WidgetStyle &ws, Palette const &p) {
 Theme Theme::from_palette(std::string name, Palette const &p) {
     Theme t;
     t.name = std::move(name);
+    t.system_font = p.system_font;
+    t.monospace_font = p.monospace_font;
 
     t.window.background = p.window_bg;
 
@@ -170,13 +174,27 @@ static void apply_scheme_colors(Palette &p, ColorScheme scheme,
 
 Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
     Palette p;
+    
+    // Default fallback values
+    p.system_font    = "sans-serif";
+    p.monospace_font = "monospace";
+    p.font_size      = 14.0f;
+
+    if (auto *plat = detail::current_platform()) {
+        auto sf = plat->system_fonts();
+        if (!sf.system.empty()) p.system_font = sf.system;
+        if (!sf.monospace.empty()) p.monospace_font = sf.monospace;
+        if (sf.font_size > 0) {
+            // Convert points to logical pixels (standard 96 DPI)
+            p.font_size = std::floor(sf.font_size * (96.0f / 72.0f));
+        }
+    }
 
     Color rose    = Color::rgb(0.89f, 0.27f, 0.50f);
     Color roseLt  = Color::rgb(0.93f, 0.40f, 0.58f);
 
     switch (style) {
     case ThemeStyle::MacOS:
-        p.font_size     = 13.0f;
         p.corner_radius = 6.0f;
         p.border_width  = 0.5f;
         apply_scheme_colors(p, scheme,
@@ -202,7 +220,6 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
         break;
 
     case ThemeStyle::Win95:
-        p.font_size = 12.0f;
         p.beveled   = true;
         switch (scheme) {
         case ColorScheme::Light:
@@ -238,7 +255,6 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
         break;
 
     case ThemeStyle::GNOME:
-        p.font_size     = 15.0f;
         p.corner_radius = 8.0f;
         apply_scheme_colors(p, scheme,
             {Color::rgb(0.98f, 0.98f, 0.98f), gray(1.0f),                       Color::rgb(0.18f, 0.20f, 0.21f), Color::rgb(0.86f, 0.84f, 0.83f), Color::rgb(0.21f, 0.52f, 0.89f), gray(0.90f)},

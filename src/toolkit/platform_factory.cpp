@@ -1,6 +1,7 @@
 #include "toolkit/application.hpp"
 #include "toolkit/clipboard.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 
 #include <cstdlib>
@@ -95,6 +96,14 @@ struct Application::Impl {
 Application::Application() : impl_(std::make_unique<Impl>()) {
     impl_->platform = create_platform_application();
     detail::set_current_platform(impl_->platform.get());
+
+    // Refresh theme now that platform is active to detect correct fonts/scale
+    Theme::set_current(Theme::create(Theme::detect_system_style()));
+
+    auto const &theme = Theme::current();
+    spdlog::info("Theme: {} (Font: '{}' {}px, Monospace: '{}', Scale: {:.2f})",
+                 theme.name, theme.system_font, theme.label.font_size,
+                 theme.monospace_font, impl_->platform->scale_factor());
 }
 
 Application::~Application() { detail::set_current_platform(nullptr); }
