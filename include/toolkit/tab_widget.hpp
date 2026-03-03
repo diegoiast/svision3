@@ -11,12 +11,22 @@
 
 namespace toolkit {
 
+enum class TabOrientation {
+    North,
+    South,
+    East,
+    West
+};
+
 class TabWidget : public Widget {
   public:
     void add_tab(std::string title, std::unique_ptr<Widget> content);
 
     int current_index() const { return current_; }
     void set_current(int index);
+
+    TabOrientation orientation() const { return orientation_; }
+    void set_orientation(TabOrientation o);
 
     std::function<void(int index, std::string const &title)> on_tab_close;
 
@@ -41,8 +51,8 @@ class TabWidget : public Widget {
     static constexpr float close_btn_size_ = 14.0f;
     static constexpr float close_btn_gap_ = 6.0f;
 
-    float tab_bar_height() const;
-    float tab_width(int i) const;
+    float tab_bar_thickness() const;
+    float tab_size(int i) const;
     void layout_content();
 
     struct HitResult {
@@ -52,6 +62,7 @@ class TabWidget : public Widget {
     HitResult hit_test_tab(Point p) const;
 
     std::vector<Tab> tabs_;
+    TabOrientation orientation_ = TabOrientation::North;
     int current_ = 0;
     int hovered_tab_ = -1;
     int hovered_close_ = -1;

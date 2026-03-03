@@ -303,7 +303,7 @@ int main(int argc, char *argv[]) {
     label->set_tooltip(label->text());
     tab1->add_widget(std::move(label));
 
-    auto input = std::make_unique<toolkit::LineInput>("Type here...");
+    auto input = std::make_unique<toolkit::LineInput>("Type here my friend...");
     input->set_tooltip("Enter any text");
     tab1->add_widget(std::move(input));
 
@@ -502,6 +502,38 @@ int main(int argc, char *argv[]) {
     tab5->add_widget(std::move(editor), 1);
 
     tabs->add_tab("Editor", std::move(tab5));
+
+    // ── Tab 6: Tabs (Orientations) ────────────────────────────────────────
+    auto tab6 = std::make_unique<toolkit::VBoxLayout>();
+    // tab6->set_margins({10, 10, 10, 10});
+    tab6->set_spacing(10);
+
+    auto south_tabs = std::make_unique<toolkit::TabWidget>();
+    south_tabs->set_orientation(toolkit::TabOrientation::South);
+    south_tabs->add_tab("South 1", std::make_unique<toolkit::Label>("South Tab content 1"));
+    south_tabs->add_tab("South 2", std::make_unique<toolkit::Label>("South Tab content 2"));
+    south_tabs->add_tab("South 3", std::make_unique<toolkit::Label>("South Tab content 3"));
+
+    auto side_row = std::make_unique<toolkit::HBoxLayout>();
+    side_row->set_spacing(10);
+
+    auto west_tabs = std::make_unique<toolkit::TabWidget>();
+    west_tabs->set_orientation(toolkit::TabOrientation::West);
+    west_tabs->add_tab("West 1", std::make_unique<toolkit::Label>("West Tab content 1"));
+    west_tabs->add_tab("West 2", std::make_unique<toolkit::Label>("West Tab content 2"));
+
+    auto east_tabs = std::make_unique<toolkit::TabWidget>();
+    east_tabs->set_orientation(toolkit::TabOrientation::East);
+    east_tabs->add_tab("East 1", std::make_unique<toolkit::Label>("East Tab content 1"));
+    east_tabs->add_tab("East 2", std::make_unique<toolkit::Label>("East Tab content 2"));
+
+    side_row->add_widget(std::move(west_tabs), 1);
+    side_row->add_widget(std::move(east_tabs), 1);
+
+    tab6->add_widget(std::move(side_row), 1);
+    tab6->add_widget(std::move(south_tabs), 0);
+
+    tabs->add_tab("Tabs", std::move(tab6));
 
     root->add_widget(std::move(tabs), 1);
 

@@ -19,13 +19,19 @@ void TabWidget::set_current(int index) {
     }
 }
 
-float TabWidget::tab_bar_height() const {
+void TabWidget::set_orientation(TabOrientation o) {
+    if (orientation_ == o) return;
+    orientation_ = o;
+    layout_content();
+}
+
+float TabWidget::tab_bar_thickness() const {
     auto const &style = Theme::current().tab_widget;
     auto fm = Painter::measure_font_metrics(style.font_size);
     return fm.height + style.tab_padding_v * 2;
 }
 
-float TabWidget::tab_width(int i) const {
+float TabWidget::tab_size(int i) const {
     auto const &style = Theme::current().tab_widget;
     float tw = Painter::measure_text(tabs_[i].title, style.font_size).width;
     return tw + close_btn_size_ + close_btn_gap_ + style.tab_padding_h * 2;
@@ -33,31 +39,74 @@ float TabWidget::tab_width(int i) const {
 
 void TabWidget::layout_content() {
     if (tabs_.empty()) return;
-    float bar_h = tab_bar_height();
-    Rect content_rect{rect_.x, rect_.y + bar_h,
-                      rect_.width, rect_.height - bar_h};
+    float thickness = tab_bar_thickness();
+    Rect content_rect = rect_;
+    switch (orientation_) {
+    case TabOrientation::North:
+        content_rect.y += thickness;
+        content_rect.height -= thickness;
+        break;
+    case TabOrientation::South:
+        content_rect.height -= thickness;
+        break;
+    case TabOrientation::East:
+        content_rect.width -= thickness;
+        break;
+    case TabOrientation::West:
+        content_rect.x += thickness;
+        content_rect.width -= thickness;
+        break;
+    }
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size()))
         tabs_[current_].content->set_rect(content_rect);
 }
 
 TabWidget::HitResult TabWidget::hit_test_tab(Point p) const {
     auto const &style = Theme::current().tab_widget;
-    float bar_h = tab_bar_height();
-    if (p.y < rect_.y || p.y >= rect_.y + bar_h) return {};
+    float thickness = tab_bar_thickness();
+    bool vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
 
-    float x = rect_.x;
-    for (int i = 0; i < static_cast<int>(tabs_.size()); i++) {
-        float w = tab_width(i);
-        if (p.x >= x && p.x < x + w) {
-            float text_w = Painter::measure_text(tabs_[i].title, style.font_size).width;
-            float close_x = x + style.tab_padding_h + text_w + close_btn_gap_;
-            float close_cy = rect_.y + bar_h / 2.0f;
-            float hr = close_btn_size_ / 2.0f + 2.0f;
-            bool on_close = (p.x >= close_x - 2.0f && p.x <= close_x + close_btn_size_ + 2.0f &&
-                             p.y >= close_cy - hr && p.y <= close_cy + hr);
-            return {i, on_close};
+    float x = rect_.x, y = rect_.y;
+    if (orientation_ == TabOrientation::South) y = rect_.y + rect_.height - thickness;
+    if (orientation_ == TabOrientation::East) x = rect_.x + rect_.width - thickness;
+
+    if (vertical) {
+        if (p.x < x || p.x >= x + thickness) return {};
+        float draw_y = rect_.y;
+        for (int i = 0; i < static_cast<int>(tabs_.size()); i++) {
+            float h = tab_size(i);
+            if (p.y >= draw_y && p.y < draw_y + h) {
+                float text_w = Painter::measure_text(tabs_[i].title, style.font_size).width;
+                float close_cx = x + thickness / 2.0f;
+                float close_cy;
+                if (orientation_ == TabOrientation::West) {
+                    close_cy = draw_y + h - style.tab_padding_h - text_w - close_btn_gap_ - close_btn_size_ / 2.0f;
+                } else {
+                    close_cy = draw_y + style.tab_padding_h + text_w + close_btn_gap_ + close_btn_size_ / 2.0f;
+                }
+                float hr = close_btn_size_ / 2.0f + 2.0f;
+                bool on_close = (p.x >= close_cx - hr && p.x <= close_cx + hr &&
+                                 p.y >= close_cy - hr && p.y <= close_cy + hr);
+                return {i, on_close};
+            }
+            draw_y += h;
         }
-        x += w;
+    } else {
+        if (p.y < y || p.y >= y + thickness) return {};
+        float draw_x = rect_.x;
+        for (int i = 0; i < static_cast<int>(tabs_.size()); i++) {
+            float w = tab_size(i);
+            if (p.x >= draw_x && p.x < draw_x + w) {
+                float text_w = Painter::measure_text(tabs_[i].title, style.font_size).width;
+                float close_x = draw_x + style.tab_padding_h + text_w + close_btn_gap_;
+                float close_cy = y + thickness / 2.0f;
+                float hr = close_btn_size_ / 2.0f + 2.0f;
+                bool on_close = (p.x >= close_x - 2.0f && p.x <= close_x + close_btn_size_ + 2.0f &&
+                                 p.y >= close_cy - hr && p.y <= close_cy + hr);
+                return {i, on_close};
+            }
+            draw_x += w;
+        }
     }
     return {};
 }
@@ -76,17 +125,28 @@ void TabWidget::set_window(Window *w) {
 void TabWidget::paint(Painter &painter) {
     if (tabs_.empty()) return;
 
-    painter.push_clip(rect_);
-
     auto const &style = Theme::current().tab_widget;
-    float bar_h = tab_bar_height();
+    float thickness = tab_bar_thickness();
     auto fm = painter.font_metrics(style.font_size);
+    bool vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
 
-    painter.fill_rect({rect_.x, rect_.y, rect_.width, bar_h}, style.tab_inactive_bg);
+    float bar_x = rect_.x, bar_y = rect_.y;
+    float bar_w = rect_.width, bar_h = rect_.height;
 
-    auto paint_tab = [&](int i, float draw_x) {
-        float tw_total = tab_width(i);
-        Rect tab_rect{draw_x, rect_.y, tw_total, bar_h};
+    if (vertical) {
+        bar_w = thickness;
+        if (orientation_ == TabOrientation::East) bar_x = rect_.x + rect_.width - thickness;
+    } else {
+        bar_h = thickness;
+        if (orientation_ == TabOrientation::South) bar_y = rect_.y + rect_.height - thickness;
+    }
+
+    painter.fill_rect({bar_x, bar_y, bar_w, bar_h}, style.tab_inactive_bg);
+
+    auto paint_tab = [&](int i, float draw_x, float draw_y) {
+        float size = tab_size(i);
+        Rect tab_rect = vertical ? Rect{bar_x, draw_y, thickness, size}
+                                 : Rect{draw_x, bar_y, size, thickness};
         bool active = (i == current_);
         bool hovered = (i == hovered_tab_ && !active);
 
@@ -97,23 +157,48 @@ void TabWidget::paint(Painter &painter) {
 
         if (active && style.corner_radius > 0) {
             float r = style.corner_radius;
-            Rect top{tab_rect.x, tab_rect.y, tab_rect.width, r};
-            painter.fill_rounded_rect(top, bg, r);
-            Rect bottom{tab_rect.x, tab_rect.y + r, tab_rect.width, tab_rect.height - r};
-            painter.fill_rect(bottom, bg);
+            // Simplified: just draw rounded rect for now, properly clipping would be better
+            painter.fill_rounded_rect(tab_rect, bg, r);
         } else {
             painter.fill_rect(tab_rect, bg);
         }
 
-        float text_y = tab_rect.y + (bar_h - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(tabs_[i].title,
-                         {tab_rect.x + style.tab_padding_h, text_y},
-                         text_col, style.font_size);
+        painter.push_clip(tab_rect);
+        if (vertical) {
+            if (orientation_ == TabOrientation::West) {
+                // Bottom to top (CCW): Baseline is on the right of the text
+                float text_x = tab_rect.x + (tab_rect.width - fm.height) / 2.0f + fm.ascent;
+                painter.draw_text(tabs_[i].title, {text_x, tab_rect.y + size - style.tab_padding_h},
+                                  text_col, style.font_size, FontFamily::System,
+                                  Painter::TextOrientation::VerticalCCW);
+            } else {
+                // Top to bottom (CW): Baseline is on the left of the text
+                float text_x = tab_rect.x + (tab_rect.width + fm.height) / 2.0f - fm.ascent;
+                painter.draw_text(tabs_[i].title, {text_x, tab_rect.y + style.tab_padding_h},
+                                  text_col, style.font_size, FontFamily::System,
+                                  Painter::TextOrientation::VerticalCW);
+            }
+        } else {
+            float text_y = tab_rect.y + (tab_rect.height - fm.height) / 2.0f + fm.ascent;
+            painter.draw_text(tabs_[i].title,
+                             {tab_rect.x + style.tab_padding_h, text_y},
+                             text_col, style.font_size);
+        }
 
         float text_w = painter.text_size(tabs_[i].title, style.font_size).width;
-        float close_x = tab_rect.x + style.tab_padding_h + text_w + close_btn_gap_;
-        float close_cy = tab_rect.y + bar_h / 2.0f;
-        float close_cx = close_x + close_btn_size_ / 2.0f;
+        float close_cx, close_cy;
+        if (vertical) {
+            close_cx = tab_rect.x + tab_rect.width / 2.0f;
+            if (orientation_ == TabOrientation::West) {
+                close_cy = tab_rect.y + size - style.tab_padding_h - text_w - close_btn_gap_ - close_btn_size_ / 2.0f;
+            } else {
+                close_cy = tab_rect.y + style.tab_padding_h + text_w + close_btn_gap_ + close_btn_size_ / 2.0f;
+            }
+        } else {
+            float close_x = tab_rect.x + style.tab_padding_h + text_w + close_btn_gap_;
+            close_cy = tab_rect.y + tab_rect.height / 2.0f;
+            close_cx = close_x + close_btn_size_ / 2.0f;
+        }
 
         if (i == hovered_close_) {
             float cr = close_btn_size_ / 2.0f + 1.0f;
@@ -128,32 +213,48 @@ void TabWidget::paint(Painter &painter) {
                          {close_cx + cs, close_cy + cs}, x_col, 1.5f);
         painter.draw_line({close_cx + cs, close_cy - cs},
                          {close_cx - cs, close_cy + cs}, x_col, 1.5f);
+        painter.pop_clip();
 
         if (active) {
-            painter.fill_rect({tab_rect.x, tab_rect.y + bar_h - 2, tab_rect.width, 2},
-                              Theme::current().combobox.border_focused);
+            Rect indicator;
+            if (orientation_ == TabOrientation::North) indicator = {tab_rect.x, tab_rect.y + thickness - 3, tab_rect.width, 2};
+            else if (orientation_ == TabOrientation::South) indicator = {tab_rect.x, tab_rect.y + 1, tab_rect.width, 2};
+            else if (orientation_ == TabOrientation::West) indicator = {tab_rect.x + thickness - 3, tab_rect.y, 2, tab_rect.height};
+            else if (orientation_ == TabOrientation::East) indicator = {tab_rect.x + 1, tab_rect.y, 2, tab_rect.height};
+            painter.fill_rect(indicator, Theme::current().combobox.border_focused);
         }
     };
 
-    // Draw non-dragged tabs first, then the dragged tab on top
-    float x = rect_.x;
-    float drag_draw_x = 0;
+    float cur_x = rect_.x, cur_y = rect_.y;
+    float drag_draw_x = 0, drag_draw_y = 0;
     for (int i = 0; i < static_cast<int>(tabs_.size()); i++) {
-        float tw_total = tab_width(i);
+        float size = tab_size(i);
         if (dragging_ && i == drag_tab_) {
-            drag_draw_x = x + drag_offset_x_;
+            if (vertical) {
+                drag_draw_x = bar_x;
+                drag_draw_y = cur_y + drag_offset_x_;
+            } else {
+                drag_draw_x = cur_x + drag_offset_x_;
+                drag_draw_y = bar_y;
+            }
         } else {
-            paint_tab(i, x);
+            paint_tab(i, cur_x, cur_y);
         }
-        x += tw_total;
+        if (vertical) cur_y += size; else cur_x += size;
     }
-    if (dragging_ && drag_tab_ >= 0)
-        paint_tab(drag_tab_, drag_draw_x);
+    if (dragging_ && drag_tab_ >= 0) {
+        paint_tab(drag_tab_, drag_draw_x, drag_draw_y);
+    }
 
     if (style.border_width > 0) {
-        painter.draw_line({rect_.x, rect_.y + bar_h},
-                         {rect_.x + rect_.width, rect_.y + bar_h},
-                         style.border, style.border_width);
+        if (orientation_ == TabOrientation::North)
+            painter.draw_line({rect_.x, rect_.y + thickness}, {rect_.x + rect_.width, rect_.y + thickness}, style.border, style.border_width);
+        else if (orientation_ == TabOrientation::South)
+            painter.draw_line({rect_.x, rect_.y + rect_.height - thickness}, {rect_.x + rect_.width, rect_.y + rect_.height - thickness}, style.border, style.border_width);
+        else if (orientation_ == TabOrientation::West)
+            painter.draw_line({rect_.x + thickness, rect_.y}, {rect_.x + thickness, rect_.y + rect_.height}, style.border, style.border_width);
+        else if (orientation_ == TabOrientation::East)
+            painter.draw_line({rect_.x + rect_.width - thickness, rect_.y}, {rect_.x + rect_.width - thickness, rect_.y + rect_.height}, style.border, style.border_width);
     }
 
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
@@ -163,15 +264,22 @@ void TabWidget::paint(Painter &painter) {
         content->paint(painter);
         painter.pop_clip();
     }
-    painter.pop_clip();
 }
 
 bool TabWidget::handle_mouse(MouseEvent const &event) {
-    float bar_h = tab_bar_height();
-    bool in_bar = event.position.y >= rect_.y &&
-                  event.position.y < rect_.y + bar_h &&
-                  event.position.x >= rect_.x &&
-                  event.position.x < rect_.x + rect_.width;
+    float thickness = tab_bar_thickness();
+    bool vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
+
+    bool in_bar = false;
+    if (vertical) {
+        float bar_x = (orientation_ == TabOrientation::West) ? rect_.x : rect_.x + rect_.width - thickness;
+        in_bar = event.position.x >= bar_x && event.position.x < bar_x + thickness &&
+                 event.position.y >= rect_.y && event.position.y < rect_.y + rect_.height;
+    } else {
+        float bar_y = (orientation_ == TabOrientation::North) ? rect_.y : rect_.y + rect_.height - thickness;
+        in_bar = event.position.y >= bar_y && event.position.y < bar_y + thickness &&
+                 event.position.x >= rect_.x && event.position.x < rect_.x + rect_.width;
+    }
 
     if (event.type == MouseEvent::Type::Move) {
         if (in_bar) {
@@ -200,7 +308,7 @@ bool TabWidget::handle_mouse(MouseEvent const &event) {
                 set_current(hr.tab);
             dragging_ = true;
             drag_tab_ = hr.tab;
-            drag_start_x_ = event.position.x;
+            drag_start_x_ = vertical ? event.position.y : event.position.x;
             drag_offset_x_ = 0;
             return true;
         }
@@ -208,34 +316,34 @@ bool TabWidget::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Drag && dragging_) {
-        drag_offset_x_ = event.position.x - drag_start_x_;
+        drag_offset_x_ = (vertical ? event.position.y : event.position.x) - drag_start_x_;
 
-        float x = rect_.x;
+        float pos = vertical ? rect_.y : rect_.x;
         for (int i = 0; i < drag_tab_; i++)
-            x += tab_width(i);
-        float dragged_center = x + tab_width(drag_tab_) / 2.0f + drag_offset_x_;
+            pos += tab_size(i);
+        float dragged_center = pos + tab_size(drag_tab_) / 2.0f + drag_offset_x_;
 
         if (drag_tab_ > 0) {
-            float prev_x = x - tab_width(drag_tab_ - 1);
-            float prev_mid = prev_x + tab_width(drag_tab_ - 1) / 2.0f;
+            float prev_pos = pos - tab_size(drag_tab_ - 1);
+            float prev_mid = prev_pos + tab_size(drag_tab_ - 1) / 2.0f;
             if (dragged_center < prev_mid) {
                 std::swap(tabs_[drag_tab_], tabs_[drag_tab_ - 1]);
                 if (current_ == drag_tab_) current_ = drag_tab_ - 1;
                 else if (current_ == drag_tab_ - 1) current_ = drag_tab_;
                 drag_tab_--;
-                drag_start_x_ = event.position.x;
+                drag_start_x_ = vertical ? event.position.y : event.position.x;
                 drag_offset_x_ = 0;
             }
         }
         if (drag_tab_ < static_cast<int>(tabs_.size()) - 1) {
-            float next_x = x + tab_width(drag_tab_);
-            float next_mid = next_x + tab_width(drag_tab_ + 1) / 2.0f;
+            float next_pos = pos + tab_size(drag_tab_);
+            float next_mid = next_pos + tab_size(drag_tab_ + 1) / 2.0f;
             if (dragged_center > next_mid) {
                 std::swap(tabs_[drag_tab_], tabs_[drag_tab_ + 1]);
                 if (current_ == drag_tab_) current_ = drag_tab_ + 1;
                 else if (current_ == drag_tab_ + 1) current_ = drag_tab_;
                 drag_tab_++;
-                drag_start_x_ = event.position.x;
+                drag_start_x_ = vertical ? event.position.y : event.position.x;
                 drag_offset_x_ = 0;
             }
         }
@@ -264,17 +372,22 @@ bool TabWidget::handle_key(KeyEvent const &event) {
 }
 
 Size TabWidget::size_hint() const {
-    float bar_h = tab_bar_height();
+    float thickness = tab_bar_thickness();
     float max_w = 0, max_h = 0;
     for (auto const &tab : tabs_) {
         auto hint = tab.content->size_hint();
         max_w = std::max(max_w, hint.width);
         max_h = std::max(max_h, hint.height);
     }
-    float tabs_w = 0;
+    float total_tab_size = 0;
     for (int i = 0; i < static_cast<int>(tabs_.size()); i++)
-        tabs_w += tab_width(i);
-    return {std::max(max_w, tabs_w), max_h + bar_h};
+        total_tab_size += tab_size(i);
+
+    if (orientation_ == TabOrientation::North || orientation_ == TabOrientation::South) {
+        return {std::max(max_w, total_tab_size), max_h + thickness};
+    } else {
+        return {max_w + thickness, std::max(max_h, total_tab_size)};
+    }
 }
 
 Widget *TabWidget::find_focusable_at(Point p) {
