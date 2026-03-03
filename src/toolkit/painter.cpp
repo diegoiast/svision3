@@ -10,17 +10,28 @@ namespace toolkit {
 
 void Painter::draw_frame(Rect const &rect, Color bg, Color border, WidgetStyle const &style,
                          bool sunken) {
+    // Fill background first at full size
+    if (style.corner_radius > 0.0f) {
+        fill_rounded_rect(rect, bg, style.corner_radius);
+    } else {
+        fill_rect(rect, bg);
+    }
+
+    if (style.border_width <= 0) return;
+
+    // Draw border just inside the rectangle to avoid clipping issues.
+    // Stroke is centered on the path, so we inset by half the width.
+    float inset = style.border_width / 2.0f;
+    Rect border_rect = rect.inset(inset);
+
     if (sunken) {
-        // Simple sunken effect - darkened border but original background
-        draw_rect(rect, border.darken(0.2f), style.border_width);
-        fill_rect(rect.inset(style.border_width), bg);
+        draw_rect(border_rect, border.darken(0.2f), style.border_width);
     } else {
         if (style.corner_radius > 0.0f) {
-            fill_rounded_rect(rect, bg, style.corner_radius);
-            draw_rounded_rect(rect, border, style.corner_radius, style.border_width);
+            draw_rounded_rect(border_rect, border, std::max(0.0f, style.corner_radius - inset),
+                              style.border_width);
         } else {
-            fill_rect(rect, bg);
-            draw_rect(rect, border, style.border_width);
+            draw_rect(border_rect, border, style.border_width);
         }
     }
 }
@@ -28,10 +39,14 @@ void Painter::draw_frame(Rect const &rect, Color bg, Color border, WidgetStyle c
 void Painter::draw_focus_ring(Rect const &rect, float corner_radius) {
     Color ring = Theme::current().line_input.border_focused;
     ring.a = 0.5f;
+    float lw = 2.0f;
+    // Draw 1 pixel inside the rectangle to ensure it's fully visible and not clipped
+    float inset = lw / 2.0f + 0.5f;
+    Rect r = rect.inset(inset);
     if (corner_radius > 0.0f) {
-        draw_rounded_rect(rect.inset(-2), ring, corner_radius + 2, 2.0f);
+        draw_rounded_rect(r, ring, std::max(0.0f, corner_radius - inset), lw);
     } else {
-        draw_rect(rect.inset(-2), ring, 2.0f);
+        draw_rect(r, ring, lw);
     }
 }
 

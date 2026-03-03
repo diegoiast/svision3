@@ -125,7 +125,7 @@ void VBoxLayout::paint(Painter &painter) {
             continue;
         }
         auto r = item.widget->rect();
-        painter.push_clip({r.x - 3, r.y - 3, r.width + 6, r.height + 6});
+        painter.push_clip(r);
         item.widget->paint(painter);
         painter.pop_clip();
     }
@@ -323,7 +323,7 @@ void HBoxLayout::paint(Painter &painter) {
             continue;
         }
         auto r = item.widget->rect();
-        painter.push_clip({r.x - 3, r.y - 3, r.width + 6, r.height + 6});
+        painter.push_clip(r);
         item.widget->paint(painter);
         painter.pop_clip();
     }

@@ -34,11 +34,7 @@ void CairoPainter::set_line_style(LineStyle style) {
 
 void CairoPainter::fill_rect(Rect const &rect, Color const &color) {
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
-    double x = std::round(rect.x);
-    double y = std::round(rect.y);
-    double w = std::round(rect.width);
-    double h = std::round(rect.height);
-    cairo_rectangle(cr_, x, y, w, h);
+    cairo_rectangle(cr_, rect.x, rect.y, rect.width, rect.height);
     cairo_fill(cr_);
 }
 
@@ -46,12 +42,7 @@ void CairoPainter::draw_rect(Rect const &rect, Color const &color,
                               float line_width) {
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);
-    double offset = (static_cast<int>(line_width) % 2) == 1 ? 0.5 : 0.0;
-    double x = std::round(rect.x) + offset;
-    double y = std::round(rect.y) + offset;
-    double w = std::round(rect.width);
-    double h = std::round(rect.height);
-    cairo_rectangle(cr_, x, y, w, h);
+    cairo_rectangle(cr_, rect.x, rect.y, rect.width, rect.height);
     cairo_stroke(cr_);
 }
 
@@ -68,23 +59,14 @@ static void rounded_rect_path(cairo_t *cr, Rect const &r, float radius) {
 
 void CairoPainter::fill_rounded_rect(Rect const &rect, Color const &color,
                                       float radius) {
-    double x = std::round(rect.x);
-    double y = std::round(rect.y);
-    double w = std::round(rect.width);
-    double h = std::round(rect.height);
-    rounded_rect_path(cr_, {static_cast<float>(x), static_cast<float>(y), static_cast<float>(w), static_cast<float>(h)}, radius);
+    rounded_rect_path(cr_, rect, radius);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_fill(cr_);
 }
 
 void CairoPainter::draw_rounded_rect(Rect const &rect, Color const &color,
                                       float radius, float line_width) {
-    double offset = (static_cast<int>(line_width) % 2) == 1 ? 0.5 : 0.0;
-    double x = std::round(rect.x) + offset;
-    double y = std::round(rect.y) + offset;
-    double w = std::round(rect.width);
-    double h = std::round(rect.height);
-    rounded_rect_path(cr_, {static_cast<float>(x), static_cast<float>(y), static_cast<float>(w), static_cast<float>(h)}, radius);
+    rounded_rect_path(cr_, rect, radius);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);
     cairo_stroke(cr_);
@@ -94,9 +76,8 @@ void CairoPainter::draw_line(Point from, Point to, Color const &color,
                              float line_width) {
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);
-    double offset = (static_cast<int>(line_width) % 2) == 1 ? 0.5 : 0.0;
-    cairo_move_to(cr_, std::round(from.x) + offset, std::round(from.y) + offset);
-    cairo_line_to(cr_, std::round(to.x) + offset, std::round(to.y) + offset);
+    cairo_move_to(cr_, from.x, from.y);
+    cairo_line_to(cr_, to.x, to.y);
     cairo_stroke(cr_);
 }
 void CairoPainter::fill_circle(Point center, float radius,

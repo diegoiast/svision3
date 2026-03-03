@@ -97,15 +97,11 @@ void GLPainter::apply_line_style() {
 void GLPainter::fill_rect(Rect const &r, Color const &c) {
     glDisable(GL_LINE_STIPPLE);
     set_color(c);
-    float x = Painter::snap_to_pixel(r.x, scale_);
-    float y = Painter::snap_to_pixel(r.y, scale_);
-    float w = Painter::snap_to_pixel(r.width, scale_);
-    float h = Painter::snap_to_pixel(r.height, scale_);
     glBegin(GL_QUADS);
-    glVertex2f(x, y);
-    glVertex2f(x + w, y);
-    glVertex2f(x + w, y + h);
-    glVertex2f(x, y + h);
+    glVertex2f(r.x, r.y);
+    glVertex2f(r.x + r.width, r.y);
+    glVertex2f(r.x + r.width, r.y + r.height);
+    glVertex2f(r.x, r.y + r.height);
     glEnd();
 }
 
@@ -116,17 +112,11 @@ void GLPainter::draw_rect(Rect const &r, Color const &c, float lw) {
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     
-    float offset = (static_cast<int>(lw * scale_) % 2) == 1 ? (0.5f / scale_) : 0.0f;
-    float x = Painter::snap_to_pixel(r.x, scale_) + offset;
-    float y = Painter::snap_to_pixel(r.y, scale_) + offset;
-    float w = Painter::snap_to_pixel(r.width, scale_) - (offset * 2.0f);
-    float h = Painter::snap_to_pixel(r.height, scale_) - (offset * 2.0f);
-    
     glBegin(GL_LINE_LOOP);
-    glVertex2f(x, y);
-    glVertex2f(x + w, y);
-    glVertex2f(x + w, y + h);
-    glVertex2f(x, y + h);
+    glVertex2f(r.x, r.y);
+    glVertex2f(r.x + r.width, r.y);
+    glVertex2f(r.x + r.width, r.y + r.height);
+    glVertex2f(r.x, r.y + r.height);
     glEnd();
     glDisable(GL_LINE_SMOOTH);
 }
@@ -134,16 +124,12 @@ void GLPainter::draw_rect(Rect const &r, Color const &c, float lw) {
 void GLPainter::fill_rounded_rect(Rect const &r, Color const &c,
                                    float radius) {
     glDisable(GL_LINE_STIPPLE);
-    float x = Painter::snap_to_pixel(r.x, scale_);
-    float y = Painter::snap_to_pixel(r.y, scale_);
-    float w = Painter::snap_to_pixel(r.width, scale_);
-    float h = Painter::snap_to_pixel(r.height, scale_);
-    float rad = std::min({radius, w / 2.0f, h / 2.0f});
-    if (rad <= 0) { fill_rect({x, y, w, h}, c); return; }
+    float rad = std::min({radius, r.width / 2.0f, r.height / 2.0f});
+    if (rad <= 0) { fill_rect(r, c); return; }
     set_color(c);
-    auto pts = rounded_rect_verts(x, y, w, h, rad);
+    auto pts = rounded_rect_verts(r.x, r.y, r.width, r.height, rad);
     glBegin(GL_TRIANGLE_FAN);
-    glVertex2f(x + w / 2, y + h / 2);
+    glVertex2f(r.x + r.width / 2, r.y + r.height / 2);
     for (auto &[px, py] : pts) glVertex2f(px, py);
     glVertex2f(pts[0].first, pts[0].second);
     glEnd();
@@ -151,26 +137,21 @@ void GLPainter::fill_rounded_rect(Rect const &r, Color const &c,
 
 void GLPainter::draw_rounded_rect(Rect const &r, Color const &c,
                                    float radius, float lw) {
-    float offset = (static_cast<int>(lw * scale_) % 2) == 1 ? (0.5f / scale_) : 0.0f;
-    float x = Painter::snap_to_pixel(r.x, scale_) + offset;
-    float y = Painter::snap_to_pixel(r.y, scale_) + offset;
-    float w = Painter::snap_to_pixel(r.width, scale_) - (offset * 2.0f);
-    float h = Painter::snap_to_pixel(r.height, scale_) - (offset * 2.0f);
-    
-    float rad = std::min({radius, w / 2.0f, h / 2.0f});
-    if (rad <= 0) { draw_rect({x - offset, y - offset, w + offset * 2, h + offset * 2}, c, lw); return; }
-    
+    float rad = std::min({radius, r.width / 2.0f, r.height / 2.0f});
+    if (rad <= 0) { draw_rect(r, c, lw); return; }
+
     set_color(c);
     glLineWidth(lw * scale_);
     apply_line_style();
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-    auto pts = rounded_rect_verts(x, y, w, h, rad);
+    auto pts = rounded_rect_verts(r.x, r.y, r.width, r.height, rad);
     glBegin(GL_LINE_LOOP);
     for (auto &[px, py] : pts) glVertex2f(px, py);
     glEnd();
     glDisable(GL_LINE_SMOOTH);
 }
+
 
 void GLPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     set_color(c);
@@ -179,11 +160,9 @@ void GLPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     
-    float offset = (static_cast<int>(lw * scale_) % 2) == 1 ? (0.5f / scale_) : 0.0f;
-    
     glBegin(GL_LINES);
-    glVertex2f(Painter::snap_to_pixel(a.x, scale_) + offset, Painter::snap_to_pixel(a.y, scale_) + offset);
-    glVertex2f(Painter::snap_to_pixel(b.x, scale_) + offset, Painter::snap_to_pixel(b.y, scale_) + offset);
+    glVertex2f(a.x, a.y);
+    glVertex2f(b.x, b.y);
     glEnd();
     glDisable(GL_LINE_SMOOTH);
 }
