@@ -25,11 +25,19 @@ class Label : public Widget {
     void set_shrinkable(bool s) { shrinkable_ = s; }
     bool shrinkable() const { return shrinkable_; }
 
+    void set_alignment(Alignment a) { alignment_ = a; }
+    Alignment alignment() const { return alignment_; }
+
+    void set_elide(bool e) { elide_ = e; }
+    bool elide() const { return elide_; }
+
   private:
     std::string text_;
     std::optional<Color> color_override_;
     std::optional<float> font_size_override_;
     bool shrinkable_ = false;
+    Alignment alignment_ = Alignment::Start;
+    bool elide_ = true;
 };
 
 } // namespace toolkit

@@ -13,10 +13,34 @@ void Label::paint(Painter &painter) {
     auto fs = font_size_override_.value_or(style.font_size);
     auto col = color_override_.value_or(style.text);
     auto fm = painter.font_metrics(fs);
-    // FIXME: what is this extra 2.0f gap?
-    auto baseline_y = rect_.y + (rect_.height - fm.height) / 2.0f + fm.ascent;
 
-    painter.draw_text(text_, {rect_.x, baseline_y}, col, fs);
+    std::string display_text = text_;
+    float text_w = painter.text_size(display_text, fs).width;
+
+    if (elide_ && text_w > rect_.width && rect_.width > 0) {
+        std::string suffix = "...";
+        float sw = painter.text_size(suffix, fs).width;
+        if (sw < rect_.width) {
+            while (!display_text.empty() && text_w + sw > rect_.width) {
+                // Simplified: remove one byte at a time.
+                // In a production app we should use Utf8Iterator to remove a full codepoint.
+                display_text.pop_back();
+                text_w = painter.text_size(display_text, fs).width;
+            }
+            display_text += suffix;
+            text_w = painter.text_size(display_text, fs).width;
+        }
+    }
+
+    float text_x = rect_.x;
+    if (alignment_ == Alignment::Center) {
+        text_x = rect_.x + (rect_.width - text_w) / 2.0f;
+    } else if (alignment_ == Alignment::End) {
+        text_x = rect_.x + rect_.width - text_w;
+    }
+
+    auto baseline_y = rect_.y + (rect_.height - fm.height) / 2.0f + fm.ascent;
+    painter.draw_text(display_text, {text_x, baseline_y}, col, fs);
 }
 
 bool Label::handle_mouse(MouseEvent const &) { return false; }
