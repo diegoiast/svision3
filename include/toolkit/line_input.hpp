@@ -21,14 +21,14 @@ class LineInput : public Widget {
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
     CursorShape cursor() const override {
-        return clear_hovered_ ? CursorShape::Arrow : CursorShape::IBeam;
+        return (clear_hovered_ || peek_hovered_) ? CursorShape::Hand : CursorShape::IBeam;
     }
     void set_focused(bool focused) override;
 
     std::string const &text() const { return text_; }
     void set_text(std::string const &text);
 
-    void set_password_mode(bool enable) { password_mode_ = enable; }
+    void set_password_mode(bool enable);
     bool is_password_mode() const { return password_mode_; }
 
     std::function<void(std::string const &)> on_change;
@@ -49,7 +49,10 @@ class LineInput : public Widget {
 
     bool hit_clear_btn(Point pos) const;
     float clear_btn_size() const;
+    bool hit_peek_btn(Point pos) const;
+    float peek_btn_size() const;
     float content_right_inset() const;
+    float content_available_width() const;
     void show_context_menu(Point pos);
     void cut();
     void copy();
@@ -63,7 +66,10 @@ class LineInput : public Widget {
     bool dragging_ = false;
     bool clear_hovered_ = false;
     bool clear_pressed_ = false;
+    bool peek_hovered_ = false;
+    bool peek_pressed_ = false;
     bool password_mode_ = false;
+    bool is_password_field_ = false;
     std::chrono::steady_clock::time_point cursor_blink_time_;
     std::unique_ptr<ContextMenu> context_menu_;
 };

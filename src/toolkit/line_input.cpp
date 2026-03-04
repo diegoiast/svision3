@@ -18,7 +18,7 @@ static std::string get_masked_text(std::string_view text, size_t byte_limit = st
     while (i < text.size() && i < byte_limit) {
         i = Utf8Iterator::next(text, i);
         // We use a character that has a representative width for a "pro" dot
-        result += "8"; 
+        result += "8";
     }
     return result;
 }
@@ -26,6 +26,17 @@ static std::string get_masked_text(std::string_view text, size_t byte_limit = st
 LineInput::LineInput(std::string placeholder)
     : placeholder_(std::move(placeholder)), cursor_blink_time_(std::chrono::steady_clock::now()) {
     focusable_ = true;
+    focused_ = false;
+}
+
+void LineInput::set_password_mode(bool enable) {
+    password_mode_ = enable;
+    if (enable) {
+        is_password_field_ = true;
+    }
+    if (window_) {
+        window_->request_redraw();
+    }
 }
 
 void LineInput::set_text(std::string const &text) {
@@ -110,12 +121,26 @@ float LineInput::clear_btn_size() const {
     return style.font_size + 2.0f;
 }
 
+float LineInput::peek_btn_size() const {
+    auto const &style = Theme::current().line_input;
+    return style.font_size + 2.0f;
+}
+
 float LineInput::content_right_inset() const {
     auto const &style = Theme::current().line_input;
-    if (text_.empty()) {
-        return style.padding.right;
+    float inset = style.padding.right;
+    if (!text_.empty()) {
+        inset += clear_btn_size() + 4.0f;
     }
-    return style.padding.right + clear_btn_size() + 4.0f;
+    if (is_password_field_) {
+        inset += peek_btn_size() + 4.0f;
+    }
+    return inset;
+}
+
+float LineInput::content_available_width() const {
+    auto const &style = Theme::current().line_input;
+    return rect_.width - style.padding.left - content_right_inset();
 }
 
 bool LineInput::hit_clear_btn(Point pos) const {
@@ -125,6 +150,20 @@ bool LineInput::hit_clear_btn(Point pos) const {
     auto sz = clear_btn_size();
     auto const &style = Theme::current().line_input;
     auto bx = rect_.x + rect_.width - style.padding.right - sz;
+    auto by = rect_.y + (rect_.height - sz) / 2.0f;
+    return pos.x >= bx && pos.x <= bx + sz && pos.y >= by && pos.y <= by + sz;
+}
+
+bool LineInput::hit_peek_btn(Point pos) const {
+    if (!is_password_field_) {
+        return false;
+    }
+    auto sz = peek_btn_size();
+    auto const &style = Theme::current().line_input;
+    float bx = rect_.x + rect_.width - style.padding.right - sz;
+    if (!text_.empty()) {
+        bx -= clear_btn_size() + 4.0f;
+    }
     auto by = rect_.y + (rect_.height - sz) / 2.0f;
     return pos.x >= bx && pos.x <= bx + sz && pos.y >= by && pos.y <= by + sz;
 }
@@ -140,11 +179,13 @@ size_t LineInput::pos_from_x(float x) const {
 
     while (current_pos < text_.size()) {
         size_t next_pos = Utf8Iterator::next(text_, current_pos);
-        std::string before = password_mode_ ? get_masked_text(text_, next_pos) : text_.substr(0, next_pos);
+        std::string before =
+            password_mode_ ? get_masked_text(text_, next_pos) : text_.substr(0, next_pos);
         auto sz = Painter::measure_text(before, style.font_size);
         if (sz.width > click_x) {
             // Check if we are closer to the previous or next character
-            std::string before_prev = password_mode_ ? get_masked_text(text_, current_pos) : text_.substr(0, current_pos);
+            std::string before_prev =
+                password_mode_ ? get_masked_text(text_, current_pos) : text_.substr(0, current_pos);
             auto prev_sz = Painter::measure_text(before_prev, style.font_size);
             if (click_x - prev_sz.width < sz.width - click_x) {
                 return current_pos;
@@ -164,7 +205,7 @@ void LineInput::paint(Painter &painter) {
     auto fm = painter.font_metrics(style.font_size);
     auto baseline_y = rect_.y + (rect_.height - fm.height) / 2.0f + fm.ascent;
     auto content_x = rect_.x + style.padding.left;
-    auto content_w = rect_.width - style.padding.left - content_right_inset();
+    auto content_w = content_available_width();
     auto clip_rect = Rect{content_x, rect_.y, content_w, rect_.height};
     auto tx = content_x - scroll_offset_;
 
@@ -191,18 +232,18 @@ void LineInput::paint(Painter &painter) {
 
         if (!text_.empty()) {
             if (password_mode_) {
-                float dot_radius = style.font_size * 0.25f;
-                float char_w = painter.text_size("8", style.font_size).width;
-                float center_off_y = (fm.ascent - fm.descent) / 2.0f;
-                
-                size_t char_count = 0;
-                size_t i = 0;
+                auto dot_radius = style.font_size * 0.25f;
+                auto char_w = painter.text_size("8", style.font_size).width;
+                auto center_off_y = (fm.ascent - fm.descent) / 2.0f;
+                auto char_count = 0;
+                auto i = 0;
+
                 while (i < text_.size()) {
-                    i = Utf8Iterator::next(text_, i);
-                    float cx = tx + char_count * char_w + char_w / 2.0f;
-                    float cy = baseline_y - center_off_y;
+                    auto cx = tx + char_count * char_w + char_w / 2.0f;
+                    auto cy = baseline_y - center_off_y;
                     painter.fill_circle({cx, cy}, dot_radius, style.text);
                     char_count++;
+                    i = Utf8Iterator::next(text_, i);
                 }
             } else {
                 painter.draw_text(d_text, {tx, baseline_y}, style.text, style.font_size);
@@ -215,8 +256,8 @@ void LineInput::paint(Painter &painter) {
             bool cursor_on = (ms / 500) % 2 == 0;
 
             if (cursor_on) {
-                std::string before =
-                    password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
+                std::string before = password_mode_ ? get_masked_text(text_, cursor_pos_)
+                                                    : text_.substr(0, cursor_pos_);
                 auto cx = tx;
                 auto cy_top = rect_.y + (rect_.height - fm.height) / 2.0f - 1.0f;
                 auto cy_bot = cy_top + fm.height + 2.0f;
@@ -231,37 +272,93 @@ void LineInput::paint(Painter &painter) {
 
     painter.pop_clip();
 
-    if (!text_.empty()) {
+    if (!text_.empty() || is_password_field_) {
         auto sz = clear_btn_size();
-        auto bx = rect_.x + rect_.width - style.padding.right - sz;
-        auto by = rect_.y + (rect_.height - sz) / 2.0f;
-        auto cx = bx + sz / 2.0f;
-        auto cy = by + sz / 2.0f;
-        auto r = sz / 2.0f;
+        auto const &style = Theme::current().line_input;
 
-        if (clear_hovered_ || clear_pressed_) {
-            Color circle_bg = style.text;
-            circle_bg.a = clear_pressed_ ? 0.22f : 0.12f;
-            painter.fill_rounded_rect({bx, by, sz, sz}, circle_bg, r);
+        if (!text_.empty()) {
+            auto bx = rect_.x + rect_.width - style.padding.right - sz;
+            auto by = rect_.y + (rect_.height - sz) / 2.0f;
+            auto cx = bx + sz / 2.0f;
+            auto cy = by + sz / 2.0f;
+            auto r = sz / 2.0f;
+
+            if (clear_hovered_ || clear_pressed_) {
+                Color circle_bg = style.text;
+                circle_bg.a = clear_pressed_ ? 0.22f : 0.12f;
+                painter.fill_rounded_rect({bx, by, sz, sz}, circle_bg, r);
+            }
+
+            auto x_col = style.text;
+            auto half = sz * 0.22f;
+            x_col.a = clear_hovered_ ? 0.8f : 0.45f;
+            painter.draw_line({cx - half, cy - half}, {cx + half, cy + half}, x_col, 1.5f);
+            painter.draw_line({cx - half, cy + half}, {cx + half, cy - half}, x_col, 1.5f);
         }
 
-        auto x_col = style.text;
-        auto half = sz * 0.22f;
+        if (is_password_field_) {
+            auto bx = rect_.x + rect_.width - style.padding.right - sz;
+            if (!text_.empty()) {
+                bx -= sz + 4.0f;
+            }
+            auto by = rect_.y + (rect_.height - sz) / 2.0f;
+            auto cx = bx + sz / 2.0f;
+            auto cy = by + sz / 2.0f;
+            auto r = sz / 2.0f;
 
-        // FIXME: what are these constants?
-        x_col.a = clear_hovered_ ? 0.8f : 0.45f;
-        painter.draw_line({cx - half, cy - half}, {cx + half, cy + half}, x_col, 1.5f);
-        painter.draw_line({cx - half, cy + half}, {cx + half, cy - half}, x_col, 1.5f);
+            if (peek_hovered_ || peek_pressed_) {
+                Color circle_bg = style.text;
+                circle_bg.a = peek_pressed_ ? 0.22f : 0.12f;
+                // painter.fill_rounded_rect({bx, by, sz, sz}, circle_bg, r);
+            }
+
+            auto eye_col = style.text;
+            eye_col.a = peek_hovered_ ? 0.8f : 0.45f;
+
+            // Draw an eye shape
+            float eye_radius = sz * 0.35f;
+            float pupil_radius = sz * 0.15f;
+
+            // Eye outline
+            painter.draw_circle({cx, cy}, eye_radius, eye_col, 1.2f);
+
+            if (password_mode_) {
+                painter.fill_circle({cx, cy}, pupil_radius * 0.6f, eye_col);
+            } else {
+                painter.fill_circle({cx, cy}, pupil_radius, eye_col);
+            }
+        }
     }
 }
 
 bool LineInput::handle_mouse(MouseEvent const &event) {
     if (event.type == MouseEvent::Type::Move) {
-        bool over = hit_clear_btn(event.position);
-        if (over != clear_hovered_) {
-            clear_hovered_ = over;
+        bool over_clear = hit_clear_btn(event.position);
+        if (over_clear != clear_hovered_) {
+            clear_hovered_ = over_clear;
+            if (window()) {
+                window()->request_redraw();
+            }
+        }
+        bool over_peek = hit_peek_btn(event.position);
+        if (over_peek != peek_hovered_) {
+            peek_hovered_ = over_peek;
+            if (window()) {
+                window()->request_redraw();
+            }
         }
         return false;
+    }
+
+    if (event.type == MouseEvent::Type::Leave) {
+        if (clear_hovered_ || peek_hovered_) {
+            clear_hovered_ = false;
+            peek_hovered_ = false;
+            if (window()) {
+                window()->request_redraw();
+            }
+        }
+        return true;
     }
 
     if (event.type == MouseEvent::Type::Press) {
@@ -276,6 +373,17 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
 
         if (hit_clear_btn(event.position)) {
             clear_pressed_ = true;
+            if (window()) {
+                window()->request_redraw();
+            }
+            return true;
+        }
+
+        if (hit_peek_btn(event.position)) {
+            peek_pressed_ = true;
+            if (window()) {
+                window()->request_redraw();
+            }
             return true;
         }
 
@@ -306,6 +414,19 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
                     on_change(text_);
                 }
             }
+            if (window()) {
+                window()->request_redraw();
+            }
+            return true;
+        }
+        if (peek_pressed_) {
+            peek_pressed_ = false;
+            if (hit_peek_btn(event.position)) {
+                password_mode_ = !password_mode_;
+            }
+            if (window()) {
+                window()->request_redraw();
+            }
             return true;
         }
         dragging_ = false;
@@ -323,9 +444,11 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
 
 void LineInput::ensure_cursor_visible(Painter &painter) {
     auto const &style = Theme::current().line_input;
-    auto content_w = rect_.width - style.padding.left - style.padding.right;
-    std::string before_str = password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
-    auto cursor_x = before_str.empty() ? 0.0f : painter.text_size(before_str, style.font_size).width;
+    auto content_w = content_available_width();
+    std::string before_str =
+        password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
+    auto cursor_x =
+        before_str.empty() ? 0.0f : painter.text_size(before_str, style.font_size).width;
 
     if (cursor_x - scroll_offset_ > content_w) {
         scroll_offset_ = cursor_x - content_w;
@@ -485,9 +608,10 @@ void LineInput::show_context_menu(Point pos) {
 
     // FIXME: use i18n for menu text
     std::vector<MenuItem> items;
-    items.push_back(MenuItem::action("Cut", [this] { cut(); }, [this] { return has_selection() && !password_mode_; }));
-    items.push_back(
-        MenuItem::action("Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; }));
+    items.push_back(MenuItem::action(
+        "Cut", [this] { cut(); }, [this] { return has_selection() && !password_mode_; }));
+    items.push_back(MenuItem::action(
+        "Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; }));
     items.push_back(MenuItem::action(
         "Paste", [this] { paste(); }, [] { return !Clipboard::get_text().empty(); }));
     items.push_back(MenuItem::sep());

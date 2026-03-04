@@ -299,22 +299,22 @@ int main(int argc, char *argv[]) {
     b->set_padding({2, 8, 2, 8});
     tabs->set_leading_widget(std::move(b));
 
-    // ── Tab 1: Main ──────────────────────────────────────────────────────
-    auto tab1 = std::make_unique<toolkit::VBoxLayout>();
-    tab1->set_margins({20, 20, 20, 20});
-    tab1->set_spacing(12);
+    // ── Tab: Main ──────────────────────────────────────────────────────
+    auto tab_main = std::make_unique<toolkit::VBoxLayout>();
+    tab_main->set_margins({20, 20, 20, 20});
+    tab_main->set_spacing(12);
 
     auto label = std::make_unique<toolkit::Label>(
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
         "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.");
     label->set_shrinkable(true);
     label->set_tooltip(label->text());
-    tab1->add_widget(std::move(label));
+    tab_main->add_widget(std::move(label));
 
     auto cb1 = std::make_unique<toolkit::Checkbox>("Enable notifications");
     cb1->set_checked(true);
     cb1->set_tooltip("Toggle desktop notifications");
-    tab1->add_widget(std::move(cb1));
+    tab_main->add_widget(std::move(cb1));
 
     std::vector<std::string> style_names;
     for (int i = 0; i < toolkit::theme_style_count; i++) {
@@ -328,7 +328,7 @@ int main(int argc, char *argv[]) {
         current_style = static_cast<toolkit::ThemeStyle>(index);
         apply_theme(window);
     };
-    tab1->add_widget(std::move(combo));
+    tab_main->add_widget(std::move(combo));
 
     auto rb_light = std::make_unique<toolkit::RadioButton>("Light", scheme_group);
     rb_light->set_tooltip("Light color scheme");
@@ -343,17 +343,17 @@ int main(int argc, char *argv[]) {
         current_scheme = schemes[index];
         apply_theme(window);
     };
-    tab1->add_widget(std::move(rb_light));
-    tab1->add_widget(std::move(rb_dark));
-    tab1->add_widget(std::move(rb_pink));
+    tab_main->add_widget(std::move(rb_light));
+    tab_main->add_widget(std::move(rb_dark));
+    tab_main->add_widget(std::move(rb_pink));
 
     auto progress = std::make_unique<toolkit::ProgressBar>();
     auto *progress_ptr = progress.get();
     progress->set_value(0.0f);
     progress->set_tooltip("0%");
-    tab1->add_widget(std::move(progress));
+    tab_main->add_widget(std::move(progress));
 
-    tab1->add_widget(std::make_unique<toolkit::Label>(
+    tab_main->add_widget(std::make_unique<toolkit::Label>(
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), app.painter_name())));
 
     auto debug_toggle = std::make_unique<toolkit::Checkbox>("Show Debug Frames");
@@ -361,26 +361,26 @@ int main(int argc, char *argv[]) {
         toolkit::Widget::debug_show_frames = checked;
         window->request_redraw();
     };
-    tab1->add_widget(std::move(debug_toggle));
+    tab_main->add_widget(std::move(debug_toggle));
 
-    tabs->add_tab("Main", std::move(tab1));
+    tabs->add_tab("Main", std::move(tab_main));
 
-    // ── Tab 2: Inputs ────────────────────────────────────────────────────
-    auto tab2 = std::make_unique<toolkit::VBoxLayout>();
-    tab2->set_margins({20, 20, 20, 20});
-    tab2->set_spacing(12);
+    // ── Tab: Inputs ────────────────────────────────────────────────────
+    auto tab_inputs = std::make_unique<toolkit::VBoxLayout>();
+    tab_inputs->set_margins({20, 20, 20, 20});
+    tab_inputs->set_spacing(12);
 
     auto input1 = std::make_unique<toolkit::LineInput>("Regular input");
-    tab2->add_widget(std::move(input1));
+    tab_inputs->add_widget(std::move(input1));
 
     auto input2 = std::make_unique<toolkit::LineInput>("Password input");
     input2->set_password_mode(true);
-    tab2->add_widget(std::move(input2));
+    tab_inputs->add_widget(std::move(input2));
 
-    auto tab2_spacer = std::make_unique<toolkit::Label>("");
-    tab2->add_widget(std::move(tab2_spacer), 1);
+    auto inputs_spacer = std::make_unique<toolkit::Label>("");
+    tab_inputs->add_widget(std::move(inputs_spacer), 1);
 
-    tabs->add_tab("Inputs", std::move(tab2));
+    tabs->add_tab("Inputs", std::move(tab_inputs));
 
     // ── Tab 3: Songs ─────────────────────────────────────────────────────
     auto tab3 = std::make_unique<toolkit::VBoxLayout>();
