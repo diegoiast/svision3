@@ -12,6 +12,17 @@
 
 namespace toolkit {
 
+static std::string get_masked_text(std::string_view text, size_t byte_limit = std::string::npos) {
+    std::string result;
+    size_t i = 0;
+    while (i < text.size() && i < byte_limit) {
+        i = Utf8Iterator::next(text, i);
+        // We use a character that has a representative width for a "pro" dot
+        result += "8"; 
+    }
+    return result;
+}
+
 LineInput::LineInput(std::string placeholder)
     : placeholder_(std::move(placeholder)), cursor_blink_time_(std::chrono::steady_clock::now()) {
     focusable_ = true;
@@ -121,7 +132,6 @@ bool LineInput::hit_clear_btn(Point pos) const {
 size_t LineInput::pos_from_x(float x) const {
     auto const &style = Theme::current().line_input;
     auto click_x = x - (rect_.x + style.padding.left) + scroll_offset_;
-    size_t last_pos = 0;
     size_t current_pos = 0;
 
     if (click_x <= 0) {
@@ -130,10 +140,12 @@ size_t LineInput::pos_from_x(float x) const {
 
     while (current_pos < text_.size()) {
         size_t next_pos = Utf8Iterator::next(text_, current_pos);
-        auto sz = Painter::measure_text(text_.substr(0, next_pos), style.font_size);
+        std::string before = password_mode_ ? get_masked_text(text_, next_pos) : text_.substr(0, next_pos);
+        auto sz = Painter::measure_text(before, style.font_size);
         if (sz.width > click_x) {
             // Check if we are closer to the previous or next character
-            auto prev_sz = Painter::measure_text(text_.substr(0, current_pos), style.font_size);
+            std::string before_prev = password_mode_ ? get_masked_text(text_, current_pos) : text_.substr(0, current_pos);
+            auto prev_sz = Painter::measure_text(before_prev, style.font_size);
             if (click_x - prev_sz.width < sz.width - click_x) {
                 return current_pos;
             } else {
@@ -156,6 +168,8 @@ void LineInput::paint(Painter &painter) {
     auto clip_rect = Rect{content_x, rect_.y, content_w, rect_.height};
     auto tx = content_x - scroll_offset_;
 
+    std::string d_text = password_mode_ ? get_masked_text(text_) : text_;
+
     painter.draw_frame(rect_, bg, border, style, true);
     painter.push_clip(clip_rect);
     ensure_cursor_visible(painter);
@@ -164,19 +178,35 @@ void LineInput::paint(Painter &painter) {
         painter.draw_text(placeholder_, {tx, baseline_y}, style.placeholder, style.font_size);
     } else {
         if (has_selection()) {
-            // FIXME: short undescriptive variable names
             auto s = sel_start();
             auto e = sel_end();
-            auto ex = tx + painter.text_size(text_.substr(0, e), style.font_size).width;
+            std::string before_s = password_mode_ ? get_masked_text(text_, s) : text_.substr(0, s);
+            std::string before_e = password_mode_ ? get_masked_text(text_, e) : text_.substr(0, e);
+            auto sx = tx + painter.text_size(before_s, style.font_size).width;
+            auto ex = tx + painter.text_size(before_e, style.font_size).width;
             auto hy = rect_.y + (rect_.height - fm.height) / 2.0f - 1.0f;
             auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
-            auto sx =
-                tx + (s > 0 ? painter.text_size(text_.substr(0, s), style.font_size).width : 0.0f);
             painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
         }
 
         if (!text_.empty()) {
-            painter.draw_text(text_, {tx, baseline_y}, style.text, style.font_size);
+            if (password_mode_) {
+                float dot_radius = style.font_size * 0.25f;
+                float char_w = painter.text_size("8", style.font_size).width;
+                float center_off_y = (fm.ascent - fm.descent) / 2.0f;
+                
+                size_t char_count = 0;
+                size_t i = 0;
+                while (i < text_.size()) {
+                    i = Utf8Iterator::next(text_, i);
+                    float cx = tx + char_count * char_w + char_w / 2.0f;
+                    float cy = baseline_y - center_off_y;
+                    painter.fill_circle({cx, cy}, dot_radius, style.text);
+                    char_count++;
+                }
+            } else {
+                painter.draw_text(d_text, {tx, baseline_y}, style.text, style.font_size);
+            }
         }
 
         if (focused_) {
@@ -185,7 +215,8 @@ void LineInput::paint(Painter &painter) {
             bool cursor_on = (ms / 500) % 2 == 0;
 
             if (cursor_on) {
-                auto before = text_.substr(0, cursor_pos_);
+                std::string before =
+                    password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
                 auto cx = tx;
                 auto cy_top = rect_.y + (rect_.height - fm.height) / 2.0f - 1.0f;
                 auto cy_bot = cy_top + fm.height + 2.0f;
@@ -293,8 +324,8 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
 void LineInput::ensure_cursor_visible(Painter &painter) {
     auto const &style = Theme::current().line_input;
     auto content_w = rect_.width - style.padding.left - style.padding.right;
-    auto before = text_.substr(0, cursor_pos_);
-    auto cursor_x = before.empty() ? 0.0f : painter.text_size(before, style.font_size).width;
+    std::string before_str = password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
+    auto cursor_x = before_str.empty() ? 0.0f : painter.text_size(before_str, style.font_size).width;
 
     if (cursor_x - scroll_offset_ > content_w) {
         scroll_offset_ = cursor_x - content_w;
@@ -417,7 +448,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
 }
 
 void LineInput::cut() {
-    if (!has_selection()) {
+    if (!has_selection() || password_mode_) {
         return;
     }
     Clipboard::set_text(text_.substr(sel_start(), sel_end() - sel_start()));
@@ -425,7 +456,7 @@ void LineInput::cut() {
 }
 
 void LineInput::copy() {
-    if (!has_selection()) {
+    if (!has_selection() || password_mode_) {
         return;
     }
     Clipboard::set_text(text_.substr(sel_start(), sel_end() - sel_start()));
@@ -454,9 +485,9 @@ void LineInput::show_context_menu(Point pos) {
 
     // FIXME: use i18n for menu text
     std::vector<MenuItem> items;
-    items.push_back(MenuItem::action("Cut", [this] { cut(); }, [this] { return has_selection(); }));
+    items.push_back(MenuItem::action("Cut", [this] { cut(); }, [this] { return has_selection() && !password_mode_; }));
     items.push_back(
-        MenuItem::action("Copy", [this] { copy(); }, [this] { return has_selection(); }));
+        MenuItem::action("Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; }));
     items.push_back(MenuItem::action(
         "Paste", [this] { paste(); }, [] { return !Clipboard::get_text().empty(); }));
     items.push_back(MenuItem::sep());

@@ -28,6 +28,9 @@ class LineInput : public Widget {
     std::string const &text() const { return text_; }
     void set_text(std::string const &text);
 
+    void set_password_mode(bool enable) { password_mode_ = enable; }
+    bool is_password_mode() const { return password_mode_; }
+
     std::function<void(std::string const &)> on_change;
     std::function<void(std::string const &)> on_submit;
 
@@ -60,6 +63,7 @@ class LineInput : public Widget {
     bool dragging_ = false;
     bool clear_hovered_ = false;
     bool clear_pressed_ = false;
+    bool password_mode_ = false;
     std::chrono::steady_clock::time_point cursor_blink_time_;
     std::unique_ptr<ContextMenu> context_menu_;
 };

@@ -311,10 +311,6 @@ int main(int argc, char *argv[]) {
     label->set_tooltip(label->text());
     tab1->add_widget(std::move(label));
 
-    auto input = std::make_unique<toolkit::LineInput>("Type here my friend...");
-    input->set_tooltip("Enter any text");
-    tab1->add_widget(std::move(input));
-
     auto cb1 = std::make_unique<toolkit::Checkbox>("Enable notifications");
     cb1->set_checked(true);
     cb1->set_tooltip("Toggle desktop notifications");
@@ -351,6 +347,12 @@ int main(int argc, char *argv[]) {
     tab1->add_widget(std::move(rb_dark));
     tab1->add_widget(std::move(rb_pink));
 
+    auto progress = std::make_unique<toolkit::ProgressBar>();
+    auto *progress_ptr = progress.get();
+    progress->set_value(0.0f);
+    progress->set_tooltip("0%");
+    tab1->add_widget(std::move(progress));
+
     tab1->add_widget(std::make_unique<toolkit::Label>(
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), app.painter_name())));
 
@@ -363,24 +365,22 @@ int main(int argc, char *argv[]) {
 
     tabs->add_tab("Main", std::move(tab1));
 
-    // ── Tab 2: Progress ──────────────────────────────────────────────────
+    // ── Tab 2: Inputs ────────────────────────────────────────────────────
     auto tab2 = std::make_unique<toolkit::VBoxLayout>();
     tab2->set_margins({20, 20, 20, 20});
     tab2->set_spacing(12);
 
-    auto progress_label = std::make_unique<toolkit::Label>("Progress updates every second:");
-    tab2->add_widget(std::move(progress_label));
+    auto input1 = std::make_unique<toolkit::LineInput>("Regular input");
+    tab2->add_widget(std::move(input1));
 
-    auto progress = std::make_unique<toolkit::ProgressBar>();
-    auto *progress_ptr = progress.get();
-    progress->set_value(0.0f);
-    progress->set_tooltip("0%");
-    tab2->add_widget(std::move(progress));
+    auto input2 = std::make_unique<toolkit::LineInput>("Password input");
+    input2->set_password_mode(true);
+    tab2->add_widget(std::move(input2));
 
     auto tab2_spacer = std::make_unique<toolkit::Label>("");
     tab2->add_widget(std::move(tab2_spacer), 1);
 
-    tabs->add_tab("Progress", std::move(tab2));
+    tabs->add_tab("Inputs", std::move(tab2));
 
     // ── Tab 3: Songs ─────────────────────────────────────────────────────
     auto tab3 = std::make_unique<toolkit::VBoxLayout>();
