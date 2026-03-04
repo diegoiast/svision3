@@ -51,7 +51,7 @@ class Widget {
     void set_enabled(bool e) { enabled_ = e; }
     bool is_enabled() const { return enabled_; }
 
-    void set_visible(bool v) { visible_ = v; }
+    virtual void set_visible(bool v) { visible_ = v; }
     bool is_visible() const { return visible_; }
     void show() { visible_ = true; }
     void hide() { visible_ = false; }

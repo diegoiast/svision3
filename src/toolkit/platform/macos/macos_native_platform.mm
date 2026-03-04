@@ -320,6 +320,8 @@ class CoreGraphicsPainter : public Painter {
     case 126: ke.key = toolkit::Key::Up;        break;
     case 115: ke.key = toolkit::Key::Home;      break;
     case 119: ke.key = toolkit::Key::End;       break;
+    case 116: ke.key = toolkit::Key::PageUp;    break;
+    case 121: ke.key = toolkit::Key::PageDown;  break;
     case 36:  ke.key = toolkit::Key::Enter;     break;
     case 53:  ke.key = toolkit::Key::Escape;    break;
     default:  break;

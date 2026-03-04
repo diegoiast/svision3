@@ -79,3 +79,36 @@ TEST_CASE("Button mouse does nothing when disabled", "[button]") {
     b.handle_mouse(release);
     REQUIRE(clicked == false);
 }
+
+TEST_CASE("Button mouse does nothing when hidden", "[button]") {
+    Button b("Test");
+    bool clicked = false;
+    b.on_click = [&] { clicked = true; };
+    b.set_rect({0, 0, 100, 30});
+    b.set_visible(false);
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = {50, 15};
+    REQUIRE(b.handle_mouse(press) == false);
+
+    MouseEvent release{};
+    release.type = MouseEvent::Type::Release;
+    release.position = {50, 15};
+    b.handle_mouse(release);
+    REQUIRE(clicked == false);
+}
+
+TEST_CASE("Button resets state when hidden", "[button]") {
+    Button b("Test");
+    b.set_rect({0, 0, 100, 30});
+    
+    MouseEvent move{};
+    move.type = MouseEvent::Type::Move;
+    move.position = {50, 15};
+    b.handle_mouse(move);
+    REQUIRE(b.is_hovered() == true);
+    
+    b.set_visible(false);
+    REQUIRE(b.is_hovered() == false);
+}

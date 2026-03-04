@@ -215,7 +215,15 @@ void Window::handle_mouse(MouseEvent const &event) {
                 if (under) break;
             }
         }
-        hovered_widget_ = under;
+        if (under != hovered_widget_) {
+            if (hovered_widget_) {
+                MouseEvent leave_ev = event;
+                leave_ev.type = MouseEvent::Type::Leave;
+                hovered_widget_->handle_mouse(leave_ev);
+            }
+            hovered_widget_ = under;
+            needs_redraw = true;
+        }
         update_tooltip(under, event.position);
     }
 

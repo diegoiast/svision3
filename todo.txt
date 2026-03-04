@@ -93,7 +93,7 @@ Theming & Styling
 [ ] Tint support.
 [ ] Scrollbar theming (overlay vs classic per theme).
 [ ] Focus ring styling per theme.
-[ ] Icon theme support.
+[ ] XDG Icon theme support.
 
 Event Handling
 --------------
@@ -113,6 +113,7 @@ Button features
 [ ] Button - attach a menu (long click, or sub-button).
 [x] Button - flat display (borders on hover only).
 [ ] Toggle buttton - on/off.
+[ ] Auto repeat.
 
 LineInput Features
 ------------------
@@ -151,7 +152,7 @@ TabWidget / TabHeader Features
 [x] TabHeader placement: North, South, East, West.
 [x] Support for south/west east.
 [x] Support for trailing/leading button.
-[ ] Tab bar overflow (scroll when too many tabs).
+[x] Tab bar overflow (scroll when too many tabs).
 
 ListView Features
 -----------------

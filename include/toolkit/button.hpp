@@ -35,6 +35,10 @@ class Button : public Widget {
     void set_flat(bool f) { flat_ = f; }
     bool is_flat() const { return flat_; }
 
+    void set_visible(bool v) override;
+    bool is_hovered() const { return hovered_; }
+    bool is_pressed() const { return pressed_; }
+
     std::function<void()> on_click;
 
   private:

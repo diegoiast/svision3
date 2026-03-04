@@ -86,6 +86,8 @@ static Key vk_to_key(WPARAM vk) {
     case VK_DOWN:   return Key::Down;
     case VK_HOME:   return Key::Home;
     case VK_END:    return Key::End;
+    case VK_PRIOR:  return Key::PageUp;
+    case VK_NEXT:   return Key::PageDown;
     case VK_RETURN: return Key::Enter;
     case VK_ESCAPE: return Key::Escape;
     case VK_TAB:    return Key::Tab;

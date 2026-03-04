@@ -20,6 +20,8 @@ enum class TabOrientation {
 
 class TabWidget : public Widget {
   public:
+    TabWidget();
+
     void add_tab(std::string title, std::unique_ptr<Widget> content);
 
     int current_index() const { return current_; }
@@ -32,6 +34,9 @@ class TabWidget : public Widget {
     void set_trailing_widget(std::unique_ptr<Widget> widget);
 
     std::function<void(int index, std::string const &title)> on_tab_close;
+
+    void scroll_to_tab(int index);
+    void scroll_by(float delta);
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
@@ -57,6 +62,8 @@ class TabWidget : public Widget {
     float tab_bar_thickness() const;
     float tab_size(int i) const;
     void layout_content();
+    void update_scroll_bounds();
+    bool handle_tab_drag(MouseEvent const &event);
 
     struct HitResult {
         int tab = -1;
@@ -72,6 +79,12 @@ class TabWidget : public Widget {
 
     std::unique_ptr<Widget> leading_widget_;
     std::unique_ptr<Widget> trailing_widget_;
+
+    std::unique_ptr<class Button> prev_button_;
+    std::unique_ptr<class Button> next_button_;
+
+    bool show_scroll_buttons_ = false;
+    float scroll_offset_ = 0;
 
     bool dragging_ = false;
     int drag_tab_ = -1;

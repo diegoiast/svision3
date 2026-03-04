@@ -9,7 +9,7 @@
 namespace toolkit {
 
 struct MouseEvent {
-    enum class Type { Press, Release, Move, Drag, Scroll };
+    enum class Type { Press, Release, Move, Drag, Scroll, Leave };
     Type type;
     Point position;
     int button = 0;
@@ -31,6 +31,8 @@ enum class Key {
     Down,
     Home,
     End,
+    PageUp,
+    PageDown,
     Enter,
     Escape,
     Tab,

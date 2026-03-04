@@ -157,6 +157,12 @@ static Key xkb_to_key(xkb_keysym_t sym) {
         return Key::Home;
     case XKB_KEY_End:
         return Key::End;
+    case XKB_KEY_Page_Up:
+    case XKB_KEY_KP_Page_Up:
+        return Key::PageUp;
+    case XKB_KEY_Page_Down:
+    case XKB_KEY_KP_Page_Down:
+        return Key::PageDown;
     case XKB_KEY_Return:
     case XKB_KEY_KP_Enter:
         return Key::Enter;

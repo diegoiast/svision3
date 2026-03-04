@@ -291,6 +291,14 @@ int main(int argc, char *argv[]) {
     auto tabs = std::make_unique<toolkit::TabWidget>();
     auto *tabs_ptr = tabs.get();
 
+    auto b = std::make_unique<toolkit::Button>("Menu");
+    b->set_flat(true);
+    b->set_background_color(toolkit::Color::rgb(0.9f, 0.75f, 0.6f));
+    b->set_flat(true);
+    b->set_focusable(false);
+    b->set_padding({2, 8, 2, 8});
+    tabs->set_leading_widget(std::move(b));
+
     // ── Tab 1: Main ──────────────────────────────────────────────────────
     auto tab1 = std::make_unique<toolkit::VBoxLayout>();
     tab1->set_margins({20, 20, 20, 20});
@@ -528,20 +536,12 @@ int main(int argc, char *argv[]) {
     south_tabs->set_orientation(toolkit::TabOrientation::South);
     south_tabs->set_leading_widget(make_plus());
     south_tabs->set_trailing_widget(make_close());
-    auto s1 = std::make_unique<toolkit::Label>("South 1 - Shrinkable & Elided");
-    s1->set_shrinkable(true);
-    s1->set_alignment(toolkit::Alignment::Center);
-    s1->set_background_color(toolkit::Color::rgb(1.0f, 0.9f, 0.9f));
-    south_tabs->add_tab("South 1", std::move(s1));
-    auto s2 = std::make_unique<toolkit::Label>("South 2 - Shrinkable & Elided");
-    s2->set_shrinkable(true);
-    s2->set_alignment(toolkit::Alignment::Center);
-    s2->set_background_color(toolkit::Color::rgb(0.9f, 1.0f, 0.9f));
-    south_tabs->add_tab("South 2", std::move(s2));
-    auto s3 = std::make_unique<toolkit::Label>("South 3");
-    s3->set_alignment(toolkit::Alignment::Center);
-    s3->set_background_color(toolkit::Color::rgb(0.9f, 0.9f, 1.0f));
-    south_tabs->add_tab("South 3", std::move(s3));
+    for (int i = 1; i <= 5; ++i) {
+        auto label = std::make_unique<toolkit::Label>(fmt::format("South Tab {} Content", i));
+        label->set_alignment(toolkit::Alignment::Center);
+        label->set_background_color(toolkit::Color::rgb(1.0f, 1.0f - i * 0.1f, 1.0f - i * 0.1f));
+        south_tabs->add_tab(fmt::format("South {}", i), std::move(label));
+    }
 
     auto side_row = std::make_unique<toolkit::HBoxLayout>();
     side_row->set_margins({0, 0, 0, 0});
@@ -551,27 +551,23 @@ int main(int argc, char *argv[]) {
     west_tabs->set_orientation(toolkit::TabOrientation::West);
     west_tabs->set_leading_widget(make_plus());
     west_tabs->set_trailing_widget(make_close());
-    auto w1 = std::make_unique<toolkit::Label>("West 1");
-    w1->set_alignment(toolkit::Alignment::Center);
-    w1->set_background_color(toolkit::Color::rgb(1.0f, 1.0f, 0.8f));
-    west_tabs->add_tab("West 1", std::move(w1));
-    auto w2 = std::make_unique<toolkit::Label>("West 2");
-    w2->set_alignment(toolkit::Alignment::Center);
-    w2->set_background_color(toolkit::Color::rgb(1.0f, 0.8f, 1.0f));
-    west_tabs->add_tab("West 2", std::move(w2));
+    for (int i = 1; i <= 5; ++i) {
+        auto label = std::make_unique<toolkit::Label>(fmt::format("West Tab {} Content", i));
+        label->set_alignment(toolkit::Alignment::Center);
+        label->set_background_color(toolkit::Color::rgb(1.0f - i * 0.1f, 1.0f, 1.0f - i * 0.1f));
+        west_tabs->add_tab(fmt::format("West {}", i), std::move(label));
+    }
 
     auto east_tabs = std::make_unique<toolkit::TabWidget>();
     east_tabs->set_orientation(toolkit::TabOrientation::East);
     east_tabs->set_leading_widget(make_plus());
     east_tabs->set_trailing_widget(make_close());
-    auto e1 = std::make_unique<toolkit::Label>("East 1");
-    e1->set_alignment(toolkit::Alignment::Center);
-    e1->set_background_color(toolkit::Color::rgb(0.8f, 1.0f, 1.0f));
-    east_tabs->add_tab("East 1", std::move(e1));
-    auto e2 = std::make_unique<toolkit::Label>("East 2");
-    e2->set_alignment(toolkit::Alignment::Center);
-    e2->set_background_color(toolkit::Color::rgb(0.9f, 0.9f, 0.9f));
-    east_tabs->add_tab("East 2", std::move(e2));
+    for (int i = 1; i <= 5; ++i) {
+        auto label = std::make_unique<toolkit::Label>(fmt::format("East Tab {} Content", i));
+        label->set_alignment(toolkit::Alignment::Center);
+        label->set_background_color(toolkit::Color::rgb(1.0f - i * 0.1f, 1.0f - i * 0.1f, 1.0f));
+        east_tabs->add_tab(fmt::format("East {}", i), std::move(label));
+    }
 
     side_row->add_widget(std::move(west_tabs), 1, toolkit::Alignment::Fill);
     side_row->add_widget(std::move(east_tabs), 1, toolkit::Alignment::Fill);
@@ -593,8 +589,6 @@ int main(int argc, char *argv[]) {
     auto ok_btn = std::make_unique<toolkit::Button>("&ok");
     ok_btn->on_click = [] { spdlog::info("Button clicked!"); };
     ok_btn->set_tooltip("Log a message to the console");
-    ok_btn->set_flat(true);
-    ok_btn->set_background_color(toolkit::Color::rgb(0.9f, 0.75f, 0.6f));
     button_bar->add_widget(std::move(ok_btn));
 
     auto disabled_btn = std::make_unique<toolkit::Button>("Disabled");

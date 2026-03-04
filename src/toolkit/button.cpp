@@ -36,6 +36,17 @@ void Button::set_text(std::string text) {
     if (window_) window_->request_redraw();
 }
 
+void Button::set_visible(bool v) {
+    if (visible_ == v) return;
+    Widget::set_visible(v);
+    if (!visible_) {
+        bool changed = hovered_ || pressed_;
+        hovered_ = false;
+        pressed_ = false;
+        if (changed && window_) window_->request_redraw();
+    }
+}
+
 void Button::paint(Painter &painter) {
     auto const &style = Theme::current().button;
     auto bg = background_color_.value_or(style.background);
@@ -125,7 +136,7 @@ bool Button::handle_key(KeyEvent const &event) {
 }
 
 bool Button::handle_mouse(MouseEvent const &event) {
-    if (!enabled_) {
+    if (!enabled_ || !visible_) {
         if (hovered_ || pressed_) {
             hovered_ = false;
             pressed_ = false;
@@ -158,6 +169,13 @@ bool Button::handle_mouse(MouseEvent const &event) {
             if (window()) window()->request_redraw();
         }
         return inside;
+    case MouseEvent::Type::Leave:
+        if (hovered_ || pressed_) {
+            hovered_ = false;
+            pressed_ = false;
+            if (window()) window()->request_redraw();
+        }
+        return true;
     case MouseEvent::Type::Drag:
     case MouseEvent::Type::Scroll:
         return false;

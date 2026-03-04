@@ -140,6 +140,12 @@ static Key keysym_to_key(KeySym ks) {
         return Key::Home;
     case XK_End:
         return Key::End;
+    case XK_Page_Up:
+    case XK_KP_Page_Up:
+        return Key::PageUp;
+    case XK_Page_Down:
+    case XK_KP_Page_Down:
+        return Key::PageDown;
     case XK_Return:
     case XK_KP_Enter:
         return Key::Enter;
