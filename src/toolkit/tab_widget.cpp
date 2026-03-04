@@ -349,6 +349,11 @@ void TabWidget::set_window(Window *w) {
 void TabWidget::paint(Painter &painter) {
     if (tabs_.empty()) return;
 
+    if (layout_dirty) {
+        layout_content();
+        layout_dirty = false;
+    }
+
     auto const &style = Theme::current().tab_widget;
     float thickness = tab_bar_thickness();
     auto fm = painter.font_metrics(style.font_size);

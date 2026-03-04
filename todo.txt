@@ -29,7 +29,8 @@ Widgets
 [x] Label (text display, shrinkable/clippable)
 [x] LineInput (text editing, cursor, blinking, placeholder).
 [x] Checkbox (toggle, on_toggle callback).
-[ ] Checkbox - tristate
+[x] Checkbox - tristate.
+[ ] Checkbox - paint using the theme, not hardcoded drawing.
 [x] RadioButton + RadioGroup (mutual exclusivity).
 [x] Combobox (dropdown, keyboard nav, selection).
 [x] ProgressBar (themed, value 0-1).
@@ -55,7 +56,7 @@ Widgets
 [ ] Markdown tooltip.
 [ ] Undo/redo system (text area + linuedit).
 [ ] Client side decorations with theme.
-[ ] Proper filter API for listview and table view.
+[?] Proper filter API for listview and table view.
 [ ] MainWindow with docking widgets on the sides.
 
 Layout System

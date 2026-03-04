@@ -52,3 +52,35 @@ TEST_CASE("Checkbox toggles on space key", "[checkbox]") {
     REQUIRE(result == true);
     REQUIRE(cb.checked() == true);
 }
+
+TEST_CASE("Checkbox tri-state cycling", "[checkbox]") {
+    Checkbox cb("Tri-state");
+    cb.set_tri_state(true);
+    cb.set_focused(true);
+    
+    KeyEvent ke{};
+    ke.type = KeyEvent::Type::Press;
+    ke.text = " ";
+    
+    // Default Unchecked
+    REQUIRE(cb.check_state() == CheckState::Unchecked);
+    
+    // Toggle -> Checked
+    cb.handle_key(ke);
+    REQUIRE(cb.check_state() == CheckState::Checked);
+    
+    // Toggle -> Partial
+    cb.handle_key(ke);
+    REQUIRE(cb.check_state() == CheckState::Partial);
+    
+    // Toggle -> Unchecked
+    cb.handle_key(ke);
+    REQUIRE(cb.check_state() == CheckState::Unchecked);
+}
+
+TEST_CASE("Checkbox set_check_state", "[checkbox]") {
+    Checkbox cb("Option");
+    cb.set_check_state(CheckState::Partial);
+    REQUIRE(cb.check_state() == CheckState::Partial);
+    REQUIRE(cb.checked() == false);
+}

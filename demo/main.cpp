@@ -317,6 +317,12 @@ int main(int argc, char *argv[]) {
     cb1->set_tooltip("Toggle desktop notifications");
     tab_main->add_widget(std::move(cb1));
 
+    auto cb2 = std::make_unique<toolkit::Checkbox>("Tri-state option");
+    cb2->set_tri_state(true);
+    cb2->set_check_state(toolkit::CheckState::Partial);
+    cb2->set_tooltip("This checkbox cycles through three states");
+    tab_main->add_widget(std::move(cb2));
+
     std::vector<std::string> style_names;
     for (int i = 0; i < toolkit::theme_style_count; i++) {
         style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));

@@ -3,6 +3,7 @@
 
 #include "toolkit/checkbox.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/window.hpp"
 
 namespace toolkit {
 
@@ -10,13 +11,32 @@ Checkbox::Checkbox(std::string text) : text_(std::move(text)) {
     focusable_ = true;
 }
 
-void Checkbox::set_checked(bool c) { checked_ = c; }
+void Checkbox::set_checked(bool c) {
+    set_check_state(c ? CheckState::Checked : CheckState::Unchecked);
+}
+
+void Checkbox::set_check_state(CheckState s) {
+    if (state_ == s) return;
+    state_ = s;
+    if (window_) window_->request_redraw();
+}
 
 void Checkbox::toggle() {
-    checked_ = !checked_;
-    if (on_toggle) {
-        on_toggle(checked_);
+    if (tri_state_) {
+        if (state_ == CheckState::Unchecked) state_ = CheckState::Checked;
+        else if (state_ == CheckState::Checked) state_ = CheckState::Partial;
+        else state_ = CheckState::Unchecked;
+    } else {
+        state_ = (state_ == CheckState::Checked) ? CheckState::Unchecked : CheckState::Checked;
     }
+
+    if (on_toggle) {
+        on_toggle(state_ == CheckState::Checked);
+    }
+    if (on_state_change) {
+        on_state_change(state_);
+    }
+    if (window_) window_->request_redraw();
 }
 
 void Checkbox::paint(Painter &painter) {
@@ -27,13 +47,17 @@ void Checkbox::paint(Painter &painter) {
     auto box_rect = Rect{rect_.x, box_y, box, box};
 
     painter.draw_frame(box_rect, style.background, style.border, style, true);
-    if (checked_) {
+    if (state_ == CheckState::Checked) {
         auto cx = box_rect.x + box * 0.22f;
         auto cy = box_rect.y + box * 0.5f;
         auto lw = std::max(1.5f, box * 0.14f);
         painter.draw_line({cx, cy}, {cx + box * 0.18f, cy + box * 0.2f}, style.indicator, lw);
         painter.draw_line({cx + box * 0.18f, cy + box * 0.2f}, {cx + box * 0.55f, cy - box * 0.25f},
                           style.indicator, lw);
+    } else if (state_ == CheckState::Partial) {
+        auto gap = box * 0.25f;
+        auto inner = box_rect.inset(gap);
+        painter.fill_rect(inner, style.indicator);
     }
 
     auto text_x = rect_.x + box + style.spacing;
