@@ -511,12 +511,14 @@ int main(int argc, char *argv[]) {
     auto make_plus = []() {
         auto b = std::make_unique<toolkit::Button>("+");
         b->set_flat(true);
+        b->set_focusable(false);
         b->set_padding({2, 8, 2, 8});
         return b;
     };
     auto make_close = []() {
         auto b = std::make_unique<toolkit::Button>("x");
         b->set_flat(true);
+        b->set_focusable(false);
         b->set_padding({2, 8, 2, 8});
         b->set_background_color(toolkit::Color::rgb(1.0f, 0.8f, 0.8f));
         return b;

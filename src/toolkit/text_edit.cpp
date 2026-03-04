@@ -11,6 +11,7 @@
 namespace toolkit {
 
 TextEdit::TextEdit(std::string text) {
+    focusable_ = true;
     set_text(text);
     cursor_blink_time_ = std::chrono::steady_clock::now();
 }

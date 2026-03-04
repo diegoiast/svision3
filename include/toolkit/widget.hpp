@@ -43,7 +43,8 @@ class Widget {
     void set_layout_dirty(bool dirty) { layout_dirty = dirty; }
     bool is_layout_dirty() const { return layout_dirty; }
 
-    virtual bool focusable() const { return false; }
+    virtual bool focusable() const { return focusable_; }
+    void set_focusable(bool f) { focusable_ = f; }
     virtual void set_focused(bool focused) { focused_ = focused; }
     bool is_focused() const { return focused_; }
 
@@ -102,6 +103,7 @@ class Widget {
     bool focused_ = false;
     bool enabled_ = true;
     bool visible_ = true;
+    bool focusable_ = false;
     Size min_size_;
     Size max_size_;
     Window *window_ = nullptr;

@@ -31,7 +31,6 @@ class RadioButton : public Widget {
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
-    bool focusable() const override { return true; }
 
     bool selected() const { return selected_; }
 

@@ -13,7 +13,9 @@
 namespace toolkit {
 
 LineInput::LineInput(std::string placeholder)
-    : placeholder_(std::move(placeholder)), cursor_blink_time_(std::chrono::steady_clock::now()) {}
+    : placeholder_(std::move(placeholder)), cursor_blink_time_(std::chrono::steady_clock::now()) {
+    focusable_ = true;
+}
 
 void LineInput::set_text(std::string const &text) {
     text_ = text;

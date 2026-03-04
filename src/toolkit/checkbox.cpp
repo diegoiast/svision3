@@ -6,7 +6,9 @@
 
 namespace toolkit {
 
-Checkbox::Checkbox(std::string text) : text_(std::move(text)) {}
+Checkbox::Checkbox(std::string text) : text_(std::move(text)) {
+    focusable_ = true;
+}
 
 void Checkbox::set_checked(bool c) { checked_ = c; }
 

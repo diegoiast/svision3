@@ -189,6 +189,7 @@ void FilterAdapter::rebuild_async() {
 // ── ListView ─────────────────────────────────────────────────────────────────
 
 ListView::ListView(std::shared_ptr<ListAdapter> adapter) : adapter_(std::move(adapter)) {
+    focusable_ = true;
     if (adapter_) {
         adapter_->on_data_changed = [this] {
             clamp_scroll();

@@ -11,6 +11,7 @@ static Color mid(Color a, Color b) {
 }
 
 Button::Button(std::string text) {
+    focusable_ = true;
     auto pos = text.find('&');
     if (pos != std::string::npos && pos + 1 < text.size()) {
         mnemonic_index_ = static_cast<int>(pos);

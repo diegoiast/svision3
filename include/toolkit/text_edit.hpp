@@ -19,7 +19,6 @@ class TextEdit : public Widget {
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
-    bool focusable() const override { return true; }
     CursorShape cursor() const override { return CursorShape::IBeam; }
     void set_focused(bool focused) override;
 

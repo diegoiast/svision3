@@ -9,7 +9,9 @@
 
 namespace toolkit {
 
-Combobox::Combobox(std::vector<std::string> items) : items_(std::move(items)) {}
+Combobox::Combobox(std::vector<std::string> items) : items_(std::move(items)) {
+    focusable_ = true;
+}
 
 void Combobox::set_items(std::vector<std::string> items) {
     items_ = std::move(items);
