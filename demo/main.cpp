@@ -377,6 +377,11 @@ int main(int argc, char *argv[]) {
     input2->set_password_mode(true);
     tab_inputs->add_widget(std::move(input2));
 
+    auto input3 = std::make_unique<toolkit::LineInput>("Read-only input");
+    input3->set_text("This text cannot be edited");
+    input3->set_read_only(true);
+    tab_inputs->add_widget(std::move(input3));
+
     auto inputs_spacer = std::make_unique<toolkit::Label>("");
     tab_inputs->add_widget(std::move(inputs_spacer), 1);
 

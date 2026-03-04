@@ -27,6 +27,7 @@ LineInput::LineInput(std::string placeholder)
     : placeholder_(std::move(placeholder)), cursor_blink_time_(std::chrono::steady_clock::now()) {
     focusable_ = true;
     focused_ = false;
+    read_only_ = false;
 }
 
 void LineInput::set_password_mode(bool enable) {
@@ -129,7 +130,7 @@ float LineInput::peek_btn_size() const {
 float LineInput::content_right_inset() const {
     auto const &style = Theme::current().line_input;
     float inset = style.padding.right;
-    if (!text_.empty()) {
+    if (!text_.empty() && !read_only_) {
         inset += clear_btn_size() + 4.0f;
     }
     if (is_password_field_) {
@@ -144,7 +145,7 @@ float LineInput::content_available_width() const {
 }
 
 bool LineInput::hit_clear_btn(Point pos) const {
-    if (text_.empty()) {
+    if (text_.empty() || read_only_) {
         return false;
     }
     auto sz = clear_btn_size();
@@ -276,7 +277,7 @@ void LineInput::paint(Painter &painter) {
         auto sz = clear_btn_size();
         auto const &style = Theme::current().line_input;
 
-        if (!text_.empty()) {
+        if (!text_.empty() && !read_only_) {
             auto bx = rect_.x + rect_.width - style.padding.right - sz;
             auto by = rect_.y + (rect_.height - sz) / 2.0f;
             auto cx = bx + sz / 2.0f;
@@ -490,6 +491,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
 
     switch (event.key) {
     case Key::Backspace:
+        if (read_only_) return true;
         if (has_selection()) {
             delete_selection();
         } else if (event.alt) {
@@ -511,6 +513,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         }
         return true;
     case Key::Delete:
+        if (read_only_) return true;
         if (has_selection()) {
             delete_selection();
         } else if (cursor_pos_ < text_.size()) {
@@ -546,6 +549,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         move_cursor(text_.size(), event.shift);
         return true;
     case Key::Enter:
+        if (read_only_) return true;
         if (on_submit) {
             on_submit(text_);
         }
@@ -555,6 +559,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
     }
 
     if (!event.text.empty()) {
+        if (read_only_) return false;
         if (has_selection()) {
             delete_selection();
         }
@@ -571,7 +576,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
 }
 
 void LineInput::cut() {
-    if (!has_selection() || password_mode_) {
+    if (!has_selection() || password_mode_ || read_only_) {
         return;
     }
     Clipboard::set_text(text_.substr(sel_start(), sel_end() - sel_start()));
@@ -586,6 +591,7 @@ void LineInput::copy() {
 }
 
 void LineInput::paste() {
+    if (read_only_) return;
     auto clip = Clipboard::get_text();
     if (clip.empty()) {
         return;
@@ -608,12 +614,11 @@ void LineInput::show_context_menu(Point pos) {
 
     // FIXME: use i18n for menu text
     std::vector<MenuItem> items;
+    items.push_back(MenuItem::action("Cut", [this] { cut(); }, [this] { return has_selection() && !password_mode_ && !read_only_; }));
+    items.push_back(
+        MenuItem::action("Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; }));
     items.push_back(MenuItem::action(
-        "Cut", [this] { cut(); }, [this] { return has_selection() && !password_mode_; }));
-    items.push_back(MenuItem::action(
-        "Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; }));
-    items.push_back(MenuItem::action(
-        "Paste", [this] { paste(); }, [] { return !Clipboard::get_text().empty(); }));
+        "Paste", [this] { paste(); }, [this] { return !read_only_ && !Clipboard::get_text().empty(); }));
     items.push_back(MenuItem::sep());
     items.push_back(MenuItem::action(
         "Select All",
@@ -624,7 +629,8 @@ void LineInput::show_context_menu(Point pos) {
         },
         [this] { return !text_.empty(); }));
     items.push_back(MenuItem::action(
-        "Delete", [this] { delete_selection(); }, [this] { return has_selection(); }));
+        "Delete", [this] { delete_selection(); }, [this] { return !read_only_ && has_selection(); }));
+
 
     context_menu_ = std::make_unique<ContextMenu>(std::move(items));
     context_menu_->show(window(), pos);
