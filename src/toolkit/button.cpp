@@ -1,5 +1,6 @@
 #include "toolkit/button.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/window.hpp"
 #include <algorithm>
 #include <cctype>
 
@@ -22,7 +23,7 @@ Button::Button(std::string text) {
 
 void Button::paint(Painter &painter) {
     auto const &style = Theme::current().button;
-    auto bg = style.background;
+    auto bg = background_color_.value_or(style.background);
     auto border_c = enabled_ ? style.border : mid(style.border, style.background);
     auto text_c = enabled_ ? style.text : mid(style.text, style.background);
     auto text_offset = (style.beveled && pressed_ && enabled_) ? 1.0f : 0.0f;
@@ -33,14 +34,34 @@ void Button::paint(Painter &painter) {
     auto text_pos = Point{text_x, baseline_y + text_offset};
 
     if (enabled_) {
-        if (pressed_ && style.background_pressed) {
-            bg = *style.background_pressed;
-        } else if (hovered_ && style.background_hovered) {
-            bg = *style.background_hovered;
+        if (background_color_) {
+            if (pressed_) {
+                bg = background_color_->darken(0.1f);
+            } else if (hovered_) {
+                bg = background_color_->lighten(0.1f);
+            }
+        } else {
+            if (pressed_ && style.background_pressed) {
+                bg = *style.background_pressed;
+            } else if (hovered_ && style.background_hovered) {
+                bg = *style.background_hovered;
+            }
         }
     }
 
-    painter.draw_frame(rect_, bg, border_c, style, pressed_ && enabled_);
+    bool show_full_frame = !flat_ || hovered_ || pressed_;
+    if (show_full_frame) {
+        painter.draw_frame(rect_, bg, border_c, style, pressed_ && enabled_);
+    } else if (background_color_) {
+        // Flat button, not hovered/pressed, but has a custom background:
+        // just fill the background without border.
+        if (style.corner_radius > 0.0f) {
+            painter.fill_rounded_rect(rect_, bg, style.corner_radius);
+        } else {
+            painter.fill_rect(rect_, bg);
+        }
+    }
+    
     painter.draw_text(display_text_, text_pos, text_c, style.font_size);
 
     if (mnemonic_index_ >= 0 && enabled_) {
@@ -90,27 +111,37 @@ bool Button::handle_key(KeyEvent const &event) {
 
 bool Button::handle_mouse(MouseEvent const &event) {
     if (!enabled_) {
-        hovered_ = false;
-        pressed_ = false;
+        if (hovered_ || pressed_) {
+            hovered_ = false;
+            pressed_ = false;
+            if (window()) window()->request_redraw();
+        }
         return false;
     }
     auto inside = hit_test(event.position);
 
     switch (event.type) {
     case MouseEvent::Type::Move:
-        hovered_ = inside;
+        if (hovered_ != inside) {
+            hovered_ = inside;
+            if (window()) window()->request_redraw();
+        }
         return inside;
     case MouseEvent::Type::Press:
         if (inside) {
             pressed_ = true;
+            if (window()) window()->request_redraw();
             return true;
         }
         return false;
     case MouseEvent::Type::Release:
-        if (pressed_ && inside && on_click) {
-            on_click();
+        if (pressed_) {
+            if (inside && on_click) {
+                on_click();
+            }
+            pressed_ = false;
+            if (window()) window()->request_redraw();
         }
-        pressed_ = false;
         return inside;
     case MouseEvent::Type::Drag:
     case MouseEvent::Type::Scroll:

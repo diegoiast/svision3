@@ -571,10 +571,11 @@ int main(int argc, char *argv[]) {
     auto ok_btn = std::make_unique<toolkit::Button>("&ok");
     ok_btn->on_click = [] { spdlog::info("Button clicked!"); };
     ok_btn->set_tooltip("Log a message to the console");
+    ok_btn->set_flat(true);
+    ok_btn->set_background_color(toolkit::Color::rgb(0.9f, 0.75f, 0.6f));
     button_bar->add_widget(std::move(ok_btn));
 
     auto disabled_btn = std::make_unique<toolkit::Button>("Disabled");
-    // FIXME: this does not work, as button draws using toolkit color always
     disabled_btn->set_background_color(toolkit::Color::rgb(0.3f, 0.5f, 0.3f));
     disabled_btn->set_enabled(false);
     disabled_btn->set_tooltip("This button is disabled");

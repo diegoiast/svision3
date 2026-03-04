@@ -30,6 +30,8 @@ class Button : public Widget {
     }
 
     void set_padding(Margins const &padding) { padding_override_ = padding; }
+    void set_flat(bool f) { flat_ = f; }
+    bool is_flat() const { return flat_; }
 
     std::function<void()> on_click;
 
@@ -39,6 +41,7 @@ class Button : public Widget {
     char mnemonic_key_ = 0;
     bool hovered_ = false;
     bool pressed_ = false;
+    bool flat_ = false;
     std::optional<Margins> padding_override_;
 };
 
