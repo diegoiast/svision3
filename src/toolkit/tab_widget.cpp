@@ -25,6 +25,18 @@ void TabWidget::set_orientation(TabOrientation o) {
     layout_content();
 }
 
+void TabWidget::set_leading_widget(std::unique_ptr<Widget> widget) {
+    leading_widget_ = std::move(widget);
+    if (leading_widget_ && window_) leading_widget_->set_window(window_);
+    layout_content();
+}
+
+void TabWidget::set_trailing_widget(std::unique_ptr<Widget> widget) {
+    trailing_widget_ = std::move(widget);
+    if (trailing_widget_ && window_) trailing_widget_->set_window(window_);
+    layout_content();
+}
+
 float TabWidget::tab_bar_thickness() const {
     auto const &style = Theme::current().tab_widget;
     auto fm = Painter::measure_font_metrics(style.font_size);
@@ -38,25 +50,50 @@ float TabWidget::tab_size(int i) const {
 }
 
 void TabWidget::layout_content() {
-    if (tabs_.empty()) return;
     float thickness = tab_bar_thickness();
+    bool vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
+
+    Rect bar_rect = rect_;
     Rect content_rect = rect_;
-    switch (orientation_) {
-    case TabOrientation::North:
-        content_rect.y += thickness;
-        content_rect.height -= thickness;
-        break;
-    case TabOrientation::South:
-        content_rect.height -= thickness;
-        break;
-    case TabOrientation::East:
-        content_rect.width -= thickness;
-        break;
-    case TabOrientation::West:
-        content_rect.x += thickness;
-        content_rect.width -= thickness;
-        break;
+
+    if (vertical) {
+        bar_rect.width = thickness;
+        if (orientation_ == TabOrientation::East) {
+            bar_rect.x = rect_.x + rect_.width - thickness;
+            content_rect.width -= thickness;
+        } else {
+            content_rect.x += thickness;
+            content_rect.width -= thickness;
+        }
+    } else {
+        bar_rect.height = thickness;
+        if (orientation_ == TabOrientation::South) {
+            bar_rect.y = rect_.y + rect_.height - thickness;
+            content_rect.height -= thickness;
+        } else {
+            content_rect.y += thickness;
+            content_rect.height -= thickness;
+        }
     }
+
+    if (leading_widget_) {
+        Size sz = leading_widget_->size_hint();
+        if (vertical) {
+            leading_widget_->set_rect({bar_rect.x, bar_rect.y, thickness, sz.height});
+        } else {
+            leading_widget_->set_rect({bar_rect.x, bar_rect.y, sz.width, thickness});
+        }
+    }
+
+    if (trailing_widget_) {
+        Size sz = trailing_widget_->size_hint();
+        if (vertical) {
+            trailing_widget_->set_rect({bar_rect.x, bar_rect.y + bar_rect.height - sz.height, thickness, sz.height});
+        } else {
+            trailing_widget_->set_rect({bar_rect.x + bar_rect.width - sz.width, bar_rect.y, sz.width, thickness});
+        }
+    }
+
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size()))
         tabs_[current_].content->set_rect(content_rect);
 }
@@ -70,9 +107,15 @@ TabWidget::HitResult TabWidget::hit_test_tab(Point p) const {
     if (orientation_ == TabOrientation::South) y = rect_.y + rect_.height - thickness;
     if (orientation_ == TabOrientation::East) x = rect_.x + rect_.width - thickness;
 
+    float start_pos = vertical ? rect_.y : rect_.x;
+    if (leading_widget_) {
+        Size sz = leading_widget_->size_hint();
+        start_pos += vertical ? sz.height : sz.width;
+    }
+
     if (vertical) {
         if (p.x < x || p.x >= x + thickness) return {};
-        float draw_y = rect_.y;
+        float draw_y = start_pos;
         for (int i = 0; i < static_cast<int>(tabs_.size()); i++) {
             float h = tab_size(i);
             if (p.y >= draw_y && p.y < draw_y + h) {
@@ -93,7 +136,7 @@ TabWidget::HitResult TabWidget::hit_test_tab(Point p) const {
         }
     } else {
         if (p.y < y || p.y >= y + thickness) return {};
-        float draw_x = rect_.x;
+        float draw_x = start_pos;
         for (int i = 0; i < static_cast<int>(tabs_.size()); i++) {
             float w = tab_size(i);
             if (p.x >= draw_x && p.x < draw_x + w) {
@@ -225,7 +268,18 @@ void TabWidget::paint(Painter &painter) {
         }
     };
 
-    float cur_x = rect_.x, cur_y = rect_.y;
+    float start_pos = vertical ? rect_.y : rect_.x;
+    if (leading_widget_) {
+        Size sz = leading_widget_->size_hint();
+        start_pos += vertical ? sz.height : sz.width;
+        leading_widget_->draw(painter);
+    }
+    if (trailing_widget_) {
+        trailing_widget_->draw(painter);
+    }
+
+    float cur_x = vertical ? bar_x : start_pos;
+    float cur_y = vertical ? start_pos : bar_y;
     float drag_draw_x = 0, drag_draw_y = 0;
     for (int i = 0; i < static_cast<int>(tabs_.size()); i++) {
         float size = tab_size(i);
@@ -263,6 +317,9 @@ void TabWidget::paint(Painter &painter) {
 }
 
 bool TabWidget::handle_mouse(MouseEvent const &event) {
+    if (leading_widget_ && leading_widget_->handle_mouse(event)) return true;
+    if (trailing_widget_ && trailing_widget_->handle_mouse(event)) return true;
+
     float thickness = tab_bar_thickness();
     bool vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
 
@@ -387,6 +444,14 @@ Size TabWidget::size_hint() const {
 }
 
 Widget *TabWidget::find_focusable_at(Point p) {
+    if (leading_widget_) {
+        auto *w = leading_widget_->find_focusable_at(p);
+        if (w) return w;
+    }
+    if (trailing_widget_) {
+        auto *w = trailing_widget_->find_focusable_at(p);
+        if (w) return w;
+    }
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size()))
         return tabs_[current_].content->find_focusable_at(p);
     return nullptr;
@@ -394,6 +459,14 @@ Widget *TabWidget::find_focusable_at(Point p) {
 
 Widget *TabWidget::widget_at(Point p) {
     if (!visible_ || !hit_test(p)) return nullptr;
+    if (leading_widget_) {
+        auto *w = leading_widget_->widget_at(p);
+        if (w) return w;
+    }
+    if (trailing_widget_) {
+        auto *w = trailing_widget_->widget_at(p);
+        if (w) return w;
+    }
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
         if (auto *w = tabs_[current_].content->widget_at(p))
             return w;
@@ -402,16 +475,22 @@ Widget *TabWidget::widget_at(Point p) {
 }
 
 void TabWidget::collect_focusables(std::vector<Widget *> &out) {
+    if (leading_widget_) leading_widget_->collect_focusables(out);
+    if (trailing_widget_) trailing_widget_->collect_focusables(out);
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size()))
         tabs_[current_].content->collect_focusables(out);
 }
 
 void TabWidget::collect_mnemonics(std::vector<Widget *> &out) {
+    if (leading_widget_) leading_widget_->collect_mnemonics(out);
+    if (trailing_widget_) trailing_widget_->collect_mnemonics(out);
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size()))
         tabs_[current_].content->collect_mnemonics(out);
 }
 
 void TabWidget::for_each_child(std::function<void(Widget *)> const &callback) {
+    if (leading_widget_) callback(leading_widget_.get());
+    if (trailing_widget_) callback(trailing_widget_.get());
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
         callback(tabs_[current_].content.get());
     }

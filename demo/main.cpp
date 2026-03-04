@@ -508,8 +508,24 @@ int main(int argc, char *argv[]) {
     tab6->set_margins({0, 0, 0, 0});
     tab6->set_spacing(0);
 
+    auto make_plus = []() {
+        auto b = std::make_unique<toolkit::Button>("+");
+        b->set_flat(true);
+        b->set_padding({2, 8, 2, 8});
+        return b;
+    };
+    auto make_close = []() {
+        auto b = std::make_unique<toolkit::Button>("x");
+        b->set_flat(true);
+        b->set_padding({2, 8, 2, 8});
+        b->set_background_color(toolkit::Color::rgb(1.0f, 0.8f, 0.8f));
+        return b;
+    };
+
     auto south_tabs = std::make_unique<toolkit::TabWidget>();
     south_tabs->set_orientation(toolkit::TabOrientation::South);
+    south_tabs->set_leading_widget(make_plus());
+    south_tabs->set_trailing_widget(make_close());
     auto s1 = std::make_unique<toolkit::Label>("South 1 - Shrinkable & Elided");
     s1->set_shrinkable(true);
     s1->set_alignment(toolkit::Alignment::Center);
@@ -531,6 +547,8 @@ int main(int argc, char *argv[]) {
 
     auto west_tabs = std::make_unique<toolkit::TabWidget>();
     west_tabs->set_orientation(toolkit::TabOrientation::West);
+    west_tabs->set_leading_widget(make_plus());
+    west_tabs->set_trailing_widget(make_close());
     auto w1 = std::make_unique<toolkit::Label>("West 1");
     w1->set_alignment(toolkit::Alignment::Center);
     w1->set_background_color(toolkit::Color::rgb(1.0f, 1.0f, 0.8f));
@@ -542,6 +560,8 @@ int main(int argc, char *argv[]) {
 
     auto east_tabs = std::make_unique<toolkit::TabWidget>();
     east_tabs->set_orientation(toolkit::TabOrientation::East);
+    east_tabs->set_leading_widget(make_plus());
+    east_tabs->set_trailing_widget(make_close());
     auto e1 = std::make_unique<toolkit::Label>("East 1");
     e1->set_alignment(toolkit::Alignment::Center);
     e1->set_background_color(toolkit::Color::rgb(0.8f, 1.0f, 1.0f));

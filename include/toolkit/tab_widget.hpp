@@ -28,6 +28,9 @@ class TabWidget : public Widget {
     TabOrientation orientation() const { return orientation_; }
     void set_orientation(TabOrientation o);
 
+    void set_leading_widget(std::unique_ptr<Widget> widget);
+    void set_trailing_widget(std::unique_ptr<Widget> widget);
+
     std::function<void(int index, std::string const &title)> on_tab_close;
 
     void paint(Painter &painter) override;
@@ -66,6 +69,9 @@ class TabWidget : public Widget {
     int current_ = 0;
     int hovered_tab_ = -1;
     int hovered_close_ = -1;
+
+    std::unique_ptr<Widget> leading_widget_;
+    std::unique_ptr<Widget> trailing_widget_;
 
     bool dragging_ = false;
     int drag_tab_ = -1;
