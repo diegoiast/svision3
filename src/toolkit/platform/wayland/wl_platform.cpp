@@ -1090,6 +1090,12 @@ void WaylandPlatformWindow::paint_to_surface(wl_surface *target_surface, int pw,
         cairo_image_surface_create_for_data(static_cast<unsigned char *>(data),
                                             CAIRO_FORMAT_ARGB32, pw, ph, stride);
     cairo_t *cr = cairo_create(cs);
+
+    // Clear with transparency
+    cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
+    cairo_paint(cr);
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+
     cairo_scale(cr, static_cast<double>(current_scale), static_cast<double>(current_scale));
 
     if (target_surface == surface) {

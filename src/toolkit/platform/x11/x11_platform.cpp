@@ -41,6 +41,9 @@ struct X11PlatformApplication::Impl {
     Visual *visual = nullptr;
     int depth = 0;
     Colormap colormap = 0;
+    Visual *argb_visual = nullptr;
+    int argb_depth = 0;
+    Colormap argb_colormap = 0;
     float scale = 1.0f;
     bool running = false;
     Atom wm_delete_window, wm_protocols, net_wm_name, utf8_string;
@@ -399,6 +402,14 @@ X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>(
     d->visual = DefaultVisual(d->display, d->screen);
     d->depth = DefaultDepth(d->display, d->screen);
     d->colormap = DefaultColormap(d->display, d->screen);
+
+    XVisualInfo vinfo;
+    if (XMatchVisualInfo(d->display, d->screen, 32, TrueColor, &vinfo)) {
+        d->argb_visual = vinfo.visual;
+        d->argb_depth = vinfo.depth;
+        d->argb_colormap = XCreateColormap(d->display, d->root, d->argb_visual, AllocNone);
+    }
+
     d->wm_delete_window = XInternAtom(d->display, "WM_DELETE_WINDOW", False);
     d->wm_protocols = XInternAtom(d->display, "WM_PROTOCOLS", False);
     d->net_wm_name = XInternAtom(d->display, "_NET_WM_NAME", False);
@@ -430,6 +441,9 @@ X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>(
 
 X11PlatformApplication::~X11PlatformApplication() {
     auto *d = impl_.get();
+    if (d->argb_colormap) {
+        XFreeColormap(d->display, d->argb_colormap);
+    }
     if (d->xim) {
         XCloseIM(d->xim);
     }
@@ -959,19 +973,35 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
     if (sy < 0) {
         sy = sy + pih + 24;
     }
+
+    Visual *visual = d->argb_visual ? d->argb_visual : d->visual;
+    int depth = d->argb_visual ? d->argb_depth : d->depth;
+    Colormap colormap = d->argb_visual ? d->argb_colormap : d->colormap;
+
     if (w->tooltip_xwindow == 0L) {
         XSetWindowAttributes sa = {};
         sa.override_redirect = True;
         sa.save_under = True;
+        sa.colormap = colormap;
+        sa.border_pixel = 0;
+        sa.background_pixel = 0;
         w->tooltip_xwindow =
-            XCreateWindow(d->display, d->root, sx, sy, piw, pih, 0, d->depth, InputOutput,
-                          d->visual, CWOverrideRedirect | CWSaveUnder, &sa);
+            XCreateWindow(d->display, d->root, sx, sy, piw, pih, 0, depth, InputOutput, visual,
+                          CWOverrideRedirect | CWSaveUnder | CWColormap | CWBorderPixel |
+                              CWBackPixel,
+                          &sa);
     } else {
         XMoveResizeWindow(d->display, w->tooltip_xwindow, sx, sy, piw, pih);
     }
     XMapRaised(d->display, w->tooltip_xwindow);
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, piw, pih);
     cairo_t *cr = cairo_create(surf);
+
+    // Clear with transparency
+    cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
+    cairo_paint(cr);
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+
     cairo_scale(cr, scale, scale);
     CairoPainter painter(cr);
     Rect r{0, 0, tw, th};
@@ -980,7 +1010,7 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
     painter.draw_text(text, {pad, pad + fm.ascent}, style.text, fs);
     cairo_surface_flush(surf);
     cairo_surface_t *xs =
-        cairo_xlib_surface_create(d->display, w->tooltip_xwindow, d->visual, piw, pih);
+        cairo_xlib_surface_create(d->display, w->tooltip_xwindow, visual, piw, pih);
     cairo_t *xcr = cairo_create(xs);
     cairo_set_source_surface(xcr, surf, 0, 0);
     cairo_paint(xcr);
