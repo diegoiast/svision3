@@ -46,6 +46,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/progress_bar.cpp
     src/toolkit/tab_widget.cpp
     src/toolkit/list_view.cpp
+    src/toolkit/slider.cpp
     src/toolkit/spin_box.cpp
     src/toolkit/line_input.cpp
     src/toolkit/text_edit.cpp
@@ -347,6 +348,7 @@ add_executable(tests
     tests/test_layout.cpp
     tests/test_tab_widget.cpp
     tests/test_filter_adapter.cpp
+    tests/test_slider.cpp
     tests/test_spin_box.cpp
     tests/test_command.cpp
     tests/test_table_view.cpp

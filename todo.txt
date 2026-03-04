@@ -39,7 +39,7 @@ Widgets
 [ ] ListView: display widgets instead of simple text.
 [x] SpinBox (int value, min/max/step, arrow buttons).
 [x] Tooltip.
-[ ] Slider (horizontal, vertical, range).
+[x] Slider (horizontal, vertical, range).
 [ ] ScrollBar / ScrollArea.
 [ ] ScrollBar: API for theme/app to tell widgets "have an inline scrollbar" or external.
 [x] TextArea (multi-line input).
@@ -47,7 +47,7 @@ Widgets
 [x] TableView / DataGrid.
 [ ] MenuBar / Menu / ContextMenu.
 [ ] Toolbar.
-[ ] Dialog (modal/modeless).
+[ ] Dialog (modal/modeles).
 [ ] StatusBar.
 [ ] GroupBox / Frame.
 [ ] Splitter.

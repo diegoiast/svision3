@@ -99,6 +99,14 @@ struct ProgressBarStyle : WidgetStyle {
     float chunk_gap = 2.0f;
 };
 
+struct SliderStyle : WidgetStyle {
+    Color groove;
+    Color handle;
+    Color handle_border;
+    float groove_thickness = 4.0f;
+    float handle_size = 16.0f;
+};
+
 struct TooltipStyle {
     Color background = Color::rgb(1.0f, 1.0f, 0.88f);
     Color border = Color::rgb(0.6f, 0.6f, 0.5f);
@@ -154,6 +162,7 @@ struct Theme {
     ListViewStyle list_view;
     TableViewStyle table_view;
     ProgressBarStyle progress_bar;
+    SliderStyle slider;
     TooltipStyle tooltip;
 
     static Theme from_palette(std::string name, Palette const &p);

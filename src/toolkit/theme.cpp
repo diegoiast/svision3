@@ -122,6 +122,13 @@ Theme Theme::from_palette(std::string name, Palette const &p) {
     t.progress_bar.fill       = p.accent;
     t.progress_bar.bar_height = 8.0f;
 
+    apply_base(t.slider, p);
+    t.slider.groove           = p.border;
+    t.slider.handle           = p.widget_bg;
+    t.slider.handle_border    = p.border;
+    t.slider.groove_thickness = 4.0f;
+    t.slider.handle_size      = 16.0f;
+
     if (is_dark) {
         t.tooltip.background = Color::rgb(0.25f, 0.25f, 0.22f);
         t.tooltip.border     = Color::rgb(0.45f, 0.45f, 0.40f);
@@ -273,6 +280,8 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
     switch (style) {
     case ThemeStyle::MacOS:
         t.button.padding = {6, 16, 6, 16};
+        t.slider.handle_size = 20.0f;
+        t.slider.groove_thickness = 4.0f;
         break;
 
     case ThemeStyle::Material:
@@ -286,6 +295,10 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.checkbox.border_width     = 2.0f;
         t.radio.border_width        = 2.0f;
         t.line_input.padding        = {6, 12, 6, 12};
+        t.slider.handle_size        = 14.0f;
+        t.slider.groove_thickness   = 2.0f;
+        t.slider.handle             = p.accent;
+        t.slider.handle_border      = Color::rgba(0, 0, 0, 0);
         break;
 
     case ThemeStyle::Win11: {
@@ -295,6 +308,9 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.button.background_pressed = blend(btn_bg, p.accent, dark ? 0.06f : 0.15f);
         t.button.border             = dark ? p.border.lighten(0.04f) : p.border.lighten(0.08f);
         t.button.padding            = {6, 20, 6, 20};
+        t.slider.handle_size        = 18.0f;
+        t.slider.groove_thickness   = 4.0f;
+        t.slider.handle             = p.accent;
         break;
     }
 
@@ -314,6 +330,8 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.progress_bar.fill        = dark
             ? Color::rgb(0.30f, 0.50f, 0.30f)
             : Color::rgb(0.0f, 0.0f, 0.50f);
+        t.slider.handle_size = 12.0f;
+        t.slider.groove_thickness = 4.0f;
         break;
     }
 
@@ -323,6 +341,8 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.button.background_hovered = p.accent;
         t.button.background_pressed = p.accent.darken(0.06f);
         t.button.padding            = {6, 18, 6, 18};
+        t.slider.handle_size        = 20.0f;
+        t.slider.groove_thickness   = 6.0f;
         break;
     }
 
@@ -338,6 +358,8 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.radio.border_width        = 2.0f;
         t.line_input.corner_radius  = p.corner_radius;
         t.combobox.corner_radius    = p.corner_radius;
+        t.slider.handle_size        = 22.0f;
+        t.slider.groove_thickness   = 6.0f;
         break;
     }
     }

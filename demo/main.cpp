@@ -8,6 +8,7 @@
 #include "toolkit/list_view.hpp"
 #include "toolkit/progress_bar.hpp"
 #include "toolkit/radio_button.hpp"
+#include "toolkit/slider.hpp"
 #include "toolkit/spin_box.hpp"
 #include "toolkit/tab_widget.hpp"
 #include "toolkit/table_view.hpp"
@@ -363,13 +364,6 @@ int main(int argc, char *argv[]) {
     tab_main->add_widget(std::make_unique<toolkit::Label>(
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), app.painter_name())));
 
-    auto debug_toggle = std::make_unique<toolkit::Checkbox>("Show Debug Frames");
-    debug_toggle->on_toggle = [window](bool checked) {
-        toolkit::Widget::debug_show_frames = checked;
-        window->request_redraw();
-    };
-    tab_main->add_widget(std::move(debug_toggle));
-
     tabs->add_tab("Main", std::move(tab_main));
 
     // ── Tab: Inputs ────────────────────────────────────────────────────
@@ -425,6 +419,33 @@ int main(int argc, char *argv[]) {
     email_row->add_widget(std::move(input5), 1);
     email_row->add_widget(std::move(status_label));
     tab_inputs->add_widget(std::move(email_row));
+
+    auto slider_row = std::make_unique<toolkit::HBoxLayout>();
+    slider_row->set_spacing(10);
+    
+    auto slider = std::make_unique<toolkit::Slider>();
+    slider->set_range(0, 100);
+    slider->set_value(progress_ptr->value() * 100.0f);
+    
+    auto slider_val = std::make_unique<toolkit::Label>(fmt::format("{:.0f}%", slider->value()));
+    auto *slider_val_ptr = slider_val.get();
+    
+    // We need to capture the timer ID to stop it if the user interacts with the slider
+    static int auto_progress_timer = 0;
+
+    slider->on_change = [progress_ptr, slider_val_ptr, window](float v) {
+        if (auto_progress_timer != 0) {
+            window->stop_timer(auto_progress_timer);
+            auto_progress_timer = 0;
+        }
+        progress_ptr->set_value(v / 100.0f);
+        progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
+        slider_val_ptr->set_text(fmt::format("{:.0f}%", v));
+    };
+    
+    slider_row->add_widget(std::move(slider), 1);
+    slider_row->add_widget(std::move(slider_val));
+    tab_inputs->add_widget(std::move(slider_row));
 
     auto inputs_spacer = std::make_unique<toolkit::Label>("");
     tab_inputs->add_widget(std::move(inputs_spacer), 1);
@@ -632,6 +653,13 @@ int main(int argc, char *argv[]) {
     auto bar_wrapper = std::make_unique<toolkit::VBoxLayout>();
     bar_wrapper->set_margins({20, 10, 20, 10});
 
+    auto debug_toggle = std::make_unique<toolkit::Checkbox>("Show Debug Frames");
+    debug_toggle->on_toggle = [window](bool checked) {
+        toolkit::Widget::debug_show_frames = checked;
+        window->request_redraw();
+    };
+    bar_wrapper->add_widget(std::move(debug_toggle));
+
     auto button_bar = std::make_unique<toolkit::HBoxLayout>();
     button_bar->set_spacing(10);
 
@@ -667,7 +695,7 @@ int main(int argc, char *argv[]) {
 
     window->show();
 
-    window->start_timer(0.25f, [progress_ptr] {
+    auto_progress_timer = window->start_timer(0.25f, [progress_ptr] {
         float v = progress_ptr->value() + 0.01f;
         if (v > 1.0f) {
             v = 0.0f;
