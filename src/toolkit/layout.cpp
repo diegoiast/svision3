@@ -17,6 +17,7 @@ static float clamp_dim(float val, float lo, float hi) {
 }
 
 void VBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignment h_align) {
+    widget->set_parent(this);
     if (window_) {
         widget->set_window(window_);
     }
@@ -211,6 +212,7 @@ void VBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
 // --- HBoxLayout ---
 
 void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignment v_align) {
+    widget->set_parent(this);
     if (window_) {
         widget->set_window(window_);
     }

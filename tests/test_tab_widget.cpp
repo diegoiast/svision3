@@ -62,12 +62,12 @@ TEST_CASE("TabWidget collect_focusables from active tab only", "[tabwidget]") {
 
     std::vector<Widget *> focusables;
     tw.collect_focusables(focusables);
-    REQUIRE(focusables.size() == 2);
+    REQUIRE(focusables.size() == 3); // TabWidget + 2 child buttons
 
     focusables.clear();
     tw.set_current(1);
     tw.collect_focusables(focusables);
-    REQUIRE(focusables.size() == 1);
+    REQUIRE(focusables.size() == 2); // TabWidget + 1 child button
 }
 
 TEST_CASE("TabWidget collect_mnemonics from active tab only", "[tabwidget]") {
@@ -271,4 +271,36 @@ TEST_CASE("TabWidget keyboard shortcuts", "[tabwidget]") {
     // After moving, Tab 0 should be at index 1
     // We can't easily check titles without making more methods public, 
     // but we've verified it doesn't crash and index is updated.
+}
+
+TEST_CASE("TabWidget keyboard shortcuts bubbling", "[tabwidget]") {
+    TabWidget tw;
+    auto label = std::make_unique<Label>("Content");
+    auto *label_ptr = label.get();
+    tw.add_tab("Tab 0", std::move(label));
+    tw.add_tab("Tab 1", std::make_unique<Label>("C1"));
+    
+    // Simulate label having focus
+    label_ptr->set_focusable(true);
+    
+    REQUIRE(tw.current_index() == 0);
+    
+    KeyEvent ev;
+    ev.type = KeyEvent::Type::Press;
+    ev.ctrl = true;
+    ev.key = Key::PageDown;
+    
+    // Send event directly to the child. It should bubble up to TabWidget.
+    Widget *w = label_ptr;
+    bool handled = false;
+    while (w) {
+        if (w->handle_key(ev)) {
+            handled = true;
+            break;
+        }
+        w = w->parent();
+    }
+    
+    REQUIRE(handled == true);
+    REQUIRE(tw.current_index() == 1);
 }

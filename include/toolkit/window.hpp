@@ -66,9 +66,10 @@ class Window {
 
     PlatformWindow *platform_window() const;
 
+    void set_focused_widget(Widget *w);
+
   private:
     void focus_next(bool reverse);
-    void set_focused_widget(Widget *w);
     void update_tooltip(Widget *under, Point mouse_pos);
     void show_tooltip();
     void show_tooltip_window(std::string const &text, Point screen_pos);

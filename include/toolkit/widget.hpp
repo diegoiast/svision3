@@ -91,6 +91,9 @@ class Widget {
     virtual void set_window(Window *w) { window_ = w; }
     Window *window() const { return window_; }
 
+    void set_parent(Widget *p) { parent_ = p; }
+    Widget *parent() const { return parent_; }
+
     void set_tooltip(std::string text) { tooltip_ = std::move(text); }
     std::string const &tooltip() const { return tooltip_; }
 
@@ -107,6 +110,7 @@ class Widget {
     Size min_size_;
     Size max_size_;
     Window *window_ = nullptr;
+    Widget *parent_ = nullptr;
     std::string tooltip_;
     std::optional<Color> background_color_;
 };

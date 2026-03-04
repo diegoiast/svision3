@@ -8,16 +8,20 @@
 namespace toolkit {
 
 TabWidget::TabWidget() {
+    set_focusable(true);
     prev_button_ = std::make_unique<Button>("<");
     prev_button_->set_flat(true);
     prev_button_->on_click = [this]() { scroll_by(-100); };
+    prev_button_->set_parent(this);
 
     next_button_ = std::make_unique<Button>(">");
     next_button_->set_flat(true);
     next_button_->on_click = [this]() { scroll_by(100); };
+    next_button_->set_parent(this);
 }
 
 void TabWidget::add_tab(std::string title, std::unique_ptr<Widget> content) {
+    content->set_parent(this);
     if (window_) content->set_window(window_);
     tabs_.push_back({std::move(title), std::move(content)});
     if (rect_.width > 0 || rect_.height > 0)
@@ -141,12 +145,14 @@ void TabWidget::set_orientation(TabOrientation o) {
 }
 
 void TabWidget::set_leading_widget(std::unique_ptr<Widget> widget) {
+    widget->set_parent(this);
     leading_widget_ = std::move(widget);
     if (leading_widget_ && window_) leading_widget_->set_window(window_);
     layout_content();
 }
 
 void TabWidget::set_trailing_widget(std::unique_ptr<Widget> widget) {
+    widget->set_parent(this);
     trailing_widget_ = std::move(widget);
     if (trailing_widget_ && window_) trailing_widget_->set_window(window_);
     layout_content();
@@ -687,6 +693,7 @@ bool TabWidget::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press && in_bar) {
+        if (window_) window_->set_focused_widget(this);
         auto hr = hit_test_tab(event.position);
         if (hr.tab >= 0 && hr.on_close) {
             spdlog::info("Tab close requested: [{}] \"{}\"", hr.tab, tabs_[hr.tab].title);
@@ -818,6 +825,9 @@ Widget *TabWidget::widget_at(Point p) {
 }
 
 void TabWidget::collect_focusables(std::vector<Widget *> &out) {
+    if (focusable() && enabled_ && visible_) {
+        out.push_back(this);
+    }
     if (leading_widget_) leading_widget_->collect_focusables(out);
     if (trailing_widget_) trailing_widget_->collect_focusables(out);
     if (show_scroll_buttons_) {

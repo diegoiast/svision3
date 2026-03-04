@@ -82,6 +82,13 @@ PlatformWindow *Window::platform_window() const {
 
 void Window::add_widget(std::unique_ptr<Widget> widget) {
     widget->set_window(this);
+    if (!focused_widget_) {
+        std::vector<Widget *> focusables;
+        widget->collect_focusables(focusables);
+        if (!focusables.empty()) {
+            set_focused_widget(focusables[0]);
+        }
+    }
     widgets_.push_back(std::move(widget));
 }
 
@@ -89,6 +96,13 @@ void Window::set_root(std::unique_ptr<Widget> root) {
     root_ = std::move(root);
     root_->set_window(this);
     root_->set_rect({0, 0, size_.width, size_.height});
+    if (!focused_widget_) {
+        std::vector<Widget *> focusables;
+        root_->collect_focusables(focusables);
+        if (!focusables.empty()) {
+            set_focused_widget(focusables[0]);
+        }
+    }
 }
 
 void Window::open_popup(Popup popup) {
@@ -271,8 +285,21 @@ void Window::handle_key(KeyEvent const &event) {
         }
     }
 
-    if (focused_widget_ && focused_widget_->handle_key(event)) {
-        request_redraw();
+    Widget *w = focused_widget_;
+    while (w) {
+        if (w->handle_key(event)) {
+            request_redraw();
+            return;
+        }
+        w = w->parent();
+    }
+
+    if (root_ && root_.get() != focused_widget_) {
+        // If bubbling didn't hit root (e.g. focused widget is in widgets_ list)
+        // or if there was no focused widget, try root.
+        if (root_->handle_key(event)) {
+            request_redraw();
+        }
     }
 }
 
