@@ -33,6 +33,7 @@ void CairoPainter::set_line_style(LineStyle style) {
 }
 
 void CairoPainter::fill_rect(Rect const &rect, Color const &color) {
+    cairo_new_path(cr_);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_rectangle(cr_, rect.x, rect.y, rect.width, rect.height);
     cairo_fill(cr_);
@@ -40,6 +41,7 @@ void CairoPainter::fill_rect(Rect const &rect, Color const &color) {
 
 void CairoPainter::draw_rect(Rect const &rect, Color const &color,
                               float line_width) {
+    cairo_new_path(cr_);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);
     cairo_rectangle(cr_, rect.x, rect.y, rect.width, rect.height);
@@ -48,6 +50,7 @@ void CairoPainter::draw_rect(Rect const &rect, Color const &color,
 
 static void rounded_rect_path(cairo_t *cr, Rect const &r, float radius) {
     float rad = std::min({radius, r.width / 2.0f, r.height / 2.0f});
+    cairo_new_path(cr);
     cairo_new_sub_path(cr);
     cairo_arc(cr, r.x + r.width - rad, r.y + rad, rad, -M_PI / 2, 0);
     cairo_arc(cr, r.x + r.width - rad, r.y + r.height - rad, rad, 0,
@@ -82,6 +85,7 @@ void CairoPainter::draw_line(Point from, Point to, Color const &color,
 }
 void CairoPainter::fill_circle(Point center, float radius,
                                 Color const &color) {
+    cairo_new_path(cr_);
     cairo_arc(cr_, center.x, center.y, radius, 0, 2 * M_PI);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_fill(cr_);
@@ -89,6 +93,7 @@ void CairoPainter::fill_circle(Point center, float radius,
 
 void CairoPainter::draw_circle(Point center, float radius,
                                 Color const &color, float line_width) {
+    cairo_new_path(cr_);
     cairo_arc(cr_, center.x, center.y, radius, 0, 2 * M_PI);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);
@@ -102,6 +107,7 @@ static std::string cairo_font_face(FontFamily f) {
 
 void CairoPainter::draw_text(std::string_view text, Point position, Color const &color,
                              float font_size, FontFamily font, TextOrientation orientation) {
+    cairo_new_path(cr_);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_select_font_face(cr_, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
