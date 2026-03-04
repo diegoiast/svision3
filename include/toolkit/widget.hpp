@@ -42,6 +42,7 @@ class Widget {
 
     void set_layout_dirty(bool dirty) { layout_dirty = dirty; }
     bool is_layout_dirty() const { return layout_dirty; }
+    void invalidate_layout();
 
     virtual bool focusable() const { return focusable_; }
     void set_focusable(bool f) { focusable_ = f; }

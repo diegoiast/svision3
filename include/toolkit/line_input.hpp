@@ -34,6 +34,12 @@ class LineInput : public Widget {
     void set_read_only(bool enable) { read_only_ = enable; }
     bool is_read_only() const { return read_only_; }
 
+    enum class ValidationMode { None, Block, Notify };
+    void set_validator(std::function<bool(std::string const &)> validator) { validator_ = std::move(validator); }
+    void set_validation_mode(ValidationMode mode) { validation_mode_ = mode; }
+    ValidationMode validation_mode() const { return validation_mode_; }
+    bool is_valid() const;
+
     std::function<void(std::string const &)> on_change;
     std::function<void(std::string const &)> on_submit;
 
@@ -74,6 +80,8 @@ class LineInput : public Widget {
     bool password_mode_ = false;
     bool is_password_field_ = false;
     bool read_only_ = false;
+    ValidationMode validation_mode_ = ValidationMode::None;
+    std::function<bool(std::string const &)> validator_;
     std::chrono::steady_clock::time_point cursor_blink_time_;
     std::unique_ptr<ContextMenu> context_menu_;
 };

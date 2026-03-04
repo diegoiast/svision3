@@ -8,6 +8,12 @@ namespace toolkit {
 
 Label::Label(std::string text) : text_(std::move(text)) {}
 
+void Label::set_text(std::string const &text) {
+    if (text_ == text) return;
+    text_ = text;
+    invalidate_layout();
+}
+
 void Label::paint(Painter &painter) {
     auto const &style = Theme::current().label;
     auto fs = font_size_override_.value_or(style.font_size);

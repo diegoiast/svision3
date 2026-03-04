@@ -128,9 +128,9 @@ LineInput Features
 [x] Typing/delete replaces selection.
 [x] Text scrolling when content exceeds frame.
 [x] Clipping (text doesn't draw over frame).
-[ ] Password mode (masked characters).
-[ ] Read-only mode.
-[ ] Input validation / formatting.
+[x] Password mode (masked characters).
+[x] Read-only mode.
+[x] Input validation / formatting.
 
 Widget State & Interaction
 --------------------------
@@ -153,6 +153,7 @@ TabWidget / TabHeader Features
 [x] Support for south/west east.
 [x] Support for trailing/leading button.
 [x] Tab bar overflow (scroll when too many tabs).
+[ ] Tabs can have several icons at the title
 
 ListView Features
 -----------------

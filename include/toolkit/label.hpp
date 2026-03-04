@@ -17,7 +17,7 @@ class Label : public Widget {
     bool handle_mouse(MouseEvent const &event) override;
     Size size_hint() const override;
 
-    void set_text(std::string const &text) { text_ = text; }
+    void set_text(std::string const &text);
     std::string const &text() const { return text_; }
 
     void set_color(Color const &color) { color_override_ = color; }

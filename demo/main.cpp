@@ -16,6 +16,7 @@
 #include "toolkit/window.hpp"
 #include <fstream>
 #include <nfd.h>
+#include <regex>
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -381,6 +382,43 @@ int main(int argc, char *argv[]) {
     input3->set_text("This text cannot be edited");
     input3->set_read_only(true);
     tab_inputs->add_widget(std::move(input3));
+
+    auto input4 = std::make_unique<toolkit::LineInput>("Numbers only (Blocking)");
+    input4->set_validator([](std::string const &text) {
+        return std::regex_match(text, std::regex("[0-9]*"));
+    });
+    input4->set_validation_mode(toolkit::LineInput::ValidationMode::Block);
+    tab_inputs->add_widget(std::move(input4));
+
+    auto email_row = std::make_unique<toolkit::HBoxLayout>();
+    email_row->set_spacing(10);
+
+    auto input5 = std::make_unique<toolkit::LineInput>("Email address (Visual)");
+    auto *input5_ptr = input5.get();
+    input5->set_validator([](std::string const &text) {
+        if (text.empty()) return true;
+        static const std::regex email_regex(R"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})");
+        return std::regex_match(text, email_regex);
+    });
+    input5->set_validation_mode(toolkit::LineInput::ValidationMode::Notify);
+
+    auto status_label = std::make_unique<toolkit::Label>("Valid");
+    auto *status_ptr = status_label.get();
+    status_ptr->set_background_color(toolkit::Color::rgb(0.8f, 1.0f, 0.8f));
+
+    input5->on_change = [input5_ptr, status_ptr](std::string const &) {
+        if (input5_ptr->is_valid()) {
+            status_ptr->set_text("Valid");
+            status_ptr->set_background_color(toolkit::Color::rgb(0.8f, 1.0f, 0.8f));
+        } else {
+            status_ptr->set_text("Invalid");
+            status_ptr->set_background_color(toolkit::Color::rgb(1.0f, 0.8f, 0.8f));
+        }
+    };
+
+    email_row->add_widget(std::move(input5), 1);
+    email_row->add_widget(std::move(status_label));
+    tab_inputs->add_widget(std::move(email_row));
 
     auto inputs_spacer = std::make_unique<toolkit::Label>("");
     tab_inputs->add_widget(std::move(inputs_spacer), 1);

@@ -199,9 +199,19 @@ size_t LineInput::pos_from_x(float x) const {
     return current_pos;
 }
 
+bool LineInput::is_valid() const {
+    if (validator_) {
+        return validator_(text_);
+    }
+    return true;
+}
+
 void LineInput::paint(Painter &painter) {
     auto const &style = Theme::current().line_input;
     auto bg = focused_ ? style.background_focused : style.background;
+    if (validation_mode_ == ValidationMode::Notify && !is_valid()) {
+        bg = Color::rgb(1.0f, 0.85f, 0.85f); // Error background
+    }
     auto border = focused_ ? style.border_focused : style.border;
     auto fm = painter.font_metrics(style.font_size);
     auto baseline_y = rect_.y + (rect_.height - fm.height) / 2.0f + fm.ascent;
@@ -493,8 +503,23 @@ bool LineInput::handle_key(KeyEvent const &event) {
     case Key::Backspace:
         if (read_only_) return true;
         if (has_selection()) {
+            if (validation_mode_ == ValidationMode::Block && validator_) {
+                std::string next_text = text_;
+                next_text.erase(sel_start(), sel_end() - sel_start());
+                if (!validator_(next_text)) return true;
+            }
             delete_selection();
         } else if (event.alt) {
+            if (validation_mode_ == ValidationMode::Block && validator_) {
+                size_t old = cursor_pos_;
+                // We need to simulate move_word_left without changing state
+                size_t p = cursor_pos_;
+                while (p > 0 && std::isspace(static_cast<unsigned char>(text_[p - 1]))) p--;
+                while (p > 0 && !std::isspace(static_cast<unsigned char>(text_[p - 1]))) p--;
+                std::string next_text = text_;
+                next_text.erase(p, old - p);
+                if (!validator_(next_text)) return true;
+            }
             size_t old = cursor_pos_;
             move_word_left(false);
             text_.erase(cursor_pos_, old - cursor_pos_);
@@ -504,6 +529,11 @@ bool LineInput::handle_key(KeyEvent const &event) {
             }
         } else if (cursor_pos_ > 0) {
             size_t prev = Utf8Iterator::prev(text_, cursor_pos_);
+            if (validation_mode_ == ValidationMode::Block && validator_) {
+                std::string next_text = text_;
+                next_text.erase(prev, cursor_pos_ - prev);
+                if (!validator_(next_text)) return true;
+            }
             text_.erase(prev, cursor_pos_ - prev);
             cursor_pos_ = prev;
             sel_anchor_ = cursor_pos_;
@@ -515,9 +545,19 @@ bool LineInput::handle_key(KeyEvent const &event) {
     case Key::Delete:
         if (read_only_) return true;
         if (has_selection()) {
+            if (validation_mode_ == ValidationMode::Block && validator_) {
+                std::string next_text = text_;
+                next_text.erase(sel_start(), sel_end() - sel_start());
+                if (!validator_(next_text)) return true;
+            }
             delete_selection();
         } else if (cursor_pos_ < text_.size()) {
             size_t next = Utf8Iterator::next(text_, cursor_pos_);
+            if (validation_mode_ == ValidationMode::Block && validator_) {
+                std::string next_text = text_;
+                next_text.erase(cursor_pos_, next - cursor_pos_);
+                if (!validator_(next_text)) return true;
+            }
             text_.erase(cursor_pos_, next - cursor_pos_);
             if (on_change) {
                 on_change(text_);
@@ -560,6 +600,16 @@ bool LineInput::handle_key(KeyEvent const &event) {
 
     if (!event.text.empty()) {
         if (read_only_) return false;
+        if (validation_mode_ == ValidationMode::Block && validator_) {
+            std::string next_text = text_;
+            if (has_selection()) {
+                next_text.erase(sel_start(), sel_end() - sel_start());
+            }
+            // Use local pos since cursor_pos_ might be updated if we had selection
+            size_t insert_pos = has_selection() ? sel_start() : cursor_pos_;
+            next_text.insert(insert_pos, event.text);
+            if (!validator_(next_text)) return true; // Block but consume event
+        }
         if (has_selection()) {
             delete_selection();
         }
@@ -595,6 +645,15 @@ void LineInput::paste() {
     auto clip = Clipboard::get_text();
     if (clip.empty()) {
         return;
+    }
+    if (validation_mode_ == ValidationMode::Block && validator_) {
+        std::string next_text = text_;
+        if (has_selection()) {
+            next_text.erase(sel_start(), sel_end() - sel_start());
+        }
+        size_t insert_pos = has_selection() ? sel_start() : cursor_pos_;
+        next_text.insert(insert_pos, clip);
+        if (!validator_(next_text)) return;
     }
     if (has_selection()) {
         delete_selection();
