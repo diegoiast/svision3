@@ -14,6 +14,9 @@ class Button : public Widget {
   public:
     explicit Button(std::string text);
 
+    void set_text(std::string text);
+    std::string const &text() const { return display_text_; }
+
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
