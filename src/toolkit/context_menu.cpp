@@ -26,11 +26,6 @@ void ContextMenu::show(Window *win, Point position) {
 
     auto const &style = Theme::current().combobox;
     auto max_w = 0.0f;
-    auto width = max_w + style.padding.left + style.padding.right + 20.0f;
-    auto height = menu_total_height(items_, item_height_, separator_height_) + 4.0f;
-    auto win_size = window_->size();
-    auto x = position.x;
-    auto y = position.y;
 
     item_height_ = style.font_size + style.item_padding * 2.0f + 4.0f;
     for (auto const &item : items_) {
@@ -40,6 +35,13 @@ void ContextMenu::show(Window *win, Point position) {
         float w = Painter::measure_text(item.command->name(), style.font_size).width;
         max_w = std::max(max_w, w);
     }
+
+    auto width = max_w + style.padding.left + style.padding.right + 20.0f;
+    auto height = menu_total_height(items_, item_height_, separator_height_) + 4.0f;
+    auto win_size = window_->size();
+    auto x = position.x;
+    auto y = position.y;
+
     if (x + width > win_size.width) {
         x = win_size.width - width;
     }
