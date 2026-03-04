@@ -1131,9 +1131,6 @@ void WaylandPlatformWindow::do_paint() {
     int pw = static_cast<int>(std::ceil(static_cast<float>(lw) * current_scale));
     int ph = static_cast<int>(std::ceil(static_cast<float>(lh) * current_scale));
 
-    spdlog::debug("Wayland painting: logical={}x{}, physical={}x{}, scale={:.2f}", lw, lh, pw, ph,
-                  current_scale);
-
     // Always request frame callback BEFORE the commit that triggers it
     if (frame_cb) {
         wl_callback_destroy(frame_cb);
