@@ -121,13 +121,7 @@ void VBoxLayout::paint(Painter &painter) {
     }
 
     for (auto &item : items_) {
-        if (!item.widget->is_visible()) {
-            continue;
-        }
-        auto r = item.widget->rect();
-        painter.push_clip(r);
-        item.widget->paint(painter);
-        painter.pop_clip();
+        item.widget->draw(painter);
     }
 }
 
@@ -319,13 +313,7 @@ void HBoxLayout::paint(Painter &painter) {
     }
 
     for (auto &item : items_) {
-        if (!item.widget->is_visible()) {
-            continue;
-        }
-        auto r = item.widget->rect();
-        painter.push_clip(r);
-        item.widget->paint(painter);
-        painter.pop_clip();
+        item.widget->draw(painter);
     }
 }
 

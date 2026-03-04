@@ -258,11 +258,7 @@ void TabWidget::paint(Painter &painter) {
     }
 
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        auto &content = tabs_[current_].content;
-        auto r = content->rect();
-        painter.push_clip(r);
-        content->paint(painter);
-        painter.pop_clip();
+        tabs_[current_].content->draw(painter);
     }
 }
 

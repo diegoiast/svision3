@@ -26,8 +26,6 @@
 
 namespace toolkit {
 
-bool Widget::debug_show_frames = false;
-
 static PlatformApplication *s_platform = nullptr;
 
 namespace detail {
@@ -101,9 +99,9 @@ Application::Application() : impl_(std::make_unique<Impl>()) {
     Theme::set_current(Theme::create(Theme::detect_system_style()));
 
     auto const &theme = Theme::current();
-    spdlog::info("Theme: {} (Font: '{}' {}px, Monospace: '{}', Scale: {:.2f})",
-                 theme.name, theme.system_font, theme.label.font_size,
-                 theme.monospace_font, impl_->platform->scale_factor());
+    spdlog::info("Theme: {} (Font: '{}' {}px, Monospace: '{}', Scale: {:.2f})", theme.name,
+                 theme.system_font, theme.label.font_size, theme.monospace_font,
+                 impl_->platform->scale_factor());
 }
 
 Application::~Application() { detail::set_current_platform(nullptr); }
@@ -116,13 +114,9 @@ Window *Application::create_window(std::string_view title, Size size) {
 int Application::run() { return impl_->platform->run(); }
 void Application::quit() { impl_->platform->quit(); }
 
-std::string_view Application::platform_name() const {
-    return impl_->platform->name();
-}
+std::string_view Application::platform_name() const { return impl_->platform->name(); }
 
-std::string_view Application::painter_name() const {
-    return impl_->platform->painter_name();
-}
+std::string_view Application::painter_name() const { return impl_->platform->painter_name(); }
 
 void Application::post_to_main_thread(std::function<void()> fn) {
     if (s_platform) {

@@ -7,8 +7,11 @@
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include <functional>
+#include <functional>
+#include <optional>
 #include <string>
 #include <vector>
+
 
 namespace toolkit {
 
@@ -20,6 +23,7 @@ class Widget {
 
     static bool debug_show_frames;
 
+    void draw(Painter &painter);
     virtual void paint(Painter &painter) = 0;
     virtual bool handle_mouse(MouseEvent const &event) = 0;
     virtual bool handle_key(KeyEvent const &event) {
@@ -89,6 +93,9 @@ class Widget {
     void set_tooltip(std::string text) { tooltip_ = std::move(text); }
     std::string const &tooltip() const { return tooltip_; }
 
+    void set_background_color(std::optional<Color> c) { background_color_ = c; }
+    std::optional<Color> background_color() const { return background_color_; }
+
   protected:
     Rect rect_;
     bool layout_dirty = true;
@@ -99,6 +106,7 @@ class Widget {
     Size max_size_;
     Window *window_ = nullptr;
     std::string tooltip_;
+    std::optional<Color> background_color_;
 };
 
 } // namespace toolkit

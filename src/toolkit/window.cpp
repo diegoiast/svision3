@@ -105,14 +105,10 @@ void Window::handle_paint(Painter &painter) {
     painter.fill_rect({0, 0, size_.width, size_.height}, Theme::current().window.background);
 
     if (root_) {
-        painter.push_clip(root_->rect());
-        root_->paint(painter);
-        painter.pop_clip();
+        root_->draw(painter);
     }
     for (auto &widget : widgets_) {
-        painter.push_clip(widget->rect());
-        widget->paint(painter);
-        painter.pop_clip();
+        widget->draw(painter);
     }
 
     if (Widget::debug_show_frames) {

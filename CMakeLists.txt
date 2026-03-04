@@ -54,6 +54,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/layout.cpp
     src/toolkit/theme.cpp
     src/toolkit/window.cpp
+    src/toolkit/widget.cpp
     src/toolkit/platform_factory.cpp
     src/toolkit/painters/gl_painter.cpp
 )
