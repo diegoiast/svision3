@@ -350,6 +350,7 @@ add_executable(tests
     tests/test_filter_adapter.cpp
     tests/test_slider.cpp
     tests/test_spin_box.cpp
+    tests/test_line_input.cpp
     tests/test_command.cpp
     tests/test_table_view.cpp
     tests/test_catalog.cpp

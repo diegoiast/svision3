@@ -18,6 +18,16 @@ void Widget::invalidate_layout() {
     }
 }
 
+bool Widget::dispatch_mouse_event(Widget *w, MouseEvent const &event) {
+    if (w->use_relative_coordinates()) {
+        MouseEvent local_ev = event;
+        local_ev.position.x -= w->rect().x;
+        local_ev.position.y -= w->rect().y;
+        return w->handle_mouse(local_ev);
+    }
+    return w->handle_mouse(event);
+}
+
 void Widget::draw(Painter &painter) {
     if (!visible_) {
         return;

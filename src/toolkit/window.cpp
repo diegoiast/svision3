@@ -184,16 +184,6 @@ void Window::focus_next(bool reverse) {
     set_focused_widget(focusables[next]);
 }
 
-static bool dispatch_mouse_event(Widget *w, MouseEvent const &event) {
-    if (w->use_relative_coordinates()) {
-        MouseEvent local_ev = event;
-        local_ev.position.x -= w->rect().x;
-        local_ev.position.y -= w->rect().y;
-        return w->handle_mouse(local_ev);
-    }
-    return w->handle_mouse(event);
-}
-
 void Window::handle_mouse(MouseEvent const &event) {
     bool needs_redraw = false;
 
@@ -221,12 +211,20 @@ void Window::handle_mouse(MouseEvent const &event) {
         needs_redraw = true;
     }
 
-    if (root_ && dispatch_mouse_event(root_.get(), event)) {
+    if (root_ && Widget::dispatch_mouse_event(root_.get(), event)) {
         needs_redraw = true;
+        if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
+            request_redraw();
+            return;
+        }
     }
     for (auto &widget : widgets_) {
-        if (dispatch_mouse_event(widget.get(), event)) {
+        if (Widget::dispatch_mouse_event(widget.get(), event)) {
             needs_redraw = true;
+            if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
+                request_redraw();
+                return;
+            }
         }
     }
 
@@ -243,7 +241,7 @@ void Window::handle_mouse(MouseEvent const &event) {
             if (hovered_widget_) {
                 MouseEvent leave_ev = event;
                 leave_ev.type = MouseEvent::Type::Leave;
-                dispatch_mouse_event(hovered_widget_, leave_ev);
+                Widget::dispatch_mouse_event(hovered_widget_, leave_ev);
             }
             hovered_widget_ = under;
             needs_redraw = true;

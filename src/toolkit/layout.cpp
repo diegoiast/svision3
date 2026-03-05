@@ -132,8 +132,13 @@ bool VBoxLayout::handle_mouse(MouseEvent const &event) {
         if (!item.widget->is_visible()) {
             continue;
         }
-        if (item.widget->handle_mouse(event)) {
+        if (Widget::dispatch_mouse_event(item.widget.get(), event)) {
             handled = true;
+            // For press/release/scroll we stop at first handler.
+            // For move/drag we continue so all widgets see the update (hover states etc)
+            if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
+                break;
+            }
         }
     }
     return handled;
@@ -325,8 +330,11 @@ bool HBoxLayout::handle_mouse(MouseEvent const &event) {
         if (!item.widget->is_visible()) {
             continue;
         }
-        if (item.widget->handle_mouse(event)) {
+        if (Widget::dispatch_mouse_event(item.widget.get(), event)) {
             handled = true;
+            if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
+                break;
+            }
         }
     }
     return handled;

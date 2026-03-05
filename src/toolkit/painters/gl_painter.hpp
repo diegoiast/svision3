@@ -51,6 +51,7 @@ class GLPainter : public Painter {
     float scale_;
     TextRasterizer &rasterizer_;
     std::vector<Rect> clips_;
+    std::vector<Point> translations_;
     Painter::LineStyle style_ = Painter::LineStyle::Solid;
 
     void set_color(Color const &c);

@@ -89,6 +89,8 @@ class Widget {
 
     virtual void for_each_child(std::function<void(Widget *)> const &callback) { (void)callback; }
 
+    static bool dispatch_mouse_event(Widget *w, MouseEvent const &event);
+
     virtual void set_window(Window *w) { window_ = w; }
     Window *window() const { return window_; }
 

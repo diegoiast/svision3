@@ -28,6 +28,7 @@ LineInput::LineInput(std::string placeholder)
     focusable_ = true;
     focused_ = false;
     read_only_ = false;
+    relative_coords_ = true;
 }
 
 void LineInput::set_password_mode(bool enable) {
@@ -61,8 +62,9 @@ void LineInput::delete_selection() {
     if (!has_selection()) {
         return;
     }
-    size_t s = sel_start();
-    size_t e = sel_end();
+    auto s = sel_start();
+    auto e = sel_end();
+
     text_.erase(s, e - s);
     cursor_pos_ = s;
     sel_anchor_ = s;
@@ -80,7 +82,7 @@ void LineInput::move_cursor(size_t pos, bool extend_selection) {
 }
 
 void LineInput::move_word_left(bool extend_selection) {
-    size_t p = cursor_pos_;
+    auto p = cursor_pos_;
     while (p > 0 && std::isspace(static_cast<unsigned char>(text_[p - 1]))) {
         p--;
     }
@@ -92,6 +94,7 @@ void LineInput::move_word_left(bool extend_selection) {
 
 void LineInput::move_word_right(bool extend_selection) {
     auto p = cursor_pos_;
+
     while (p < text_.size() && !std::isspace(static_cast<unsigned char>(text_[p]))) {
         p++;
     }
@@ -104,6 +107,7 @@ void LineInput::move_word_right(bool extend_selection) {
 void LineInput::select_word_at(size_t pos) {
     auto start = pos;
     auto end = pos;
+
     if (pos < text_.size() && !std::isspace(static_cast<unsigned char>(text_[pos]))) {
         while (start > 0 && !std::isspace(static_cast<unsigned char>(text_[start - 1]))) {
             start--;
@@ -129,8 +133,10 @@ float LineInput::peek_btn_size() const {
 
 float LineInput::content_right_inset() const {
     auto const &style = Theme::current().line_input;
-    float inset = style.padding.right;
-    if (!text_.empty() && !read_only_) {
+    auto inset = style.padding.right;
+    auto clear_visible = !text_.empty() && !read_only_;
+
+    if (clear_visible) {
         inset += clear_btn_size() + 4.0f;
     }
     if (is_password_field_) {
@@ -150,8 +156,9 @@ bool LineInput::hit_clear_btn(Point pos) const {
     }
     auto sz = clear_btn_size();
     auto const &style = Theme::current().line_input;
-    auto bx = rect_.x + rect_.width - style.padding.right - sz;
-    auto by = rect_.y + (rect_.height - sz) / 2.0f;
+    auto bx = rect_.width - style.padding.right - sz;
+    auto by = (rect_.height - sz) / 2.0f;
+
     return pos.x >= bx && pos.x <= bx + sz && pos.y >= by && pos.y <= by + sz;
 }
 
@@ -161,17 +168,18 @@ bool LineInput::hit_peek_btn(Point pos) const {
     }
     auto sz = peek_btn_size();
     auto const &style = Theme::current().line_input;
-    float bx = rect_.x + rect_.width - style.padding.right - sz;
-    if (!text_.empty()) {
+    float bx = rect_.width - style.padding.right - sz;
+    bool clear_visible = !text_.empty() && !read_only_;
+    if (clear_visible) {
         bx -= clear_btn_size() + 4.0f;
     }
-    auto by = rect_.y + (rect_.height - sz) / 2.0f;
+    auto by = (rect_.height - sz) / 2.0f;
     return pos.x >= bx && pos.x <= bx + sz && pos.y >= by && pos.y <= by + sz;
 }
 
 size_t LineInput::pos_from_x(float x) const {
     auto const &style = Theme::current().line_input;
-    auto click_x = x - (rect_.x + style.padding.left) + scroll_offset_;
+    auto click_x = x - style.padding.left + scroll_offset_;
     size_t current_pos = 0;
 
     if (click_x <= 0) {
@@ -209,20 +217,22 @@ bool LineInput::is_valid() const {
 void LineInput::paint(Painter &painter) {
     auto const &style = Theme::current().line_input;
     auto bg = focused_ ? style.background_focused : style.background;
-    if (validation_mode_ == ValidationMode::Notify && !is_valid()) {
-        bg = Color::rgb(1.0f, 0.85f, 0.85f); // Error background
-    }
     auto border = focused_ ? style.border_focused : style.border;
     auto fm = painter.font_metrics(style.font_size);
-    auto baseline_y = rect_.y + (rect_.height - fm.height) / 2.0f + fm.ascent;
-    auto content_x = rect_.x + style.padding.left;
+    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
+    auto content_x = style.padding.left;
     auto content_w = content_available_width();
-    auto clip_rect = Rect{content_x, rect_.y, content_w, rect_.height};
+    auto clip_rect = Rect{content_x, 0, content_w, rect_.height};
     auto tx = content_x - scroll_offset_;
+    // This text is used only for space calculations only
+    auto d_text = password_mode_ ? get_masked_text(text_) : text_;
+    // FIXME: this color should come from theme
+    if (validation_mode_ == ValidationMode::Notify && !is_valid()) {
+        // Error background
+        bg = Color::rgb(1.0f, 0.85f, 0.85f);
+    }
 
-    std::string d_text = password_mode_ ? get_masked_text(text_) : text_;
-
-    painter.draw_frame(rect_, bg, border, style, true);
+    painter.draw_frame({0, 0, rect_.width, rect_.height}, bg, border, style, true);
     painter.push_clip(clip_rect);
     ensure_cursor_visible(painter);
 
@@ -232,11 +242,13 @@ void LineInput::paint(Painter &painter) {
         if (has_selection()) {
             auto s = sel_start();
             auto e = sel_end();
-            std::string before_s = password_mode_ ? get_masked_text(text_, s) : text_.substr(0, s);
-            std::string before_e = password_mode_ ? get_masked_text(text_, e) : text_.substr(0, e);
+            auto before_s = password_mode_ ? get_masked_text(text_, s) : text_.substr(0, s);
+            auto before_e = password_mode_ ? get_masked_text(text_, e) : text_.substr(0, e);
             auto sx = tx + painter.text_size(before_s, style.font_size).width;
             auto ex = tx + painter.text_size(before_e, style.font_size).width;
-            auto hy = rect_.y + (rect_.height - fm.height) / 2.0f - 1.0f;
+            // FIXME: I would like a function to get half the height
+            auto hy = (rect_.height - fm.height) / 2.0f - 1.0f;
+            // FIXME: selection color should come from theme
             auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
             painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
         }
@@ -264,13 +276,13 @@ void LineInput::paint(Painter &painter) {
         if (focused_) {
             auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-            bool cursor_on = (ms / 500) % 2 == 0;
+            auto cursor_on = (ms / 500) % 2 == 0;
 
             if (cursor_on) {
-                std::string before = password_mode_ ? get_masked_text(text_, cursor_pos_)
-                                                    : text_.substr(0, cursor_pos_);
+                auto before = password_mode_ ? get_masked_text(text_, cursor_pos_)
+                                             : text_.substr(0, cursor_pos_);
                 auto cx = tx;
-                auto cy_top = rect_.y + (rect_.height - fm.height) / 2.0f - 1.0f;
+                auto cy_top = (rect_.height - fm.height) / 2.0f - 1.0f;
                 auto cy_bot = cy_top + fm.height + 2.0f;
 
                 if (!before.empty()) {
@@ -283,13 +295,14 @@ void LineInput::paint(Painter &painter) {
 
     painter.pop_clip();
 
-    if (!text_.empty() || is_password_field_) {
-        auto sz = clear_btn_size();
+    bool clear_visible = !text_.empty() && !read_only_;
+    if (clear_visible || is_password_field_) {
         auto const &style = Theme::current().line_input;
 
-        if (!text_.empty() && !read_only_) {
-            auto bx = rect_.x + rect_.width - style.padding.right - sz;
-            auto by = rect_.y + (rect_.height - sz) / 2.0f;
+        if (clear_visible) {
+            auto sz = clear_btn_size();
+            auto bx = rect_.width - style.padding.right - sz;
+            auto by = (rect_.height - sz) / 2.0f;
             auto cx = bx + sz / 2.0f;
             auto cy = by + sz / 2.0f;
             auto r = sz / 2.0f;
@@ -308,11 +321,12 @@ void LineInput::paint(Painter &painter) {
         }
 
         if (is_password_field_) {
-            auto bx = rect_.x + rect_.width - style.padding.right - sz;
-            if (!text_.empty()) {
-                bx -= sz + 4.0f;
+            auto sz = peek_btn_size();
+            auto bx = rect_.width - style.padding.right - sz;
+            if (clear_visible) {
+                bx -= clear_btn_size() + 4.0f;
             }
-            auto by = rect_.y + (rect_.height - sz) / 2.0f;
+            auto by = (rect_.height - sz) / 2.0f;
             auto cx = bx + sz / 2.0f;
             auto cy = by + sz / 2.0f;
             auto r = sz / 2.0f;
@@ -320,7 +334,7 @@ void LineInput::paint(Painter &painter) {
             if (peek_hovered_ || peek_pressed_) {
                 Color circle_bg = style.text;
                 circle_bg.a = peek_pressed_ ? 0.22f : 0.12f;
-                // painter.fill_rounded_rect({bx, by, sz, sz}, circle_bg, r);
+                painter.fill_rounded_rect({bx, by, sz, sz}, circle_bg, r);
             }
 
             auto eye_col = style.text;
@@ -345,20 +359,20 @@ void LineInput::paint(Painter &painter) {
 bool LineInput::handle_mouse(MouseEvent const &event) {
     if (event.type == MouseEvent::Type::Move) {
         bool over_clear = hit_clear_btn(event.position);
+        bool changed = false;
         if (over_clear != clear_hovered_) {
             clear_hovered_ = over_clear;
-            if (window()) {
-                window()->request_redraw();
-            }
+            changed = true;
         }
         bool over_peek = hit_peek_btn(event.position);
         if (over_peek != peek_hovered_) {
             peek_hovered_ = over_peek;
-            if (window()) {
-                window()->request_redraw();
-            }
+            changed = true;
         }
-        return false;
+        if (changed && window()) {
+            window()->request_redraw();
+        }
+        return changed;
     }
 
     if (event.type == MouseEvent::Type::Leave) {
@@ -373,7 +387,8 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press) {
-        if (!hit_test(event.position)) {
+        if (event.position.x < 0 || event.position.x > rect_.width || 
+            event.position.y < 0 || event.position.y > rect_.height) {
             return false;
         }
 
@@ -501,12 +516,16 @@ bool LineInput::handle_key(KeyEvent const &event) {
 
     switch (event.key) {
     case Key::Backspace:
-        if (read_only_) return true;
+        if (read_only_) {
+            return true;
+        }
         if (has_selection()) {
             if (validation_mode_ == ValidationMode::Block && validator_) {
                 std::string next_text = text_;
                 next_text.erase(sel_start(), sel_end() - sel_start());
-                if (!validator_(next_text)) return true;
+                if (!validator_(next_text)) {
+                    return true;
+                }
             }
             delete_selection();
         } else if (event.alt) {
@@ -514,11 +533,17 @@ bool LineInput::handle_key(KeyEvent const &event) {
                 size_t old = cursor_pos_;
                 // We need to simulate move_word_left without changing state
                 size_t p = cursor_pos_;
-                while (p > 0 && std::isspace(static_cast<unsigned char>(text_[p - 1]))) p--;
-                while (p > 0 && !std::isspace(static_cast<unsigned char>(text_[p - 1]))) p--;
+                while (p > 0 && std::isspace(static_cast<unsigned char>(text_[p - 1]))) {
+                    p--;
+                }
+                while (p > 0 && !std::isspace(static_cast<unsigned char>(text_[p - 1]))) {
+                    p--;
+                }
                 std::string next_text = text_;
                 next_text.erase(p, old - p);
-                if (!validator_(next_text)) return true;
+                if (!validator_(next_text)) {
+                    return true;
+                }
             }
             size_t old = cursor_pos_;
             move_word_left(false);
@@ -532,7 +557,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
             if (validation_mode_ == ValidationMode::Block && validator_) {
                 std::string next_text = text_;
                 next_text.erase(prev, cursor_pos_ - prev);
-                if (!validator_(next_text)) return true;
+                if (!validator_(next_text)) {
+                    return true;
+                }
             }
             text_.erase(prev, cursor_pos_ - prev);
             cursor_pos_ = prev;
@@ -543,12 +570,16 @@ bool LineInput::handle_key(KeyEvent const &event) {
         }
         return true;
     case Key::Delete:
-        if (read_only_) return true;
+        if (read_only_) {
+            return true;
+        }
         if (has_selection()) {
             if (validation_mode_ == ValidationMode::Block && validator_) {
                 std::string next_text = text_;
                 next_text.erase(sel_start(), sel_end() - sel_start());
-                if (!validator_(next_text)) return true;
+                if (!validator_(next_text)) {
+                    return true;
+                }
             }
             delete_selection();
         } else if (cursor_pos_ < text_.size()) {
@@ -556,7 +587,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
             if (validation_mode_ == ValidationMode::Block && validator_) {
                 std::string next_text = text_;
                 next_text.erase(cursor_pos_, next - cursor_pos_);
-                if (!validator_(next_text)) return true;
+                if (!validator_(next_text)) {
+                    return true;
+                }
             }
             text_.erase(cursor_pos_, next - cursor_pos_);
             if (on_change) {
@@ -589,7 +622,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
         move_cursor(text_.size(), event.shift);
         return true;
     case Key::Enter:
-        if (read_only_) return true;
+        if (read_only_) {
+            return true;
+        }
         if (on_submit) {
             on_submit(text_);
         }
@@ -599,16 +634,20 @@ bool LineInput::handle_key(KeyEvent const &event) {
     }
 
     if (!event.text.empty()) {
-        if (read_only_) return false;
+        if (read_only_) {
+            return false;
+        }
         if (validation_mode_ == ValidationMode::Block && validator_) {
-            std::string next_text = text_;
+            auto next_text = text_;
             if (has_selection()) {
                 next_text.erase(sel_start(), sel_end() - sel_start());
             }
             // Use local pos since cursor_pos_ might be updated if we had selection
-            size_t insert_pos = has_selection() ? sel_start() : cursor_pos_;
+            auto insert_pos = has_selection() ? sel_start() : cursor_pos_;
             next_text.insert(insert_pos, event.text);
-            if (!validator_(next_text)) return true; // Block but consume event
+            if (!validator_(next_text)) {
+                return true;
+            }
         }
         if (has_selection()) {
             delete_selection();
@@ -641,7 +680,9 @@ void LineInput::copy() {
 }
 
 void LineInput::paste() {
-    if (read_only_) return;
+    if (read_only_) {
+        return;
+    }
     auto clip = Clipboard::get_text();
     if (clip.empty()) {
         return;
@@ -653,7 +694,9 @@ void LineInput::paste() {
         }
         size_t insert_pos = has_selection() ? sel_start() : cursor_pos_;
         next_text.insert(insert_pos, clip);
-        if (!validator_(next_text)) return;
+        if (!validator_(next_text)) {
+            return;
+        }
     }
     if (has_selection()) {
         delete_selection();
@@ -673,11 +716,14 @@ void LineInput::show_context_menu(Point pos) {
 
     // FIXME: use i18n for menu text
     std::vector<MenuItem> items;
-    items.push_back(MenuItem::action("Cut", [this] { cut(); }, [this] { return has_selection() && !password_mode_ && !read_only_; }));
-    items.push_back(
-        MenuItem::action("Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; }));
     items.push_back(MenuItem::action(
-        "Paste", [this] { paste(); }, [this] { return !read_only_ && !Clipboard::get_text().empty(); }));
+        "Cut", [this] { cut(); },
+        [this] { return has_selection() && !password_mode_ && !read_only_; }));
+    items.push_back(MenuItem::action(
+        "Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; }));
+    items.push_back(MenuItem::action(
+        "Paste", [this] { paste(); },
+        [this] { return !read_only_ && !Clipboard::get_text().empty(); }));
     items.push_back(MenuItem::sep());
     items.push_back(MenuItem::action(
         "Select All",
@@ -688,11 +734,12 @@ void LineInput::show_context_menu(Point pos) {
         },
         [this] { return !text_.empty(); }));
     items.push_back(MenuItem::action(
-        "Delete", [this] { delete_selection(); }, [this] { return !read_only_ && has_selection(); }));
-
+        "Delete", [this] { delete_selection(); },
+        [this] { return !read_only_ && has_selection(); }));
 
     context_menu_ = std::make_unique<ContextMenu>(std::move(items));
-    context_menu_->show(window(), pos);
+    // FIXME: we should add a "convert to global" function.
+    context_menu_->show(window(), {pos.x + rect_.x, pos.y + rect_.y});
 }
 
 Size LineInput::size_hint() const {
