@@ -6,10 +6,12 @@
 
 namespace toolkit {
 
-Label::Label(std::string text) : text_(std::move(text)) {}
+Label::Label(std::string text) : text_(std::move(text)) { relative_coords_ = true; }
 
 void Label::set_text(std::string const &text) {
-    if (text_ == text) return;
+    if (text_ == text) {
+        return;
+    }
     text_ = text;
     invalidate_layout();
 }
@@ -19,9 +21,8 @@ void Label::paint(Painter &painter) {
     auto fs = font_size_override_.value_or(style.font_size);
     auto col = color_override_.value_or(style.text);
     auto fm = painter.font_metrics(fs);
-
-    std::string display_text = text_;
-    float text_w = painter.text_size(display_text, fs).width;
+    auto display_text = text_;
+    auto text_w = painter.text_size(display_text, fs).width;
 
     if (elide_ && text_w > rect_.width && rect_.width > 0) {
         std::string suffix = "...";
@@ -38,14 +39,14 @@ void Label::paint(Painter &painter) {
         }
     }
 
-    float text_x = rect_.x;
-    if (alignment_ == Alignment::Center) {
-        text_x = rect_.x + (rect_.width - text_w) / 2.0f;
-    } else if (alignment_ == Alignment::End) {
-        text_x = rect_.x + rect_.width - text_w;
-    }
+    auto text_x = 0.0f;
+    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
 
-    auto baseline_y = rect_.y + (rect_.height - fm.height) / 2.0f + fm.ascent;
+    if (alignment_ == Alignment::Center) {
+        text_x = (rect_.width - text_w) / 2.0f;
+    } else if (alignment_ == Alignment::End) {
+        text_x = rect_.width - text_w;
+    }
     painter.draw_text(display_text, {text_x, baseline_y}, col, fs);
 }
 

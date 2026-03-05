@@ -27,3 +27,8 @@ TEST_CASE("Label handle_mouse returns false", "[label]") {
     e.position = {50, 15};
     REQUIRE(l.handle_mouse(e) == false);
 }
+
+TEST_CASE("Label relative coordinates", "[label]") {
+    Label l("Test");
+    REQUIRE(l.use_relative_coordinates() == true);
+}
