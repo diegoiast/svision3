@@ -84,3 +84,24 @@ TEST_CASE("Checkbox set_check_state", "[checkbox]") {
     REQUIRE(cb.check_state() == CheckState::Partial);
     REQUIRE(cb.checked() == false);
 }
+
+TEST_CASE("Checkbox relative coordinates", "[checkbox]") {
+    Checkbox cb("Option");
+    cb.set_rect({100, 100, 200, 30});
+    
+    REQUIRE(cb.use_relative_coordinates() == true);
+    
+    MouseEvent e{};
+    e.type = MouseEvent::Type::Press;
+    
+    // Relative position (10, 10) should succeed
+    e.position = {10, 10};
+    REQUIRE(cb.handle_mouse(e) == true);
+    REQUIRE(cb.checked() == true);
+    
+    // Absolute position (110, 110) should fail
+    Checkbox cb2("Option 2");
+    cb2.set_rect({100, 150, 200, 30});
+    e.position = {110, 160};
+    REQUIRE(cb2.handle_mouse(e) == false);
+}
