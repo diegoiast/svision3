@@ -203,3 +203,25 @@ TEST_CASE("TableView alternating_row_colors toggle", "[tableview]") {
     tv.set_alternating_row_colors(true);
     REQUIRE(tv.alternating_row_colors());
 }
+
+TEST_CASE("TableView relative coordinates", "[tableview]") {
+    auto model = std::make_shared<StringTableModel>(
+        std::vector<std::string>{"Col 1"},
+        std::vector<std::vector<std::string>>{{"A"}, {"B"}, {"C"}});
+    TableView tv(model);
+    tv.set_rect({100, 100, 200, 200});
+    
+    REQUIRE(tv.use_relative_coordinates() == true);
+    
+    MouseEvent e{};
+    e.type = MouseEvent::Type::Press;
+    
+    // Relative position (10, 30) should succeed (hitting a row)
+    // Header is ~20px, first row ends at ~40px.
+    e.position = {10, 30};
+    REQUIRE(tv.handle_mouse(e) == true);
+    
+    // Absolute position (110, 150) should fail because it's outside local [0, 200]
+    e.position = {110, 150};
+    REQUIRE(tv.handle_mouse(e) == false);
+}
