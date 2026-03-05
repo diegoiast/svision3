@@ -98,6 +98,9 @@ class Widget {
     void set_tooltip(std::string text) { tooltip_ = std::move(text); }
     std::string const &tooltip() const { return tooltip_; }
 
+    void set_use_relative_coordinates(bool r) { relative_coords_ = r; }
+    bool use_relative_coordinates() const { return relative_coords_; }
+
     void set_background_color(std::optional<Color> c) { background_color_ = c; }
     std::optional<Color> background_color() const { return background_color_; }
 
@@ -112,6 +115,7 @@ class Widget {
     Size max_size_;
     Window *window_ = nullptr;
     Widget *parent_ = nullptr;
+    bool relative_coords_ = false;
     std::string tooltip_;
     std::optional<Color> background_color_;
 };

@@ -23,10 +23,21 @@ void Widget::draw(Painter &painter) {
         return;
     }
     painter.push_clip(rect_);
-    if (background_color_) {
-        painter.fill_rect(rect_, *background_color_);
+    
+    if (relative_coords_) {
+        painter.push_translation({rect_.x, rect_.y});
+        if (background_color_) {
+            painter.fill_rect({0, 0, rect_.width, rect_.height}, *background_color_);
+        }
+        paint(painter);
+        painter.pop_translation();
+    } else {
+        if (background_color_) {
+            painter.fill_rect(rect_, *background_color_);
+        }
+        paint(painter);
     }
-    paint(painter);
+    
     painter.pop_clip();
 }
 

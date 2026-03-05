@@ -181,6 +181,7 @@ struct GDIPainter::Impl {
     Gdiplus::Graphics *graphics;
     bool owned;
     std::vector<Gdiplus::Region *> clip_stack;
+    std::vector<Gdiplus::GraphicsState> state_stack;
     float scale;
     Painter::LineStyle line_style = Painter::LineStyle::Solid;
 
@@ -232,6 +233,21 @@ void GDIPainter::pop_clip() {
     for (auto *r : impl_->clip_stack) {
         impl_->graphics->SetClip(r, Gdiplus::CombineModeIntersect);
     }
+}
+
+void GDIPainter::push_translation(Point p) {
+    Gdiplus::GraphicsState state = impl_->graphics->Save();
+    impl_->state_stack.push_back(state);
+    impl_->graphics->TranslateTransform(p.x, p.y);
+}
+
+void GDIPainter::pop_translation() {
+    if (impl_->state_stack.empty()) {
+        return;
+    }
+    Gdiplus::GraphicsState state = impl_->state_stack.back();
+    impl_->state_stack.pop_back();
+    impl_->graphics->Restore(state);
 }
 
 void GDIPainter::set_line_style(Painter::LineStyle style) { impl_->line_style = style; }

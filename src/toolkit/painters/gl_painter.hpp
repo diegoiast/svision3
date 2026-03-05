@@ -16,6 +16,10 @@ class GLPainter : public Painter {
 
     void push_clip(Rect const &rect) override;
     void pop_clip() override;
+
+    void push_translation(Point p) override;
+    void pop_translation() override;
+
     void set_line_style(Painter::LineStyle style) override;
 
     void fill_rect(Rect const &rect, Color const &color) override;

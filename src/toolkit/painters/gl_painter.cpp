@@ -77,6 +77,17 @@ void GLPainter::set_line_style(Painter::LineStyle style) {
     style_ = style;
 }
 
+void GLPainter::push_translation(Point p) {
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glTranslatef(p.x, p.y, 0);
+}
+
+void GLPainter::pop_translation() {
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+}
+
 void GLPainter::apply_line_style() {
     switch (style_) {
     case Painter::LineStyle::Dashed:

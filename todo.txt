@@ -21,7 +21,7 @@ Core Architecture
 [ ] OpenGL uses cairo for painting text.
 [ ] Command interfaces for menus/toolbars and app shortcuts.
 [ ] Backends have open/cairo/whatevre backed in. We need to separate them.
-[ ] Paintings inside widgets should start at (0,0) not position at window.
+[?] Paintings inside widgets should start at (0,0) not position at window.
 
 Widgets
 -------
@@ -40,7 +40,8 @@ Widgets
 [x] SpinBox (int value, min/max/step, arrow buttons).
 [x] Tooltip.
 [x] Slider (horizontal, vertical, range).
-[ ] ScrollBar / ScrollArea.
+[ ] ScrollBar.
+[ ] ScrollArea.
 [ ] ScrollBar: API for theme/app to tell widgets "have an inline scrollbar" or external.
 [x] TextArea (multi-line input).
 [ ] TreeView.

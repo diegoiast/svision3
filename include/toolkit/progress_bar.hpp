@@ -9,6 +9,7 @@ namespace toolkit {
 
 class ProgressBar : public Widget {
   public:
+    ProgressBar();
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override {
         (void)event;
