@@ -63,8 +63,16 @@ TEST_CASE("Widget rect and hit_test", "[widget]") {
     REQUIRE(w.rect().y == 20);
     REQUIRE(w.rect().width == 100);
     REQUIRE(w.rect().height == 50);
+    
+    // Label uses relative coordinates by default now.
+    // So hit_test({5, 5}) should be true (it's inside 0..100, 0..50)
+    REQUIRE(w.hit_test({5, 5}) == true);
+    
+    // hit_test({50, 40}) is also true
     REQUIRE(w.hit_test({50, 40}) == true);
-    REQUIRE(w.hit_test({0, 0}) == false);
+    
+    // hit_test({-1, -1}) should be false
+    REQUIRE(w.hit_test({-1, -1}) == false);
 }
 
 TEST_CASE("Hidden widget excluded from find_focusable_at", "[widget]") {

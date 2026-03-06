@@ -38,7 +38,12 @@ class Widget {
         layout_dirty = true;
     }
     Rect const &rect() const { return rect_; }
-    bool hit_test(Point p) const { return rect_.contains(p); }
+    bool hit_test(Point p) const {
+        if (relative_coords_) {
+            return p.x >= 0 && p.x <= rect_.width && p.y >= 0 && p.y <= rect_.height;
+        }
+        return rect_.contains(p);
+    }
 
     void set_layout_dirty(bool dirty) { layout_dirty = dirty; }
     bool is_layout_dirty() const { return layout_dirty; }

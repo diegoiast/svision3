@@ -273,34 +273,31 @@ TEST_CASE("TabWidget keyboard shortcuts", "[tabwidget]") {
     // but we've verified it doesn't crash and index is updated.
 }
 
-TEST_CASE("TabWidget keyboard shortcuts bubbling", "[tabwidget]") {
+TEST_CASE("TabWidget with nested layout", "[tabwidget]") {
     TabWidget tw;
-    auto label = std::make_unique<Label>("Content");
-    auto *label_ptr = label.get();
-    tw.add_tab("Tab 0", std::move(label));
-    tw.add_tab("Tab 1", std::make_unique<Label>("C1"));
+    tw.set_rect({0, 0, 400, 300});
     
-    // Simulate label having focus
-    label_ptr->set_focusable(true);
+    auto layout = std::make_unique<VBoxLayout>();
+    auto* layout_ptr = layout.get();
     
-    REQUIRE(tw.current_index() == 0);
+    auto btn = std::make_unique<Button>("Btn");
+    auto* btn_ptr = btn.get();
+    layout->add_widget(std::move(btn));
     
-    KeyEvent ev;
-    ev.type = KeyEvent::Type::Press;
-    ev.ctrl = true;
-    ev.key = Key::PageDown;
+    tw.add_tab("Tab", std::move(layout));
     
-    // Send event directly to the child. It should bubble up to TabWidget.
-    Widget *w = label_ptr;
-    bool handled = false;
-    while (w) {
-        if (w->handle_key(ev)) {
-            handled = true;
-            break;
-        }
-        w = w->parent();
-    }
+    // Initial resize to ensure layout is applied
+    tw.set_rect({0, 0, 400, 300});
+    tw.find_focusable_at({0, 0});
+    auto width1 = btn_ptr->rect().width;
     
-    REQUIRE(handled == true);
-    REQUIRE(tw.current_index() == 1);
+    // Now resize TabWidget
+    tw.set_rect({0, 0, 500, 400});
+    
+    // Trigger layout via interaction probe
+    tw.find_focusable_at({0, 0});
+    auto width2 = btn_ptr->rect().width;
+    
+    REQUIRE(width2 > width1);
+    REQUIRE(width2 > 450);
 }

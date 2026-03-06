@@ -346,12 +346,14 @@ add_executable(tests
     tests/test_list_adapter.cpp
     tests/test_list_view.cpp
     tests/test_layout.cpp
+    tests/test_layout_mouse.cpp
     tests/test_tab_widget.cpp
     tests/test_filter_adapter.cpp
     tests/test_slider.cpp
     tests/test_spin_box.cpp
     tests/test_line_input.cpp
     tests/test_command.cpp
+    tests/test_context_menu.cpp
     tests/test_table_view.cpp
     tests/test_text_edit.cpp
     tests/test_catalog.cpp

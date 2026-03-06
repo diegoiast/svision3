@@ -205,10 +205,22 @@ void Window::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Press) {
         Widget *new_focus = nullptr;
-        if (root_) new_focus = root_->find_focusable_at(event.position);
+        if (root_) {
+            auto p = event.position;
+            if (root_->use_relative_coordinates()) {
+                p.x -= root_->rect().x;
+                p.y -= root_->rect().y;
+            }
+            new_focus = root_->find_focusable_at(p);
+        }
         if (!new_focus) {
             for (auto &w : widgets_) {
-                new_focus = w->find_focusable_at(event.position);
+                auto p = event.position;
+                if (w->use_relative_coordinates()) {
+                    p.x -= w->rect().x;
+                    p.y -= w->rect().y;
+                }
+                new_focus = w->find_focusable_at(p);
                 if (new_focus) break;
             }
         }
@@ -235,10 +247,22 @@ void Window::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Move) {
         Widget *under = nullptr;
-        if (root_) under = root_->widget_at(event.position);
+        if (root_) {
+            auto p = event.position;
+            if (root_->use_relative_coordinates()) {
+                p.x -= root_->rect().x;
+                p.y -= root_->rect().y;
+            }
+            under = root_->widget_at(p);
+        }
         if (!under) {
             for (auto &w : widgets_) {
-                under = w->widget_at(event.position);
+                auto p = event.position;
+                if (w->use_relative_coordinates()) {
+                    p.x -= w->rect().x;
+                    p.y -= w->rect().y;
+                }
+                under = w->widget_at(p);
                 if (under) break;
             }
         }
@@ -379,25 +403,34 @@ void Window::hide_tooltip() {
 }
 
 void Window::draw_debug_frames_recursive(Painter &painter, Widget *widget) {
-    if (!widget || !widget->is_visible()) return;
+    if (!widget || !widget->is_visible()) {
+        return;
+    }
 
     // Draw for the widget itself
-    bool is_layout = dynamic_cast<VBoxLayout *>(widget) != nullptr ||
-                    dynamic_cast<HBoxLayout *>(widget) != nullptr ||
-                    dynamic_cast<TabWidget *>(widget) != nullptr;
+    auto const is_layout = dynamic_cast<VBoxLayout *>(widget) != nullptr ||
+                           dynamic_cast<HBoxLayout *>(widget) != nullptr ||
+                           dynamic_cast<TabWidget *>(widget) != nullptr;
+    auto const r = widget->rect();
 
     if (is_layout) {
         painter.set_line_style(Painter::LineStyle::Dotted);
     } else {
         painter.set_line_style(Painter::LineStyle::Dashed);
     }
-    painter.draw_rect(widget->rect(), {1.0f, 0.0f, 0.0f, 1.0f}, 1.0f);
+
+    // ALWAYS draw at 'r' because the painter is currently at the parent's origin
+    painter.draw_rect(r, {1.0f, 0.0f, 0.0f, 1.0f}, 1.0f);
     painter.set_line_style(Painter::LineStyle::Solid);
 
     // Recurse into children
-    widget->for_each_child([&](Widget *child) {
-        draw_debug_frames_recursive(painter, child);
-    });
+    if (widget->use_relative_coordinates()) {
+        painter.push_translation({r.x, r.y});
+    }
+    widget->for_each_child([&](Widget *child) { draw_debug_frames_recursive(painter, child); });
+    if (widget->use_relative_coordinates()) {
+        painter.pop_translation();
+    }
 }
 
 } // namespace toolkit
