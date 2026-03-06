@@ -12,7 +12,6 @@ namespace toolkit {
 
 TabWidget::TabWidget() {
     focusable_ = true;
-    relative_coords_ = true;
 
     prev_button_ = std::make_unique<Button>("<");
     prev_button_->set_flat(true);
@@ -95,14 +94,12 @@ void TabWidget::scroll_to_tab(int index) {
 
 void TabWidget::update_scroll_bounds() {
     auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
-    auto lead_off =
-        leading_widget_
-            ? (vertical ? leading_widget_->size_hint().height : leading_widget_->size_hint().width)
-            : 0.0f;
-    auto trail_off =
-        trailing_widget_
-            ? (vertical ? trailing_widget_->size_hint().height : trailing_widget_->size_hint().width)
-            : 0.0f;
+    auto lead_off = leading_widget_ ? (vertical ? leading_widget_->size_hint().height
+                                                : leading_widget_->size_hint().width)
+                                    : 0.0f;
+    auto trail_off = trailing_widget_ ? (vertical ? trailing_widget_->size_hint().height
+                                                  : trailing_widget_->size_hint().width)
+                                      : 0.0f;
     auto bar_dim = vertical ? rect_.height : rect_.width;
     auto base_available = bar_dim - lead_off - trail_off;
     auto total_tabs = 0.0f;
@@ -272,20 +269,17 @@ void TabWidget::layout_content() {
         auto sz_next = next_button_->size_hint();
         auto btn_size = vertical ? std::max(sz_prev.height, sz_next.height)
                                  : std::max(sz_prev.width, sz_next.width);
-        auto lead_off = leading_widget_
-                            ? (vertical ? leading_widget_->size_hint().height
-                                        : leading_widget_->size_hint().width)
-                            : 0.0f;
-        auto trail_off = trailing_widget_
-                             ? (vertical ? trailing_widget_->size_hint().height
-                                         : trailing_widget_->size_hint().width)
-                             : 0.0f;
+        auto lead_off = leading_widget_ ? (vertical ? leading_widget_->size_hint().height
+                                                    : leading_widget_->size_hint().width)
+                                        : 0.0f;
+        auto trail_off = trailing_widget_ ? (vertical ? trailing_widget_->size_hint().height
+                                                      : trailing_widget_->size_hint().width)
+                                          : 0.0f;
 
         if (vertical) {
             prev_button_->set_rect({bar_rect.x, bar_rect.y + lead_off, thickness, btn_size});
-            next_button_->set_rect(
-                {bar_rect.x, bar_rect.y + bar_rect.height - trail_off - btn_size, thickness,
-                 btn_size});
+            next_button_->set_rect({bar_rect.x, bar_rect.y + bar_rect.height - trail_off - btn_size,
+                                    thickness, btn_size});
         } else {
             prev_button_->set_rect({bar_rect.x + lead_off, bar_rect.y, btn_size, thickness});
             next_button_->set_rect({bar_rect.x + bar_rect.width - trail_off - btn_size, bar_rect.y,
@@ -388,9 +382,8 @@ auto TabWidget::hit_test_tab(Point p) const -> HitResult {
                 auto close_x = draw_x + style.tab_padding_h + text_w + close_btn_gap_;
                 auto close_cy = y + thickness / 2.0f;
                 auto hr = close_btn_size_ / 2.0f + 2.0f;
-                auto on_close =
-                    (p.x >= close_x - 2.0f && p.x <= close_x + close_btn_size_ + 2.0f &&
-                     p.y >= close_cy - hr && p.y <= close_cy + hr);
+                auto on_close = (p.x >= close_x - 2.0f && p.x <= close_x + close_btn_size_ + 2.0f &&
+                                 p.y >= close_cy - hr && p.y <= close_cy + hr);
                 return {i, on_close};
             }
             draw_x += w;
@@ -458,7 +451,9 @@ void TabWidget::paint(Painter &painter) {
             vertical ? Rect{bar_x, draw_y, thickness, size} : Rect{draw_x, bar_y, size, thickness};
         auto active = (i == current_);
         auto hovered = (i == hovered_tab_ && !active);
-        auto bg = active ? style.tab_active_bg : hovered ? style.tab_hover_bg : style.tab_inactive_bg;
+        auto bg = active    ? style.tab_active_bg
+                  : hovered ? style.tab_hover_bg
+                            : style.tab_inactive_bg;
         auto text_col = active ? style.tab_active_text : style.tab_inactive_text;
 
         if (active && style.corner_radius > 0) {
@@ -609,8 +604,9 @@ void TabWidget::paint(Painter &painter) {
             painter.draw_line({0, thickness}, {rect_.width, thickness}, style.border,
                               style.border_width);
         } else if (orientation_ == TabOrientation::South) {
-            painter.draw_line({0, rect_.height - thickness}, {rect_.width, rect_.height - thickness},
-                              style.border, style.border_width);
+            painter.draw_line({0, rect_.height - thickness},
+                              {rect_.width, rect_.height - thickness}, style.border,
+                              style.border_width);
         } else if (orientation_ == TabOrientation::West) {
             painter.draw_line({thickness, 0}, {thickness, rect_.height}, style.border,
                               style.border_width);
@@ -855,8 +851,8 @@ auto TabWidget::handle_key(KeyEvent const &event) -> bool {
                     set_current(current_ - 1);
                 }
             } else {
-                auto next =
-                    (current_ - 1 + static_cast<int>(tabs_.size())) % static_cast<int>(tabs_.size());
+                auto next = (current_ - 1 + static_cast<int>(tabs_.size())) %
+                            static_cast<int>(tabs_.size());
                 set_current(next);
             }
             return true;
@@ -920,20 +916,17 @@ auto TabWidget::size_hint() const -> Size {
 auto TabWidget::find_focusable_at(Point p) -> Widget * {
     if (leading_widget_) {
         auto local_p = p;
-        if (leading_widget_->use_relative_coordinates()) {
-            local_p.x -= leading_widget_->rect().x;
-            local_p.y -= leading_widget_->rect().y;
-        }
+        local_p.x -= leading_widget_->rect().x;
+        local_p.y -= leading_widget_->rect().y;
         if (auto *w = leading_widget_->find_focusable_at(local_p)) {
             return w;
         }
     }
     if (trailing_widget_) {
         auto local_p = p;
-        if (trailing_widget_->use_relative_coordinates()) {
-            local_p.x -= trailing_widget_->rect().x;
-            local_p.y -= trailing_widget_->rect().y;
-        }
+        local_p.x -= trailing_widget_->rect().x;
+        local_p.y -= trailing_widget_->rect().y;
+
         if (auto *w = trailing_widget_->find_focusable_at(local_p)) {
             return w;
         }
@@ -941,27 +934,21 @@ auto TabWidget::find_focusable_at(Point p) -> Widget * {
     if (show_scroll_buttons_) {
         auto p_local = p;
         auto n_local = p;
-        if (prev_button_->use_relative_coordinates()) {
-            p_local.x -= prev_button_->rect().x;
-            p_local.y -= prev_button_->rect().y;
-        }
+        p_local.x -= prev_button_->rect().x;
+        p_local.y -= prev_button_->rect().y;
         if (auto *w = prev_button_->find_focusable_at(p_local)) {
             return w;
         }
-        if (next_button_->use_relative_coordinates()) {
-            n_local.x -= next_button_->rect().x;
-            n_local.y -= next_button_->rect().y;
-        }
+        n_local.x -= next_button_->rect().x;
+        n_local.y -= next_button_->rect().y;
         if (auto *w = next_button_->find_focusable_at(n_local)) {
             return w;
         }
     }
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
         auto local_p = p;
-        if (tabs_[current_].content->use_relative_coordinates()) {
-            local_p.x -= tabs_[current_].content->rect().x;
-            local_p.y -= tabs_[current_].content->rect().y;
-        }
+        local_p.x -= tabs_[current_].content->rect().x;
+        local_p.y -= tabs_[current_].content->rect().y;
         return tabs_[current_].content->find_focusable_at(local_p);
     }
     return nullptr;
@@ -973,20 +960,16 @@ auto TabWidget::widget_at(Point p) -> Widget * {
     }
     if (leading_widget_) {
         auto local_p = p;
-        if (leading_widget_->use_relative_coordinates()) {
-            local_p.x -= leading_widget_->rect().x;
-            local_p.y -= leading_widget_->rect().y;
-        }
+        local_p.x -= leading_widget_->rect().x;
+        local_p.y -= leading_widget_->rect().y;
         if (auto *w = leading_widget_->widget_at(local_p)) {
             return w;
         }
     }
     if (trailing_widget_) {
         auto local_p = p;
-        if (trailing_widget_->use_relative_coordinates()) {
-            local_p.x -= trailing_widget_->rect().x;
-            local_p.y -= trailing_widget_->rect().y;
-        }
+        local_p.x -= trailing_widget_->rect().x;
+        local_p.y -= trailing_widget_->rect().y;
         if (auto *w = trailing_widget_->widget_at(local_p)) {
             return w;
         }
@@ -994,27 +977,21 @@ auto TabWidget::widget_at(Point p) -> Widget * {
     if (show_scroll_buttons_) {
         auto p_local = p;
         auto n_local = p;
-        if (prev_button_->use_relative_coordinates()) {
-            p_local.x -= prev_button_->rect().x;
-            p_local.y -= prev_button_->rect().y;
-        }
+        p_local.x -= prev_button_->rect().x;
+        p_local.y -= prev_button_->rect().y;
         if (auto *w = prev_button_->widget_at(p_local)) {
             return w;
         }
-        if (next_button_->use_relative_coordinates()) {
-            n_local.x -= next_button_->rect().x;
-            n_local.y -= next_button_->rect().y;
-        }
+        n_local.x -= next_button_->rect().x;
+        n_local.y -= next_button_->rect().y;
         if (auto *w = next_button_->widget_at(n_local)) {
             return w;
         }
     }
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
         auto local_p = p;
-        if (tabs_[current_].content->use_relative_coordinates()) {
-            local_p.x -= tabs_[current_].content->rect().x;
-            local_p.y -= tabs_[current_].content->rect().y;
-        }
+        local_p.x -= tabs_[current_].content->rect().x;
+        local_p.y -= tabs_[current_].content->rect().y;
         if (auto *w = tabs_[current_].content->widget_at(local_p)) {
             return w;
         }

@@ -9,7 +9,6 @@ namespace toolkit {
 
 Checkbox::Checkbox(std::string text) : text_(std::move(text)) {
     focusable_ = true;
-    relative_coords_ = true;
 }
 
 void Checkbox::set_checked(bool c) {

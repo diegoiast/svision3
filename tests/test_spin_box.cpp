@@ -1,5 +1,5 @@
-#include <catch2/catch_test_macros.hpp>
 #include "toolkit/spin_box.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
@@ -99,16 +99,14 @@ TEST_CASE("SpinBox size_hint has positive dimensions", "[spinbox]") {
 TEST_CASE("SpinBox relative coordinates", "[spinbox]") {
     SpinBox sb(10, 0, 100);
     sb.set_rect({100, 100, 100, 30});
-    
-    REQUIRE(sb.use_relative_coordinates() == true);
-    
+
     MouseEvent e{};
     e.type = MouseEvent::Type::Press;
-    
+
     // Relative position (5, 5) should succeed (inside field)
     e.position = {5, 5};
     REQUIRE(sb.handle_mouse(e) == true);
-    
+
     // Absolute position (105, 105) should fail
     SpinBox sb2(10, 0, 100);
     sb2.set_rect({100, 100, 100, 30});

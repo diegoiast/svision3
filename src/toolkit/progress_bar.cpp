@@ -5,7 +5,6 @@
 namespace toolkit {
 
 ProgressBar::ProgressBar() {
-    relative_coords_ = true;
 }
 
 void ProgressBar::set_value(float v) {

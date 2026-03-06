@@ -16,9 +16,7 @@ static auto clamp_dim(float val, float lo, float hi) -> float {
     return val;
 }
 
-VBoxLayout::VBoxLayout() {
-    relative_coords_ = true;
-}
+VBoxLayout::VBoxLayout() {}
 
 void VBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignment h_align) {
     widget->set_parent(this);
@@ -31,9 +29,7 @@ void VBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
     }
 }
 
-void VBoxLayout::set_rect(Rect const &rect) {
-    Widget::set_rect(rect);
-}
+void VBoxLayout::set_rect(Rect const &rect) { Widget::set_rect(rect); }
 
 void VBoxLayout::set_window(Window *w) {
     Widget::set_window(w);
@@ -102,8 +98,7 @@ void VBoxLayout::apply_layout() {
         item_x = content_x;
         mins = item.widget->min_size();
         maxs = item.widget->max_size();
-        item_h = item.stretch == 0 ? item.widget->size_hint().height
-                                   : stretch_unit * item.stretch;
+        item_h = item.stretch == 0 ? item.widget->size_hint().height : stretch_unit * item.stretch;
         item_h = clamp_dim(item_h, mins.height, maxs.height);
 
         if (item.h_align != Alignment::Fill) {
@@ -214,10 +209,8 @@ auto VBoxLayout::find_focusable_at(Point p) -> Widget * {
             continue;
         }
         auto local_p = p;
-        if (item.widget->use_relative_coordinates()) {
-            local_p.x -= item.widget->rect().x;
-            local_p.y -= item.widget->rect().y;
-        }
+        local_p.x -= item.widget->rect().x;
+        local_p.y -= item.widget->rect().y;
         if (auto *w = item.widget->find_focusable_at(local_p)) {
             return w;
         }
@@ -235,10 +228,8 @@ auto VBoxLayout::widget_at(Point p) -> Widget * {
             continue;
         }
         auto local_p = p;
-        if (item.widget->use_relative_coordinates()) {
-            local_p.x -= item.widget->rect().x;
-            local_p.y -= item.widget->rect().y;
-        }
+        local_p.x -= item.widget->rect().x;
+        local_p.y -= item.widget->rect().y;
         if (auto *w = item.widget->widget_at(local_p)) {
             return w;
         }
@@ -254,9 +245,7 @@ void VBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
 
 // --- HBoxLayout ---
 
-HBoxLayout::HBoxLayout() {
-    relative_coords_ = true;
-}
+HBoxLayout::HBoxLayout() {}
 
 void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignment v_align) {
     widget->set_parent(this);
@@ -269,9 +258,7 @@ void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
     }
 }
 
-void HBoxLayout::set_rect(Rect const &rect) {
-    Widget::set_rect(rect);
-}
+void HBoxLayout::set_rect(Rect const &rect) { Widget::set_rect(rect); }
 
 void HBoxLayout::set_window(Window *w) {
     Widget::set_window(w);
@@ -340,8 +327,7 @@ void HBoxLayout::apply_layout() {
         item_y = content_y;
         mins = item.widget->min_size();
         maxs = item.widget->max_size();
-        item_w = item.stretch == 0 ? item.widget->size_hint().width
-                                   : stretch_unit * item.stretch;
+        item_w = item.stretch == 0 ? item.widget->size_hint().width : stretch_unit * item.stretch;
         item_w = clamp_dim(item_w, mins.width, maxs.width);
 
         if (item.v_align != Alignment::Fill) {
@@ -453,10 +439,8 @@ auto HBoxLayout::find_focusable_at(Point p) -> Widget * {
             continue;
         }
         auto local_p = p;
-        if (item.widget->use_relative_coordinates()) {
-            local_p.x -= item.widget->rect().x;
-            local_p.y -= item.widget->rect().y;
-        }
+        local_p.x -= item.widget->rect().x;
+        local_p.y -= item.widget->rect().y;
         if (auto *w = item.widget->find_focusable_at(local_p)) {
             return w;
         }
@@ -474,10 +458,8 @@ auto HBoxLayout::widget_at(Point p) -> Widget * {
             continue;
         }
         auto local_p = p;
-        if (item.widget->use_relative_coordinates()) {
-            local_p.x -= item.widget->rect().x;
-            local_p.y -= item.widget->rect().y;
-        }
+        local_p.x -= item.widget->rect().x;
+        local_p.y -= item.widget->rect().y;
         if (auto *w = item.widget->widget_at(local_p)) {
             return w;
         }

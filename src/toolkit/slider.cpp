@@ -10,7 +10,6 @@ namespace toolkit {
 
 Slider::Slider(SliderOrientation orientation) : orientation_(orientation) {
     focusable_ = true;
-    relative_coords_ = true;
 }
 
 void Slider::set_value(float v) {

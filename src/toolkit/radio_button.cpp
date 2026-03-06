@@ -25,7 +25,6 @@ void RadioGroup::select(RadioButton *rb) {
 RadioButton::RadioButton(std::string text, RadioGroup &group)
     : text_(std::move(text)), group_(group) {
     focusable_ = true;
-    relative_coords_ = true;
     group_.add(this);
 }
 

@@ -6,7 +6,7 @@
 
 namespace toolkit {
 
-Label::Label(std::string text) : text_(std::move(text)) { relative_coords_ = true; }
+Label::Label(std::string text) : text_(std::move(text)) {}
 
 void Label::set_text(std::string const &text) {
     if (text_ == text) {

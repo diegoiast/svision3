@@ -63,7 +63,6 @@ void StringTableModel::remove_row(int index) {
 
 TableView::TableView(std::shared_ptr<TableModel> model) : model_(std::move(model)) {
     focusable_ = true;
-    relative_coords_ = true;
     if (model_) {
         model_->on_data_changed = [this] {
             rebuild_sort_index();

@@ -1,12 +1,13 @@
-#include <catch2/catch_test_macros.hpp>
 #include "toolkit/list_view.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
 static std::shared_ptr<StringListAdapter> make_adapter(int n = 5) {
     std::vector<std::string> items;
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
         items.push_back("Item " + std::to_string(i));
+    }
     return std::make_shared<StringListAdapter>(std::move(items));
 }
 
@@ -126,21 +127,19 @@ TEST_CASE("ListView relative coordinates", "[listview]") {
     auto adapter = make_adapter();
     ListView lv(adapter);
     lv.set_rect({100, 100, 200, 200});
-    
-    REQUIRE(lv.use_relative_coordinates() == true);
-    
+
     MouseEvent e{};
     e.type = MouseEvent::Type::Press;
-    
+
     // Relative position (10, 10) should succeed (hitting first item)
     e.position = {10, 10};
     REQUIRE(lv.handle_mouse(e) == true);
-    
+
     // Relative position (10, 190) should fail (hitting empty area below items)
     // 5 items * ~20px = 100px. 190px is empty area.
     e.position = {10, 190};
     REQUIRE(lv.handle_mouse(e) == false);
-    
+
     // Absolute position (110, 110) should fail because it's outside local [0, 200]
     e.position = {110, 110};
     REQUIRE(lv.handle_mouse(e) == false);

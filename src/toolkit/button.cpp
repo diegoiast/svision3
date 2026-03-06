@@ -14,7 +14,6 @@ Button::Button(std::string text) {
     auto pos = text.find('&');
 
     focusable_ = true;
-    relative_coords_ = true;
     if (pos != std::string::npos && pos + 1 < text.size()) {
         mnemonic_index_ = static_cast<int>(pos);
         mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));

@@ -1,5 +1,5 @@
-#include <catch2/catch_test_macros.hpp>
 #include "toolkit/label.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
@@ -26,9 +26,4 @@ TEST_CASE("Label handle_mouse returns false", "[label]") {
     e.type = MouseEvent::Type::Press;
     e.position = {50, 15};
     REQUIRE(l.handle_mouse(e) == false);
-}
-
-TEST_CASE("Label relative coordinates", "[label]") {
-    Label l("Test");
-    REQUIRE(l.use_relative_coordinates() == true);
 }

@@ -28,7 +28,6 @@ LineInput::LineInput(std::string placeholder)
     focusable_ = true;
     focused_ = false;
     read_only_ = false;
-    relative_coords_ = true;
 }
 
 void LineInput::set_password_mode(bool enable) {

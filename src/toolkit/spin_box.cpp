@@ -13,7 +13,6 @@ SpinBox::SpinBox(int value, int min_val, int max_val, int step)
     : value_(value), min_val_(min_val), max_val_(max_val), step_(step),
       cursor_blink_time_(std::chrono::steady_clock::now()) {
     focusable_ = true;
-    relative_coords_ = true;
     sync_text();
 }
 
