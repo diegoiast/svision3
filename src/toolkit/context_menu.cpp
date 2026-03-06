@@ -10,8 +10,10 @@ namespace toolkit {
 
 ContextMenu::ContextMenu(std::vector<MenuItem> items) : items_(std::move(items)) {}
 
-float menu_total_height(std::vector<MenuItem> const &items, float item_h, float sep_h) {
-    auto h = 0;
+static auto menu_total_height(std::vector<MenuItem> const &items, float item_h, float sep_h)
+    -> float {
+    auto h = 0.0f;
+
     for (auto const &item : items) {
         h += item.separator ? sep_h : item_h;
     }
@@ -32,7 +34,7 @@ void ContextMenu::show(Window *win, Point position) {
         if (item.separator) {
             continue;
         }
-        float w = Painter::measure_text(item.command->name(), style.font_size).width;
+        auto w = Painter::measure_text(item.command->name(), style.font_size).width;
         max_w = std::max(max_w, w);
     }
 
@@ -58,7 +60,7 @@ void ContextMenu::show(Window *win, Point position) {
     bounds_ = {x, y, width, height};
     hovered_ = -1;
 
-    Popup popup;
+    auto popup = Popup{};
     popup.bounds = bounds_;
     popup.on_paint = [this](Painter &p) { paint(p); };
     popup.on_mouse = [this](MouseEvent const &e) { return handle_mouse(e); };
@@ -73,11 +75,13 @@ void ContextMenu::close() {
     window_ = nullptr;
 }
 
-int ContextMenu::item_at(Point p) const {
-    if (!bounds_.contains(p)) {
+auto ContextMenu::item_at(Point p) const -> int {
+    auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
+
+    if (!local_bounds.contains(p)) {
         return -1;
     }
-    auto y = bounds_.y + 2.0f;
+    auto y = 2.0f;
     for (auto i = 0; i < static_cast<int>(items_.size()); i++) {
         auto h = items_[i].separator ? separator_height_ : item_height_;
         if (p.y >= y && p.y < y + h && !items_[i].separator) {
@@ -92,28 +96,27 @@ void ContextMenu::paint(Painter &painter) {
     auto const &style = Theme::current().combobox;
     auto shadow = Color::rgba(0, 0, 0, 0.12f);
     auto fm = painter.font_metrics(style.font_size);
-    auto y = bounds_.y + 2.0f;
+    auto y = 2.0f;
+    auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
 
-    painter.fill_rounded_rect({bounds_.x + 1, bounds_.y + 1, bounds_.width, bounds_.height}, shadow,
-                              style.corner_radius);
-    painter.fill_rounded_rect(bounds_, style.dropdown_bg, style.corner_radius);
-    painter.draw_rounded_rect(bounds_, style.border, style.corner_radius, style.border_width);
+    painter.fill_rounded_rect({1, 1, bounds_.width, bounds_.height}, shadow, style.corner_radius);
+    painter.fill_rounded_rect(local_bounds, style.dropdown_bg, style.corner_radius);
+    painter.draw_rounded_rect(local_bounds, style.border, style.corner_radius, style.border_width);
 
     for (auto i = 0; i < static_cast<int>(items_.size()); i++) {
         auto const &item = items_[i];
 
         if (item.separator) {
-            float mid_y = y + separator_height_ / 2.0f;
-            Color sep_col = style.border;
+            auto mid_y = y + separator_height_ / 2.0f;
+            auto sep_col = style.border;
             sep_col.a *= 0.5f;
-            painter.draw_line({bounds_.x + 8, mid_y}, {bounds_.x + bounds_.width - 8, mid_y},
-                              sep_col, 0.5f);
+            painter.draw_line({8, mid_y}, {bounds_.width - 8, mid_y}, sep_col, 0.5f);
             y += separator_height_;
             continue;
         }
 
         auto enabled = item.command->is_enabled();
-        auto item_rect = Rect{bounds_.x + 2, y, bounds_.width - 4, item_height_};
+        auto item_rect = Rect{2, y, bounds_.width - 4, item_height_};
         if (i == hovered_ && enabled) {
             painter.fill_rounded_rect(item_rect, style.item_hovered, style.corner_radius * 0.5f);
         }
@@ -126,20 +129,22 @@ void ContextMenu::paint(Painter &painter) {
         }
 
         auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(item.command->name(), {bounds_.x + style.padding.left + 4, baseline},
-                          text_col, style.font_size);
+        painter.draw_text(item.command->name(), {style.padding.left + 4, baseline}, text_col,
+                          style.font_size);
         y += item_height_;
     }
 }
 
-bool ContextMenu::handle_mouse(MouseEvent const &event) {
+auto ContextMenu::handle_mouse(MouseEvent const &event) -> bool {
+    auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
+
     if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
         hovered_ = item_at(event.position);
-        return bounds_.contains(event.position);
+        return local_bounds.contains(event.position);
     }
 
     if (event.type == MouseEvent::Type::Press) {
-        int idx = item_at(event.position);
+        auto idx = item_at(event.position);
         if (idx >= 0 && items_[idx].command->is_enabled()) {
             auto cmd = items_[idx].command;
             close();
@@ -153,14 +158,14 @@ bool ContextMenu::handle_mouse(MouseEvent const &event) {
     return false;
 }
 
-bool ContextMenu::handle_key(KeyEvent const &event) {
+auto ContextMenu::handle_key(KeyEvent const &event) -> bool {
     if (event.type != KeyEvent::Type::Press) {
         return false;
     }
 
     auto next_enabled = [&](int from, int dir) -> int {
-        int n = static_cast<int>(items_.size());
-        for (int step = 0; step < n; step++) {
+        auto n = static_cast<int>(items_.size());
+        for (auto step = 0; step < n; step++) {
             from = (from + dir + n) % n;
             if (!items_[from].separator && items_[from].command->is_enabled()) {
                 return from;

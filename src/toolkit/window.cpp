@@ -131,7 +131,9 @@ void Window::handle_paint(Painter &painter) {
     }
 
     if (popup_ && popup_->on_paint) {
+        painter.push_translation({popup_->bounds.x, popup_->bounds.y});
         popup_->on_paint(painter);
+        painter.pop_translation();
     }
 
     if (tooltip_visible_ && tooltip_widget_) {
@@ -188,7 +190,10 @@ void Window::handle_mouse(MouseEvent const &event) {
     bool needs_redraw = false;
 
     if (popup_ && popup_->on_mouse) {
-        if (popup_->on_mouse(event)) {
+        auto local_event = event;
+        local_event.position.x -= popup_->bounds.x;
+        local_event.position.y -= popup_->bounds.y;
+        if (popup_->on_mouse(local_event)) {
             request_redraw();
             return;
         }

@@ -59,12 +59,13 @@ auto Combobox::dropdown_bounds() const -> Rect {
 
 auto Combobox::item_index_at(Point p) const -> int {
     auto db = dropdown_bounds();
+    auto local_db = Rect{0, 0, db.width, db.height};
 
-    if (!db.contains(p)) {
+    if (!local_db.contains(p)) {
         return -1;
     }
     auto item_h = dropdown_item_height();
-    auto idx = static_cast<int>((p.y - db.y + drop_scroll_) / item_h);
+    auto idx = static_cast<int>((p.y + drop_scroll_) / item_h);
 
     if (idx < 0 || idx >= static_cast<int>(items_.size())) {
         return -1;
@@ -147,21 +148,22 @@ void Combobox::paint(Painter &painter) {
 void Combobox::paint_dropdown(Painter &painter) {
     auto const &style = Theme::current().combobox;
     auto db = dropdown_bounds();
+    auto local_db = Rect{0, 0, db.width, db.height};
     auto item_h = dropdown_item_height();
     auto total = static_cast<int>(items_.size());
     auto scrollable = drop_max_visible_ < total;
     auto fm = painter.font_metrics(style.font_size);
 
-    painter.fill_rect(db, style.dropdown_bg);
-    painter.push_clip(db);
+    painter.fill_rect(local_db, style.dropdown_bg);
+    painter.push_clip(local_db);
 
     for (auto i = 0; i < total; i++) {
-        auto iy = db.y + item_h * static_cast<float>(i) - drop_scroll_;
-        auto item_rect = Rect{db.x, iy, db.width, item_h};
+        auto iy = item_h * static_cast<float>(i) - drop_scroll_;
+        auto item_rect = Rect{0, iy, db.width, item_h};
         auto baseline = iy + (item_h - fm.height) / 2.0f + fm.ascent;
         auto tc = (i == hovered_index_) ? style.item_text_hovered : style.text;
 
-        if (iy + item_h < db.y || iy > db.y + db.height) {
+        if (iy + item_h < 0 || iy > db.height) {
             continue;
         }
 
@@ -169,14 +171,14 @@ void Combobox::paint_dropdown(Painter &painter) {
             painter.fill_rect(item_rect, style.item_hovered);
         }
 
-        painter.draw_text(items_[i], {db.x + style.padding.left, baseline}, tc, style.font_size);
+        painter.draw_text(items_[i], {style.padding.left, baseline}, tc, style.font_size);
     }
 
     if (scrollable) {
         auto content_h = item_h * static_cast<float>(total);
         auto bar_h = std::max(12.0f, db.height * (db.height / content_h));
-        auto bar_y = db.y + (drop_scroll_ / content_h) * db.height;
-        auto sb = Rect{db.x + db.width - 5.0f, bar_y, 3.0f, bar_h};
+        auto bar_y = (drop_scroll_ / content_h) * db.height;
+        auto sb = Rect{db.width - 5.0f, bar_y, 3.0f, bar_h};
         painter.fill_rounded_rect(sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.3f),
                                   1.5f);
     }
@@ -184,9 +186,9 @@ void Combobox::paint_dropdown(Painter &painter) {
     painter.pop_clip();
 
     if (style.corner_radius > 0) {
-        painter.draw_rounded_rect(db, style.border, style.corner_radius, style.border_width);
+        painter.draw_rounded_rect(local_db, style.border, style.corner_radius, style.border_width);
     } else {
-        painter.draw_rect(db, style.border, style.border_width);
+        painter.draw_rect(local_db, style.border, style.border_width);
     }
 }
 
@@ -219,8 +221,9 @@ void Combobox::ensure_hovered_visible() {
 
 bool Combobox::handle_dropdown_mouse(MouseEvent const &event) {
     auto db = dropdown_bounds();
+    auto local_db = Rect{0, 0, db.width, db.height};
 
-    if (event.type == MouseEvent::Type::Scroll && db.contains(event.position)) {
+    if (event.type == MouseEvent::Type::Scroll && local_db.contains(event.position)) {
         drop_scroll_ -= event.scroll_dy;
         clamp_drop_scroll();
         return true;
@@ -228,7 +231,7 @@ bool Combobox::handle_dropdown_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
         hovered_index_ = item_index_at(event.position);
-        return db.contains(event.position);
+        return local_db.contains(event.position);
     }
 
     if (event.type == MouseEvent::Type::Press) {
