@@ -26,6 +26,13 @@ auto Widget::dispatch_mouse_event(Widget *w, MouseEvent const &event) -> bool {
     return w->handle_mouse(local_ev);
 }
 
+auto Widget::map_to_window(Point p) const -> Point {
+    if (parent_) {
+        return parent_->map_to_window({p.x + rect_.x, p.y + rect_.y});
+    }
+    return {p.x + rect_.x, p.y + rect_.y};
+}
+
 void Widget::draw(Painter &painter) {
     if (!visible_) {
         return;

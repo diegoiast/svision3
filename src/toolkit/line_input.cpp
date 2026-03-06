@@ -386,8 +386,9 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press) {
-        if (event.position.x < 0 || event.position.x > rect_.width || 
-            event.position.y < 0 || event.position.y > rect_.height) {
+        auto const local_rect = Rect{0, 0, rect_.width, rect_.height};
+
+        if (!local_rect.contains(event.position)) {
             return false;
         }
 
@@ -737,8 +738,7 @@ void LineInput::show_context_menu(Point pos) {
         [this] { return !read_only_ && has_selection(); }));
 
     context_menu_ = std::make_unique<ContextMenu>(std::move(items));
-    // FIXME: we should add a "convert to global" function.
-    context_menu_->show(window(), {pos.x + rect_.x, pos.y + rect_.y});
+    context_menu_->show(window(), map_to_window(pos));
 }
 
 Size LineInput::size_hint() const {

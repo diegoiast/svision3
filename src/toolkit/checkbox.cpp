@@ -83,8 +83,7 @@ void Checkbox::paint(Painter &painter) {
 
 bool Checkbox::handle_mouse(MouseEvent const &event) {
     if (event.type == MouseEvent::Type::Press) {
-        if (event.position.x >= 0 && event.position.x <= rect_.width && event.position.y >= 0 &&
-            event.position.y <= rect_.height) {
+        if (Rect{0, 0, rect_.width, rect_.height}.contains(event.position)) {
             toggle();
             return true;
         }

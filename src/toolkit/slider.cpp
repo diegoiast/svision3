@@ -142,8 +142,7 @@ void Slider::paint(Painter &painter) {
 
 bool Slider::handle_mouse(MouseEvent const &event) {
     if (event.type == MouseEvent::Type::Press) {
-        if (event.position.x >= 0 && event.position.x <= rect_.width && event.position.y >= 0 &&
-            event.position.y <= rect_.height) {
+        if (Rect{0, 0, rect_.width, rect_.height}.contains(event.position)) {
             dragging_ = true;
             update_value_from_pos(event.position);
             if (window_) {

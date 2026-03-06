@@ -512,9 +512,10 @@ bool TableView::handle_mouse(MouseEvent const &event) {
         return false;
     }
 
+    auto const local_rect = Rect{0, 0, rect_.width, rect_.height};
+
     if (event.type == MouseEvent::Type::Scroll) {
-        if (event.position.x < 0 || event.position.x > rect_.width || event.position.y < 0 ||
-            event.position.y > rect_.height) {
+        if (!local_rect.contains(event.position)) {
             return false;
         }
         scroll_y_ -= event.scroll_dy;
@@ -525,8 +526,7 @@ bool TableView::handle_mouse(MouseEvent const &event) {
 
     // Column resize drag
     if (event.type == MouseEvent::Type::Press) {
-        if (event.position.x < 0 || event.position.x > rect_.width || event.position.y < 0 ||
-            event.position.y > rect_.height) {
+        if (!local_rect.contains(event.position)) {
             return false;
         }
 
@@ -557,8 +557,7 @@ bool TableView::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Move) {
-        if (event.position.x >= 0 && event.position.x <= rect_.width && event.position.y >= 0 &&
-            event.position.y <= rect_.height) {
+        if (local_rect.contains(event.position)) {
             over_resize_grip_ = header_resize_hit(event.position.x, event.position.y) >= 0;
             hovered_row_ = row_at_y(event.position.y);
             return true;
@@ -569,8 +568,7 @@ bool TableView::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press) {
-        if (event.position.x < 0 || event.position.x > rect_.width || event.position.y < 0 ||
-            event.position.y > rect_.height) {
+        if (!local_rect.contains(event.position)) {
             return false;
         }
 
@@ -613,8 +611,7 @@ bool TableView::handle_mouse(MouseEvent const &event) {
 
     // Header click -> sort (on release, not during resize)
     if (event.type == MouseEvent::Type::Release) {
-        if (event.position.x < 0 || event.position.x > rect_.width || event.position.y < 0 ||
-            event.position.y > rect_.height) {
+        if (!local_rect.contains(event.position)) {
             return false;
         }
 

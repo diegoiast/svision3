@@ -101,6 +101,8 @@ class Widget {
     void set_parent(Widget *p) { parent_ = p; }
     Widget *parent() const { return parent_; }
 
+    auto map_to_window(Point p) const -> Point;
+
     void set_tooltip(std::string text) { tooltip_ = std::move(text); }
     std::string const &tooltip() const { return tooltip_; }
 
