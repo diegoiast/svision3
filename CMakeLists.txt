@@ -353,6 +353,7 @@ add_executable(tests
     tests/test_line_input.cpp
     tests/test_command.cpp
     tests/test_table_view.cpp
+    tests/test_text_edit.cpp
     tests/test_catalog.cpp
     tests/test_db.cpp
 )
