@@ -403,10 +403,10 @@ bool ListView::handle_mouse(MouseEvent const &event) {
         return false;
     }
 
+    auto const local_rect = Rect{0, 0, rect_.width, rect_.height};
+
     if (event.type == MouseEvent::Type::Scroll) {
-        // FIXME: need an rect.contains() method or something similar
-        if (event.position.x < 0 || event.position.x > rect_.width || event.position.y < 0 ||
-            event.position.y > rect_.height) {
+        if (!local_rect.contains(event.position)) {
             return false;
         }
         scroll_offset_ -= event.scroll_dy;
@@ -415,8 +415,7 @@ bool ListView::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Move) {
-        if (event.position.x >= 0 && event.position.x <= rect_.width && event.position.y >= 0 &&
-            event.position.y <= rect_.height) {
+        if (local_rect.contains(event.position)) {
             hovered_ = item_at_y(event.position.y);
             return true;
         }
@@ -425,8 +424,7 @@ bool ListView::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press) {
-        if (event.position.x < 0 || event.position.x > rect_.width || event.position.y < 0 ||
-            event.position.y > rect_.height) {
+        if (!local_rect.contains(event.position)) {
             return false;
         }
         auto idx = item_at_y(event.position.y);

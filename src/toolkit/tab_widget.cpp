@@ -604,9 +604,8 @@ void TabWidget::paint(Painter &painter) {
             painter.draw_line({0, thickness}, {rect_.width, thickness}, style.border,
                               style.border_width);
         } else if (orientation_ == TabOrientation::South) {
-            painter.draw_line({0, rect_.height - thickness},
-                              {rect_.width, rect_.height - thickness}, style.border,
-                              style.border_width);
+            painter.draw_line({0, rect_.height - thickness}, {rect_.width, rect_.height - thickness},
+                              style.border, style.border_width);
         } else if (orientation_ == TabOrientation::West) {
             painter.draw_line({thickness, 0}, {thickness, rect_.height}, style.border,
                               style.border_width);
@@ -729,9 +728,9 @@ auto TabWidget::handle_tab_drag(MouseEvent const &event) -> bool {
 auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
     auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
     auto thickness = tab_bar_thickness();
-    auto in_bar = false;
     auto bar_x = 0.0f;
     auto bar_y = 0.0f;
+    auto local_rect = Rect{0, 0, rect_.width, rect_.height};
 
     if (dragging_) {
         return handle_tab_drag(event);
@@ -757,15 +756,15 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
         if (orientation_ == TabOrientation::East) {
             bar_x = rect_.width - thickness;
         }
-        in_bar = event.position.x >= bar_x && event.position.x < bar_x + thickness &&
-                 event.position.y >= 0 && event.position.y < rect_.height;
     } else {
         if (orientation_ == TabOrientation::South) {
             bar_y = rect_.height - thickness;
         }
-        in_bar = event.position.y >= bar_y && event.position.y < bar_y + thickness &&
-                 event.position.x >= 0 && event.position.x < rect_.width;
     }
+
+    auto const bar_rect =
+        vertical ? Rect{bar_x, 0, thickness, rect_.height} : Rect{0, bar_y, rect_.width, thickness};
+    auto const in_bar = bar_rect.contains(event.position);
 
     if (event.type == MouseEvent::Type::Move) {
         if (in_bar) {
