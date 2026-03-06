@@ -6,13 +6,15 @@
 
 namespace toolkit {
 
-static Color mid(Color a, Color b) {
+static auto mid(Color a, Color b) -> Color {
     return Color::rgb((a.r + b.r) / 2, (a.g + b.g) / 2, (a.b + b.b) / 2);
 }
 
 Button::Button(std::string text) {
-    focusable_ = true;
     auto pos = text.find('&');
+
+    focusable_ = true;
+    relative_coords_ = true;
     if (pos != std::string::npos && pos + 1 < text.size()) {
         mnemonic_index_ = static_cast<int>(pos);
         mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
@@ -24,6 +26,7 @@ Button::Button(std::string text) {
 
 void Button::set_text(std::string text) {
     auto pos = text.find('&');
+
     if (pos != std::string::npos && pos + 1 < text.size()) {
         mnemonic_index_ = static_cast<int>(pos);
         mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
@@ -33,17 +36,24 @@ void Button::set_text(std::string text) {
         mnemonic_key_ = 0;
         display_text_ = std::move(text);
     }
-    if (window_) window_->request_redraw();
+    if (window_) {
+        window_->request_redraw();
+    }
 }
 
 void Button::set_visible(bool v) {
-    if (visible_ == v) return;
+    auto changed = hovered_ || pressed_;
+
+    if (visible_ == v) {
+        return;
+    }
     Widget::set_visible(v);
     if (!visible_) {
-        bool changed = hovered_ || pressed_;
         hovered_ = false;
         pressed_ = false;
-        if (changed && window_) window_->request_redraw();
+        if (changed && window_) {
+            window_->request_redraw();
+        }
     }
 }
 
@@ -55,9 +65,10 @@ void Button::paint(Painter &painter) {
     auto text_offset = (style.beveled && pressed_ && enabled_) ? 1.0f : 0.0f;
     auto fm = painter.font_metrics(style.font_size);
     auto text_w = painter.text_size(display_text_, style.font_size).width;
-    auto baseline_y = rect_.y + (rect_.height - fm.height) / 2.0f + fm.ascent;
-    auto text_x = rect_.x + (rect_.width - text_w) / 2.0f + text_offset;
+    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
+    auto text_x = (rect_.width - text_w) / 2.0f + text_offset;
     auto text_pos = Point{text_x, baseline_y + text_offset};
+    auto local_rect = Rect{0, 0, rect_.width, rect_.height};
 
     if (enabled_) {
         if (background_color_) {
@@ -77,32 +88,33 @@ void Button::paint(Painter &painter) {
 
     bool show_full_frame = !flat_ || hovered_ || pressed_;
     if (show_full_frame) {
-        painter.draw_frame(rect_, bg, border_c, style, pressed_ && enabled_);
+        painter.draw_frame(local_rect, bg, border_c, style, pressed_ && enabled_);
     } else if (background_color_) {
         // Flat button, not hovered/pressed, but has a custom background:
         // just fill the background without border.
         if (style.corner_radius > 0.0f) {
-            painter.fill_rounded_rect(rect_, bg, style.corner_radius);
+            painter.fill_rounded_rect(local_rect, bg, style.corner_radius);
         } else {
-            painter.fill_rect(rect_, bg);
+            painter.fill_rect(local_rect, bg);
         }
     }
-    
+
     painter.draw_text(display_text_, text_pos, text_c, style.font_size);
 
     if (mnemonic_index_ >= 0 && enabled_) {
+        // FIXME: mnemonic drawing should be more generalized
         auto before = display_text_.substr(0, mnemonic_index_);
-        std::string ch(1, display_text_[mnemonic_index_]);
+        auto ch = std::string(1, display_text_[mnemonic_index_]);
         auto before_w = before.empty() ? 0.0f : painter.text_size(before, style.font_size).width;
         auto ch_w = painter.text_size(ch, style.font_size).width;
         auto ul_y = baseline_y + text_offset + fm.descent * 0.4f;
 
         painter.draw_line({text_x + before_w, ul_y}, {text_x + before_w + ch_w, ul_y}, text_c,
-                          1.0f);
+                          2.0f);
     }
 
     if (focused_ && enabled_) {
-        painter.draw_focus_ring(rect_, style.corner_radius);
+        painter.draw_focus_ring(local_rect, style.corner_radius);
     }
 }
 
@@ -140,23 +152,29 @@ bool Button::handle_mouse(MouseEvent const &event) {
         if (hovered_ || pressed_) {
             hovered_ = false;
             pressed_ = false;
-            if (window()) window()->request_redraw();
+            if (window()) {
+                window()->request_redraw();
+            }
         }
         return false;
     }
-    auto inside = hit_test(event.position);
+    auto inside = Rect{0, 0, rect_.width, rect_.height}.contains(event.position);
 
     switch (event.type) {
     case MouseEvent::Type::Move:
         if (hovered_ != inside) {
             hovered_ = inside;
-            if (window()) window()->request_redraw();
+            if (window()) {
+                window()->request_redraw();
+            }
         }
         return inside;
     case MouseEvent::Type::Press:
         if (inside) {
             pressed_ = true;
-            if (window()) window()->request_redraw();
+            if (window()) {
+                window()->request_redraw();
+            }
             return true;
         }
         return false;
@@ -166,14 +184,18 @@ bool Button::handle_mouse(MouseEvent const &event) {
                 on_click();
             }
             pressed_ = false;
-            if (window()) window()->request_redraw();
+            if (window()) {
+                window()->request_redraw();
+            }
         }
         return inside;
     case MouseEvent::Type::Leave:
         if (hovered_ || pressed_) {
             hovered_ = false;
             pressed_ = false;
-            if (window()) window()->request_redraw();
+            if (window()) {
+                window()->request_redraw();
+            }
         }
         return true;
     case MouseEvent::Type::Drag:
