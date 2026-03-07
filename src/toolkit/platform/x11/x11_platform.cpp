@@ -468,18 +468,46 @@ int X11PlatformApplication::run() {
     d->running = true;
     spdlog::info("Starting run loop (X11)");
     while (d->running) {
+        if (d->window_map.empty()) {
+            d->running = false;
+            break;
+        }
+
+        // 1. Process timers and collect callbacks in a to_call vector.
+        std::vector<std::function<void()>> to_call;
         {
-            std::vector<std::function<void()>> fns;
-            {
-                std::lock_guard lock(d->posted_mutex);
-                fns.swap(d->posted_fns);
-            }
-            for (auto &fn : fns) {
-                fn();
+            auto const now = std::chrono::steady_clock::now();
+            for (auto it = d->timers.begin(); it != d->timers.end();) {
+                if (now >= it->next_fire) {
+                    to_call.push_back(it->callback);
+                    if (it->repeats) {
+                        it->next_fire =
+                            now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                      std::chrono::duration<float>(it->interval_sec));
+                        ++it;
+                    } else {
+                        it = d->timers.erase(it);
+                    }
+                } else {
+                    ++it;
+                }
             }
         }
-        process_pending_events(d);
+        // Include posted functions from other threads.
+        {
+            std::lock_guard lock(d->posted_mutex);
+            for (auto &fn : d->posted_fns) {
+                to_call.push_back(std::move(fn));
+            }
+            d->posted_fns.clear();
+        }
 
+        // 2. Execute those callbacks.
+        for (auto const &fn : to_call) {
+            fn();
+        }
+
+        // 3. Handle redrawing for all windows that have needs_redraw set to true.
         {
             std::vector<X11PlatformWindow *> active_windows;
             for (auto &pair : d->window_map) {
@@ -487,57 +515,50 @@ int X11PlatformApplication::run() {
                     static_cast<X11PlatformWindow *>(pair.second.owner->platform_window()));
             }
             for (auto *plat : active_windows) {
-                // Check if still in map (might have been closed during iteration)
                 if (d->window_map.count(plat->impl_->xwindow) && plat->impl_->needs_redraw) {
                     plat->do_paint();
                 }
             }
         }
 
+        if (!d->running) {
+            break;
+        }
+
+        // 4. Calculate the poll timeout based on the next timer.
         int timeout_ms = -1;
         if (!d->timers.empty()) {
-            auto now = std::chrono::steady_clock::now();
-            for (auto &t : d->timers) {
-                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now)
-                              .count();
-                if (ms < 0) {
-                    ms = 0;
-                }
-                if (timeout_ms < 0 || ms < timeout_ms) {
-                    timeout_ms = static_cast<int>(ms);
+            auto const now = std::chrono::steady_clock::now();
+            for (auto const &t : d->timers) {
+                auto const ms =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now).count();
+                int const wait_ms = ms < 0 ? 0 : static_cast<int>(ms);
+                if (timeout_ms < 0 || wait_ms < timeout_ms) {
+                    timeout_ms = wait_ms;
                 }
             }
         }
+
+        // 5. Poll for events.
         struct pollfd fds[2];
         fds[0] = {ConnectionNumber(d->display), POLLIN, 0};
         fds[1] = {d->wakeup_pipe[0], POLLIN, 0};
+
+        if (XPending(d->display)) {
+            timeout_ms = 0;
+        }
+
+        XFlush(d->display);
         poll(fds, 2, timeout_ms);
+
         if (fds[1].revents & POLLIN) {
             char buf[64];
             while (::read(d->wakeup_pipe[0], buf, sizeof(buf)) > 0) {
             }
         }
+
+        // 6. Dispatch/process events.
         process_pending_events(d);
-        auto now = std::chrono::steady_clock::now();
-        for (auto it = d->timers.begin(); it != d->timers.end();) {
-            if (now >= it->next_fire) {
-                auto cb = it->callback;
-                if (it->repeats) {
-                    it->next_fire =
-                        now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                  std::chrono::duration<float>(it->interval_sec));
-                    ++it;
-                } else {
-                    it = d->timers.erase(it);
-                }
-                cb();
-            } else {
-                ++it;
-            }
-        }
-        if (d->window_map.empty()) {
-            d->running = false;
-        }
     }
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "toolkit/progress_bar.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/window.hpp"
 #include <algorithm>
 
 namespace toolkit {
@@ -8,7 +9,14 @@ ProgressBar::ProgressBar() {
 }
 
 void ProgressBar::set_value(float v) {
-    value_ = std::clamp(v, 0.0f, 1.0f);
+    v = std::clamp(v, 0.0f, 1.0f);
+    if (v == value_) {
+        return;
+    }
+    value_ = v;
+    if (window_) {
+        window_->request_redraw();
+    }
 }
 
 void ProgressBar::paint(Painter &painter) {

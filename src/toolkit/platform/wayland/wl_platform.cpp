@@ -17,6 +17,7 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <sys/mman.h>
+#include <vector>
 #include <wayland-client.h>
 #include <wayland-cursor.h>
 #include <wayland-egl.h>
@@ -724,25 +725,50 @@ int WaylandPlatformApplication::run() {
     int wl_fd = wl_display_get_fd(display);
 
     while (running) {
+        // 1. Process timers and collect callbacks in a to_call vector
+        std::vector<std::function<void()>> to_call;
         {
-            std::vector<std::function<void()>> fns;
-            {
-                std::lock_guard lock(posted_mutex);
-                fns.swap(posted_fns);
-            }
-            for (auto &fn : fns) {
-                fn();
+            auto now = std::chrono::steady_clock::now();
+            for (auto it = timers.begin(); it != timers.end();) {
+                if (now >= it->next_fire) {
+                    to_call.push_back(it->callback);
+                    if (it->repeats) {
+                        it->next_fire =
+                            now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                      std::chrono::duration<float>(it->interval_sec));
+                        ++it;
+                    } else {
+                        it = timers.erase(it);
+                    }
+                } else {
+                    ++it;
+                }
             }
         }
+        {
+            std::lock_guard lock(posted_mutex);
+            for (auto &fn : posted_fns) {
+                to_call.push_back(std::move(fn));
+            }
+            posted_fns.clear();
+        }
 
+        // 2. Execute those callbacks
+        for (auto &fn : to_call) {
+            fn();
+        }
+
+        // 3. Handle redrawing for all windows that have needs_redraw set to true
         for (auto *win : windows) {
             if (win->configured && win->needs_redraw && !win->frame_cb) {
                 win->do_paint();
             }
         }
 
+        // 4. Flush the display
         wl_display_flush(display);
 
+        // 5. Calculate the poll timeout based on the next timer
         int timeout_ms = -1;
         if (!timers.empty()) {
             auto now = std::chrono::steady_clock::now();
@@ -758,6 +784,7 @@ int WaylandPlatformApplication::run() {
             }
         }
 
+        // 6. Poll for events
         struct pollfd fds[2];
         fds[0] = {wl_fd, POLLIN, 0};
         fds[1] = {wakeup_pipe[0], POLLIN, 0};
@@ -769,28 +796,11 @@ int WaylandPlatformApplication::run() {
             }
         }
 
+        // 7. Dispatch events
         if (fds[0].revents & POLLIN) {
             wl_display_dispatch(display);
         } else {
             wl_display_dispatch_pending(display);
-        }
-
-        auto now = std::chrono::steady_clock::now();
-        for (auto it = timers.begin(); it != timers.end();) {
-            if (now >= it->next_fire) {
-                auto cb = it->callback;
-                if (it->repeats) {
-                    it->next_fire =
-                        now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                  std::chrono::duration<float>(it->interval_sec));
-                    ++it;
-                } else {
-                    it = timers.erase(it);
-                }
-                cb();
-            } else {
-                ++it;
-            }
         }
 
         if (windows.empty()) {

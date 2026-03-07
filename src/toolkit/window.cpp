@@ -22,6 +22,9 @@ Window::Window(std::string_view title, Size size)
 }
 
 Window::~Window() {
+    if (blink_timer_id_) {
+        stop_timer(blink_timer_id_);
+    }
     if (impl_->platform) {
         impl_->platform->hide_tooltip_window();
     }
@@ -144,6 +147,14 @@ void Window::set_focused_widget(Widget *w) {
     focused_widget_ = w;
     if (focused_widget_) {
         focused_widget_->set_focused(true);
+        if (blink_timer_id_ == 0) {
+            blink_timer_id_ = start_timer(0.5f, [this] { request_redraw(); }, true);
+        }
+    } else {
+        if (blink_timer_id_ != 0) {
+            stop_timer(blink_timer_id_);
+            blink_timer_id_ = 0;
+        }
     }
 }
 
