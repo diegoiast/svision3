@@ -78,6 +78,8 @@ struct SystemFonts {
     std::string system;
     std::string monospace;
     float font_size = 0;
+    float auto_repeat_delay = 0;
+    float auto_repeat_interval = 0;
 };
 
 } // namespace toolkit

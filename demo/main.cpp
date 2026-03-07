@@ -361,6 +361,21 @@ int main(int argc, char *argv[]) {
     progress->set_tooltip("0%");
     tab_main->add_widget(std::move(progress));
 
+    auto repeat_row = std::make_unique<toolkit::HBoxLayout>();
+    repeat_row->set_spacing(10);
+    auto repeat_btn = std::make_unique<toolkit::Button>("Auto Repeat");
+    repeat_btn->set_auto_repeat(true, 1.0f, 0.2f);
+    auto repeat_label = std::make_unique<toolkit::Label>("Count: 0");
+    auto *repeat_label_ptr = repeat_label.get();
+    static int repeat_count = 0;
+    repeat_btn->on_click = [repeat_label_ptr] {
+        repeat_count++;
+        repeat_label_ptr->set_text(fmt::format("Count: {}", repeat_count));
+    };
+    repeat_row->add_widget(std::move(repeat_btn));
+    repeat_row->add_widget(std::move(repeat_label), 1);
+    tab_main->add_widget(std::move(repeat_row));
+
     tab_main->add_widget(std::make_unique<toolkit::Label>(
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), app.painter_name())));
 

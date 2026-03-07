@@ -21,6 +21,10 @@ Button::Button(std::string text) {
     } else {
         display_text_ = std::move(text);
     }
+
+    auto const &style = Theme::current().button;
+    auto_repeat_delay_ = style.auto_repeat_delay;
+    auto_repeat_interval_ = style.auto_repeat_interval;
 }
 
 void Button::set_text(std::string text) {
@@ -40,6 +44,40 @@ void Button::set_text(std::string text) {
     }
 }
 
+void Button::stop_auto_repeat() {
+    if (auto_repeat_timer_id_ && window_) {
+        window_->stop_timer(auto_repeat_timer_id_);
+        auto_repeat_timer_id_ = 0;
+    }
+}
+
+void Button::start_auto_repeat_delay() {
+    stop_auto_repeat();
+    if (window_ && auto_repeat_) {
+        auto_repeat_timer_id_ = window_->start_timer(auto_repeat_delay_, [this] {
+            if (pressed_ && hovered_ && on_click) {
+                on_click();
+                start_auto_repeat_interval();
+            } else {
+                auto_repeat_timer_id_ = 0;
+            }
+        }, false);
+    }
+}
+
+void Button::start_auto_repeat_interval() {
+    stop_auto_repeat();
+    if (window_ && auto_repeat_) {
+        auto_repeat_timer_id_ = window_->start_timer(auto_repeat_interval_, [this] {
+            if (pressed_ && hovered_ && on_click) {
+                on_click();
+            } else {
+                stop_auto_repeat();
+            }
+        }, true);
+    }
+}
+
 void Button::set_visible(bool v) {
     auto changed = hovered_ || pressed_;
 
@@ -50,6 +88,7 @@ void Button::set_visible(bool v) {
     if (!visible_) {
         hovered_ = false;
         pressed_ = false;
+        stop_auto_repeat();
         if (changed && window_) {
             window_->request_redraw();
         }
@@ -151,6 +190,7 @@ bool Button::handle_mouse(MouseEvent const &event) {
         if (hovered_ || pressed_) {
             hovered_ = false;
             pressed_ = false;
+            stop_auto_repeat();
             if (window()) {
                 window()->request_redraw();
             }
@@ -163,6 +203,13 @@ bool Button::handle_mouse(MouseEvent const &event) {
     case MouseEvent::Type::Move:
         if (hovered_ != inside) {
             hovered_ = inside;
+            if (auto_repeat_ && pressed_) {
+                if (hovered_) {
+                    start_auto_repeat_delay();
+                } else {
+                    stop_auto_repeat();
+                }
+            }
             if (window()) {
                 window()->request_redraw();
             }
@@ -171,6 +218,10 @@ bool Button::handle_mouse(MouseEvent const &event) {
     case MouseEvent::Type::Press:
         if (inside) {
             pressed_ = true;
+            if (auto_repeat_ && on_click && window_) {
+                on_click();
+                start_auto_repeat_delay();
+            }
             if (window()) {
                 window()->request_redraw();
             }
@@ -179,10 +230,11 @@ bool Button::handle_mouse(MouseEvent const &event) {
         return false;
     case MouseEvent::Type::Release:
         if (pressed_) {
-            if (inside && on_click) {
+            pressed_ = false;
+            stop_auto_repeat();
+            if (inside && on_click && !auto_repeat_) {
                 on_click();
             }
-            pressed_ = false;
             if (window()) {
                 window()->request_redraw();
             }
@@ -192,6 +244,7 @@ bool Button::handle_mouse(MouseEvent const &event) {
         if (hovered_ || pressed_) {
             hovered_ = false;
             pressed_ = false;
+            stop_auto_repeat();
             if (window()) {
                 window()->request_redraw();
             }

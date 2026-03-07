@@ -61,6 +61,8 @@ Theme Theme::from_palette(std::string name, Palette const &p) {
     t.label.font_size = p.font_size;
 
     apply_base(t.button, p);
+    t.button.auto_repeat_delay = p.auto_repeat_delay;
+    t.button.auto_repeat_interval = p.auto_repeat_interval;
     if (!p.beveled) {
         bool dark = luma(p.widget_bg) < 0.5f;
         t.button.background_hovered = dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.06f);
@@ -194,6 +196,12 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
         if (sf.font_size > 0) {
             // Convert points to logical pixels (standard 96 DPI)
             p.font_size = std::floor(sf.font_size * (96.0f / 72.0f));
+        }
+        if (sf.auto_repeat_delay > 0) {
+            p.auto_repeat_delay = sf.auto_repeat_delay;
+        }
+        if (sf.auto_repeat_interval > 0) {
+            p.auto_repeat_interval = sf.auto_repeat_interval;
         }
     }
 
@@ -332,6 +340,8 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
             : Color::rgb(0.0f, 0.0f, 0.50f);
         t.slider.handle_size = 12.0f;
         t.slider.groove_thickness = 4.0f;
+        t.button.auto_repeat_delay = 0.4f;
+        t.button.auto_repeat_interval = 0.05f;
         break;
     }
 
