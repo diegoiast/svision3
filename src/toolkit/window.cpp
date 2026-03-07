@@ -113,6 +113,9 @@ void Window::set_root(std::unique_ptr<Widget> root) {
     if (root_) {
         root_->set_window(this);
         root_->set_rect({0, 0, size_.width, size_.height});
+        if (impl_->platform) {
+            impl_->platform->set_min_size(min_size());
+        }
     }
 }
 

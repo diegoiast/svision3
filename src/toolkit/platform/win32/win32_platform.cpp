@@ -242,7 +242,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         auto max_s = win->max_size();
         float scale = get_window_scale(hwnd);
         DWORD style = WS_OVERLAPPEDWINDOW;
-        if (min_s.width > 0 || min_s.height > 0) {
+        if (min_s.width > 0 && min_s.height > 0) {
             RECT r = {0, 0, static_cast<LONG>(min_s.width * scale),
                       static_cast<LONG>(min_s.height * scale)};
             AdjustWindowRectEx(&r, style, FALSE, 0);
