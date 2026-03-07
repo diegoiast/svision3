@@ -757,6 +757,13 @@ void X11PlatformWindow::show() {
 
 void X11PlatformWindow::close() { cleanup_resources(); }
 
+void X11PlatformWindow::set_size(Size s) {
+    float scale = scale_factor();
+    XResizeWindow(app_->impl_->display, impl_->xwindow,
+                  static_cast<unsigned int>(std::max(1.0f, s.width * scale)),
+                  static_cast<unsigned int>(std::max(1.0f, s.height * scale)));
+}
+
 void X11PlatformWindow::request_redraw() { impl_->needs_redraw = true; }
 
 void X11PlatformWindow::do_paint() {

@@ -443,6 +443,10 @@ void MacOSOpenGLPlatformWindow::show() {
 
 void MacOSOpenGLPlatformWindow::close() { [impl_->ns_window close]; }
 
+void MacOSOpenGLPlatformWindow::set_size(Size s) {
+    [impl_->ns_window setContentSize:NSMakeSize(s.width, s.height)];
+}
+
 void MacOSOpenGLPlatformWindow::request_redraw() {
     [impl_->view setNeedsDisplay:YES];
 }

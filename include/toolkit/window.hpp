@@ -48,6 +48,8 @@ class Window {
     void handle_key(KeyEvent const &event);
     void handle_resize(Size new_size);
 
+    void resize_to_fit();
+
     void set_cursor(CursorShape shape);
 
     void set_min_size(Size s);

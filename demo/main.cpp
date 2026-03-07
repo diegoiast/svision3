@@ -686,6 +686,7 @@ int main(int argc, char *argv[]) {
     root->add_widget(std::move(bar_wrapper));
 
     window->set_root(std::move(root));
+    window->resize_to_fit();
 
     if (!screenshot_path.empty()) {
         bool ok = window->save_to_png(screenshot_path);

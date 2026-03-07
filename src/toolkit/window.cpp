@@ -394,6 +394,28 @@ void Window::handle_resize(Size new_size) {
     }
 }
 
+void Window::resize_to_fit() {
+    if (!root_) return;
+    auto hint = root_->size_hint();
+    Size new_size = size_;
+    bool changed = false;
+    if (hint.width > size_.width) {
+        new_size.width = hint.width;
+        changed = true;
+    }
+    if (hint.height > size_.height) {
+        new_size.height = hint.height;
+        changed = true;
+    }
+    if (changed) {
+        size_ = new_size;
+        if (impl_->platform) {
+            impl_->platform->set_size(size_);
+        }
+        root_->set_rect({0, 0, size_.width, size_.height});
+    }
+}
+
 void Window::update_tooltip(Widget *under, Point mouse_pos) {
     if (under == tooltip_widget_) {
         if (tooltip_visible_ && under && under->tooltip() != tooltip_text_) {

@@ -639,6 +639,15 @@ void Win32PlatformWindow::close() {
     }
 }
 
+void Win32PlatformWindow::set_size(Size s) {
+    if (!hwnd) return;
+    float scale = get_window_scale(hwnd);
+    RECT r = {0, 0, static_cast<LONG>(s.width * scale), static_cast<LONG>(s.height * scale)};
+    AdjustWindowRectEx(&r, WS_OVERLAPPEDWINDOW, FALSE, 0);
+    SetWindowPos(hwnd, nullptr, 0, 0, r.right - r.left, r.bottom - r.top,
+                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
 void Win32PlatformWindow::request_redraw() {
     if (hwnd) InvalidateRect(hwnd, nullptr, FALSE);
 }

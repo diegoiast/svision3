@@ -443,6 +443,10 @@ void MacOSNativePlatformWindow::show() {
 
 void MacOSNativePlatformWindow::close() { [impl_->ns_window close]; }
 
+void MacOSNativePlatformWindow::set_size(Size s) {
+    [impl_->ns_window setContentSize:NSMakeSize(s.width, s.height)];
+}
+
 void MacOSNativePlatformWindow::request_redraw() {
     [impl_->view setNeedsDisplay:YES];
 }

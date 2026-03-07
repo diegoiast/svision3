@@ -12,6 +12,7 @@ class MockPlatformWindow : public PlatformWindow {
 public:
     void show() override {}
     void close() override {}
+    void set_size(Size) override {}
     void request_redraw() override {}
     void set_min_size(Size) override {}
     void set_max_size(Size) override {}
