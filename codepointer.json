@@ -42,7 +42,7 @@
         {
             "commands": {
                 "linux": [
-                    "~/local/bin/conan install . --output-folder=. --build=missing -s build_type=Debug",
+                    "~/.local/bin/conan install . --output-folder=. --build=missing -s build_type=Debug",
                     "cmake --preset conan-debug -G Ninja"
                 ],
                 "windows": [
