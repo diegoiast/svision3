@@ -35,9 +35,15 @@ cmake --preset conan-debug -G Ninja
     4. Pass arguments as `const &`, unless you need to modify or pointers
        or trivial types (int, float etc).
     5. Variables are always `auto`.
+    6. Put all variables possible at the start of the block.
+    7. After all variables leave a blank line.
+    8. Optimisation: if there is an early exit condition - put non-essesntial variables
+       after the exit condition. Do not declare non-needed variables before
+       the cleanup.
 1. Functions
     1. Stand alone functions will have trailing return syntax (`auto foo() -> bool`)
     2. If functions are used only in current compilation unit, make them static.
+    3. Class methods should sill have traditional synatx.
 1. Blocks
     1. All blocks will have `{}`, even single line `if`/`for`/`while` loops.
     1. Try to exit from block on errors, edge cases at beginning of blocks
