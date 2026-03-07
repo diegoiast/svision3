@@ -286,6 +286,10 @@ void MacOSCairoPlatformWindow::close() {
     [impl_->ns_window close];
 }
 
+void MacOSCairoPlatformWindow::set_size(Size s) {
+    [impl_->ns_window setContentSize:NSMakeSize(s.width, s.height)];
+}
+
 void MacOSCairoPlatformWindow::request_redraw() {
     [impl_->view setNeedsDisplay:YES];
 }

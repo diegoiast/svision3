@@ -1,5 +1,5 @@
-#include <catch2/catch_test_macros.hpp>
 #include "toolkit/radio_button.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
@@ -54,4 +54,24 @@ TEST_CASE("RadioButton is focusable", "[radio]") {
     RadioGroup group;
     RadioButton rb("Option", group);
     REQUIRE(rb.focusable() == true);
+}
+
+TEST_CASE("RadioButton relative coordinates", "[radio]") {
+    RadioGroup group;
+    RadioButton rb("Option", group);
+    rb.set_rect({100, 100, 200, 30});
+
+    MouseEvent e{};
+    e.type = MouseEvent::Type::Press;
+
+    // Relative position (10, 10) should succeed
+    e.position = {10, 10};
+    REQUIRE(rb.handle_mouse(e) == true);
+    REQUIRE(rb.selected() == true);
+
+    // Absolute position (110, 110) should fail
+    RadioButton rb2("Option 2", group);
+    rb2.set_rect({100, 150, 200, 30});
+    e.position = {110, 160};
+    REQUIRE(rb2.handle_mouse(e) == false);
 }

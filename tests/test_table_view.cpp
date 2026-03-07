@@ -1,19 +1,18 @@
+#include "toolkit/table_view.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_tostring.hpp>
-#include "toolkit/table_view.hpp"
 
 using namespace toolkit;
 
 static std::shared_ptr<StringTableModel> make_model() {
-    return std::make_shared<StringTableModel>(
-        std::vector<std::string>{"Name", "Age", "City"},
-        std::vector<std::vector<std::string>>{
-            {"Alice", "30", "London"},
-            {"Bob", "25", "Paris"},
-            {"Charlie", "35", "Berlin"},
-            {"Diana", "28", "Tokyo"},
-            {"Eve", "32", "NYC"},
-        });
+    return std::make_shared<StringTableModel>(std::vector<std::string>{"Name", "Age", "City"},
+                                              std::vector<std::vector<std::string>>{
+                                                  {"Alice", "30", "London"},
+                                                  {"Bob", "25", "Paris"},
+                                                  {"Charlie", "35", "Berlin"},
+                                                  {"Diana", "28", "Tokyo"},
+                                                  {"Eve", "32", "NYC"},
+                                              });
 }
 
 TEST_CASE("StringTableModel basics", "[tableview]") {
@@ -124,8 +123,9 @@ TEST_CASE("TableView select_all", "[tableview]") {
     TableView tv(m);
     tv.select_all();
     REQUIRE(tv.selection().size() == 5);
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 5; i++) {
         REQUIRE(tv.is_selected(i));
+    }
 }
 
 TEST_CASE("TableView set_selection explicit set", "[tableview]") {
@@ -151,8 +151,7 @@ TEST_CASE("TableView on_selection_changed fires", "[tableview]") {
 TEST_CASE("TableView set_model resets state", "[tableview]") {
     auto m1 = make_model();
     auto m2 = std::make_shared<StringTableModel>(
-        std::vector<std::string>{"A"},
-        std::vector<std::vector<std::string>>{{"1"}, {"2"}});
+        std::vector<std::string>{"A"}, std::vector<std::vector<std::string>>{{"1"}, {"2"}});
     TableView tv(m1);
     tv.set_selected_row(2);
     tv.set_model(m2);
@@ -202,4 +201,24 @@ TEST_CASE("TableView alternating_row_colors toggle", "[tableview]") {
     REQUIRE_FALSE(tv.alternating_row_colors());
     tv.set_alternating_row_colors(true);
     REQUIRE(tv.alternating_row_colors());
+}
+
+TEST_CASE("TableView relative coordinates", "[tableview]") {
+    auto model = std::make_shared<StringTableModel>(
+        std::vector<std::string>{"Col 1"},
+        std::vector<std::vector<std::string>>{{"A"}, {"B"}, {"C"}});
+    TableView tv(model);
+    tv.set_rect({100, 100, 200, 200});
+
+    MouseEvent e{};
+    e.type = MouseEvent::Type::Press;
+
+    // Relative position (10, 30) should succeed (hitting a row)
+    // Header is ~20px, first row ends at ~40px.
+    e.position = {10, 30};
+    REQUIRE(tv.handle_mouse(e) == true);
+
+    // Absolute position (110, 150) should fail because it's outside local [0, 200]
+    e.position = {110, 150};
+    REQUIRE(tv.handle_mouse(e) == false);
 }

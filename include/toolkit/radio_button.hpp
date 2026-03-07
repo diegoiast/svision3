@@ -20,6 +20,7 @@ class RadioGroup {
     std::function<void(int index)> on_change;
 
   private:
+    // FIXME: naked pointers are bad,
     std::vector<RadioButton *> buttons_;
 };
 

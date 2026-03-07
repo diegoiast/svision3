@@ -757,6 +757,13 @@ void X11PlatformWindow::show() {
 
 void X11PlatformWindow::close() { cleanup_resources(); }
 
+void X11PlatformWindow::set_size(Size s) {
+    float scale = scale_factor();
+    XResizeWindow(app_->impl_->display, impl_->xwindow,
+                  static_cast<unsigned int>(std::max(1.0f, s.width * scale)),
+                  static_cast<unsigned int>(std::max(1.0f, s.height * scale)));
+}
+
 void X11PlatformWindow::request_redraw() { impl_->needs_redraw = true; }
 
 void X11PlatformWindow::do_paint() {
@@ -864,44 +871,55 @@ void X11PlatformWindow::do_paint() {
 }
 
 void X11PlatformWindow::set_min_size(Size s) {
-    auto *d = app_->impl_.get();
-    auto *w = impl_.get();
-    float scale = d->scale;
-    XSizeHints hints = {};
-    long supplied;
+    auto* d = app_->impl_.get();
+    auto* w = impl_.get();
+    auto const scale = d->scale;
+    auto hints = XSizeHints{};
+    auto supplied = 0L;
+
     XGetWMNormalHints(d->display, w->xwindow, &hints, &supplied);
-    hints.flags |= PMinSize;
-    hints.min_width = static_cast<int>(s.width * scale);
-    hints.min_height = static_cast<int>(s.height * scale);
-    auto mx = owner_->max_size();
+    if (s.width > 0 && s.height > 0) {
+        hints.flags |= PMinSize;
+        hints.min_width = static_cast<int>(s.width * scale);
+        hints.min_height = static_cast<int>(s.height * scale);
+    } else {
+        hints.flags &= ~PMinSize;
+    }
+
+    auto const mx = owner_->max_size();
     if (mx.width > 0 && mx.height > 0) {
         hints.flags |= PMaxSize;
         hints.max_width = static_cast<int>(mx.width * scale);
         hints.max_height = static_cast<int>(mx.height * scale);
     }
     XSetWMNormalHints(d->display, w->xwindow, &hints);
+    XFlush(d->display);
 }
 
 void X11PlatformWindow::set_max_size(Size s) {
-    auto *d = app_->impl_.get();
-    auto *w = impl_.get();
-    float scale = d->scale;
-    if (s.width <= 0 || s.height <= 0) {
-        return;
-    }
-    XSizeHints hints = {};
-    long supplied;
+    auto* d = app_->impl_.get();
+    auto* w = impl_.get();
+    auto const scale = d->scale;
+    auto hints = XSizeHints{};
+    auto supplied = 0L;
+
     XGetWMNormalHints(d->display, w->xwindow, &hints, &supplied);
-    hints.flags |= PMaxSize;
-    hints.max_width = static_cast<int>(s.width * scale);
-    hints.max_height = static_cast<int>(s.height * scale);
-    auto mn = owner_->min_size();
+    if (s.width > 0 && s.height > 0) {
+        hints.flags |= PMaxSize;
+        hints.max_width = static_cast<int>(s.width * scale);
+        hints.max_height = static_cast<int>(s.height * scale);
+    } else {
+        hints.flags &= ~PMaxSize;
+    }
+
+    auto const mn = owner_->min_size();
     if (mn.width > 0 || mn.height > 0) {
         hints.flags |= PMinSize;
         hints.min_width = static_cast<int>(mn.width * scale);
         hints.min_height = static_cast<int>(mn.height * scale);
     }
     XSetWMNormalHints(d->display, w->xwindow, &hints);
+    XFlush(d->display);
 }
 
 int X11PlatformWindow::start_timer(float interval_sec, std::function<void()> callback,

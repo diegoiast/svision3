@@ -16,6 +16,7 @@ namespace toolkit {
 
 StringListAdapter::StringListAdapter(std::vector<std::string> items) : items_(std::move(items)) {}
 
+// FIXME: this should be size_t right? Do we support negative indexes?
 std::string StringListAdapter::text_at(int index) const {
     if (index < 0 || index >= static_cast<int>(items_.size())) {
         return {};
@@ -37,6 +38,7 @@ void StringListAdapter::append(std::string item) {
     }
 }
 
+// FIXME: this should be size_t right? Do we support negative indexes?
 void StringListAdapter::remove(int index) {
     if (index >= 0 && index < static_cast<int>(items_.size())) {
         items_.erase(items_.begin() + index);
@@ -69,6 +71,7 @@ std::string FilterAdapter::text_at(int index) const {
     return source_->text_at(indices_[index]);
 }
 
+// FIXME: this should be an optional right? or error?
 int FilterAdapter::source_index(int filtered_index) const {
     if (filtered_index < 0 || filtered_index >= static_cast<int>(indices_.size())) {
         return -1;
@@ -88,6 +91,7 @@ void FilterAdapter::set_filter(std::string const &filter) {
     }
 }
 
+// FIXME: this is bad, as this only works with ASCII.
 static bool contains_icase(std::string const &hay, std::string const &needle) {
     if (needle.empty()) {
         return true;
@@ -317,7 +321,10 @@ int ListView::item_at_y(float y) const {
         return -1;
     }
 
-    auto local_y = y - rect_.y + scroll_offset_;
+    auto local_y = y + scroll_offset_;
+    if (local_y < 0) {
+        return -1;
+    }
     auto idx = static_cast<int>(local_y / item_height());
     if (idx < 0 || idx >= adapter_->count()) {
         return -1;
@@ -336,21 +343,24 @@ void ListView::paint(Painter &painter) {
     auto n = adapter_->count();
 
     if (style.beveled) {
-        painter.draw_frame(rect_, style.background, style.border, style, true);
+        painter.draw_frame({0, 0, rect_.width, rect_.height}, style.background, style.border, style,
+                           true);
     } else {
-        painter.fill_rounded_rect(rect_, style.background, style.corner_radius);
+        painter.fill_rounded_rect({0, 0, rect_.width, rect_.height}, style.background,
+                                  style.corner_radius);
         if (style.border_width > 0) {
-            painter.draw_rounded_rect(rect_, style.border, style.corner_radius, style.border_width);
+            painter.draw_rounded_rect({0, 0, rect_.width, rect_.height}, style.border,
+                                      style.corner_radius, style.border_width);
         }
     }
 
-    painter.push_clip(rect_);
+    painter.push_clip({0, 0, rect_.width, rect_.height});
 
     auto first_visible = std::max(0, static_cast<int>(scroll_offset_ / ih));
     auto last_visible = std::min(n - 1, static_cast<int>((scroll_offset_ + rect_.height) / ih));
     for (auto i = first_visible; i <= last_visible; i++) {
-        auto iy = rect_.y + ih * static_cast<float>(i) - scroll_offset_;
-        auto item_rect = Rect{rect_.x, iy, rect_.width, ih};
+        auto iy = ih * static_cast<float>(i) - scroll_offset_;
+        auto item_rect = Rect{0, iy, rect_.width, ih};
         auto selected = is_selected(i);
         auto hovered = (i == hovered_) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
@@ -366,17 +376,17 @@ void ListView::paint(Painter &painter) {
             painter.fill_rect(item_rect, style.alternate_bg);
         }
 
-        Color text_col = (selected || hovered) ? style.selected_text : style.text;
-        float text_y = iy + (ih - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(adapter_->text_at(i), {rect_.x + style.item_padding_h, text_y}, text_col,
+        auto text_col = (selected || hovered) ? style.selected_text : style.text;
+        auto text_y = iy + (ih - fm.height) / 2.0f + fm.ascent;
+        painter.draw_text(adapter_->text_at(i), {style.item_padding_h, text_y}, text_col,
                           style.font_size);
     }
 
-    float content_h = total_content_height();
+    auto content_h = total_content_height();
     if (content_h > rect_.height) {
         auto bar_h = std::max(20.0f, rect_.height * (rect_.height / content_h));
-        auto bar_y = rect_.y + (scroll_offset_ / content_h) * rect_.height;
-        auto bar_x = rect_.x + rect_.width - 6.0f;
+        auto bar_y = (scroll_offset_ / content_h) * rect_.height;
+        auto bar_x = rect_.width - 6.0f;
         auto sb = Rect{bar_x, bar_y, 4.0f, bar_h};
 
         painter.fill_rounded_rect(sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.25f),
@@ -385,23 +395,27 @@ void ListView::paint(Painter &painter) {
 
     painter.pop_clip();
     if (focused_) {
-        painter.draw_focus_ring(rect_, style.corner_radius);
+        painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
     }
 }
-
 bool ListView::handle_mouse(MouseEvent const &event) {
     if (!adapter_) {
         return false;
     }
 
-    if (event.type == MouseEvent::Type::Scroll && hit_test(event.position)) {
+    auto const local_rect = Rect{0, 0, rect_.width, rect_.height};
+
+    if (event.type == MouseEvent::Type::Scroll) {
+        if (!local_rect.contains(event.position)) {
+            return false;
+        }
         scroll_offset_ -= event.scroll_dy;
         clamp_scroll();
         return true;
     }
 
     if (event.type == MouseEvent::Type::Move) {
-        if (hit_test(event.position)) {
+        if (local_rect.contains(event.position)) {
             hovered_ = item_at_y(event.position.y);
             return true;
         }
@@ -409,13 +423,16 @@ bool ListView::handle_mouse(MouseEvent const &event) {
         return false;
     }
 
-    if (event.type == MouseEvent::Type::Press && hit_test(event.position)) {
-        int idx = item_at_y(event.position.y);
+    if (event.type == MouseEvent::Type::Press) {
+        if (!local_rect.contains(event.position)) {
+            return false;
+        }
+        auto idx = item_at_y(event.position.y);
         if (idx < 0) {
-            return true;
+            return false;
         }
 
-        bool toggle_mod = event.super || event.ctrl;
+        auto toggle_mod = event.super || event.ctrl;
 
         if (multi_select_ && event.shift && anchor_ >= 0) {
             cursor_ = idx;
@@ -448,13 +465,14 @@ bool ListView::handle_key(KeyEvent const &event) {
         return false;
     }
 
-    int n = adapter_->count();
+    auto n = adapter_->count();
     if (n == 0) {
         return false;
     }
 
-    if (event.key == Key::Down) {
-        int next = std::min((cursor_ < 0 ? 0 : cursor_ + 1), n - 1);
+    switch (event.key) {
+    case Key::Down: {
+        auto next = std::min((cursor_ < 0 ? 0 : cursor_ + 1), n - 1);
         if (multi_select_ && event.shift) {
             if (anchor_ < 0) {
                 anchor_ = next;
@@ -468,8 +486,8 @@ bool ListView::handle_key(KeyEvent const &event) {
         notify_selection();
         return true;
     }
-    if (event.key == Key::Up) {
-        int next = std::max((cursor_ < 0 ? 0 : cursor_ - 1), 0);
+    case Key::Up: {
+        auto next = std::max((cursor_ < 0 ? 0 : cursor_ - 1), 0);
         if (multi_select_ && event.shift) {
             if (anchor_ < 0) {
                 anchor_ = next;
@@ -483,7 +501,8 @@ bool ListView::handle_key(KeyEvent const &event) {
         notify_selection();
         return true;
     }
-    if (event.key == Key::Home) {
+
+    case Key::Home: {
         if (multi_select_ && event.shift) {
             if (anchor_ < 0) {
                 anchor_ = 0;
@@ -497,7 +516,7 @@ bool ListView::handle_key(KeyEvent const &event) {
         scroll_to(0);
         return true;
     }
-    if (event.key == Key::End) {
+    case Key::End: {
         if (multi_select_ && event.shift) {
             if (anchor_ < 0) {
                 anchor_ = n - 1;
@@ -511,6 +530,7 @@ bool ListView::handle_key(KeyEvent const &event) {
         scroll_to(n - 1);
         return true;
     }
+    }
 
     if (multi_select_ && event.text == "a" && (event.super || event.ctrl)) {
         select_all();
@@ -521,9 +541,10 @@ bool ListView::handle_key(KeyEvent const &event) {
 }
 
 Size ListView::size_hint() const {
-    float ih = item_height();
-    float h = ih * 8;
-    return {0, h};
+    auto item_measured_height = item_height();
+    // FIXME what is this 8 here...?
+    auto hz = item_measured_height * 8;
+    return {0, hz};
 }
 
 } // namespace toolkit

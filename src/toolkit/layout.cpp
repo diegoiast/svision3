@@ -6,7 +6,7 @@
 
 namespace toolkit {
 
-static float clamp_dim(float val, float lo, float hi) {
+static auto clamp_dim(float val, float lo, float hi) -> float {
     if (lo > 0 && val < lo) {
         val = lo;
     }
@@ -15,6 +15,8 @@ static float clamp_dim(float val, float lo, float hi) {
     }
     return val;
 }
+
+VBoxLayout::VBoxLayout() {}
 
 void VBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignment h_align) {
     widget->set_parent(this);
@@ -27,9 +29,7 @@ void VBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
     }
 }
 
-void VBoxLayout::set_rect(Rect const &rect) {
-    Widget::set_rect(rect);
-}
+void VBoxLayout::set_rect(Rect const &rect) { Widget::set_rect(rect); }
 
 void VBoxLayout::set_window(Window *w) {
     Widget::set_window(w);
@@ -39,16 +39,22 @@ void VBoxLayout::set_window(Window *w) {
 }
 
 void VBoxLayout::apply_layout() {
+    auto content_x = margins_.left;
+    auto content_y = margins_.top;
+    auto content_w = rect_.width - margins_.left - margins_.right;
+    auto content_h = rect_.height - margins_.top - margins_.bottom;
+    auto visible_count = 0;
+    auto total_spacing = 0.0f;
+    auto available_height = 0.0f;
+    auto fixed_height = 0.0f;
+    auto total_stretch = 0;
+    auto remaining_height = 0.0f;
+    auto stretch_unit = 0.0f;
+    auto current_y = 0.0f;
+
     if (items_.empty()) {
         return;
     }
-
-    // FIXME: short and non descriptive variables
-    auto cx = rect_.x + margins_.left;
-    auto cy = rect_.y + margins_.top;
-    auto cw = rect_.width - margins_.left - margins_.right;
-    auto ch = rect_.height - margins_.top - margins_.bottom;
-    auto visible_count = 0;
 
     for (auto const &item : items_) {
         if (item.widget->is_visible()) {
@@ -59,50 +65,53 @@ void VBoxLayout::apply_layout() {
         return;
     }
 
-    auto total_spacing = spacing_ * static_cast<float>(visible_count - 1);
-    auto available = ch - total_spacing;
-    auto fixed_h = 0.0f;
-    auto total_stretch = 0;
+    total_spacing = spacing_ * (visible_count - 1);
+    available_height = content_h - total_spacing;
 
     for (auto const &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
         }
         if (item.stretch == 0) {
-            fixed_h += item.widget->size_hint().height;
+            fixed_height += item.widget->size_hint().height;
         } else {
             total_stretch += item.stretch;
         }
     }
 
-    auto remaining = std::max(0.0f, available - fixed_h);
-    auto stretch_unit = total_stretch > 0 ? remaining / static_cast<float>(total_stretch) : 0.0f;
-    auto y = cy;
+    remaining_height = std::max(0.0f, available_height - fixed_height);
+    stretch_unit = total_stretch > 0 ? remaining_height / total_stretch : 0.0f;
+    current_y = content_y;
 
     for (auto &item : items_) {
+        auto item_w = 0.0f;
+        auto item_h = 0.0f;
+        auto item_x = 0.0f;
+        auto mins = Size{};
+        auto maxs = Size{};
+
         if (!item.widget->is_visible()) {
             continue;
         }
 
-        auto item_w = cw;
-        auto item_x = cx;
-        auto mins = item.widget->min_size();
-        auto maxs = item.widget->max_size();
-        auto item_h = item.stretch == 0 ? item.widget->size_hint().height
-                                        : stretch_unit * static_cast<float>(item.stretch);
+        item_w = content_w;
+        item_x = content_x;
+        mins = item.widget->min_size();
+        maxs = item.widget->max_size();
+        item_h = item.stretch == 0 ? item.widget->size_hint().height : stretch_unit * item.stretch;
         item_h = clamp_dim(item_h, mins.height, maxs.height);
 
         if (item.h_align != Alignment::Fill) {
-            float hint_w = item.widget->size_hint().width;
-            if (hint_w > 0 && hint_w < cw) {
+            auto hint_w = item.widget->size_hint().width;
+            if (hint_w > 0 && hint_w < content_w) {
                 item_w = hint_w;
             }
             switch (item.h_align) {
             case Alignment::Center:
-                item_x = cx + (cw - item_w) / 2.0f;
+                item_x = content_x + (content_w - item_w) / 2.0f;
                 break;
             case Alignment::End:
-                item_x = cx + cw - item_w;
+                item_x = content_x + content_w - item_w;
                 break;
             case Alignment::Start:
             default:
@@ -110,8 +119,8 @@ void VBoxLayout::apply_layout() {
             }
         }
         item_w = clamp_dim(item_w, mins.width, maxs.width);
-        item.widget->set_rect({item_x, y, item_w, item_h});
-        y += item_h + spacing_;
+        item.widget->set_rect({item_x, current_y, item_w, item_h});
+        current_y += item_h + spacing_;
     }
 }
 
@@ -126,35 +135,46 @@ void VBoxLayout::paint(Painter &painter) {
     }
 }
 
-bool VBoxLayout::handle_mouse(MouseEvent const &event) {
+auto VBoxLayout::handle_mouse(MouseEvent const &event) -> bool {
     auto handled = false;
+
+    if (layout_dirty) {
+        apply_layout();
+        layout_dirty = false;
+    }
+
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
         }
-        if (item.widget->handle_mouse(event)) {
+        if (Widget::dispatch_mouse_event(item.widget.get(), event)) {
             handled = true;
+            if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
+                break;
+            }
         }
     }
     return handled;
 }
 
-Size VBoxLayout::size_hint() const {
+auto VBoxLayout::size_hint() const -> Size {
     auto w = 0.0f;
     auto h = 0.0f;
-    auto visible_count = 0.0f;
+    auto visible_count = 0;
 
     for (auto const &item : items_) {
+        auto hint = Size{};
+
         if (!item.widget->is_visible()) {
             continue;
         }
-        auto hint = item.widget->size_hint();
+        hint = item.widget->size_hint();
         w = std::max(w, hint.width);
         h += hint.height;
         visible_count++;
     }
     if (visible_count > 1) {
-        h += spacing_ * static_cast<float>(visible_count - 1);
+        h += spacing_ * (visible_count - 1);
     }
     h += margins_.top + margins_.bottom;
     w += margins_.left + margins_.right;
@@ -179,24 +199,38 @@ void VBoxLayout::collect_mnemonics(std::vector<Widget *> &out) {
     }
 }
 
-Widget *VBoxLayout::find_focusable_at(Point p) {
+auto VBoxLayout::find_focusable_at(Point p) -> Widget * {
+    if (layout_dirty) {
+        apply_layout();
+        layout_dirty = false;
+    }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
         }
-        if (auto *w = item.widget->find_focusable_at(p)) {
+        auto local_p = p;
+        local_p.x -= item.widget->rect().x;
+        local_p.y -= item.widget->rect().y;
+        if (auto *w = item.widget->find_focusable_at(local_p)) {
             return w;
         }
     }
     return nullptr;
 }
 
-Widget *VBoxLayout::widget_at(Point p) {
+auto VBoxLayout::widget_at(Point p) -> Widget * {
+    if (layout_dirty) {
+        apply_layout();
+        layout_dirty = false;
+    }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
         }
-        if (auto *w = item.widget->widget_at(p)) {
+        auto local_p = p;
+        local_p.x -= item.widget->rect().x;
+        local_p.y -= item.widget->rect().y;
+        if (auto *w = item.widget->widget_at(local_p)) {
             return w;
         }
     }
@@ -211,6 +245,8 @@ void VBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
 
 // --- HBoxLayout ---
 
+HBoxLayout::HBoxLayout() {}
+
 void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignment v_align) {
     widget->set_parent(this);
     if (window_) {
@@ -222,9 +258,7 @@ void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
     }
 }
 
-void HBoxLayout::set_rect(Rect const &rect) {
-    Widget::set_rect(rect);
-}
+void HBoxLayout::set_rect(Rect const &rect) { Widget::set_rect(rect); }
 
 void HBoxLayout::set_window(Window *w) {
     Widget::set_window(w);
@@ -234,16 +268,23 @@ void HBoxLayout::set_window(Window *w) {
 }
 
 void HBoxLayout::apply_layout() {
+    auto content_x = margins_.left;
+    auto content_y = margins_.top;
+    auto content_w = rect_.width - margins_.left - margins_.right;
+    auto content_h = rect_.height - margins_.top - margins_.bottom;
+    auto visible_count = 0;
+    auto total_spacing = 0.0f;
+    auto available_width = 0.0f;
+    auto fixed_width = 0.0f;
+    auto total_stretch = 0;
+    auto remaining_width = 0.0f;
+    auto stretch_unit = 0.0f;
+    auto current_x = 0.0f;
+
     if (items_.empty()) {
         return;
     }
 
-    // FIXME: short and non descriptive variable names
-    auto cx = rect_.x + margins_.left;
-    auto cy = rect_.y + margins_.top;
-    auto cw = rect_.width - margins_.left - margins_.right;
-    auto ch = rect_.height - margins_.top - margins_.bottom;
-    auto visible_count = 0;
     for (auto const &item : items_) {
         if (item.widget->is_visible()) {
             visible_count++;
@@ -253,48 +294,53 @@ void HBoxLayout::apply_layout() {
         return;
     }
 
-    auto total_spacing = spacing_ * static_cast<float>(visible_count - 1);
-    auto available = cw - total_spacing;
-    auto fixed_w = 0.0f;
-    auto total_stretch = 0.0f;
+    total_spacing = spacing_ * (visible_count - 1);
+    available_width = content_w - total_spacing;
+
     for (auto const &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
         }
         if (item.stretch == 0) {
-            fixed_w += item.widget->size_hint().width;
+            fixed_width += item.widget->size_hint().width;
         } else {
             total_stretch += item.stretch;
         }
     }
 
-    auto remaining = std::max(0.0f, available - fixed_w);
-    auto stretch_unit = total_stretch > 0 ? remaining / static_cast<float>(total_stretch) : 0.0f;
-    auto x = cx;
+    remaining_width = std::max(0.0f, available_width - fixed_width);
+    stretch_unit = total_stretch > 0 ? remaining_width / total_stretch : 0.0f;
+    current_x = content_x;
+
     for (auto &item : items_) {
+        auto item_h = 0.0f;
+        auto item_y = 0.0f;
+        auto mins = Size{};
+        auto maxs = Size{};
+        auto item_w = 0.0f;
+
         if (!item.widget->is_visible()) {
             continue;
         }
 
-        auto item_h = ch;
-        auto item_y = cy;
-        auto mins = item.widget->min_size();
-        auto maxs = item.widget->max_size();
-        auto item_w = item.stretch == 0 ? item.widget->size_hint().width
-                                        : stretch_unit * static_cast<float>(item.stretch);
+        item_h = content_h;
+        item_y = content_y;
+        mins = item.widget->min_size();
+        maxs = item.widget->max_size();
+        item_w = item.stretch == 0 ? item.widget->size_hint().width : stretch_unit * item.stretch;
         item_w = clamp_dim(item_w, mins.width, maxs.width);
 
         if (item.v_align != Alignment::Fill) {
             auto hint_h = item.widget->size_hint().height;
-            if (hint_h > 0 && hint_h < ch) {
+            if (hint_h > 0 && hint_h < content_h) {
                 item_h = hint_h;
             }
             switch (item.v_align) {
             case Alignment::Center:
-                item_y = cy + (ch - item_h) / 2.0f;
+                item_y = content_y + (content_h - item_h) / 2.0f;
                 break;
             case Alignment::End:
-                item_y = cy + ch - item_h;
+                item_y = content_y + content_h - item_h;
                 break;
             case Alignment::Start:
             default:
@@ -303,8 +349,8 @@ void HBoxLayout::apply_layout() {
         }
         item_h = clamp_dim(item_h, mins.height, maxs.height);
 
-        item.widget->set_rect({x, item_y, item_w, item_h});
-        x += item_w + spacing_;
+        item.widget->set_rect({current_x, item_y, item_w, item_h});
+        current_x += item_w + spacing_;
     }
 }
 
@@ -319,34 +365,46 @@ void HBoxLayout::paint(Painter &painter) {
     }
 }
 
-bool HBoxLayout::handle_mouse(MouseEvent const &event) {
-    bool handled = false;
+auto HBoxLayout::handle_mouse(MouseEvent const &event) -> bool {
+    auto handled = false;
+
+    if (layout_dirty) {
+        apply_layout();
+        layout_dirty = false;
+    }
+
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
         }
-        if (item.widget->handle_mouse(event)) {
+        if (Widget::dispatch_mouse_event(item.widget.get(), event)) {
             handled = true;
+            if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
+                break;
+            }
         }
     }
     return handled;
 }
 
-Size HBoxLayout::size_hint() const {
-    float w = 0;
-    float h = 0;
-    int visible_count = 0;
+auto HBoxLayout::size_hint() const -> Size {
+    auto w = 0.0f;
+    auto h = 0.0f;
+    auto visible_count = 0;
+
     for (auto const &item : items_) {
+        auto hint = Size{};
+
         if (!item.widget->is_visible()) {
             continue;
         }
-        auto hint = item.widget->size_hint();
+        hint = item.widget->size_hint();
         h = std::max(h, hint.height);
         w += hint.width;
         visible_count++;
     }
     if (visible_count > 1) {
-        w += spacing_ * static_cast<float>(visible_count - 1);
+        w += spacing_ * (visible_count - 1);
     }
     w += margins_.left + margins_.right;
     h += margins_.top + margins_.bottom;
@@ -371,24 +429,38 @@ void HBoxLayout::collect_mnemonics(std::vector<Widget *> &out) {
     }
 }
 
-Widget *HBoxLayout::find_focusable_at(Point p) {
+auto HBoxLayout::find_focusable_at(Point p) -> Widget * {
+    if (layout_dirty) {
+        apply_layout();
+        layout_dirty = false;
+    }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
         }
-        if (auto *w = item.widget->find_focusable_at(p)) {
+        auto local_p = p;
+        local_p.x -= item.widget->rect().x;
+        local_p.y -= item.widget->rect().y;
+        if (auto *w = item.widget->find_focusable_at(local_p)) {
             return w;
         }
     }
     return nullptr;
 }
 
-Widget *HBoxLayout::widget_at(Point p) {
+auto HBoxLayout::widget_at(Point p) -> Widget * {
+    if (layout_dirty) {
+        apply_layout();
+        layout_dirty = false;
+    }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
             continue;
         }
-        if (auto *w = item.widget->widget_at(p)) {
+        auto local_p = p;
+        local_p.x -= item.widget->rect().x;
+        local_p.y -= item.widget->rect().y;
+        if (auto *w = item.widget->widget_at(local_p)) {
             return w;
         }
     }

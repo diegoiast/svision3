@@ -76,6 +76,7 @@ class Win32PlatformWindow : public PlatformWindow {
     ~Win32PlatformWindow() override;
     void show() override;
     void close() override;
+    void set_size(Size s) override;
     void request_redraw() override;
     void set_min_size(Size s) override;
     void set_max_size(Size s) override;

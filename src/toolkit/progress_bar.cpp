@@ -4,6 +4,9 @@
 
 namespace toolkit {
 
+ProgressBar::ProgressBar() {
+}
+
 void ProgressBar::set_value(float v) {
     value_ = std::clamp(v, 0.0f, 1.0f);
 }
@@ -11,8 +14,8 @@ void ProgressBar::set_value(float v) {
 void ProgressBar::paint(Painter &painter) {
     auto const &style = Theme::current().progress_bar;
     float h = style.bar_height;
-    float y = rect_.y + (rect_.height - h) / 2.0f;
-    Rect trough{rect_.x, y, rect_.width, h};
+    float y = (rect_.height - h) / 2.0f;
+    Rect trough{0, y, rect_.width, h};
 
     if (style.beveled) {
         painter.draw_frame(trough, style.background, style.border, style, true);
@@ -33,6 +36,7 @@ void ProgressBar::paint(Painter &painter) {
             float fy = trough.y + inset;
 
             if (style.chunked) {
+                // translate clip rect relative to our (0,0)
                 painter.push_clip({fx, fy, fill_w, inner_h});
                 float x = fx;
                 while (x < fx + fill_w) {

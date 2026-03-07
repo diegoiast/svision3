@@ -44,18 +44,18 @@ static void enable_dpi_awareness() {
     }
 }
 
-static float get_window_scale(HWND hwnd) {
-    static auto fn = reinterpret_cast<UINT(WINAPI *)(HWND)>(
-        GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetDpiForWindow"));
-    if (fn && hwnd) return static_cast<float>(fn(hwnd)) / 96.0f;
-    return 1.0f;
-}
-
 static UINT get_system_dpi() {
     static auto fn = reinterpret_cast<UINT(WINAPI *)()>(
         GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetDpiForSystem"));
     if (fn) return fn();
     return 96;
+}
+
+static float get_window_scale(HWND hwnd) {
+    static auto fn = reinterpret_cast<UINT(WINAPI *)(HWND)>(
+        GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetDpiForWindow"));
+    if (fn && hwnd) return static_cast<float>(fn(hwnd)) / 96.0f;
+    return static_cast<float>(get_system_dpi()) / 96.0f;
 }
 
 // --- Helpers ---
@@ -67,6 +67,17 @@ static std::wstring utf8_to_wide(std::string_view s) {
     std::wstring result(len, L'\0');
     MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()),
                         result.data(), len);
+    return result;
+}
+
+static std::string wide_to_utf8(std::wstring_view w) {
+    if (w.empty()) return {};
+    int len = WideCharToMultiByte(CP_UTF8, 0, w.data(),
+                                  static_cast<int>(w.size()), nullptr, 0,
+                                  nullptr, nullptr);
+    std::string result(len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, w.data(), static_cast<int>(w.size()),
+                        result.data(), len, nullptr, nullptr);
     return result;
 }
 
@@ -231,7 +242,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         auto max_s = win->max_size();
         float scale = get_window_scale(hwnd);
         DWORD style = WS_OVERLAPPEDWINDOW;
-        if (min_s.width > 0 || min_s.height > 0) {
+        if (min_s.width > 0 && min_s.height > 0) {
             RECT r = {0, 0, static_cast<LONG>(min_s.width * scale),
                       static_cast<LONG>(min_s.height * scale)};
             AdjustWindowRectEx(&r, style, FALSE, 0);
@@ -471,7 +482,8 @@ float Win32PlatformApplication::scale_factor() const {
 SystemFonts Win32PlatformApplication::system_fonts() const {
     NONCLIENTMETRICSW ncm = {sizeof(NONCLIENTMETRICSW)};
     if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0)) {
-        float size = static_cast<float>(std::abs(ncm.lfMessageFont.lfHeight));
+        float scale = scale_factor();
+        float size = static_cast<float>(std::abs(ncm.lfMessageFont.lfHeight)) / scale;
         return {wide_to_utf8(ncm.lfMessageFont.lfFaceName), "Consolas", size};
     }
     // 12pt at 96 DPI = 16px
@@ -564,6 +576,17 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app,
                            CW_USEDEFAULT, CW_USEDEFAULT,
                            r.right - r.left, r.bottom - r.top,
                            nullptr, nullptr, app_->hinstance, nullptr);
+
+    // After creation, we might have a different scale if we are on a different monitor
+    float actual_scale = get_window_scale(hwnd);
+    if (std::abs(actual_scale - scale) > 0.001f) {
+        RECT r2 = {0, 0, static_cast<LONG>(size.width * actual_scale),
+                   static_cast<LONG>(size.height * actual_scale)};
+        AdjustWindowRectEx(&r2, WS_OVERLAPPEDWINDOW, FALSE, 0);
+        SetWindowPos(hwnd, nullptr, 0, 0, r2.right - r2.left, r2.bottom - r2.top,
+                     SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
     app_->window_map[hwnd] = {owner, arrow_cursor};
 
     if (app_->opengl_requested) {
@@ -614,6 +637,15 @@ void Win32PlatformWindow::close() {
         DestroyWindow(hwnd);
         hwnd = nullptr;
     }
+}
+
+void Win32PlatformWindow::set_size(Size s) {
+    if (!hwnd) return;
+    float scale = get_window_scale(hwnd);
+    RECT r = {0, 0, static_cast<LONG>(s.width * scale), static_cast<LONG>(s.height * scale)};
+    AdjustWindowRectEx(&r, WS_OVERLAPPEDWINDOW, FALSE, 0);
+    SetWindowPos(hwnd, nullptr, 0, 0, r.right - r.left, r.bottom - r.top,
+                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 void Win32PlatformWindow::request_redraw() {

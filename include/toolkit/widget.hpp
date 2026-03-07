@@ -33,12 +33,16 @@ class Widget {
     virtual Size size_hint() const { return {0, 0}; }
 
     virtual void set_rect(Rect const &rect) {
-        if (rect_ == rect) return;
+        if (rect_ == rect) {
+            return;
+        }
         rect_ = rect;
         layout_dirty = true;
     }
     Rect const &rect() const { return rect_; }
-    bool hit_test(Point p) const { return rect_.contains(p); }
+    bool hit_test(Point p) const {
+        return p.x >= 0 && p.x <= rect_.width && p.y >= 0 && p.y <= rect_.height;
+    }
 
     void set_layout_dirty(bool dirty) { layout_dirty = dirty; }
     bool is_layout_dirty() const { return layout_dirty; }
@@ -89,11 +93,15 @@ class Widget {
 
     virtual void for_each_child(std::function<void(Widget *)> const &callback) { (void)callback; }
 
+    static bool dispatch_mouse_event(Widget *w, MouseEvent const &event);
+
     virtual void set_window(Window *w) { window_ = w; }
     Window *window() const { return window_; }
 
     void set_parent(Widget *p) { parent_ = p; }
     Widget *parent() const { return parent_; }
+
+    auto map_to_window(Point p) const -> Point;
 
     void set_tooltip(std::string text) { tooltip_ = std::move(text); }
     std::string const &tooltip() const { return tooltip_; }

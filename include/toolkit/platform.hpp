@@ -19,6 +19,7 @@ class PlatformWindow {
     virtual ~PlatformWindow() = default;
     virtual void show() = 0;
     virtual void close() = 0;
+    virtual void set_size(Size s) = 0;
     virtual void request_redraw() = 0;
     virtual void set_min_size(Size s) = 0;
     virtual void set_max_size(Size s) = 0;

@@ -22,7 +22,7 @@ class Checkbox : public Widget {
     void set_checked(bool c);
 
     CheckState check_state() const { return state_; }
-    void set_check_state(CheckState s);
+    void set_check_state(CheckState newState);
 
     bool is_tri_state() const { return tri_state_; }
     void set_tri_state(bool t) { tri_state_ = t; }

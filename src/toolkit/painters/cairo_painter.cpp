@@ -20,6 +20,13 @@ void CairoPainter::push_clip(Rect const &rect) {
 
 void CairoPainter::pop_clip() { cairo_restore(cr_); }
 
+void CairoPainter::push_translation(Point p) {
+    cairo_save(cr_);
+    cairo_translate(cr_, p.x, p.y);
+}
+
+void CairoPainter::pop_translation() { cairo_restore(cr_); }
+
 void CairoPainter::set_line_style(LineStyle style) {
     if (style == LineStyle::Solid) {
         cairo_set_dash(cr_, nullptr, 0, 0);

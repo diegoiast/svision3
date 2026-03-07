@@ -11,6 +11,7 @@ namespace toolkit {
 
 class VBoxLayout : public Widget {
   public:
+    VBoxLayout();
     struct Item {
         std::unique_ptr<Widget> widget;
         int stretch;
@@ -46,6 +47,7 @@ class VBoxLayout : public Widget {
 
 class HBoxLayout : public Widget {
   public:
+    HBoxLayout();
     struct Item {
         std::unique_ptr<Widget> widget;
         int stretch;

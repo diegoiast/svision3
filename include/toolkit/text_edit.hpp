@@ -23,6 +23,8 @@ class TextEdit : public Widget {
     void set_focused(bool focused) override;
 
     std::string text() const;
+    // FIXME add API to read directly from stream
+    // FIXME add API to read using different encodings
     void set_text(std::string const &text);
 
     std::function<void()> on_change;
