@@ -21,7 +21,10 @@ Core Architecture
 [ ] OpenGL uses cairo for painting text.
 [ ] Command interfaces for menus/toolbars and app shortcuts.
 [ ] Backends have open/cairo/whatevre backed in. We need to separate them.
-[ ] Paintings inside widgets should start at (0,0) not position at window.
+[x] Paintings inside widgets should start at (0,0) not position at window.
+[ ] Focus ring: should not be in widgets, but defined per platform/theme.
+[ ] Scroll size - detect at runtime.
+[ ] Natural scrolling - detect at runtime.
 
 Widgets
 -------
@@ -38,6 +41,7 @@ Widgets
 [x] ListView: MVC (ListAdapter / StringListAdapter / FilterAdapter).
 [ ] ListView: display widgets instead of simple text.
 [x] SpinBox (int value, min/max/step, arrow buttons).
+[ ] SpinBox: auto repeat (use regular buttons?)
 [x] Tooltip.
 [x] Slider (horizontal, vertical, range).
 [ ] ScrollBar / ScrollArea.
@@ -58,6 +62,7 @@ Widgets
 [ ] Client side decorations with theme.
 [?] Proper filter API for listview and table view.
 [ ] MainWindow with docking widgets on the sides.
+[ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
 
 Layout System
 -------------
@@ -102,7 +107,10 @@ Event Handling
 [x] Keyboard events (key codes, modifiers, text input).
 [x] Scroll wheel support (macOS scrollWheel:).
 [x] Focus management (Tab / Shift+Tab navigation).
-[x] Mnemonic shortcuts (& prefix, Alt/Cmd/Ctrl activation).
+[?] Mnemonic shortcuts (& prefix, Alt/Cmd/Ctrl activation - button.
+[ ] Mnemonic shortcuts for readio buttons
+[ ] Mnemonic shortcuts for checkbox
+[ ] Mnemonic shortcuts selecting a label's buddy
 [x] Cmd+Q / Ctrl+Q triggers Quit mnemonic.
 [ ] Global keyboard shortcuts / accelerators.
 [ ] Mouse enter/leave events on widgets.
@@ -180,8 +188,9 @@ Label Features
 --------------
 [x] Text alignment (left / center / right)
 [ ] Word wrap / multi-line
-[ ] Selectable text
+[ ] Selectable textfor checkbox
 [ ] Rich text / markup
+[ ] Buddy support - when clicking a label, mark the buddy active.
 
 Button Features
 ---------------
