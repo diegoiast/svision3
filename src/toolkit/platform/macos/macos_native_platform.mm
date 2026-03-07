@@ -23,7 +23,17 @@ class CoreGraphicsPainter : public Painter {
 
     void pop_clip() override { CGContextRestoreGState(ctx_); }
 
+    void push_translation(Point p) override {
+        CGContextSaveGState(ctx_);
+        CGContextTranslateCTM(ctx_, p.x, p.y);
+    }
+
+    void pop_translation() override { CGContextRestoreGState(ctx_); }
+
+    void set_line_style(Painter::LineStyle style) override { style_ = style; }
+
     void fill_rect(Rect const &r, Color const &c) override {
+        CGContextSetLineDash(ctx_, 0, nullptr, 0);
         CGContextSetRGBFillColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextFillRect(ctx_, CGRectMake(r.x, r.y, r.width, r.height));
     }
@@ -31,11 +41,13 @@ class CoreGraphicsPainter : public Painter {
     void draw_rect(Rect const &r, Color const &c, float lw) override {
         CGContextSetRGBStrokeColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextSetLineWidth(ctx_, lw);
+        apply_line_style(lw);
         CGContextStrokeRect(ctx_, CGRectMake(r.x, r.y, r.width, r.height));
     }
 
     void fill_rounded_rect(Rect const &r, Color const &c,
                            float radius) override {
+        CGContextSetLineDash(ctx_, 0, nullptr, 0);
         float rad = std::min({radius, r.width / 2.0f, r.height / 2.0f});
         CGPathRef path = CGPathCreateWithRoundedRect(
             CGRectMake(r.x, r.y, r.width, r.height), rad, rad, nullptr);
@@ -53,6 +65,7 @@ class CoreGraphicsPainter : public Painter {
         CGContextAddPath(ctx_, path);
         CGContextSetRGBStrokeColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextSetLineWidth(ctx_, lw);
+        apply_line_style(lw);
         CGContextStrokePath(ctx_);
         CGPathRelease(path);
     }
@@ -60,6 +73,7 @@ class CoreGraphicsPainter : public Painter {
     void draw_line(Point a, Point b, Color const &c, float lw) override {
         CGContextSetRGBStrokeColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextSetLineWidth(ctx_, lw);
+        apply_line_style(lw);
         CGContextMoveToPoint(ctx_, a.x, a.y);
         CGContextAddLineToPoint(ctx_, b.x, b.y);
         CGContextStrokePath(ctx_);
@@ -67,6 +81,7 @@ class CoreGraphicsPainter : public Painter {
 
     void fill_circle(Point center, float radius,
                      Color const &c) override {
+        CGContextSetLineDash(ctx_, 0, nullptr, 0);
         CGRect er = CGRectMake(center.x - radius, center.y - radius,
                                radius * 2, radius * 2);
         CGContextSetRGBFillColor(ctx_, c.r, c.g, c.b, c.a);
@@ -79,6 +94,7 @@ class CoreGraphicsPainter : public Painter {
                                radius * 2, radius * 2);
         CGContextSetRGBStrokeColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextSetLineWidth(ctx_, lw);
+        apply_line_style(lw);
         CGContextStrokeEllipseInRect(ctx_, er);
     }
 
@@ -143,6 +159,26 @@ class CoreGraphicsPainter : public Painter {
 
   private:
     CGContextRef ctx_;
+    Painter::LineStyle style_ = Painter::LineStyle::Solid;
+
+    void apply_line_style(float lw) {
+        switch (style_) {
+        case Painter::LineStyle::Dashed: {
+            CGFloat dashes[] = {lw * 4.0f, lw * 4.0f};
+            CGContextSetLineDash(ctx_, 0, dashes, 2);
+            break;
+        }
+        case Painter::LineStyle::Dotted: {
+            CGFloat dashes[] = {lw, lw * 2.0f};
+            CGContextSetLineDash(ctx_, 0, dashes, 2);
+            break;
+        }
+        case Painter::LineStyle::Solid:
+        default:
+            CGContextSetLineDash(ctx_, 0, nullptr, 0);
+            break;
+        }
+    }
 };
 
 } // namespace toolkit
