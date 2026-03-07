@@ -6,8 +6,8 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <GL/gl.h>
 #include <windows.h>
+#include <GL/gl.h>
 #else
 #include <GL/gl.h>
 #endif

@@ -6,9 +6,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <gdiplus.h>
-#include <objidl.h>
 #include <windows.h>
+#include <objidl.h>
+#include <gdiplus.h>
 
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
@@ -32,8 +32,13 @@ static std::wstring to_wide(std::string_view s) {
 }
 
 static Gdiplus::Color to_gdiplus_color(Color const &c) {
-    return Gdiplus::Color(static_cast<BYTE>(c.a * 255), static_cast<BYTE>(c.r * 255),
-                          static_cast<BYTE>(c.g * 255), static_cast<BYTE>(c.b * 255));
+    auto clamp = [](float v) {
+        if (v < 0) return 0;
+        if (v > 1) return 255;
+        return static_cast<int>(std::round(v * 255));
+    };
+    return Gdiplus::Color(static_cast<BYTE>(clamp(c.a)), static_cast<BYTE>(clamp(c.r)),
+                          static_cast<BYTE>(clamp(c.g)), static_cast<BYTE>(clamp(c.b)));
 }
 
 // ── Win32TextRasterizer ──────────────────────────────────────────────────────
@@ -180,7 +185,6 @@ Painter::FontMetrics Win32TextRasterizer::metrics(float font_size, FontFamily fo
 struct GDIPainter::Impl {
     Gdiplus::Graphics *graphics;
     bool owned;
-    std::vector<Gdiplus::Region *> clip_stack;
     std::vector<Gdiplus::GraphicsState> state_stack;
     float scale;
     Painter::LineStyle line_style = Painter::LineStyle::Solid;
@@ -211,55 +215,45 @@ GDIPainter::GDIPainter(void *hdc, float scale)
 GDIPainter::GDIPainter(Gdiplus::Graphics *g, float scale)
     : impl_(std::make_unique<Impl>(g, scale)) {}
 
-GDIPainter::~GDIPainter() {
-    for (auto *r : impl_->clip_stack) {
-        delete r;
-    }
-}
+GDIPainter::~GDIPainter() {}
 
 void GDIPainter::push_clip(Rect const &r) {
-    Gdiplus::Region *reg = new Gdiplus::Region(Gdiplus::RectF(r.x, r.y, r.width, r.height));
-    impl_->graphics->SetClip(reg, Gdiplus::CombineModeIntersect);
-    impl_->clip_stack.push_back(reg);
+    impl_->state_stack.push_back(impl_->graphics->Save());
+    impl_->graphics->SetClip(Gdiplus::RectF(r.x, r.y, r.width, r.height),
+                             Gdiplus::CombineModeIntersect);
 }
 
 void GDIPainter::pop_clip() {
-    if (impl_->clip_stack.empty()) {
-        return;
-    }
-    delete impl_->clip_stack.back();
-    impl_->clip_stack.pop_back();
-    impl_->graphics->ResetClip();
-    for (auto *r : impl_->clip_stack) {
-        impl_->graphics->SetClip(r, Gdiplus::CombineModeIntersect);
+    if (!impl_->state_stack.empty()) {
+        impl_->graphics->Restore(impl_->state_stack.back());
+        impl_->state_stack.pop_back();
     }
 }
 
 void GDIPainter::push_translation(Point p) {
-    Gdiplus::GraphicsState state = impl_->graphics->Save();
-    impl_->state_stack.push_back(state);
+    impl_->state_stack.push_back(impl_->graphics->Save());
     impl_->graphics->TranslateTransform(p.x, p.y);
 }
 
 void GDIPainter::pop_translation() {
-    if (impl_->state_stack.empty()) {
-        return;
+    if (!impl_->state_stack.empty()) {
+        impl_->graphics->Restore(impl_->state_stack.back());
+        impl_->state_stack.pop_back();
     }
-    Gdiplus::GraphicsState state = impl_->state_stack.back();
-    impl_->state_stack.pop_back();
-    impl_->graphics->Restore(state);
 }
 
 void GDIPainter::set_line_style(Painter::LineStyle style) { impl_->line_style = style; }
 
-static void apply_line_style(Gdiplus::Pen &pen, Painter::LineStyle style) {
+static void apply_line_style(Gdiplus::Pen &pen, Painter::LineStyle style, float lw) {
     switch (style) {
-    case Painter::LineStyle::Dashed:
+    case Painter::LineStyle::Dashed: {
         pen.SetDashStyle(Gdiplus::DashStyleDash);
         break;
-    case Painter::LineStyle::Dotted:
+    }
+    case Painter::LineStyle::Dotted: {
         pen.SetDashStyle(Gdiplus::DashStyleDot);
         break;
+    }
     case Painter::LineStyle::Solid:
     default:
         pen.SetDashStyle(Gdiplus::DashStyleSolid);
@@ -274,7 +268,7 @@ void GDIPainter::fill_rect(Rect const &r, Color const &c) {
 
 void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
-    apply_line_style(pen, impl_->line_style);
+    apply_line_style(pen, impl_->line_style, lw);
     impl_->graphics->DrawRectangle(&pen, r.x, r.y, r.width, r.height);
 }
 
@@ -307,13 +301,13 @@ void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, flo
     path.AddArc(r.x, r.y + r.height - d, d, d, 90, 90);
     path.CloseFigure();
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
-    apply_line_style(pen, impl_->line_style);
+    apply_line_style(pen, impl_->line_style, lw);
     impl_->graphics->DrawPath(&pen, &path);
 }
 
 void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
-    apply_line_style(pen, impl_->line_style);
+    apply_line_style(pen, impl_->line_style, lw);
     impl_->graphics->DrawLine(&pen, a.x, a.y, b.x, b.y);
 }
 
@@ -325,7 +319,7 @@ void GDIPainter::fill_circle(Point center, float radius, Color const &c) {
 
 void GDIPainter::draw_circle(Point center, float radius, Color const &c, float lw) {
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
-    apply_line_style(pen, impl_->line_style);
+    apply_line_style(pen, impl_->line_style, lw);
     impl_->graphics->DrawEllipse(&pen, center.x - radius, center.y - radius, radius * 2,
                                  radius * 2);
 }
@@ -347,7 +341,7 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
     Gdiplus::FontFamily ff(wface.c_str());
     float em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
     float asc = static_cast<float>(ff.GetCellAscent(Gdiplus::FontStyleRegular));
-    float ascent_pts = (asc * font_size) / em;
+    float ascent_pts = std::floor((asc * font_size) / em);
 
     Gdiplus::GraphicsState state = impl_->graphics->Save();
     impl_->graphics->TranslateTransform(pos.x, pos.y);
@@ -358,8 +352,7 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
     }
 
     Gdiplus::PointF origin(0, -ascent_pts);
-    Gdiplus::StringFormat format;
-    format.SetAlignment(Gdiplus::StringAlignmentNear);
+    Gdiplus::StringFormat format(Gdiplus::StringFormat::GenericTypographic());
     format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
 
     impl_->graphics->DrawString(wtext.c_str(), -1, &font, origin, &format, &brush);
@@ -386,8 +379,7 @@ Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, Fo
     Gdiplus::RectF layoutRect(0, 0, 10000, 10000);
     Gdiplus::RectF boundRect;
 
-    Gdiplus::StringFormat format;
-    format.SetAlignment(Gdiplus::StringAlignmentNear);
+    Gdiplus::StringFormat format(Gdiplus::StringFormat::GenericTypographic());
     format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
 
     HDC screen_dc = GetDC(nullptr);
@@ -397,7 +389,7 @@ Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, Fo
         graphics.MeasureString(wtext.c_str(), -1, &font, layoutRect, &format, &boundRect);
     }
     ReleaseDC(nullptr, screen_dc);
-    return {boundRect.Width, boundRect.Height};
+    return {boundRect.Width, font_metrics_gdiplus(font_size, family).height + 1.0f};
 }
 
 Painter::FontMetrics GDIPainter::font_metrics_gdiplus(float font_size, FontFamily family) {
@@ -411,7 +403,7 @@ Painter::FontMetrics GDIPainter::font_metrics_gdiplus(float font_size, FontFamil
     float line = static_cast<float>(ff.GetLineSpacing(Gdiplus::FontStyleRegular));
 
     float scale = font_size / em;
-    return {asc * scale, desc * scale, line * scale};
+    return {asc * scale, desc * scale, (asc + desc) * scale};
 }
 
 static int GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
