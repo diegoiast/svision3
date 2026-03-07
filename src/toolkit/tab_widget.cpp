@@ -879,19 +879,14 @@ auto TabWidget::size_hint() const -> Size {
     auto thickness = tab_bar_thickness();
     auto max_w = 0.0f;
     auto max_h = 0.0f;
-    auto total_tab_size = 0.0f;
     auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
     auto lead_size = 0.0f;
     auto trail_size = 0.0f;
-    auto bar_size = 0.0f;
 
     for (auto const &tab : tabs_) {
         auto hint = tab.content->size_hint();
         max_w = std::max(max_w, hint.width);
         max_h = std::max(max_h, hint.height);
-    }
-    for (auto i = 0; i < static_cast<int>(tabs_.size()); i++) {
-        total_tab_size += tab_size(i);
     }
 
     if (leading_widget_) {
@@ -903,7 +898,13 @@ auto TabWidget::size_hint() const -> Size {
         trail_size = vertical ? sz.height : sz.width;
     }
 
-    bar_size = total_tab_size + lead_size + trail_size;
+    auto bar_size = lead_size + trail_size;
+    if (!tabs_.empty()) {
+        bar_size += tab_size(0);
+        auto sz_prev = prev_button_->size_hint();
+        auto sz_next = next_button_->size_hint();
+        bar_size += vertical ? (sz_prev.height + sz_next.height) : (sz_prev.width + sz_next.width);
+    }
 
     if (orientation_ == TabOrientation::North || orientation_ == TabOrientation::South) {
         return {std::max(max_w, bar_size), max_h + thickness};
