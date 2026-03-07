@@ -929,8 +929,8 @@ void WaylandPlatformWindow::close() {
 void WaylandPlatformWindow::set_size(Size s) {
     // In Wayland, the client doesn't really "resize" itself for top-level surfaces.
     // However, we can update our internal state and trigger a redraw.
-    width = static_cast<int>(s.width);
-    height = static_cast<int>(s.height);
+    pending_width = static_cast<int>(s.width);
+    pending_height = static_cast<int>(s.height);
     request_redraw();
 }
 
