@@ -157,6 +157,15 @@ auto VBoxLayout::handle_mouse(MouseEvent const &event) -> bool {
     return handled;
 }
 
+bool VBoxLayout::handle_key(KeyEvent const &event) {
+    for (auto &item : items_) {
+        if (item.widget->is_visible() && item.widget->handle_key(event)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 auto VBoxLayout::size_hint() const -> Size {
     auto w = 0.0f;
     auto h = 0.0f;
@@ -385,6 +394,15 @@ auto HBoxLayout::handle_mouse(MouseEvent const &event) -> bool {
         }
     }
     return handled;
+}
+
+bool HBoxLayout::handle_key(KeyEvent const &event) {
+    for (auto &item : items_) {
+        if (item.widget->is_visible() && item.widget->handle_key(event)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 auto HBoxLayout::size_hint() const -> Size {

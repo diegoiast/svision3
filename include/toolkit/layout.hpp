@@ -26,6 +26,7 @@ class VBoxLayout : public Widget {
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
+    bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
     void set_rect(Rect const &rect) override;
     void set_window(Window *w) override;
@@ -62,6 +63,7 @@ class HBoxLayout : public Widget {
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
+    bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
     void set_rect(Rect const &rect) override;
     void set_window(Window *w) override;
