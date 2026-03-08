@@ -1,6 +1,7 @@
 #include "toolkit/application.hpp"
 #include "toolkit/clipboard.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 
@@ -34,6 +35,11 @@ void set_current_platform(PlatformApplication *p) { s_platform = p; }
 } // namespace detail
 
 std::unique_ptr<PlatformApplication> create_platform_application() {
+    const char *env_backend = std::getenv("SVISION_BACKEND");
+    if (env_backend && std::string_view(env_backend) == "dummy") {
+        return std::make_unique<DummyPlatformApplication>();
+    }
+
 #if defined(__APPLE__)
     const char *env = std::getenv("SVISION_PAINT");
     if (env) {
@@ -51,7 +57,7 @@ std::unique_ptr<PlatformApplication> create_platform_application() {
 #elif defined(_WIN32)
     return std::make_unique<Win32PlatformApplication>();
 #else
-    const char *env = std::getenv("SVISION_BACKEND");
+    const char *env = env_backend;
     if (env) {
 #ifdef TOOLKIT_HAS_WAYLAND
         if (std::string_view(env) == "wayland") {
@@ -82,8 +88,8 @@ std::unique_ptr<PlatformApplication> create_platform_application() {
         return std::make_unique<X11PlatformApplication>();
     }
 #endif
-    spdlog::error("No suitable display backend found");
-    return nullptr;
+    spdlog::warn("No suitable display backend found, falling back to dummy");
+    return std::make_unique<DummyPlatformApplication>();
 #endif
 }
 
