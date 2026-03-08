@@ -258,7 +258,7 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
         e.click_count = detect_click_count(data, btn);
         e.shift = (btn.state & ShiftMask) != 0;
         e.ctrl = (btn.state & ControlMask) != 0;
-        e.super = (btn.state & ControlMask) != 0;
+        e.super = (btn.state & Mod4Mask) != 0;
         win->handle_mouse(e);
         break;
     }
@@ -293,7 +293,7 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
         ke.shift = (st & ShiftMask) != 0;
         ke.ctrl = (st & ControlMask) != 0;
         ke.alt = (st & Mod1Mask) != 0;
-        ke.super = (st & ControlMask) != 0;
+        ke.super = (st & Mod4Mask) != 0;
         KeySym keysym = NoSymbol;
         char buf[64] = {};
         int len = 0;

@@ -28,6 +28,27 @@ LineInput::LineInput(std::string placeholder)
     focusable_ = true;
     focused_ = false;
     read_only_ = false;
+
+    select_all_cmd = Command::create("Select All", [this] { select_all(); });
+    select_all_cmd->set_shortcut("Std+A");
+    add_command(select_all_cmd);
+
+    cut_cmd = Command::create(
+        "Cut", [this] { cut(); },
+        [this] { return has_selection() && !password_mode_ && !read_only_; });
+    cut_cmd->set_shortcut("Std+X");
+    add_command(cut_cmd);
+
+    copy_cmd = Command::create(
+        "Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; });
+    copy_cmd->set_shortcut("Std+C");
+    add_command(copy_cmd);
+
+    paste_cmd = Command::create(
+        "Paste", [this] { paste(); },
+        [this] { return !read_only_ && !Clipboard::get_text().empty(); });
+    paste_cmd->set_shortcut("Std+V");
+    add_command(paste_cmd);
 }
 
 void LineInput::set_password_mode(bool enable) {
@@ -118,6 +139,14 @@ void LineInput::select_word_at(size_t pos) {
     sel_anchor_ = start;
     cursor_pos_ = end;
     reset_cursor_blink();
+}
+
+void LineInput::select_all() {
+    sel_anchor_ = 0;
+    cursor_pos_ = text_.size();
+    if (window_) {
+        window_->request_redraw();
+    }
 }
 
 float LineInput::clear_btn_size() const {
@@ -496,27 +525,6 @@ bool LineInput::handle_key(KeyEvent const &event) {
     }
     reset_cursor_blink();
 
-    if (event.super && !event.text.empty()) {
-        char ch = event.text[0];
-        if (ch == 'a') {
-            sel_anchor_ = 0;
-            cursor_pos_ = text_.size();
-            return true;
-        }
-        if (ch == 'x') {
-            cut();
-            return true;
-        }
-        if (ch == 'c') {
-            copy();
-            return true;
-        }
-        if (ch == 'v') {
-            paste();
-            return true;
-        }
-    }
-
     switch (event.key) {
     case Key::Backspace:
         if (read_only_) {
@@ -636,7 +644,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         break;
     }
 
-    if (!event.text.empty()) {
+    if (!event.text.empty() && !event.ctrl && !event.alt && !event.super) {
         if (read_only_) {
             return false;
         }
@@ -731,9 +739,7 @@ void LineInput::show_context_menu(Point pos) {
     items.push_back(MenuItem::action(
         "Select All",
         [this] {
-            sel_anchor_ = 0;
-            cursor_pos_ = text_.size();
-            reset_cursor_blink();
+            select_all();
         },
         [this] { return !text_.empty(); }));
     items.push_back(MenuItem::action(

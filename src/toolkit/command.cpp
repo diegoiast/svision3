@@ -41,6 +41,12 @@ Shortcut Shortcut::parse(std::string_view s) {
             result.shift = true;
         } else if (low == "super" || low == "meta" || low == "cmd" || low == "command") {
             result.super = true;
+        } else if (low == "std" || low == "accel") {
+#ifdef APPLE
+            result.super = true;
+#else
+            result.ctrl = true;
+#endif
         } else if (low == "backspace") {
             result.key = Key::Backspace;
         } else if (low == "delete") {

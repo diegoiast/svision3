@@ -27,6 +27,11 @@ class TextEdit : public Widget {
     // FIXME add API to read using different encodings
     void set_text(std::string const &text);
 
+    Command::Ptr select_all_cmd;
+    Command::Ptr cut_cmd;
+    Command::Ptr copy_cmd;
+    Command::Ptr paste_cmd;
+
     std::function<void()> on_change;
 
   private:
@@ -55,6 +60,10 @@ class TextEdit : public Widget {
     void insert_text(std::string_view t);
     void move_word_left(bool extend);
     void move_word_right(bool extend);
+    void select_all();
+    void cut();
+    void copy();
+    void paste();
 
     std::vector<std::string> lines_{""};
     Pos cursor_;

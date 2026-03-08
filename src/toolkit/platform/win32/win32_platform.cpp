@@ -287,7 +287,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         e.click_count = clicks;
         e.shift = (wp & MK_SHIFT) != 0;
         e.ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
-        e.super = e.ctrl;
+        e.super = (GetKeyState(VK_LWIN) & 0x8000) != 0 || (GetKeyState(VK_RWIN) & 0x8000) != 0;
         win->handle_mouse(e);
         SetCapture(hwnd);
         return 0;
@@ -354,15 +354,16 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
         bool alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
         bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        bool super = (GetKeyState(VK_LWIN) & 0x8000) != 0 || (GetKeyState(VK_RWIN) & 0x8000) != 0;
         Key key = vk_to_key(wp);
-        if (key != Key::NoKey || ctrl || alt) {
+        if (key != Key::NoKey || ctrl || alt || super) {
             KeyEvent ke;
             ke.type = KeyEvent::Type::Press;
             ke.key = key;
             ke.shift = shift;
             ke.ctrl = ctrl;
             ke.alt = alt;
-            ke.super = ctrl;
+            ke.super = super;
             if ((ctrl || alt) && key == Key::NoKey) {
                 char ch = vk_to_base_char(wp);
                 if (ch) ke.text = std::string(1, ch);

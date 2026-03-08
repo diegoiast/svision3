@@ -388,7 +388,7 @@ class CoreGraphicsPainter : public Painter {
 - (BOOL)performKeyEquivalent:(NSEvent *)event {
     if (!self.owner) return NO;
     NSEventModifierFlags mods = [event modifierFlags];
-    if ((mods & NSEventModifierFlagCommand) || (mods & NSEventModifierFlagControl)) {
+    if ((mods & (NSEventModifierFlagCommand | NSEventModifierFlagControl))) {
         [self keyDown:event]; return YES;
     }
     return [super performKeyEquivalent:event];

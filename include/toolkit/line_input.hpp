@@ -40,6 +40,11 @@ class LineInput : public Widget {
     ValidationMode validation_mode() const { return validation_mode_; }
     bool is_valid() const;
 
+    Command::Ptr select_all_cmd;
+    Command::Ptr cut_cmd;
+    Command::Ptr copy_cmd;
+    Command::Ptr paste_cmd;
+
     std::function<void(std::string const &)> on_change;
     std::function<void(std::string const &)> on_submit;
 
@@ -55,6 +60,7 @@ class LineInput : public Widget {
     void move_word_left(bool extend_selection);
     void move_word_right(bool extend_selection);
     void select_word_at(size_t pos);
+    void select_all();
 
     bool hit_clear_btn(Point pos) const;
     float clear_btn_size() const;

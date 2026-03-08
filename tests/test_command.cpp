@@ -104,3 +104,22 @@ TEST_CASE("Shortcut case insensitivity", "[command]") {
     ev.ctrl = true;
     REQUIRE(cmd->matches_key_event(ev));
 }
+
+TEST_CASE("Shortcut virtual modifier 'std'", "[command]") {
+    auto cmd = Command::create("Test", [] {});
+    cmd->set_shortcut("Std+C");
+
+    KeyEvent ev{};
+    ev.type = KeyEvent::Type::Press;
+    ev.text = "c";
+
+#ifdef APPLE
+    ev.super = true;
+    ev.ctrl = false;
+#else
+    ev.ctrl = true;
+    ev.super = false;
+#endif
+
+    REQUIRE(cmd->matches_key_event(ev));
+}

@@ -24,6 +24,25 @@ TextEdit::TextEdit(std::string text) {
     focusable_ = true;
     set_text(text);
     cursor_blink_time_ = std::chrono::steady_clock::now();
+
+    select_all_cmd = Command::create("Select All", [this] { select_all(); });
+    select_all_cmd->set_shortcut("Std+A");
+    add_command(select_all_cmd);
+
+    cut_cmd =
+        Command::create("Cut", [this] { cut(); }, [this] { return has_selection(); });
+    cut_cmd->set_shortcut("Std+X");
+    add_command(cut_cmd);
+
+    copy_cmd =
+        Command::create("Copy", [this] { copy(); }, [this] { return has_selection(); });
+    copy_cmd->set_shortcut("Std+C");
+    add_command(copy_cmd);
+
+    paste_cmd = Command::create("Paste", [this] { paste(); },
+                                     [] { return !Clipboard::get_text().empty(); });
+    paste_cmd->set_shortcut("Std+V");
+    add_command(paste_cmd);
 }
 
 std::string TextEdit::text() const {
@@ -268,6 +287,47 @@ void TextEdit::move_word_right(bool extend) {
     move_cursor({line, col}, extend);
 }
 
+void TextEdit::select_all() {
+    anchor_ = {0, 0};
+    cursor_ = {static_cast<int>(lines_.size()) - 1, static_cast<int>(lines_.back().size())};
+    ensure_cursor_visible();
+    if (window_) {
+        window_->request_redraw();
+    }
+}
+
+void TextEdit::cut() {
+    if (!has_selection()) {
+        return;
+    }
+    copy();
+    delete_selection();
+}
+
+void TextEdit::copy() {
+    if (!has_selection()) {
+        return;
+    }
+    auto s = sel_start(), e = sel_end();
+    auto sel = std::string{};
+    for (auto i = s.line; i <= e.line; i++) {
+        auto sc = (i == s.line) ? s.col : 0;
+        auto ec = (i == e.line) ? e.col : static_cast<int>(lines_[i].size());
+        sel += lines_[i].substr(sc, ec - sc);
+        if (i < e.line) {
+            sel += '\n';
+        }
+    }
+    Clipboard::set_text(sel);
+}
+
+void TextEdit::paste() {
+    auto clip = Clipboard::get_text();
+    if (!clip.empty()) {
+        insert_text(clip);
+    }
+}
+
 void TextEdit::paint(Painter &painter) {
     auto const &style = Theme::current().text_edit;
     auto lh = line_height();
@@ -461,58 +521,6 @@ bool TextEdit::handle_key(KeyEvent const &event) {
 
     reset_cursor_blink();
     ensure_cursor_visible();
-
-    // FIXME handle commands using proper actions, not by handling direct keyboard presses
-    if (event.super && !event.text.empty()) {
-        auto ch = event.text[0];
-        if (ch == 'a') {
-            anchor_ = {0, 0};
-            cursor_ = {nlines - 1, static_cast<int>(lines_.back().size())};
-            return true;
-        }
-        if (ch == 'x') {
-            if (!has_selection()) {
-                return true;
-            }
-            auto s = sel_start(), e = sel_end();
-            auto sel = std::string{};
-            for (auto i = s.line; i <= e.line; i++) {
-                auto sc = (i == s.line) ? s.col : 0;
-                auto ec = (i == e.line) ? e.col : static_cast<int>(lines_[i].size());
-                sel += lines_[i].substr(sc, ec - sc);
-                if (i < e.line) {
-                    sel += '\n';
-                }
-            }
-            Clipboard::set_text(sel);
-            delete_selection();
-            return true;
-        }
-        if (ch == 'c') {
-            if (!has_selection()) {
-                return true;
-            }
-            auto s = sel_start(), e = sel_end();
-            auto sel = std::string{};
-            for (auto i = s.line; i <= e.line; i++) {
-                auto sc = (i == s.line) ? s.col : 0;
-                auto ec = (i == e.line) ? e.col : static_cast<int>(lines_[i].size());
-                sel += lines_[i].substr(sc, ec - sc);
-                if (i < e.line) {
-                    sel += '\n';
-                }
-            }
-            Clipboard::set_text(sel);
-            return true;
-        }
-        if (ch == 'v') {
-            auto clip = Clipboard::get_text();
-            if (!clip.empty()) {
-                insert_text(clip);
-            }
-            return true;
-        }
-    }
 
     switch (event.key) {
     case Key::Enter:
