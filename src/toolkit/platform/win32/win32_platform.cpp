@@ -405,7 +405,6 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                     app->timers.erase(it);
                 }
                 cb();
-                win->request_redraw();
                 return 0;
             }
         }

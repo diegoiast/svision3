@@ -24,6 +24,8 @@ class LineInput : public Widget {
         return (clear_hovered_ || peek_hovered_) ? CursorShape::Hand : CursorShape::IBeam;
     }
     void set_focused(bool focused) override;
+    void on_focus() override;
+    void on_blur() override;
 
     std::string const &text() const { return text_; }
     void set_text(std::string const &text);
@@ -90,6 +92,7 @@ class LineInput : public Widget {
     ValidationMode validation_mode_ = ValidationMode::None;
     std::function<bool(std::string const &)> validator_;
     std::chrono::steady_clock::time_point cursor_blink_time_;
+    int blink_timer_id_ = 0;
     std::unique_ptr<ContextMenu> context_menu_;
 };
 

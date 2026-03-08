@@ -14,8 +14,8 @@ void ProgressBar::set_value(float v) {
         return;
     }
     value_ = v;
-    if (window_) {
-        window_->request_redraw();
+    if (window_ && is_effectively_visible()) {
+        window_->request_redraw("progress change");
     }
 }
 

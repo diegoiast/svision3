@@ -7,12 +7,21 @@
 #include "toolkit/tab_widget.hpp"
 #include "toolkit/theme.hpp"
 #include <cctype>
+#include <chrono>
+#include <iomanip>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
 
 struct Window::Impl {
     std::unique_ptr<PlatformWindow> platform;
+    Window::Statistics stats;
+    std::chrono::steady_clock::time_point last_log_time = std::chrono::steady_clock::now();
+    uint64_t draws_since_last_log = 0;
+    double draw_time_sum_ms = 0;
+    double repaint_time_sum_ms = 0;
+    bool logging_enabled = false;
+    int stats_timer_id = 0;
 };
 
 Window::Window(std::string_view title, Size size)
@@ -22,13 +31,68 @@ Window::Window(std::string_view title, Size size)
 }
 
 Window::~Window() {
-    if (blink_timer_id_) {
-        stop_timer(blink_timer_id_);
-    }
     if (impl_->platform) {
         impl_->platform->hide_tooltip_window();
     }
 }
+
+Window::Statistics const &Window::statistics() const { return impl_->stats; }
+
+void Window::reset_statistics() {
+    impl_->stats = Statistics{};
+    impl_->draws_since_last_log = 0;
+    impl_->draw_time_sum_ms = 0;
+    impl_->repaint_time_sum_ms = 0;
+    impl_->last_log_time = std::chrono::steady_clock::now();
+    spdlog::debug("Window '{}' statistics reset", title_);
+}
+
+void Window::set_statistics_logging_enabled(bool enabled) {
+    if (impl_->logging_enabled == enabled) return;
+    impl_->logging_enabled = enabled;
+
+    if (enabled) {
+        if (impl_->stats_timer_id == 0) {
+            impl_->last_log_time = std::chrono::steady_clock::now();
+            impl_->draws_since_last_log = 0;
+            impl_->draw_time_sum_ms = 0;
+            impl_->repaint_time_sum_ms = 0;
+
+            impl_->stats_timer_id = start_timer(2.0f, [this] {
+                auto now = std::chrono::steady_clock::now();
+                auto time_since_log = std::chrono::duration<double>(now - impl_->last_log_time).count();
+
+                if (time_since_log > 0) {
+                    impl_->stats.avg_fps = static_cast<double>(impl_->draws_since_last_log) / time_since_log;
+                    if (impl_->draws_since_last_log > 0) {
+                        impl_->stats.avg_draw_time_ms = impl_->draw_time_sum_ms / static_cast<double>(impl_->draws_since_last_log);
+                        impl_->stats.avg_repaint_time_ms = impl_->repaint_time_sum_ms / static_cast<double>(impl_->draws_since_last_log);
+                    } else {
+                        impl_->stats.avg_draw_time_ms = 0;
+                        impl_->stats.avg_repaint_time_ms = 0;
+                    }
+
+                    spdlog::info(
+                        "Window '{}' Stats: draws={}, fps={:.1f}, draw_time={:.2f}ms, repaint_time={:.2f}ms",
+                        title_, impl_->stats.total_draws, impl_->stats.avg_fps,
+                        impl_->stats.avg_draw_time_ms, impl_->stats.avg_repaint_time_ms);
+                }
+
+                impl_->last_log_time = now;
+                impl_->draws_since_last_log = 0;
+                impl_->draw_time_sum_ms = 0;
+                impl_->repaint_time_sum_ms = 0;
+            }, true);
+        }
+    } else {
+        if (impl_->stats_timer_id != 0) {
+            stop_timer(impl_->stats_timer_id);
+            impl_->stats_timer_id = 0;
+        }
+    }
+}
+
+bool Window::is_statistics_logging_enabled() const { return impl_->logging_enabled; }
 
 auto Window::save_to_png(std::string const &path) -> bool {
     if (impl_->platform) {
@@ -60,7 +124,8 @@ void Window::close() {
     }
 }
 
-void Window::request_redraw() {
+void Window::request_redraw(std::string_view reason) {
+    spdlog::trace("Window '{}' redraw requested (reason={})", title_, reason);
     if (impl_->platform) {
         impl_->platform->request_redraw();
     }
@@ -129,12 +194,12 @@ void Window::add_widget(std::unique_ptr<Widget> widget) {
 
 void Window::open_popup(Popup popup) {
     popup_ = std::move(popup);
-    request_redraw();
+    request_redraw("popup open");
 }
 
 void Window::close_popup() {
     popup_.reset();
-    request_redraw();
+    request_redraw("popup close");
 }
 
 void Window::set_focused_widget(Widget *w) {
@@ -143,31 +208,31 @@ void Window::set_focused_widget(Widget *w) {
     }
     if (focused_widget_) {
         focused_widget_->set_focused(false);
+        focused_widget_->on_blur();
     }
     focused_widget_ = w;
     if (focused_widget_) {
         focused_widget_->set_focused(true);
-        if (blink_timer_id_ == 0) {
-            blink_timer_id_ = start_timer(0.5f, [this] { request_redraw(); }, true);
-        }
-    } else {
-        if (blink_timer_id_ != 0) {
-            stop_timer(blink_timer_id_);
-            blink_timer_id_ = 0;
-        }
+        focused_widget_->on_focus();
     }
 }
 
 void Window::handle_paint(Painter &painter) {
+    auto draw_start = std::chrono::steady_clock::now();
+    impl_->stats.total_draws++;
+    impl_->draws_since_last_log++;
+
     auto const &style = Theme::current();
     painter.fill_rect({0, 0, size_.width, size_.height}, style.window.background);
 
+    auto repaint_start = std::chrono::steady_clock::now();
     if (root_) {
         root_->draw(painter);
     }
     for (auto &widget : widgets_) {
         widget->draw(painter);
     }
+    auto repaint_end = std::chrono::steady_clock::now();
 
     if (Widget::debug_show_frames) {
         if (root_) {
@@ -195,6 +260,13 @@ void Window::handle_paint(Painter &painter) {
             }
         }
     }
+
+    auto draw_end = std::chrono::steady_clock::now();
+    auto draw_duration = std::chrono::duration<double, std::milli>(draw_end - draw_start).count();
+    auto repaint_duration = std::chrono::duration<double, std::milli>(repaint_end - repaint_start).count();
+
+    impl_->draw_time_sum_ms += draw_duration;
+    impl_->repaint_time_sum_ms += repaint_duration;
 }
 
 void Window::focus_next(bool reverse) {
@@ -237,7 +309,7 @@ void Window::handle_mouse(MouseEvent const &event) {
         local_event.position.x -= popup_->bounds.x;
         local_event.position.y -= popup_->bounds.y;
         if (popup_->on_mouse(local_event)) {
-            request_redraw();
+            request_redraw("event");
             return;
         }
         if (event.type == MouseEvent::Type::Press) {
@@ -272,7 +344,7 @@ void Window::handle_mouse(MouseEvent const &event) {
     if (root_ && Widget::dispatch_mouse_event(root_.get(), event)) {
         needs_redraw = true;
         if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
-            request_redraw();
+            request_redraw("event");
             return;
         }
     }
@@ -280,7 +352,7 @@ void Window::handle_mouse(MouseEvent const &event) {
         if (Widget::dispatch_mouse_event(widget.get(), event)) {
             needs_redraw = true;
             if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
-                request_redraw();
+                request_redraw("event");
                 return;
             }
         }
@@ -328,21 +400,21 @@ void Window::handle_mouse(MouseEvent const &event) {
     }
 
     if (needs_redraw) {
-        request_redraw();
+        request_redraw("event");
     }
 }
 
 void Window::handle_key(KeyEvent const &event) {
     if (popup_ && popup_->on_key) {
         if (popup_->on_key(event)) {
-            request_redraw();
+            request_redraw("event");
             return;
         }
     }
 
     if (event.type == KeyEvent::Type::Press && event.key == Key::Tab) {
         focus_next(event.shift);
-        request_redraw();
+        request_redraw("event");
         return;
     }
 
@@ -359,7 +431,7 @@ void Window::handle_key(KeyEvent const &event) {
         }
         for (auto *w : targets) {
             if (w->trigger_mnemonic(key)) {
-                request_redraw();
+                request_redraw("event");
                 return;
             }
         }
@@ -368,7 +440,7 @@ void Window::handle_key(KeyEvent const &event) {
     for (auto const &cmd : global_commands_) {
         if (cmd->matches_key_event(event)) {
             cmd->execute();
-            request_redraw();
+            request_redraw("event");
             return;
         }
     }
@@ -377,7 +449,7 @@ void Window::handle_key(KeyEvent const &event) {
         auto w = focused_widget_;
         while (w) {
             if (w->handle_key(event)) {
-                request_redraw();
+                request_redraw("event");
                 return;
             }
             w = w->parent();
@@ -387,13 +459,13 @@ void Window::handle_key(KeyEvent const &event) {
     // If focused widget didn't handle it, or nothing is focused,
     // try a recursive search from the root for global shortcuts attached to widgets.
     if (root_ && dispatch_key_event_recursive(root_.get(), event)) {
-        request_redraw();
+        request_redraw("event");
         return;
     }
 
     for (auto &widget : widgets_) {
         if (dispatch_key_event_recursive(widget.get(), event)) {
-            request_redraw();
+            request_redraw("event");
             return;
         }
     }

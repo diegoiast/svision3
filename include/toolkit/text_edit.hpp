@@ -21,6 +21,8 @@ class TextEdit : public Widget {
     Size size_hint() const override;
     CursorShape cursor() const override { return CursorShape::IBeam; }
     void set_focused(bool focused) override;
+    void on_focus() override;
+    void on_blur() override;
 
     std::string text() const;
     // FIXME add API to read directly from stream
@@ -73,6 +75,7 @@ class TextEdit : public Widget {
     float scroll_y_ = 0;
     bool dragging_ = false;
     std::chrono::steady_clock::time_point cursor_blink_time_;
+    int blink_timer_id_ = 0;
 };
 
 } // namespace toolkit

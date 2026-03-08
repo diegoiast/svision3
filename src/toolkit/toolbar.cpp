@@ -16,10 +16,6 @@ class ToolButton : public Button {
     }
 
     void paint(Painter &painter) override {
-        // Sync state before paint
-        set_enabled(cmd_->is_enabled());
-        set_text(cmd_->display_text());
-        set_tooltip(cmd_->tooltip());
         Button::paint(painter);
     }
 

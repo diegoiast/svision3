@@ -198,7 +198,7 @@ ListView::ListView(std::shared_ptr<ListAdapter> adapter) : adapter_(std::move(ad
         adapter_->on_data_changed = [this] {
             clamp_scroll();
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("list selection");
             }
         };
     }
@@ -214,7 +214,7 @@ void ListView::set_adapter(std::shared_ptr<ListAdapter> adapter) {
         adapter_->on_data_changed = [this] {
             clamp_scroll();
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("list selection");
             }
         };
     }

@@ -48,7 +48,7 @@ class Window {
     void set_root(std::unique_ptr<Widget> root);
     void show();
     void close();
-    void request_redraw();
+    void request_redraw(std::string_view reason = "other");
 
     void open_popup(Popup popup);
     void close_popup();
@@ -81,6 +81,18 @@ class Window {
 
     void set_focused_widget(Widget *w);
 
+    struct Statistics {
+        uint64_t total_draws = 0;
+        double avg_fps = 0;
+        double avg_draw_time_ms = 0;
+        double avg_repaint_time_ms = 0;
+    };
+
+    Statistics const &statistics() const;
+    void reset_statistics();
+    void set_statistics_logging_enabled(bool enabled);
+    bool is_statistics_logging_enabled() const;
+
   private:
     bool dispatch_key_event_recursive(Widget *w, KeyEvent const &event);
     void focus_next(bool reverse);
@@ -100,7 +112,6 @@ class Window {
     std::vector<Command::Ptr> global_commands_;
     Widget *focused_widget_ = nullptr;
     std::optional<Popup> popup_;
-    int blink_timer_id_ = 0;
     CursorShape current_cursor_ = CursorShape::Arrow;
     Widget *hovered_widget_ = nullptr;
 

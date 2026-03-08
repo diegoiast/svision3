@@ -19,7 +19,7 @@ void Slider::set_value(float v) {
     }
     value_ = v;
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("slider change");
     }
 }
 
@@ -30,7 +30,7 @@ void Slider::set_minimum(float m) {
     min_ = m;
     set_value(value_);
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("slider change");
     }
 }
 
@@ -41,7 +41,7 @@ void Slider::set_maximum(float m) {
     max_ = m;
     set_value(value_);
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("slider change");
     }
 }
 
@@ -50,7 +50,7 @@ void Slider::set_range(float min, float max) {
     max_ = max;
     set_value(value_);
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("slider change");
     }
 }
 

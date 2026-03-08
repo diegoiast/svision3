@@ -114,7 +114,7 @@ void TabWidget::update_scroll_bounds() {
         prev_button_->set_visible(false);
         next_button_->set_visible(false);
         if (window_) {
-            window_->request_redraw();
+            window_->request_redraw("tab change");
         }
         return;
     }
@@ -153,7 +153,7 @@ void TabWidget::update_scroll_bounds() {
     next_button_->set_visible(now_next);
 
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("tab change");
     }
 }
 
@@ -293,8 +293,12 @@ void TabWidget::layout_content() {
 
     update_scroll_bounds();
 
-    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        tabs_[current_].content->set_rect(content_rect);
+    for (auto i = 0; i < static_cast<int>(tabs_.size()); i++) {
+        bool is_current = (i == current_);
+        tabs_[i].content->set_visible(is_current);
+        if (is_current) {
+            tabs_[i].content->set_rect(content_rect);
+        }
     }
 }
 
@@ -707,7 +711,7 @@ auto TabWidget::handle_tab_drag(MouseEvent const &event) -> bool {
         } while (swapped);
 
         if (window_) {
-            window_->request_redraw();
+            window_->request_redraw("tab change");
         }
         return true;
     }
@@ -717,7 +721,7 @@ auto TabWidget::handle_tab_drag(MouseEvent const &event) -> bool {
         drag_offset_x_ = 0;
         drag_tab_ = -1;
         if (window_) {
-            window_->request_redraw();
+            window_->request_redraw("tab change");
         }
         return true;
     }
@@ -772,7 +776,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
             hovered_tab_ = hr.tab;
             hovered_close_ = hr.on_close ? hr.tab : -1;
             if (window_) {
-                window_->request_redraw();
+                window_->request_redraw("tab change");
             }
             return true;
         }
@@ -780,7 +784,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
             hovered_tab_ = -1;
             hovered_close_ = -1;
             if (window_) {
-                window_->request_redraw();
+                window_->request_redraw("tab change");
             }
         }
         if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
@@ -794,7 +798,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
             hovered_tab_ = -1;
             hovered_close_ = -1;
             if (window_) {
-                window_->request_redraw();
+                window_->request_redraw("tab change");
             }
         }
         return true;

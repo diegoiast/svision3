@@ -68,11 +68,15 @@ class Widget {
     virtual void set_focused(bool focused) { focused_ = focused; }
     bool is_focused() const { return focused_; }
 
+    virtual void on_focus() {}
+    virtual void on_blur() {}
+
     void set_enabled(bool e);
     bool is_enabled() const { return enabled_; }
 
     virtual void set_visible(bool v);
     bool is_visible() const { return visible_; }
+    bool is_effectively_visible() const;
     void show() { set_visible(true); }
     void hide() { set_visible(false); }
 

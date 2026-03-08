@@ -69,7 +69,7 @@ TableView::TableView(std::shared_ptr<TableModel> model) : model_(std::move(model
             auto_fit_columns();
             clamp_scroll();
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("table selection");
             }
         };
         ensure_column_widths();
@@ -92,7 +92,7 @@ void TableView::set_model(std::shared_ptr<TableModel> model) {
             auto_fit_columns();
             clamp_scroll();
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("table selection");
             }
         };
         auto_fit_columns();

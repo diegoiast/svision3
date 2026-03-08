@@ -715,6 +715,18 @@ int main(int argc, char *argv[]) {
     };
     bar_wrapper->add_widget(std::move(debug_toggle));
 
+    auto stats_toggle = std::make_unique<toolkit::Checkbox>("Show Performance Stats");
+    stats_toggle->on_toggle = [window](bool checked) {
+        if (checked) {
+            window->reset_statistics();
+            spdlog::set_level(spdlog::level::trace);
+        } else {
+            spdlog::set_level(spdlog::level::info);
+        }
+        window->set_statistics_logging_enabled(checked);
+    };
+    bar_wrapper->add_widget(std::move(stats_toggle));
+
     auto button_bar = std::make_unique<toolkit::HBoxLayout>();
     button_bar->set_spacing(10);
 

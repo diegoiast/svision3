@@ -55,7 +55,7 @@ void LineInput::set_password_mode(bool enable) {
     }
     sync_commands();
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("input state");
     }
 }
 
@@ -68,18 +68,34 @@ void LineInput::set_text(std::string const &text) {
     sel_anchor_ = cursor_pos_;
     sync_commands();
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("input state");
     }
 }
 
 void LineInput::set_focused(bool focused) {
     focused_ = focused;
-    if (focused) {
-        reset_cursor_blink();
-    } else {
+    if (!focused) {
         sel_anchor_ = cursor_pos_;
     }
     sync_commands();
+}
+
+void LineInput::on_focus() {
+    reset_cursor_blink();
+    if (window_ && blink_timer_id_ == 0) {
+        blink_timer_id_ = window_->start_timer(0.5f, [this] {
+            if (is_effectively_visible()) {
+                window_->request_redraw("blink");
+            }
+        }, true);
+    }
+}
+
+void LineInput::on_blur() {
+    if (window_ && blink_timer_id_ != 0) {
+        window_->stop_timer(blink_timer_id_);
+        blink_timer_id_ = 0;
+    }
 }
 
 void LineInput::reset_cursor_blink() { cursor_blink_time_ = std::chrono::steady_clock::now(); }
@@ -155,7 +171,7 @@ void LineInput::select_all() {
     cursor_pos_ = text_.size();
     sync_commands();
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("input state");
     }
 }
 
@@ -416,7 +432,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
             changed = true;
         }
         if (changed && window()) {
-            window()->request_redraw();
+            window()->request_redraw("input state");
         }
         return changed;
     }
@@ -426,7 +442,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
             clear_hovered_ = false;
             peek_hovered_ = false;
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("input state");
             }
         }
         return true;
@@ -447,7 +463,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
         if (hit_clear_btn(event.position)) {
             clear_pressed_ = true;
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("input state");
             }
             return true;
         }
@@ -455,7 +471,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
         if (hit_peek_btn(event.position)) {
             peek_pressed_ = true;
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("input state");
             }
             return true;
         }
@@ -490,7 +506,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
                 }
             }
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("input state");
             }
             return true;
         }
@@ -501,7 +517,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
                 sync_commands();
             }
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("input state");
             }
             return true;
         }

@@ -50,7 +50,7 @@ void Button::set_text(std::string text) {
     mnemonic_key_ = new_mnemonic_key;
 
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("button state");
     }
 }
 
@@ -100,7 +100,7 @@ void Button::set_visible(bool v) {
         pressed_ = false;
         stop_auto_repeat();
         if (changed && window_) {
-            window_->request_redraw();
+            window_->request_redraw("button state");
         }
     }
 }
@@ -204,8 +204,8 @@ bool Button::handle_mouse(MouseEvent const &event) {
             hovered_ = false;
             pressed_ = false;
             stop_auto_repeat();
-            if (window()) {
-                window()->request_redraw();
+            if (window_) {
+                window_->request_redraw("button state");
             }
         }
         return false;
@@ -224,7 +224,7 @@ bool Button::handle_mouse(MouseEvent const &event) {
                 }
             }
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("button state");
             }
         }
         return inside;
@@ -236,7 +236,7 @@ bool Button::handle_mouse(MouseEvent const &event) {
                 start_auto_repeat_delay();
             }
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("button state");
             }
             return true;
         }
@@ -249,7 +249,7 @@ bool Button::handle_mouse(MouseEvent const &event) {
                 on_click();
             }
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("button state");
             }
         }
         return inside;
@@ -259,7 +259,7 @@ bool Button::handle_mouse(MouseEvent const &event) {
             pressed_ = false;
             stop_auto_repeat();
             if (window()) {
-                window()->request_redraw();
+                window()->request_redraw("button state");
             }
         }
         return true;

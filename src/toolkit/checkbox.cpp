@@ -21,7 +21,7 @@ void Checkbox::set_check_state(CheckState newState) {
     }
     state_ = newState;
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("checkbox state");
     }
 }
 
@@ -45,7 +45,7 @@ void Checkbox::toggle() {
         on_state_change(state_);
     }
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("checkbox state");
     }
 }
 

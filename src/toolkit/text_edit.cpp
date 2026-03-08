@@ -75,18 +75,34 @@ void TextEdit::set_text(std::string const &text) {
     scroll_x_ = scroll_y_ = 0;
     sync_commands();
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("text change");
     }
 }
 
 void TextEdit::set_focused(bool focused) {
     focused_ = focused;
-    if (focused) {
-        reset_cursor_blink();
-    } else {
+    if (!focused) {
         anchor_ = cursor_;
     }
     sync_commands();
+}
+
+void TextEdit::on_focus() {
+    reset_cursor_blink();
+    if (window_ && blink_timer_id_ == 0) {
+        blink_timer_id_ = window_->start_timer(0.5f, [this] {
+            if (is_effectively_visible()) {
+                window_->request_redraw("blink");
+            }
+        }, true);
+    }
+}
+
+void TextEdit::on_blur() {
+    if (window_ && blink_timer_id_ != 0) {
+        window_->stop_timer(blink_timer_id_);
+        blink_timer_id_ = 0;
+    }
 }
 
 void TextEdit::reset_cursor_blink() { cursor_blink_time_ = std::chrono::steady_clock::now(); }
@@ -309,7 +325,7 @@ void TextEdit::select_all() {
     sync_commands();
     ensure_cursor_visible();
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("text change");
     }
 }
 

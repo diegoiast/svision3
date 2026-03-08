@@ -3,6 +3,7 @@
 
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
+#include <spdlog/spdlog.h>
 
 namespace toolkit {
 
@@ -10,19 +11,30 @@ bool Widget::debug_show_frames = false;
 
 void Widget::invalidate_layout() {
     layout_dirty = true;
+    spdlog::trace("Widget layout invalidated: {}", tooltip_.empty() ? "anonymous" : tooltip_);
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("layout");
     }
     if (parent_) {
         parent_->invalidate_layout();
     }
 }
 
+bool Widget::is_effectively_visible() const {
+    if (!visible_) {
+        return false;
+    }
+    if (parent_) {
+        return parent_->is_effectively_visible();
+    }
+    return true;
+}
+
 void Widget::set_enabled(bool e) {
     if (enabled_ == e) return;
     enabled_ = e;
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("property change (enabled)");
     }
 }
 
@@ -30,15 +42,15 @@ void Widget::set_visible(bool v) {
     if (visible_ == v) return;
     visible_ = v;
     if (window_) {
-        window_->request_redraw();
+        window_->request_redraw("property change (visible)");
     }
 }
 
 void Widget::set_tooltip(std::string text) {
     if (tooltip_ == text) return;
     tooltip_ = std::move(text);
-    if (window_) {
-        window_->request_redraw();
+    if (window_ && is_effectively_visible()) {
+        window_->request_redraw("property change (tooltip)");
     }
 }
 
