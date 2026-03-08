@@ -55,6 +55,11 @@ std::string TextEdit::text() const {
 }
 
 void TextEdit::set_text(std::string const &text) {
+    auto current = this->text();
+    if (current == text) {
+        return;
+    }
+
     std::istringstream ss(text);
     std::string line;
 
@@ -69,6 +74,9 @@ void TextEdit::set_text(std::string const &text) {
     anchor_ = cursor_;
     scroll_x_ = scroll_y_ = 0;
     sync_commands();
+    if (window_) {
+        window_->request_redraw();
+    }
 }
 
 void TextEdit::set_focused(bool focused) {

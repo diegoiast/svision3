@@ -29,16 +29,26 @@ Button::Button(std::string text) {
 
 void Button::set_text(std::string text) {
     auto pos = text.find('&');
+    std::string new_display_text;
+    int new_mnemonic_index = -1;
+    char new_mnemonic_key = 0;
 
     if (pos != std::string::npos && pos + 1 < text.size()) {
-        mnemonic_index_ = static_cast<int>(pos);
-        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-        display_text_ = text.substr(0, pos) + text.substr(pos + 1);
+        new_mnemonic_index = static_cast<int>(pos);
+        new_mnemonic_key = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
+        new_display_text = text.substr(0, pos) + text.substr(pos + 1);
     } else {
-        mnemonic_index_ = -1;
-        mnemonic_key_ = 0;
-        display_text_ = std::move(text);
+        new_display_text = std::move(text);
     }
+
+    if (display_text_ == new_display_text && mnemonic_index_ == new_mnemonic_index) {
+        return;
+    }
+
+    display_text_ = std::move(new_display_text);
+    mnemonic_index_ = new_mnemonic_index;
+    mnemonic_key_ = new_mnemonic_key;
+
     if (window_) {
         window_->request_redraw();
     }

@@ -60,10 +60,16 @@ void LineInput::set_password_mode(bool enable) {
 }
 
 void LineInput::set_text(std::string const &text) {
+    if (text_ == text) {
+        return;
+    }
     text_ = text;
     cursor_pos_ = text_.size();
     sel_anchor_ = cursor_pos_;
     sync_commands();
+    if (window_) {
+        window_->request_redraw();
+    }
 }
 
 void LineInput::set_focused(bool focused) {

@@ -18,6 +18,30 @@ void Widget::invalidate_layout() {
     }
 }
 
+void Widget::set_enabled(bool e) {
+    if (enabled_ == e) return;
+    enabled_ = e;
+    if (window_) {
+        window_->request_redraw();
+    }
+}
+
+void Widget::set_visible(bool v) {
+    if (visible_ == v) return;
+    visible_ = v;
+    if (window_) {
+        window_->request_redraw();
+    }
+}
+
+void Widget::set_tooltip(std::string text) {
+    if (tooltip_ == text) return;
+    tooltip_ = std::move(text);
+    if (window_) {
+        window_->request_redraw();
+    }
+}
+
 auto Widget::dispatch_mouse_event(Widget *w, MouseEvent const &event) -> bool {
     auto local_ev = event;
 

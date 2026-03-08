@@ -68,13 +68,13 @@ class Widget {
     virtual void set_focused(bool focused) { focused_ = focused; }
     bool is_focused() const { return focused_; }
 
-    void set_enabled(bool e) { enabled_ = e; }
+    void set_enabled(bool e);
     bool is_enabled() const { return enabled_; }
 
-    virtual void set_visible(bool v) { visible_ = v; }
+    virtual void set_visible(bool v);
     bool is_visible() const { return visible_; }
-    void show() { visible_ = true; }
-    void hide() { visible_ = false; }
+    void show() { set_visible(true); }
+    void hide() { set_visible(false); }
 
     void set_min_size(Size s) { min_size_ = s; }
     void set_max_size(Size s) { max_size_ = s; }
@@ -118,7 +118,7 @@ class Widget {
 
     auto map_to_window(Point p) const -> Point;
 
-    void set_tooltip(std::string text) { tooltip_ = std::move(text); }
+    void set_tooltip(std::string text);
     std::string const &tooltip() const { return tooltip_; }
 
     void set_background_color(std::optional<Color> c) { background_color_ = c; }
