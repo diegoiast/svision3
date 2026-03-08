@@ -22,7 +22,6 @@ namespace toolkit {
 
 TextEdit::TextEdit(std::string text) {
     focusable_ = true;
-    set_text(text);
     cursor_blink_time_ = std::chrono::steady_clock::now();
 
     select_all_cmd = Command::create("Select All", [this] { select_all(); });
@@ -41,7 +40,7 @@ TextEdit::TextEdit(std::string text) {
     paste_cmd->set_shortcut("Std+V");
     add_command(paste_cmd);
 
-    sync_commands();
+    set_text(text);
 }
 
 std::string TextEdit::text() const {
@@ -108,14 +107,19 @@ TextEdit::Pos TextEdit::pos_from_point(Point p) const {
     auto const &style = Theme::current().text_edit;
     auto lh = line_height();
     auto gw = gutter_width();
+
+    if (lh <= 0.0001f) {
+        return {0, 0};
+    }
+
     auto line = static_cast<int>((p.y + scroll_y_) / lh);
+    line = std::clamp(line, 0, static_cast<int>(lines_.size()) - 1);
     auto click_x = p.x - gw + scroll_x_;
 
     if (click_x <= 0) {
         return {line, 0};
     }
 
-    line = std::clamp(line, 0, static_cast<int>(lines_.size()) - 1);
     auto const &ln = lines_[line];
     auto col = 0;
     while (col < (int)ln.size()) {
@@ -334,6 +338,9 @@ void TextEdit::paste() {
 }
 
 void TextEdit::sync_commands() {
+    if (!select_all_cmd) {
+        return;
+    }
     bool has_sel = has_selection();
     bool not_empty = lines_.size() > 1 || !lines_[0].empty();
     select_all_cmd->set_enabled(not_empty);
