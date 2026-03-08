@@ -72,6 +72,7 @@ class LineInput : public Widget {
     void cut();
     void copy();
     void paste();
+    void sync_commands();
 
     std::string text_;
     std::string placeholder_;

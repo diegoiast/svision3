@@ -16,17 +16,18 @@ TEST_CASE("Command is_enabled defaults to true", "[command]") {
     REQUIRE(cmd.is_enabled());
 }
 
-TEST_CASE("Command is_enabled respects predicate", "[command]") {
-    bool flag = false;
-    Command cmd("Test", [] {}, [&] { return flag; });
+TEST_CASE("Command is_enabled respects set_enabled", "[command]") {
+    Command cmd("Test", [] {});
+    cmd.set_enabled(false);
     REQUIRE(!cmd.is_enabled());
-    flag = true;
+    cmd.set_enabled(true);
     REQUIRE(cmd.is_enabled());
 }
 
 TEST_CASE("Command does not execute when disabled", "[command]") {
     int count = 0;
-    Command cmd("Test", [&] { count++; }, [] { return false; });
+    Command cmd("Test", [&] { count++; });
+    cmd.set_enabled(false);
     cmd.execute();
     REQUIRE(count == 0);
 }

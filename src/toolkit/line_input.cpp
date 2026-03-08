@@ -33,22 +33,19 @@ LineInput::LineInput(std::string placeholder)
     select_all_cmd->set_shortcut("Std+A");
     add_command(select_all_cmd);
 
-    cut_cmd = Command::create(
-        "Cut", [this] { cut(); },
-        [this] { return has_selection() && !password_mode_ && !read_only_; });
+    cut_cmd = Command::create("Cut", [this] { cut(); });
     cut_cmd->set_shortcut("Std+X");
     add_command(cut_cmd);
 
-    copy_cmd = Command::create(
-        "Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; });
+    copy_cmd = Command::create("Copy", [this] { copy(); });
     copy_cmd->set_shortcut("Std+C");
     add_command(copy_cmd);
 
-    paste_cmd = Command::create(
-        "Paste", [this] { paste(); },
-        [this] { return !read_only_ && !Clipboard::get_text().empty(); });
+    paste_cmd = Command::create("Paste", [this] { paste(); });
     paste_cmd->set_shortcut("Std+V");
     add_command(paste_cmd);
+
+    sync_commands();
 }
 
 void LineInput::set_password_mode(bool enable) {
@@ -56,6 +53,7 @@ void LineInput::set_password_mode(bool enable) {
     if (enable) {
         is_password_field_ = true;
     }
+    sync_commands();
     if (window_) {
         window_->request_redraw();
     }
@@ -65,6 +63,7 @@ void LineInput::set_text(std::string const &text) {
     text_ = text;
     cursor_pos_ = text_.size();
     sel_anchor_ = cursor_pos_;
+    sync_commands();
 }
 
 void LineInput::set_focused(bool focused) {
@@ -74,6 +73,7 @@ void LineInput::set_focused(bool focused) {
     } else {
         sel_anchor_ = cursor_pos_;
     }
+    sync_commands();
 }
 
 void LineInput::reset_cursor_blink() { cursor_blink_time_ = std::chrono::steady_clock::now(); }
@@ -88,6 +88,7 @@ void LineInput::delete_selection() {
     text_.erase(s, e - s);
     cursor_pos_ = s;
     sel_anchor_ = s;
+    sync_commands();
     if (on_change) {
         on_change(text_);
     }
@@ -98,6 +99,7 @@ void LineInput::move_cursor(size_t pos, bool extend_selection) {
     if (!extend_selection) {
         sel_anchor_ = cursor_pos_;
     }
+    sync_commands();
     reset_cursor_blink();
 }
 
@@ -138,15 +140,25 @@ void LineInput::select_word_at(size_t pos) {
     }
     sel_anchor_ = start;
     cursor_pos_ = end;
+    sync_commands();
     reset_cursor_blink();
 }
 
 void LineInput::select_all() {
     sel_anchor_ = 0;
     cursor_pos_ = text_.size();
+    sync_commands();
     if (window_) {
         window_->request_redraw();
     }
+}
+
+void LineInput::sync_commands() {
+    bool has_sel = has_selection();
+    select_all_cmd->set_enabled(!text_.empty());
+    cut_cmd->set_enabled(has_sel && !password_mode_ && !read_only_);
+    copy_cmd->set_enabled(has_sel && !password_mode_);
+    paste_cmd->set_enabled(!read_only_ && !Clipboard::get_text().empty());
 }
 
 float LineInput::clear_btn_size() const {
@@ -449,6 +461,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
         } else if (event.click_count >= 3) {
             sel_anchor_ = 0;
             cursor_pos_ = text_.size();
+            sync_commands();
             reset_cursor_blink();
         } else {
             move_cursor(pos, event.shift);
@@ -465,6 +478,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
                 cursor_pos_ = 0;
                 sel_anchor_ = 0;
                 scroll_offset_ = 0;
+                sync_commands();
                 if (on_change) {
                     on_change(text_);
                 }
@@ -478,6 +492,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
             peek_pressed_ = false;
             if (hit_peek_btn(event.position)) {
                 password_mode_ = !password_mode_;
+                sync_commands();
             }
             if (window()) {
                 window()->request_redraw();
@@ -490,6 +505,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Drag && dragging_) {
         cursor_pos_ = pos_from_x(event.position.x);
+        sync_commands();
         reset_cursor_blink();
         return true;
     }
@@ -560,6 +576,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
             move_word_left(false);
             text_.erase(cursor_pos_, old - cursor_pos_);
             sel_anchor_ = cursor_pos_;
+            sync_commands();
             if (on_change) {
                 on_change(text_);
             }
@@ -575,6 +592,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
             text_.erase(prev, cursor_pos_ - prev);
             cursor_pos_ = prev;
             sel_anchor_ = cursor_pos_;
+            sync_commands();
             if (on_change) {
                 on_change(text_);
             }
@@ -603,6 +621,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
                 }
             }
             text_.erase(cursor_pos_, next - cursor_pos_);
+            sync_commands();
             if (on_change) {
                 on_change(text_);
             }
@@ -666,6 +685,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         text_.insert(cursor_pos_, event.text);
         cursor_pos_ += event.text.size();
         sel_anchor_ = cursor_pos_;
+        sync_commands();
         if (on_change) {
             on_change(text_);
         }
@@ -715,6 +735,7 @@ void LineInput::paste() {
     text_.insert(cursor_pos_, clip);
     cursor_pos_ += clip.size();
     sel_anchor_ = cursor_pos_;
+    sync_commands();
     if (on_change) {
         on_change(text_);
     }
@@ -725,26 +746,23 @@ void LineInput::show_context_menu(Point pos) {
         return;
     }
 
+    bool has_sel = has_selection();
+    bool not_empty = !text_.empty();
+    bool can_paste = !Clipboard::get_text().empty();
+
     // FIXME: use i18n for menu text
     std::vector<MenuItem> items;
-    items.push_back(MenuItem::action(
-        "Cut", [this] { cut(); },
-        [this] { return has_selection() && !password_mode_ && !read_only_; }));
-    items.push_back(MenuItem::action(
-        "Copy", [this] { copy(); }, [this] { return has_selection() && !password_mode_; }));
-    items.push_back(MenuItem::action(
-        "Paste", [this] { paste(); },
-        [this] { return !read_only_ && !Clipboard::get_text().empty(); }));
+    items.push_back(MenuItem::action("Cut", [this] { cut(); },
+                                     has_sel && !password_mode_ && !read_only_));
+    items.push_back(
+        MenuItem::action("Copy", [this] { copy(); }, has_sel && !password_mode_));
+    items.push_back(
+        MenuItem::action("Paste", [this] { paste(); }, !read_only_ && can_paste));
     items.push_back(MenuItem::sep());
     items.push_back(MenuItem::action(
-        "Select All",
-        [this] {
-            select_all();
-        },
-        [this] { return !text_.empty(); }));
-    items.push_back(MenuItem::action(
-        "Delete", [this] { delete_selection(); },
-        [this] { return !read_only_ && has_selection(); }));
+        "Select All", [this] { select_all(); }, not_empty));
+    items.push_back(MenuItem::action("Delete", [this] { delete_selection(); },
+                                     !read_only_ && has_sel));
 
     context_menu_ = std::make_unique<ContextMenu>(std::move(items));
     context_menu_->show(window(), map_to_window(pos));

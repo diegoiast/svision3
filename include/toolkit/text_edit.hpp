@@ -64,6 +64,7 @@ class TextEdit : public Widget {
     void cut();
     void copy();
     void paste();
+    void sync_commands();
 
     std::vector<std::string> lines_{""};
     Pos cursor_;

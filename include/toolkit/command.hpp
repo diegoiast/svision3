@@ -28,12 +28,12 @@ class Command {
     using Ptr = std::shared_ptr<Command>;
 
     Command(std::string name, std::function<void()> execute,
-            std::function<bool()> enabled = nullptr)
-        : name_(std::move(name)), execute_(std::move(execute)), enabled_func_(std::move(enabled)) {}
+            bool enabled = true)
+        : name_(std::move(name)), execute_(std::move(execute)), enabled_(enabled) {}
 
     static Ptr create(std::string name, std::function<void()> execute,
-                      std::function<bool()> enabled = nullptr) {
-        return std::make_shared<Command>(std::move(name), std::move(execute), std::move(enabled));
+                      bool enabled = true) {
+        return std::make_shared<Command>(std::move(name), std::move(execute), enabled);
     }
 
     std::string const &name() const { return name_; }
@@ -46,16 +46,16 @@ class Command {
     Shortcut const &shortcut() const { return shortcut_; }
     void set_shortcut(std::string s);
 
-    bool is_enabled() const { return !enabled_func_ || enabled_func_(); }
-    void set_enabled_func(std::function<bool()> func) { enabled_func_ = std::move(func); }
+    bool is_enabled() const { return enabled_; }
+    void set_enabled(bool e) { enabled_ = e; }
 
-    bool is_checked() const { return checked_func_ && checked_func_(); }
-    void set_checked_func(std::function<bool()> func) { checked_func_ = std::move(func); }
+    bool is_checked() const { return checked_; }
+    void set_checked(bool c) { checked_ = c; }
 
     void set_execute_func(std::function<void()> func) { execute_ = std::move(func); }
 
     void execute() {
-        if (is_enabled() && execute_) {
+        if (enabled_ && execute_) {
             execute_();
         }
     }
@@ -76,9 +76,9 @@ class Command {
     std::string tooltip_;
     std::string shortcut_string_;
     Shortcut shortcut_;
+    bool enabled_ = true;
+    bool checked_ = false;
     std::function<void()> execute_;
-    std::function<bool()> enabled_func_;
-    std::function<bool()> checked_func_;
 };
 
 } // namespace toolkit

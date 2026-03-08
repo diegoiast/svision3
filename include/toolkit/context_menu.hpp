@@ -19,8 +19,8 @@ struct MenuItem {
     bool separator = false;
 
     static MenuItem action(std::string name, std::function<void()> execute,
-                           std::function<bool()> enabled = nullptr) {
-        return {std::make_shared<Command>(std::move(name), std::move(execute), std::move(enabled))};
+                           bool enabled = true) {
+        return {std::make_shared<Command>(std::move(name), std::move(execute), enabled)};
     }
 
     static MenuItem sep() { return {nullptr, true}; }

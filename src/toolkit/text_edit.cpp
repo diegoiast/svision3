@@ -29,20 +29,19 @@ TextEdit::TextEdit(std::string text) {
     select_all_cmd->set_shortcut("Std+A");
     add_command(select_all_cmd);
 
-    cut_cmd =
-        Command::create("Cut", [this] { cut(); }, [this] { return has_selection(); });
+    cut_cmd = Command::create("Cut", [this] { cut(); });
     cut_cmd->set_shortcut("Std+X");
     add_command(cut_cmd);
 
-    copy_cmd =
-        Command::create("Copy", [this] { copy(); }, [this] { return has_selection(); });
+    copy_cmd = Command::create("Copy", [this] { copy(); });
     copy_cmd->set_shortcut("Std+C");
     add_command(copy_cmd);
 
-    paste_cmd = Command::create("Paste", [this] { paste(); },
-                                     [] { return !Clipboard::get_text().empty(); });
+    paste_cmd = Command::create("Paste", [this] { paste(); });
     paste_cmd->set_shortcut("Std+V");
     add_command(paste_cmd);
+
+    sync_commands();
 }
 
 std::string TextEdit::text() const {
@@ -70,6 +69,7 @@ void TextEdit::set_text(std::string const &text) {
     cursor_ = {0, 0};
     anchor_ = cursor_;
     scroll_x_ = scroll_y_ = 0;
+    sync_commands();
 }
 
 void TextEdit::set_focused(bool focused) {
@@ -79,6 +79,7 @@ void TextEdit::set_focused(bool focused) {
     } else {
         anchor_ = cursor_;
     }
+    sync_commands();
 }
 
 void TextEdit::reset_cursor_blink() { cursor_blink_time_ = std::chrono::steady_clock::now(); }
@@ -194,6 +195,7 @@ void TextEdit::move_cursor(Pos p, bool extend_selection) {
     if (!extend_selection) {
         anchor_ = cursor_;
     }
+    sync_commands();
     reset_cursor_blink();
     ensure_cursor_visible();
 }
@@ -213,6 +215,7 @@ void TextEdit::delete_selection() {
         lines_.insert(lines_.begin() + s.line, std::move(merged));
     }
     cursor_ = anchor_ = s;
+    sync_commands();
     ensure_cursor_visible();
     if (on_change) {
         on_change();
@@ -242,6 +245,7 @@ void TextEdit::insert_text(std::string_view t) {
         }
     }
     anchor_ = cursor_;
+    sync_commands();
     ensure_cursor_visible();
     if (on_change) {
         on_change();
@@ -290,6 +294,7 @@ void TextEdit::move_word_right(bool extend) {
 void TextEdit::select_all() {
     anchor_ = {0, 0};
     cursor_ = {static_cast<int>(lines_.size()) - 1, static_cast<int>(lines_.back().size())};
+    sync_commands();
     ensure_cursor_visible();
     if (window_) {
         window_->request_redraw();
@@ -326,6 +331,15 @@ void TextEdit::paste() {
     if (!clip.empty()) {
         insert_text(clip);
     }
+}
+
+void TextEdit::sync_commands() {
+    bool has_sel = has_selection();
+    bool not_empty = lines_.size() > 1 || !lines_[0].empty();
+    select_all_cmd->set_enabled(not_empty);
+    cut_cmd->set_enabled(has_sel);
+    copy_cmd->set_enabled(has_sel);
+    paste_cmd->set_enabled(!Clipboard::get_text().empty());
 }
 
 void TextEdit::paint(Painter &painter) {
@@ -481,11 +495,13 @@ bool TextEdit::handle_mouse(MouseEvent const &event) {
             }
             anchor_ = {p.line, start};
             cursor_ = {p.line, end};
+            sync_commands();
             reset_cursor_blink();
         } else if (event.click_count >= 3) {
             // Select entire line
             anchor_ = {p.line, 0};
             cursor_ = {p.line, static_cast<int>(lines_[p.line].size())};
+            sync_commands();
             reset_cursor_blink();
         } else {
             move_cursor(p, event.shift);
@@ -496,6 +512,7 @@ bool TextEdit::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Drag && dragging_) {
         cursor_ = pos_from_point(event.position);
+        sync_commands();
         reset_cursor_blink();
         return true;
     }
@@ -542,6 +559,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
             lines_[cursor_.line].erase(prev, cursor_.col - prev);
             cursor_.col = static_cast<int>(prev);
             anchor_ = cursor_;
+            sync_commands();
             ensure_cursor_visible();
             if (on_change) {
                 on_change();
@@ -552,6 +570,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
             lines_.erase(lines_.begin() + cursor_.line);
             cursor_ = {cursor_.line - 1, prev_len};
             anchor_ = cursor_;
+            sync_commands();
             ensure_cursor_visible();
             if (on_change) {
                 on_change();
@@ -565,6 +584,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         } else if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
             auto next = Utf8Iterator::next(lines_[cursor_.line], cursor_.col);
             lines_[cursor_.line].erase(cursor_.col, next - cursor_.col);
+            sync_commands();
             ensure_cursor_visible();
             if (on_change) {
                 on_change();
@@ -572,6 +592,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         } else if (cursor_.line + 1 < nlines) {
             lines_[cursor_.line] += lines_[cursor_.line + 1];
             lines_.erase(lines_.begin() + cursor_.line + 1);
+            sync_commands();
             ensure_cursor_visible();
             if (on_change) {
                 on_change();

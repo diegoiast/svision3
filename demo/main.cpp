@@ -306,7 +306,7 @@ int main(int argc, char *argv[]) {
     toolbar->add_separator();
 
     auto disabled_cmd = toolkit::Command::create("Disabled", [] {});
-    disabled_cmd->set_enabled_func([] { return false; });
+    disabled_cmd->set_enabled(false);
     disabled_cmd->set_tooltip("This command is disabled");
     toolbar->add_command(disabled_cmd);
 
