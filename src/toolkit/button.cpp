@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
 #include "toolkit/button.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
@@ -5,10 +8,6 @@
 #include <cctype>
 
 namespace toolkit {
-
-static auto mid(Color a, Color b) -> Color {
-    return Color::rgb((a.r + b.r) / 2, (a.g + b.g) / 2, (a.b + b.b) / 2);
-}
 
 Button::Button(std::string text) {
     auto pos = text.find('&');
@@ -35,7 +34,8 @@ void Button::set_text(std::string text) {
 
     if (pos != std::string::npos && pos + 1 < text.size()) {
         new_mnemonic_index = static_cast<int>(pos);
-        new_mnemonic_key = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
+        new_mnemonic_key =
+            static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
         new_display_text = text.substr(0, pos) + text.substr(pos + 1);
     } else {
         new_display_text = std::move(text);
@@ -64,27 +64,33 @@ void Button::stop_auto_repeat() {
 void Button::start_auto_repeat_delay() {
     stop_auto_repeat();
     if (window_ && auto_repeat_) {
-        auto_repeat_timer_id_ = window_->start_timer(auto_repeat_delay_, [this] {
-            if (pressed_ && hovered_ && on_click) {
-                on_click();
-                start_auto_repeat_interval();
-            } else {
-                auto_repeat_timer_id_ = 0;
-            }
-        }, false);
+        auto_repeat_timer_id_ = window_->start_timer(
+            auto_repeat_delay_,
+            [this] {
+                if (pressed_ && hovered_ && on_click) {
+                    on_click();
+                    start_auto_repeat_interval();
+                } else {
+                    auto_repeat_timer_id_ = 0;
+                }
+            },
+            false);
     }
 }
 
 void Button::start_auto_repeat_interval() {
     stop_auto_repeat();
     if (window_ && auto_repeat_) {
-        auto_repeat_timer_id_ = window_->start_timer(auto_repeat_interval_, [this] {
-            if (pressed_ && hovered_ && on_click) {
-                on_click();
-            } else {
-                stop_auto_repeat();
-            }
-        }, true);
+        auto_repeat_timer_id_ = window_->start_timer(
+            auto_repeat_interval_,
+            [this] {
+                if (pressed_ && hovered_ && on_click) {
+                    on_click();
+                } else {
+                    stop_auto_repeat();
+                }
+            },
+            true);
     }
 }
 
@@ -108,8 +114,9 @@ void Button::set_visible(bool v) {
 void Button::paint(Painter &painter) {
     auto const &style = Theme::current().button;
     auto bg = background_color_.value_or(style.background);
-    auto border_c = enabled_ ? style.border : mid(style.border, style.background);
-    auto text_c = enabled_ ? style.text : mid(style.text, style.background);
+    auto border_c = style.border;
+    auto text_c = enabled_ ? style.text : style.text_disabled;
+
     auto text_offset = (style.beveled && pressed_ && enabled_) ? 1.0f : 0.0f;
     auto fm = painter.font_metrics(style.font_size);
     auto text_w = painter.text_size(display_text_, style.font_size).width;
@@ -128,7 +135,7 @@ void Button::paint(Painter &painter) {
         } else {
             if (pressed_ && style.background_pressed) {
                 bg = *style.background_pressed;
-            } else if (hovered_ && style.background_hovered) {
+            } else if (!flat_ && hovered_ && style.background_hovered) {
                 bg = *style.background_hovered;
             }
         }

@@ -63,6 +63,12 @@ Theme Theme::from_palette(std::string name, Palette const &p) {
     apply_base(t.button, p);
     t.button.auto_repeat_delay = p.auto_repeat_delay;
     t.button.auto_repeat_interval = p.auto_repeat_interval;
+
+    auto mid = [](Color a, Color b) {
+        return Color::rgb((a.r + b.r * 2) / 3, (a.g + b.g * 2) / 3, (a.b + b.b * 2) / 3);
+    };
+    t.button.text_disabled       = mid(p.text, p.window_bg);
+
     if (!p.beveled) {
         bool dark = luma(p.widget_bg) < 0.5f;
         t.button.background_hovered = dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.06f);

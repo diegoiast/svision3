@@ -24,6 +24,7 @@ struct WidgetStyle {
 struct ButtonStyle : WidgetStyle {
     std::optional<Color> background_hovered;
     std::optional<Color> background_pressed;
+    Color text_disabled;
     Margins padding = {8, 16, 8, 16};
     float auto_repeat_delay = 0.5f;
     float auto_repeat_interval = 0.4f;
