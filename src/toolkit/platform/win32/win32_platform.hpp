@@ -55,6 +55,7 @@ class Win32PlatformApplication : public PlatformApplication {
     struct TimerInfo {
         int toolkit_id;
         Window *window;
+        HWND hwnd;
         bool repeats;
         std::function<void()> callback;
     };

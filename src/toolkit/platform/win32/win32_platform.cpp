@@ -395,17 +395,21 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         break;
     case WM_TIMER: {
         auto tid = static_cast<UINT_PTR>(wp);
-        auto timer_it = app->timers.find(tid);
-        if (timer_it != app->timers.end()) {
-            auto cb = timer_it->second.callback;
-            if (!timer_it->second.repeats) {
-                KillTimer(hwnd, tid);
-                app->timers.erase(timer_it);
+        auto it = app->timers.find(tid);
+        if (it != app->timers.end()) {
+            auto &info = it->second;
+            if (info.hwnd == hwnd) {
+                auto cb = info.callback;
+                if (!info.repeats) {
+                    KillTimer(hwnd, tid);
+                    app->timers.erase(it);
+                }
+                cb();
+                win->request_redraw();
+                return 0;
             }
-            cb();
-            win->request_redraw();
         }
-        return 0;
+        break;
     }
     case WM_KILLFOCUS:
         win->hide_tooltip();
@@ -679,10 +683,14 @@ int Win32PlatformWindow::start_timer(float interval_sec,
     UINT_PTR tid = app_->next_timer_id++;
     UINT ms = static_cast<UINT>(interval_sec * 1000.0f);
     if (ms == 0) ms = 1;
-    SetTimer(hwnd, tid, ms, nullptr);
+    if (SetTimer(hwnd, tid, ms, nullptr) == 0) {
+        spdlog::error("Failed to start Win32 timer with ID {}", tid);
+        return 0;
+    }
     Win32PlatformApplication::TimerInfo info;
     info.toolkit_id = static_cast<int>(tid);
     info.window = owner_;
+    info.hwnd = hwnd;
     info.repeats = repeats;
     info.callback = std::move(callback);
     app_->timers[tid] = std::move(info);
@@ -693,7 +701,7 @@ void Win32PlatformWindow::stop_timer(int timer_id) {
     auto tid = static_cast<UINT_PTR>(timer_id);
     auto it = app_->timers.find(tid);
     if (it != app_->timers.end()) {
-        KillTimer(hwnd, tid);
+        KillTimer(it->second.hwnd, tid);
         app_->timers.erase(it);
     }
 }
