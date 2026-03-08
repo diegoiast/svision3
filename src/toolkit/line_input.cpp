@@ -488,6 +488,9 @@ void LineInput::ensure_cursor_visible(Painter &painter) {
 }
 
 bool LineInput::handle_key(KeyEvent const &event) {
+    if (Widget::handle_key(event)) {
+        return true;
+    }
     if (event.type != KeyEvent::Type::Press) {
         return false;
     }

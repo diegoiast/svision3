@@ -451,6 +451,9 @@ bool TextEdit::handle_mouse(MouseEvent const &event) {
 // ── Keyboard ────────────────────────────────────────────────────────────────
 
 bool TextEdit::handle_key(KeyEvent const &event) {
+    if (Widget::handle_key(event)) {
+        return true;
+    }
     if (event.type != KeyEvent::Type::Press) {
         return false;
     }

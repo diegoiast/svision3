@@ -56,3 +56,51 @@ TEST_CASE("ContextMenu can be constructed with items", "[command]") {
     items.push_back(MenuItem::action("Paste", [] {}));
     ContextMenu menu(std::move(items));
 }
+
+TEST_CASE("Shortcut parsing and matching", "[command]") {
+    auto cmd = Command::create("Save", [] {});
+    cmd->set_shortcut("Ctrl+S");
+
+    KeyEvent ev{};
+    ev.type = KeyEvent::Type::Press;
+    ev.text = "s";
+    ev.ctrl = true;
+    REQUIRE(cmd->matches_key_event(ev));
+
+    ev.ctrl = false;
+    REQUIRE(!cmd->matches_key_event(ev));
+
+    ev.ctrl = true;
+    ev.text = "x";
+    REQUIRE(!cmd->matches_key_event(ev));
+}
+
+TEST_CASE("Shortcut parsing with special keys", "[command]") {
+    auto cmd = Command::create("Return", [] {});
+    cmd->set_shortcut("Enter");
+
+    KeyEvent ev{};
+    ev.type = KeyEvent::Type::Press;
+    ev.key = Key::Enter;
+    REQUIRE(cmd->matches_key_event(ev));
+
+    cmd->set_shortcut("Ctrl+Shift+Delete");
+    ev.key = Key::Delete;
+    ev.ctrl = true;
+    ev.shift = true;
+    REQUIRE(cmd->matches_key_event(ev));
+
+    ev.shift = false;
+    REQUIRE(!cmd->matches_key_event(ev));
+}
+
+TEST_CASE("Shortcut case insensitivity", "[command]") {
+    auto cmd = Command::create("Test", [] {});
+    cmd->set_shortcut("ctrl+a");
+
+    KeyEvent ev{};
+    ev.type = KeyEvent::Type::Press;
+    ev.text = "A";
+    ev.ctrl = true;
+    REQUIRE(cmd->matches_key_event(ev));
+}

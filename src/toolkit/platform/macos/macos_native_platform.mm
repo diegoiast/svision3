@@ -360,6 +360,18 @@ class CoreGraphicsPainter : public Painter {
     case 121: ke.key = toolkit::Key::PageDown;  break;
     case 36:  ke.key = toolkit::Key::Enter;     break;
     case 53:  ke.key = toolkit::Key::Escape;    break;
+    case 122: ke.key = toolkit::Key::F1;        break;
+    case 120: ke.key = toolkit::Key::F2;        break;
+    case 99:  ke.key = toolkit::Key::F3;        break;
+    case 118: ke.key = toolkit::Key::F4;        break;
+    case 96:  ke.key = toolkit::Key::F5;        break;
+    case 97:  ke.key = toolkit::Key::F6;        break;
+    case 98:  ke.key = toolkit::Key::F7;        break;
+    case 100: ke.key = toolkit::Key::F8;        break;
+    case 101: ke.key = toolkit::Key::F9;        break;
+    case 109: ke.key = toolkit::Key::F10;       break;
+    case 103: ke.key = toolkit::Key::F11;       break;
+    case 111: ke.key = toolkit::Key::F12;       break;
     default:  break;
     }
     bool has_mod = ke.alt || ke.super || ke.ctrl;

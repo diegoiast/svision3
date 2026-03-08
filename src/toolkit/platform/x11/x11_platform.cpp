@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
 #include "x11_platform.hpp"
 #include "../linux_utils.hpp"
 #include "toolkit/painters/cairo_painter.hpp"
@@ -157,6 +160,30 @@ static Key keysym_to_key(KeySym ks) {
     case XK_Tab:
     case XK_ISO_Left_Tab:
         return Key::Tab;
+    case XK_F1:
+        return Key::F1;
+    case XK_F2:
+        return Key::F2;
+    case XK_F3:
+        return Key::F3;
+    case XK_F4:
+        return Key::F4;
+    case XK_F5:
+        return Key::F5;
+    case XK_F6:
+        return Key::F6;
+    case XK_F7:
+        return Key::F7;
+    case XK_F8:
+        return Key::F8;
+    case XK_F9:
+        return Key::F9;
+    case XK_F10:
+        return Key::F10;
+    case XK_F11:
+        return Key::F11;
+    case XK_F12:
+        return Key::F12;
     default:
         return Key::NoKey;
     }
@@ -531,7 +558,8 @@ int X11PlatformApplication::run() {
             auto const now = std::chrono::steady_clock::now();
             for (auto const &t : d->timers) {
                 auto const ms =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now).count();
+                    std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now)
+                        .count();
                 int const wait_ms = ms < 0 ? 0 : static_cast<int>(ms);
                 if (timeout_ms < 0 || wait_ms < timeout_ms) {
                     timeout_ms = wait_ms;
@@ -892,8 +920,8 @@ void X11PlatformWindow::do_paint() {
 }
 
 void X11PlatformWindow::set_min_size(Size s) {
-    auto* d = app_->impl_.get();
-    auto* w = impl_.get();
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
     auto const scale = d->scale;
     auto hints = XSizeHints{};
     auto supplied = 0L;
@@ -918,8 +946,8 @@ void X11PlatformWindow::set_min_size(Size s) {
 }
 
 void X11PlatformWindow::set_max_size(Size s) {
-    auto* d = app_->impl_.get();
-    auto* w = impl_.get();
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
     auto const scale = d->scale;
     auto hints = XSizeHints{};
     auto supplied = 0L;
@@ -1024,11 +1052,9 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
         sa.colormap = colormap;
         sa.border_pixel = 0;
         sa.background_pixel = 0;
-        w->tooltip_xwindow =
-            XCreateWindow(d->display, d->root, sx, sy, piw, pih, 0, depth, InputOutput, visual,
-                          CWOverrideRedirect | CWSaveUnder | CWColormap | CWBorderPixel |
-                              CWBackPixel,
-                          &sa);
+        w->tooltip_xwindow = XCreateWindow(
+            d->display, d->root, sx, sy, piw, pih, 0, depth, InputOutput, visual,
+            CWOverrideRedirect | CWSaveUnder | CWColormap | CWBorderPixel | CWBackPixel, &sa);
     } else {
         XMoveResizeWindow(d->display, w->tooltip_xwindow, sx, sy, piw, pih);
     }

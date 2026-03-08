@@ -6,7 +6,8 @@
 #include "toolkit/events.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
-#include <functional>
+#include "toolkit/command.hpp"
+#include <algorithm>
 #include <functional>
 #include <optional>
 #include <string>
@@ -23,11 +24,25 @@ class Widget {
 
     static bool debug_show_frames;
 
+    void add_command(Command::Ptr cmd) { commands_.push_back(std::move(cmd)); }
+    void remove_command(Command::Ptr const &cmd) {
+        auto it = std::find(commands_.begin(), commands_.end(), cmd);
+        if (it != commands_.end()) {
+            commands_.erase(it);
+        }
+    }
+    std::vector<Command::Ptr> const &commands() const { return commands_; }
+
     void draw(Painter &painter);
     virtual void paint(Painter &painter) = 0;
     virtual bool handle_mouse(MouseEvent const &event) = 0;
     virtual bool handle_key(KeyEvent const &event) {
-        (void)event;
+        for (auto const &cmd : commands_) {
+            if (cmd->matches_key_event(event)) {
+                cmd->execute();
+                return true;
+            }
+        }
         return false;
     }
     virtual Size size_hint() const { return {0, 0}; }
@@ -111,6 +126,7 @@ class Widget {
 
   protected:
     Rect rect_;
+    std::vector<Command::Ptr> commands_;
     bool layout_dirty = true;
     bool focused_ = false;
     bool enabled_ = true;

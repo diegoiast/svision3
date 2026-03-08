@@ -38,6 +38,7 @@ endif()
 
 set(TOOLKIT_SOURCES
     src/toolkit/painter.cpp
+    src/toolkit/command.cpp
     src/toolkit/button.cpp
     src/toolkit/checkbox.cpp
     src/toolkit/combobox.cpp

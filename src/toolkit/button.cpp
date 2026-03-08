@@ -173,6 +173,9 @@ bool Button::handle_key(KeyEvent const &event) {
     if (!enabled_) {
         return false;
     }
+    if (Widget::handle_key(event)) {
+        return true;
+    }
     if (event.type != KeyEvent::Type::Press) {
         return false;
     }

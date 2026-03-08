@@ -365,20 +365,59 @@ void Window::handle_key(KeyEvent const &event) {
         }
     }
 
-    auto w = focused_widget_;
-    while (w) {
-        if (w->handle_key(event)) {
+    for (auto const &cmd : global_commands_) {
+        if (cmd->matches_key_event(event)) {
+            cmd->execute();
             request_redraw();
             return;
         }
-        w = w->parent();
     }
 
-    if (root_ && root_.get() != focused_widget_) {
-        if (root_->handle_key(event)) {
-            request_redraw();
+    if (focused_widget_) {
+        auto w = focused_widget_;
+        while (w) {
+            if (w->handle_key(event)) {
+                request_redraw();
+                return;
+            }
+            w = w->parent();
         }
     }
+
+    // If focused widget didn't handle it, or nothing is focused,
+    // try a recursive search from the root for global shortcuts attached to widgets.
+    if (root_ && dispatch_key_event_recursive(root_.get(), event)) {
+        request_redraw();
+        return;
+    }
+
+    for (auto &widget : widgets_) {
+        if (dispatch_key_event_recursive(widget.get(), event)) {
+            request_redraw();
+            return;
+        }
+    }
+}
+
+bool Window::dispatch_key_event_recursive(Widget *w, KeyEvent const &event) {
+    if (!w->is_visible()) {
+        return false;
+    }
+
+    // Try children first (depth first)
+    bool handled = false;
+    w->for_each_child([&](Widget *child) {
+        if (!handled && dispatch_key_event_recursive(child, event)) {
+            handled = true;
+        }
+    });
+
+    if (handled) {
+        return true;
+    }
+
+    // Try the widget itself
+    return w->handle_key(event);
 }
 
 auto Window::content_min_size() const -> Size {

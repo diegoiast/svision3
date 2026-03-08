@@ -570,8 +570,8 @@ int main(int argc, char *argv[]) {
     auto *editor_ptr = editor.get();
 
     auto open_btn = std::make_unique<toolkit::Button>("Open...");
-    open_btn->set_tooltip("Open a text file");
-    open_btn->on_click = [editor_ptr] {
+    open_btn->set_tooltip("Open a text file (F3)");
+    auto open_action = [editor_ptr] {
         NFD_Init();
         nfdu8char_t *out_path = nullptr;
         nfdresult_t result = NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
@@ -586,6 +586,12 @@ int main(int argc, char *argv[]) {
         }
         NFD_Quit();
     };
+    open_btn->on_click = open_action;
+
+    auto open_cmd = toolkit::Command::create("Open", open_action);
+    open_cmd->set_shortcut("F3");
+    open_btn->add_command(open_cmd);
+
     editor_toolbar->add_widget(std::move(open_btn));
 
     auto toolbar_spacer = std::make_unique<toolkit::Label>("");

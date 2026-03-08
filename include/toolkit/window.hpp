@@ -7,6 +7,8 @@
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"
+#include "toolkit/command.hpp"
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -32,6 +34,15 @@ class Window {
 
     Window(Window const &) = delete;
     Window &operator=(Window const &) = delete;
+
+    void add_command(Command::Ptr cmd) { global_commands_.push_back(std::move(cmd)); }
+    void remove_command(Command::Ptr const &cmd) {
+        auto it = std::find(global_commands_.begin(), global_commands_.end(), cmd);
+        if (it != global_commands_.end()) {
+            global_commands_.erase(it);
+        }
+    }
+    std::vector<Command::Ptr> const &global_commands() const { return global_commands_; }
 
     void add_widget(std::unique_ptr<Widget> widget);
     void set_root(std::unique_ptr<Widget> root);
@@ -71,6 +82,7 @@ class Window {
     void set_focused_widget(Widget *w);
 
   private:
+    bool dispatch_key_event_recursive(Widget *w, KeyEvent const &event);
     void focus_next(bool reverse);
     void update_tooltip(Widget *under, Point mouse_pos);
     void show_tooltip();
@@ -85,6 +97,7 @@ class Window {
     Size max_size_;
     std::unique_ptr<Widget> root_;
     std::vector<std::unique_ptr<Widget>> widgets_;
+    std::vector<Command::Ptr> global_commands_;
     Widget *focused_widget_ = nullptr;
     std::optional<Popup> popup_;
     int blink_timer_id_ = 0;

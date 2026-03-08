@@ -172,6 +172,30 @@ static Key xkb_to_key(xkb_keysym_t sym) {
     case XKB_KEY_Tab:
     case XKB_KEY_ISO_Left_Tab:
         return Key::Tab;
+    case XKB_KEY_F1:
+        return Key::F1;
+    case XKB_KEY_F2:
+        return Key::F2;
+    case XKB_KEY_F3:
+        return Key::F3;
+    case XKB_KEY_F4:
+        return Key::F4;
+    case XKB_KEY_F5:
+        return Key::F5;
+    case XKB_KEY_F6:
+        return Key::F6;
+    case XKB_KEY_F7:
+        return Key::F7;
+    case XKB_KEY_F8:
+        return Key::F8;
+    case XKB_KEY_F9:
+        return Key::F9;
+    case XKB_KEY_F10:
+        return Key::F10;
+    case XKB_KEY_F11:
+        return Key::F11;
+    case XKB_KEY_F12:
+        return Key::F12;
     default:
         return Key::NoKey;
     }
