@@ -52,6 +52,8 @@ class Command {
     bool is_checked() const { return checked_func_ && checked_func_(); }
     void set_checked_func(std::function<bool()> func) { checked_func_ = std::move(func); }
 
+    void set_execute_func(std::function<void()> func) { execute_ = std::move(func); }
+
     void execute() {
         if (is_enabled() && execute_) {
             execute_();

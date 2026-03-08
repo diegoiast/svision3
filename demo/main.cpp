@@ -14,6 +14,7 @@
 #include "toolkit/table_view.hpp"
 #include "toolkit/text_edit.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/toolbar.hpp"
 #include "toolkit/window.hpp"
 #include <fstream>
 #include <nfd.h>
@@ -290,6 +291,31 @@ int main(int argc, char *argv[]) {
     root->set_margins({0, 0, 0, 0});
     root->set_spacing(0);
 
+    // ── Toolbar ──────────────────────────────────────────────────────────
+    auto toolbar = std::make_unique<toolkit::Toolbar>();
+
+    auto ok_action = [] { spdlog::info("Toolbar: OK triggered"); };
+    auto ok_cmd = toolkit::Command::create("OK", ok_action);
+    ok_cmd->set_tooltip("Trigger the OK action");
+    toolbar->add_command(ok_cmd);
+
+    auto close_cmd = toolkit::Command::create("Close", [window] { window->close(); });
+    close_cmd->set_tooltip("Close the application");
+    toolbar->add_command(close_cmd);
+
+    toolbar->add_separator();
+
+    auto disabled_cmd = toolkit::Command::create("Disabled", [] {});
+    disabled_cmd->set_enabled_func([] { return false; });
+    disabled_cmd->set_tooltip("This command is disabled");
+    toolbar->add_command(disabled_cmd);
+
+    auto autoclick_cmd = toolkit::Command::create("Increase count", [] {});
+    autoclick_cmd->set_tooltip("Increase the counter");
+    toolbar->add_command(autoclick_cmd);
+
+    root->add_widget(std::move(toolbar));
+
     auto tabs = std::make_unique<toolkit::TabWidget>();
     auto *tabs_ptr = tabs.get();
 
@@ -368,10 +394,17 @@ int main(int argc, char *argv[]) {
     auto repeat_label = std::make_unique<toolkit::Label>("Count: 0");
     auto *repeat_label_ptr = repeat_label.get();
     static int repeat_count = 0;
-    repeat_btn->on_click = [repeat_label_ptr] {
+    auto repeat_action = [repeat_label_ptr] {
         repeat_count++;
         repeat_label_ptr->set_text(fmt::format("Count: {}", repeat_count));
     };
+    repeat_btn->on_click = repeat_action;
+
+    autoclick_cmd->set_execute_func(repeat_action);
+    autoclick_cmd->set_shortcut("F4");
+    autoclick_cmd->set_tooltip("Press F4");
+    repeat_btn->add_command(autoclick_cmd);
+
     repeat_row->add_widget(std::move(repeat_btn));
     repeat_row->add_widget(std::move(repeat_label), 1);
     tab_main->add_widget(std::move(repeat_row));
@@ -399,9 +432,8 @@ int main(int argc, char *argv[]) {
     tab_inputs->add_widget(std::move(input3));
 
     auto input4 = std::make_unique<toolkit::LineInput>("Numbers only (Blocking)");
-    input4->set_validator([](std::string const &text) {
-        return std::regex_match(text, std::regex("[0-9]*"));
-    });
+    input4->set_validator(
+        [](std::string const &text) { return std::regex_match(text, std::regex("[0-9]*")); });
     input4->set_validation_mode(toolkit::LineInput::ValidationMode::Block);
     tab_inputs->add_widget(std::move(input4));
 
@@ -411,7 +443,9 @@ int main(int argc, char *argv[]) {
     auto input5 = std::make_unique<toolkit::LineInput>("Email address (Visual)");
     auto *input5_ptr = input5.get();
     input5->set_validator([](std::string const &text) {
-        if (text.empty()) return true;
+        if (text.empty()) {
+            return true;
+        }
         static const std::regex email_regex(R"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})");
         return std::regex_match(text, email_regex);
     });
@@ -437,14 +471,14 @@ int main(int argc, char *argv[]) {
 
     auto slider_row = std::make_unique<toolkit::HBoxLayout>();
     slider_row->set_spacing(10);
-    
+
     auto slider = std::make_unique<toolkit::Slider>();
     slider->set_range(0, 100);
     slider->set_value(progress_ptr->value() * 100.0f);
-    
+
     auto slider_val = std::make_unique<toolkit::Label>(fmt::format("{:.0f}%", slider->value()));
     auto *slider_val_ptr = slider_val.get();
-    
+
     // We need to capture the timer ID to stop it if the user interacts with the slider
     static int auto_progress_timer = 0;
 
@@ -457,7 +491,7 @@ int main(int argc, char *argv[]) {
         progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
         slider_val_ptr->set_text(fmt::format("{:.0f}%", v));
     };
-    
+
     slider_row->add_widget(std::move(slider), 1);
     slider_row->add_widget(std::move(slider_val));
     tab_inputs->add_widget(std::move(slider_row));
