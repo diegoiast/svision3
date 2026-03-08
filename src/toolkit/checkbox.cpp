@@ -55,8 +55,9 @@ void Checkbox::paint(Painter &painter) {
     auto box = style.box_size;
     auto box_y = (rect_.height - box) / 2.0f;
     auto box_rect = Rect{0, box_y, box, box};
+    auto border = focused_ ? style.border_focused : style.border;
 
-    painter.draw_frame(box_rect, style.background, style.border, style, true);
+    painter.draw_frame(box_rect, style.background, border, style, true);
     // FIXME drawing of checkbox should be done by theme
     if (state_ == CheckState::Checked) {
         auto cx = box_rect.x + box * 0.22f;

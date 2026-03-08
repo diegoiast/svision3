@@ -41,6 +41,22 @@ TEST_CASE("Color::rgb and Color::rgba", "[types]") {
     REQUIRE(c2.a == 0.4f);
 }
 
+TEST_CASE("Color::from_argb", "[types]") {
+    // 0xFF00FF00 -> Alpha: 255, Red: 0, Green: 255, Blue: 0
+    auto c = Color::from_argb(0xFF00FF00);
+    REQUIRE(c.a == 1.0f);
+    REQUIRE(c.r == 0.0f);
+    REQUIRE(c.g == 1.0f);
+    REQUIRE(c.b == 0.0f);
+
+    // 0x80123456 -> Alpha: 128, Red: 18 (0x12), Green: 52 (0x34), Blue: 86 (0x56)
+    auto c2 = Color::from_argb(0x80123456);
+    REQUIRE_THAT(c2.a, WithinAbs(128.0f / 255.0f, 0.001f));
+    REQUIRE_THAT(c2.r, WithinAbs(18.0f / 255.0f, 0.001f));
+    REQUIRE_THAT(c2.g, WithinAbs(52.0f / 255.0f, 0.001f));
+    REQUIRE_THAT(c2.b, WithinAbs(86.0f / 255.0f, 0.001f));
+}
+
 TEST_CASE("Color::darken clamps to zero", "[types]") {
     auto c = Color::rgb(0.1f, 0.2f, 0.3f);
     auto d = c.darken(0.5f);

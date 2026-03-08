@@ -114,7 +114,7 @@ void Button::set_visible(bool v) {
 void Button::paint(Painter &painter) {
     auto const &style = Theme::current().button;
     auto bg = background_color_.value_or(style.background);
-    auto border_c = style.border;
+    auto border_c = focused_ ? style.border_focused : style.border;
     auto text_c = enabled_ ? style.text : style.text_disabled;
 
     auto text_offset = (style.beveled && pressed_ && enabled_) ? 1.0f : 0.0f;
@@ -135,6 +135,8 @@ void Button::paint(Painter &painter) {
         } else {
             if (pressed_ && style.background_pressed) {
                 bg = *style.background_pressed;
+            } else if (focused_) {
+                bg = style.background_selected;
             } else if (!flat_ && hovered_ && style.background_hovered) {
                 bg = *style.background_hovered;
             }

@@ -35,9 +35,10 @@ void RadioButton::paint(Painter &painter) {
     auto center = Point{r, rect_.height / 2.0f};
     auto text_x = style.box_size + style.spacing;
     auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
+    auto border = focused_ ? style.border_focused : style.border;
 
     painter.fill_circle(center, r, style.background);
-    painter.draw_circle(center, r, style.border, style.border_width);
+    painter.draw_circle(center, r, border, style.border_width);
 
     // FIXME: this should be drawed by the theme, not here
     if (style.beveled) {

@@ -23,16 +23,13 @@ void Painter::draw_frame(Rect const &rect, Color bg, Color border, WidgetStyle c
     // Stroke is centered on the path, so we inset by half the width.
     float inset = style.border_width / 2.0f;
     Rect border_rect = rect.inset(inset);
+    Color border_c = sunken ? border.darken(0.2f) : border;
 
-    if (sunken) {
-        draw_rect(border_rect, border.darken(0.2f), style.border_width);
+    if (style.corner_radius > 0.0f) {
+        draw_rounded_rect(border_rect, border_c, std::max(0.0f, style.corner_radius - inset),
+                          style.border_width);
     } else {
-        if (style.corner_radius > 0.0f) {
-            draw_rounded_rect(border_rect, border, std::max(0.0f, style.corner_radius - inset),
-                              style.border_width);
-        } else {
-            draw_rect(border_rect, border, style.border_width);
-        }
+        draw_rect(border_rect, border_c, style.border_width);
     }
 }
 

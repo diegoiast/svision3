@@ -12,7 +12,9 @@ namespace toolkit {
 struct WidgetStyle {
     Color background;
     Color border;
+    Color border_focused;
     Color text;
+    Color background_selected = Color::rgba(0, 0, 0, 0);
     Color highlight = Color::rgba(0, 0, 0, 0);
     Color shadow = Color::rgba(0, 0, 0, 0);
     float border_width = 1.0f;
@@ -132,6 +134,7 @@ struct Palette {
     Color text;
     Color border;
     Color accent;
+    Color background_selected = Color::rgba(0, 0, 0, 0);
     Color alternate_bg = Color::rgb(0.94f, 0.94f, 0.94f);
     float font_size = 14.0f;
     std::string system_font = "sans-serif";

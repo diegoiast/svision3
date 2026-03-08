@@ -736,7 +736,6 @@ int main(int argc, char *argv[]) {
     button_bar->add_widget(std::move(ok_btn));
 
     auto disabled_btn = std::make_unique<toolkit::Button>("Disabled");
-    disabled_btn->set_background_color(toolkit::Color::rgb(0.3f, 0.5f, 0.3f));
     disabled_btn->set_enabled(false);
     disabled_btn->set_tooltip("This button is disabled");
     button_bar->add_widget(std::move(disabled_btn));
