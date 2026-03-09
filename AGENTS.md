@@ -28,6 +28,10 @@ cmake --preset conan-debug -G Ninja
     1. File names are *.cpp, *.hpp (*.mm where needed)
     1. First 2 lines will be: `// SPDX-License-Identifier: MIT` and `// SPDX-FileCopyrightText: `
     1. Includes will be guarded by `#pragma once`.
+    1. Do not modify `todo.txt`
+    1. When working on a widget, do not modify platform code - keep modifications
+       inside the widget code. If platform changes are needed - prompt developer
+       to modify those things.
 1. Variables
     1. Variable names are `snake_case`.
     2. Macros (`#define`) are always UPPER_CASE.
@@ -38,6 +42,7 @@ cmake --preset conan-debug -G Ninja
 1. Functions
     1. Stand alone functions will have trailing return syntax (`auto foo() -> bool`)
     2. If functions are used only in current compilation unit, make them static.
+    3. If a method/function needs a callback function, it will
 1. Blocks
     1. All blocks will have `{}`, even single line `if`/`for`/`while` loops.
     1. Try to exit from block on errors, edge cases at beginning of blocks
