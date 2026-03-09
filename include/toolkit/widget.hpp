@@ -70,6 +70,7 @@ class Widget {
 
     virtual void on_focus() {}
     virtual void on_blur() {}
+    virtual void on_theme_changed();
 
     void set_enabled(bool e);
     bool is_enabled() const { return enabled_; }

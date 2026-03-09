@@ -46,6 +46,7 @@ class Window {
 
     void add_widget(std::unique_ptr<Widget> widget);
     void set_root(std::unique_ptr<Widget> root);
+    void on_theme_changed();
     void show();
     void close();
     void request_redraw(std::string_view reason = "other");

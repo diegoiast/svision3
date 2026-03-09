@@ -30,6 +30,10 @@ bool Widget::is_effectively_visible() const {
     return true;
 }
 
+void Widget::on_theme_changed() {
+    invalidate_layout();
+}
+
 void Widget::set_enabled(bool e) {
     if (enabled_ == e) return;
     enabled_ = e;

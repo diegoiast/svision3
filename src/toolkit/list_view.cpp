@@ -358,9 +358,12 @@ void ListView::paint(Painter &painter) {
 
     auto first_visible = std::max(0, static_cast<int>(scroll_offset_ / ih));
     auto last_visible = std::min(n - 1, static_cast<int>((scroll_offset_ + rect_.height) / ih));
+    auto bw = style.border_width;
+    auto inner_w = rect_.width - bw * 2;
+
     for (auto i = first_visible; i <= last_visible; i++) {
         auto iy = ih * static_cast<float>(i) - scroll_offset_;
-        auto item_rect = Rect{0, iy, rect_.width, ih};
+        auto item_rect = Rect{bw, iy, inner_w, ih};
         auto selected = is_selected(i);
         auto hovered = (i == hovered_) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
@@ -376,7 +379,7 @@ void ListView::paint(Painter &painter) {
             painter.fill_rect(item_rect, style.alternate_bg);
         }
 
-        auto text_col = (selected || hovered) ? style.selected_text : style.text;
+        auto text_col = selected ? style.selected_text : style.text;
         auto text_y = iy + (ih - fm.height) / 2.0f + fm.ascent;
         painter.draw_text(adapter_->text_at(i), {style.item_padding_h, text_y}, text_col,
                           style.font_size);

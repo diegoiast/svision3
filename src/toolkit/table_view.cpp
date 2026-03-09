@@ -400,20 +400,21 @@ void TableView::paint(Painter &painter) {
     painter.push_clip({0, 0, rect_.width, rect_.height});
 
     // ── Header ──────────────────────────────────────────────────────────────
-    auto header_rect = Rect{0, 0, rect_.width, hh};
-    auto hx = -scroll_x_;
+    auto bw = style.border_width;
+    auto header_rect = Rect{bw, 0, rect_.width - bw * 2, hh};
+    auto hx = bw - scroll_x_;
 
     painter.fill_rect(header_rect, style.header_bg);
     for (auto c = 0; c < ncols; c++) {
         auto cw = column_widths_[c];
         auto sep_x = hx + cw;
 
-        if (sep_x > 0 && hx < rect_.width) {
+        if (sep_x > bw && hx < rect_.width - bw) {
             auto text_y = (hh - fm.height) / 2.0f + fm.ascent;
             auto text = std::string{model_->header_text(c)};
 
             painter.push_clip(
-                {std::max(hx, 0.0f), 0, std::min(cw, rect_.width - std::max(hx, 0.0f)), hh});
+                {std::max(hx, bw), 0, std::min(cw, rect_.width - bw - std::max(hx, bw)), hh});
             if (c == sort_column_ && sort_order_ != SortOrder::None) {
                 text += sort_order_ == SortOrder::Ascending ? " \xe2\x96\xb2" : " \xe2\x96\xbc";
             }
@@ -422,17 +423,18 @@ void TableView::paint(Painter &painter) {
             painter.pop_clip();
         }
 
-        if (sep_x > 0 && sep_x < rect_.width) {
+        if (sep_x > bw && sep_x < rect_.width - bw) {
             painter.draw_line({sep_x, 0}, {sep_x, hh}, style.header_border);
         }
         hx += cw;
     }
 
-    painter.draw_line({0, hh}, {rect_.width, hh}, style.header_border);
+    painter.draw_line({bw, hh}, {rect_.width - bw, hh}, style.header_border);
 
     auto body_clip = Rect{0, hh, rect_.width, rect_.height - hh};
     auto first_visible = std::max(0, static_cast<int>(scroll_y_ / rh));
     auto last_visible = std::min(nrows - 1, static_cast<int>((scroll_y_ + rect_.height - hh) / rh));
+    auto inner_w = rect_.width - bw * 2;
 
     painter.push_clip(body_clip);
     for (int r = first_visible; r <= last_visible; r++) {
@@ -441,7 +443,7 @@ void TableView::paint(Painter &painter) {
         auto selected = is_selected(r);
         auto hovered = (r == hovered_row_) && !selected;
         auto alt_row = alternating_ && (r % 2 == 1);
-        auto row_rect = Rect{0, ry, rect_.width, rh};
+        auto row_rect = Rect{bw, ry, inner_w, rh};
 
         if (selected) {
             painter.fill_rect(row_rect,
@@ -454,7 +456,7 @@ void TableView::paint(Painter &painter) {
             painter.fill_rect(row_rect, style.alternate_bg);
         }
 
-        auto text_col = (selected || hovered) ? style.selected_text : style.text;
+        auto text_col = selected ? style.selected_text : style.text;
         auto text_y = ry + (rh - fm.height) / 2.0f + fm.ascent;
         auto cx = -scroll_x_;
 

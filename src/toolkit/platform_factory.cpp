@@ -28,10 +28,13 @@
 namespace toolkit {
 
 static PlatformApplication *s_platform = nullptr;
+static Application *s_application = nullptr;
 
 namespace detail {
 PlatformApplication *current_platform() { return s_platform; }
 void set_current_platform(PlatformApplication *p) { s_platform = p; }
+Application *current_application() { return s_application; }
+void set_current_application(Application *a) { s_application = a; }
 } // namespace detail
 
 std::unique_ptr<PlatformApplication> create_platform_application() {
@@ -123,6 +126,12 @@ void Application::quit() { impl_->platform->quit(); }
 std::string_view Application::platform_name() const { return impl_->platform->name(); }
 
 std::string_view Application::painter_name() const { return impl_->platform->painter_name(); }
+
+void Application::notify_theme_changed() {
+    for (auto &win : windows_) {
+        win->on_theme_changed();
+    }
+}
 
 void Application::post_to_main_thread(std::function<void()> fn) {
     if (s_platform) {

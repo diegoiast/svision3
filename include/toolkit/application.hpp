@@ -25,6 +25,8 @@ class Application {
     std::string_view platform_name() const;
     std::string_view painter_name() const;
 
+    void notify_theme_changed();
+
     static void post_to_main_thread(std::function<void()> fn);
 
   private:

@@ -265,8 +265,9 @@ auto beatlesSongsLength = std::vector<std::vector<std::string>>{
     {"Golden Slumbers", "Abbey Road", "1969", "1:31"},
 };
 
-static void apply_theme(toolkit::Window *window) {
+static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
     toolkit::Theme::set_current(toolkit::Theme::create(current_style, current_scheme));
+    app.notify_theme_changed();
     window->request_redraw();
 }
 
@@ -358,9 +359,9 @@ int main(int argc, char *argv[]) {
     auto combo = std::make_unique<toolkit::Combobox>(style_names);
     combo->set_selected(static_cast<int>(current_style));
     combo->set_tooltip("Select a theme style");
-    combo->on_change = [window](int index) {
+    combo->on_change = [&app, window](int index) {
         current_style = static_cast<toolkit::ThemeStyle>(index);
-        apply_theme(window);
+        apply_theme(app, window);
     };
     tab_main->add_widget(std::move(combo));
 
@@ -371,11 +372,11 @@ int main(int argc, char *argv[]) {
     auto rb_pink = std::make_unique<toolkit::RadioButton>("Pink", scheme_group);
     rb_pink->set_tooltip("Pink color scheme");
     scheme_group.select(rb_light.get());
-    scheme_group.on_change = [window](int index) {
+    scheme_group.on_change = [&app, window](int index) {
         constexpr toolkit::ColorScheme schemes[] = {
             toolkit::ColorScheme::Light, toolkit::ColorScheme::Dark, toolkit::ColorScheme::Pink};
         current_scheme = schemes[index];
-        apply_theme(window);
+        apply_theme(app, window);
     };
     tab_main->add_widget(std::move(rb_light));
     tab_main->add_widget(std::move(rb_dark));

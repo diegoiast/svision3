@@ -56,6 +56,10 @@ static void apply_base(WidgetStyle &ws, Palette const &p) {
 static void palette_macos(Palette &p, ColorScheme scheme) {
     p.corner_radius = 6.0f;
     p.border_width = 0.5f;
+    Color macBlue = Color::rgb(0.0f, 0.48f, 1.0f);
+    p.accent = macBlue;
+    p.background_selected = macBlue;
+
     switch (scheme) {
     case ColorScheme::Light:
         p.window_bg = gray(0.93f);
@@ -63,7 +67,6 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
         p.input_bg = gray(1.0f);
         p.text = gray(0.20f);
         p.border = gray(0.75f);
-        p.accent = Color::rgb(0.26f, 0.52f, 0.96f);
         p.alternate_bg = gray(0.90f);
         break;
     case ColorScheme::Dark:
@@ -72,16 +75,17 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
         p.input_bg = gray(0.24f);
         p.text = gray(0.92f);
         p.border = gray(0.38f);
-        p.accent = Color::rgb(0.26f, 0.52f, 0.96f);
         p.alternate_bg = gray(0.28f);
         break;
     case ColorScheme::Pink:
+        Color rose = Color::rgb(0.89f, 0.27f, 0.50f);
         p.window_bg = Color::rgb(0.98f, 0.92f, 0.94f);
         p.widget_bg = Color::rgb(1.0f, 0.97f, 0.98f);
         p.input_bg = Color::rgb(1.0f, 0.97f, 0.98f);
         p.text = gray(0.22f);
         p.border = Color::rgb(0.82f, 0.70f, 0.74f);
-        p.accent = Color::rgb(0.89f, 0.27f, 0.50f);
+        p.accent = rose;
+        p.background_selected = rose;
         p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
         break;
     }
@@ -89,6 +93,10 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
 
 static void palette_material(Palette &p, ColorScheme scheme) {
     p.corner_radius = 4.0f;
+    Color matPurple = Color::rgb(0.384f, 0.0f, 0.933f);
+    p.accent = matPurple;
+    p.background_selected = matPurple;
+
     switch (scheme) {
     case ColorScheme::Light:
         p.window_bg = gray(0.98f);
@@ -96,7 +104,6 @@ static void palette_material(Palette &p, ColorScheme scheme) {
         p.input_bg = gray(1.0f);
         p.text = gray(0.13f);
         p.border = gray(0.74f);
-        p.accent = Color::rgb(0.384f, 0.0f, 0.933f);
         p.alternate_bg = gray(0.90f);
         break;
     case ColorScheme::Dark:
@@ -106,15 +113,18 @@ static void palette_material(Palette &p, ColorScheme scheme) {
         p.text = gray(0.93f);
         p.border = gray(0.33f);
         p.accent = Color::rgb(0.55f, 0.33f, 0.97f);
+        p.background_selected = p.accent;
         p.alternate_bg = Color::rgb(0.16f, 0.16f, 0.16f);
         break;
     case ColorScheme::Pink:
+        Color rose = Color::rgb(0.89f, 0.27f, 0.50f);
         p.window_bg = Color::rgb(0.99f, 0.93f, 0.95f);
         p.widget_bg = Color::rgb(1.0f, 0.97f, 0.98f);
         p.input_bg = Color::rgb(1.0f, 0.97f, 0.98f);
         p.text = gray(0.15f);
         p.border = Color::rgb(0.80f, 0.68f, 0.72f);
-        p.accent = Color::rgb(0.89f, 0.27f, 0.50f);
+        p.accent = rose;
+        p.background_selected = rose;
         p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
         break;
     }
@@ -122,6 +132,10 @@ static void palette_material(Palette &p, ColorScheme scheme) {
 
 static void palette_win11(Palette &p, ColorScheme scheme) {
     p.corner_radius = 4.0f;
+    Color winBlue = Color::rgb(0.0f, 0.47f, 0.84f);
+    p.accent = winBlue;
+    p.background_selected = winBlue;
+
     switch (scheme) {
     case ColorScheme::Light:
         p.window_bg = gray(0.95f);
@@ -129,7 +143,6 @@ static void palette_win11(Palette &p, ColorScheme scheme) {
         p.input_bg = gray(1.0f);
         p.text = gray(0.10f);
         p.border = gray(0.68f);
-        p.accent = Color::rgb(0.0f, 0.47f, 0.84f);
         p.alternate_bg = gray(0.90f);
         break;
     case ColorScheme::Dark:
@@ -138,16 +151,18 @@ static void palette_win11(Palette &p, ColorScheme scheme) {
         p.input_bg = Color::rgb(0.18f, 0.18f, 0.18f);
         p.text = gray(0.95f);
         p.border = gray(0.30f);
-        p.accent = Color::rgb(0.0f, 0.47f, 0.84f);
+        p.background_selected = winBlue;
         p.alternate_bg = Color::rgb(0.22f, 0.22f, 0.22f);
         break;
     case ColorScheme::Pink:
+        Color rose = Color::rgb(0.89f, 0.27f, 0.50f);
         p.window_bg = Color::rgb(0.98f, 0.93f, 0.95f);
         p.widget_bg = Color::rgb(1.0f, 0.97f, 0.98f);
         p.input_bg = Color::rgb(1.0f, 0.97f, 0.98f);
         p.text = gray(0.12f);
         p.border = Color::rgb(0.80f, 0.68f, 0.73f);
-        p.accent = Color::rgb(0.89f, 0.27f, 0.50f);
+        p.accent = rose;
+        p.background_selected = rose;
         p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
         break;
     }
@@ -219,7 +234,7 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.text = Color::rgb(0.937f, 0.941f, 0.945f);
         p.border = gray(0.30f);
         p.accent = Color::rgb(0.239f, 0.682f, 0.914f);
-        p.background_selected = p.accent.darken(0.2f);
+        p.background_selected = p.accent;
         p.alternate_bg = Color::rgb(0.23f, 0.25f, 0.27f);
         break;
     case ColorScheme::Pink:
@@ -229,7 +244,7 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.text = Color::rgb(0.16f, 0.15f, 0.16f);
         p.border = Color::rgb(0.80f, 0.70f, 0.74f);
         p.accent = roseLt;
-        p.background_selected = roseLt.lighten(0.2f);
+        p.background_selected = p.accent;
         p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
         break;
     }
@@ -237,7 +252,10 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
 
 static void palette_gnome(Palette &p, ColorScheme scheme) {
     p.corner_radius = 8.0f;
-    Color rose = Color::rgb(0.89f, 0.27f, 0.50f);
+    Color gnomeBlue = Color::rgb(0.21f, 0.52f, 0.89f);
+    p.accent = gnomeBlue;
+    p.background_selected = gnomeBlue;
+
     switch (scheme) {
     case ColorScheme::Light:
         p.window_bg = Color::rgb(0.98f, 0.98f, 0.98f);
@@ -245,7 +263,6 @@ static void palette_gnome(Palette &p, ColorScheme scheme) {
         p.input_bg = gray(1.0f);
         p.text = Color::rgb(0.18f, 0.20f, 0.21f);
         p.border = Color::rgb(0.86f, 0.84f, 0.83f);
-        p.accent = Color::rgb(0.21f, 0.52f, 0.89f);
         p.alternate_bg = gray(0.90f);
         break;
     case ColorScheme::Dark:
@@ -254,16 +271,17 @@ static void palette_gnome(Palette &p, ColorScheme scheme) {
         p.input_bg = Color::rgb(0.22f, 0.22f, 0.22f);
         p.text = gray(0.95f);
         p.border = gray(0.30f);
-        p.accent = Color::rgb(0.21f, 0.52f, 0.89f);
         p.alternate_bg = Color::rgb(0.26f, 0.26f, 0.26f);
         break;
     case ColorScheme::Pink:
+        Color rose = Color::rgb(0.89f, 0.27f, 0.50f);
         p.window_bg = Color::rgb(0.99f, 0.93f, 0.95f);
         p.widget_bg = Color::rgb(1.0f, 0.97f, 0.98f);
         p.input_bg = Color::rgb(1.0f, 0.97f, 0.98f);
         p.text = Color::rgb(0.20f, 0.18f, 0.19f);
         p.border = Color::rgb(0.84f, 0.76f, 0.79f);
         p.accent = rose;
+        p.background_selected = rose;
         p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
         break;
     }
@@ -329,18 +347,14 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
     case ThemeStyle::MacOS:
         t.button.padding = {4, 12, 4, 12};
         t.line_input.padding = {4, 10, 4, 10};
-        t.combobox.item_hovered = p.accent;
         t.tab_widget.tab_padding_h = 12.0f;
         t.tab_widget.tab_padding_v = 4.0f;
         break;
 
     case ThemeStyle::Material:
-        t.button.background_hovered =
-            dark ? p.widget_bg.lighten(0.08f) : p.widget_bg.darken(0.04f);
-        t.button.background_pressed =
-            dark ? p.widget_bg.lighten(0.15f) : p.widget_bg.darken(0.10f);
+        t.button.background_hovered = dark ? p.widget_bg.lighten(0.08f) : p.widget_bg.darken(0.04f);
+        t.button.background_pressed = dark ? p.widget_bg.lighten(0.15f) : p.widget_bg.darken(0.10f);
         t.button.padding = {10, 24, 10, 24};
-        t.combobox.item_hovered = p.accent;
         t.slider.handle_size = 18.0f;
         t.slider.groove_thickness = 4.0f;
         break;
@@ -349,13 +363,13 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.button.background_hovered = dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.06f);
         t.button.background_pressed = dark ? p.widget_bg.lighten(0.14f) : p.widget_bg.darken(0.14f);
         t.button.padding = {6, 20, 6, 20};
-        t.combobox.item_hovered = p.accent;
         t.slider.handle_size = 20.0f;
         t.slider.groove_thickness = 4.0f;
         break;
 
     case ThemeStyle::Win95: {
         t.button.padding = {4, 12, 4, 12};
+        t.table_view.header_border = gray(0.0f);
         t.progress_bar.fill =
             dark ? Color::rgb(0.30f, 0.50f, 0.30f) : Color::rgb(0.0f, 0.0f, 0.50f);
         t.progress_bar.chunked = true;
@@ -388,7 +402,10 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.radio.background_selected = p.background_selected;
         t.radio.indicator           = gray(0.0f);
 
-        t.combobox.item_hovered     = p.accent;
+        t.list_view.selected_bg     = p.accent;
+        t.list_view.hovered_bg      = p.background_selected;
+        t.table_view.selected_bg    = p.accent;
+        t.table_view.hovered_bg     = p.background_selected;
 
         t.slider.handle_size = 20.0f;
         t.slider.groove_thickness = 6.0f;
@@ -405,7 +422,6 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.checkbox.corner_radius = 5.0f;
         t.checkbox.border_width = 2.0f;
         t.radio.border_width = 2.0f;
-        t.combobox.item_hovered = p.accent;
         t.line_input.corner_radius = p.corner_radius;
         t.combobox.corner_radius = p.corner_radius;
         t.slider.handle_size = 22.0f;
@@ -492,8 +508,8 @@ Theme Theme::from_palette(std::string name, Palette const &p) {
     apply_base(t.table_view, p);
     t.table_view.selected_bg    = p.background_selected;
     t.table_view.selected_text  = gray(1.0f);
-    t.table_view.hovered_bg = is_dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.04f);
-    t.table_view.alternate_bg = p.alternate_bg;
+    t.table_view.hovered_bg     = is_dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.04f);
+    t.table_view.alternate_bg   = p.alternate_bg;
     t.table_view.header_bg = is_dark ? p.window_bg.lighten(0.06f) : p.window_bg.darken(0.04f);
     t.table_view.header_text = p.text;
     t.table_view.header_border = p.border;

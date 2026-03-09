@@ -118,6 +118,21 @@ void Window::show() {
     }
 }
 
+static void on_theme_changed_recursive(Widget *w) {
+    if (!w) return;
+    w->on_theme_changed();
+    w->for_each_child([](Widget *child) { on_theme_changed_recursive(child); });
+}
+
+void Window::on_theme_changed() {
+    if (root_) {
+        on_theme_changed_recursive(root_.get());
+    }
+    for (auto &w : widgets_) {
+        on_theme_changed_recursive(w.get());
+    }
+}
+
 void Window::close() {
     if (impl_->platform) {
         impl_->platform->close();
