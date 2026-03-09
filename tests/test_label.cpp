@@ -16,7 +16,7 @@ TEST_CASE("Label set_text updates text", "[label]") {
 
 TEST_CASE("Label is not focusable", "[label]") {
     Label l("Test");
-    REQUIRE(l.focusable() == false);
+    REQUIRE(l.is_focusable() == false);
 }
 
 TEST_CASE("Label handle_mouse returns false", "[label]") {

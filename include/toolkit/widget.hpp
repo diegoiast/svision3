@@ -3,16 +3,15 @@
 
 #pragma once
 
+#include "toolkit/command.hpp"
 #include "toolkit/events.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
-#include "toolkit/command.hpp"
 #include <algorithm>
 #include <functional>
 #include <optional>
 #include <string>
 #include <vector>
-
 
 namespace toolkit {
 
@@ -52,31 +51,32 @@ class Widget {
             return;
         }
         rect_ = rect;
-        layout_dirty = true;
+        state.layout_dirty = true;
     }
     Rect const &rect() const { return rect_; }
+
+    // FIXME: is this needed? rect can do this already
     bool hit_test(Point p) const {
         return p.x >= 0 && p.x <= rect_.width && p.y >= 0 && p.y <= rect_.height;
     }
 
-    void set_layout_dirty(bool dirty) { layout_dirty = dirty; }
-    bool is_layout_dirty() const { return layout_dirty; }
     void invalidate_layout();
 
-    virtual bool focusable() const { return focusable_; }
-    void set_focusable(bool f) { focusable_ = f; }
-    virtual void set_focused(bool focused) { focused_ = focused; }
-    bool is_focused() const { return focused_; }
+    virtual void set_layout_dirty(bool dirty) { state.layout_dirty = dirty; }
+    virtual bool is_layout_dirty() const { return state.layout_dirty; }
+    virtual void set_focusable(bool f) { state.focusable = f; }
+    virtual bool is_focusable() const { return state.focusable; }
+    virtual void set_focused(bool focused) { state.focused = focused; }
+    virtual bool is_focused() const { return state.focused; }
+    virtual void set_enabled(bool e);
+    virtual bool is_enabled() const { return state.enabled; }
+    virtual void set_visible(bool v);
+    virtual bool is_visible() const { return state.visible; }
 
     virtual void on_focus() {}
     virtual void on_blur() {}
     virtual void on_theme_changed();
 
-    void set_enabled(bool e);
-    bool is_enabled() const { return enabled_; }
-
-    virtual void set_visible(bool v);
-    bool is_visible() const { return visible_; }
     bool is_effectively_visible() const;
     void show() { set_visible(true); }
     void hide() { set_visible(false); }
@@ -87,14 +87,14 @@ class Widget {
     Size max_size() const { return max_size_; }
 
     virtual Widget *find_focusable_at(Point p) {
-        if (focusable() && enabled_ && visible_ && hit_test(p)) {
+        if (is_focusable() && state.enabled && state.visible && hit_test(p)) {
             return this;
         }
         return nullptr;
     }
 
     virtual void collect_focusables(std::vector<Widget *> &out) {
-        if (focusable() && enabled_ && visible_) {
+        if (is_focusable() && is_enabled() && is_visible()) {
             out.push_back(this);
         }
     }
@@ -102,7 +102,7 @@ class Widget {
     virtual CursorShape cursor() const { return CursorShape::Arrow; }
 
     virtual Widget *widget_at(Point p) {
-        if (visible_ && hit_test(p)) {
+        if (state.visible && hit_test(p)) {
             return this;
         }
         return nullptr;
@@ -124,24 +124,27 @@ class Widget {
     auto map_to_window(Point p) const -> Point;
 
     void set_tooltip(std::string text);
-    std::string const &tooltip() const { return tooltip_; }
+    std::string const &tooltip() const { return state.tooltip; }
 
     void set_background_color(std::optional<Color> c) { background_color_ = c; }
     std::optional<Color> background_color() const { return background_color_; }
 
   protected:
+    struct {
+        bool layout_dirty = true;
+        bool focused = false;
+        bool enabled = true;
+        bool visible = true;
+        bool focusable = false;
+        std::string tooltip;
+    } state;
+
     Rect rect_;
-    std::vector<Command::Ptr> commands_;
-    bool layout_dirty = true;
-    bool focused_ = false;
-    bool enabled_ = true;
-    bool visible_ = true;
-    bool focusable_ = false;
     Size min_size_;
     Size max_size_;
     Window *window_ = nullptr;
     Widget *parent_ = nullptr;
-    std::string tooltip_;
+    std::vector<Command::Ptr> commands_;
     std::optional<Color> background_color_;
 };
 

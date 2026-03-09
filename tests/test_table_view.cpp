@@ -73,7 +73,7 @@ TEST_CASE("TableView default state", "[tableview]") {
     TableView tv(m);
     REQUIRE(tv.selected_row() == -1);
     REQUIRE(tv.selection().empty());
-    REQUIRE(tv.focusable());
+    REQUIRE(tv.is_focusable());
     REQUIRE_FALSE(tv.multi_select());
     REQUIRE_FALSE(tv.alternating_row_colors());
     REQUIRE(tv.sort_column() == -1);

@@ -12,7 +12,7 @@ namespace toolkit {
 SpinBox::SpinBox(int value, int min_val, int max_val, int step)
     : value_(value), min_val_(min_val), max_val_(max_val), step_(step),
       cursor_blink_time_(std::chrono::steady_clock::now()) {
-    focusable_ = true;
+    state.focused = true;
     sync_text();
 }
 
@@ -32,7 +32,7 @@ void SpinBox::set_range(int min_val, int max_val) {
 }
 
 void SpinBox::set_focused(bool focused) {
-    focused_ = focused;
+    Widget::set_focusable(focused);
     if (focused) {
         editing_ = true;
         cursor_pos_ = text_.size();
@@ -134,8 +134,8 @@ Size SpinBox::size_hint() const {
 
 void SpinBox::paint(Painter &painter) {
     auto const &style = Theme::current().line_input;
-    auto bg = focused_ ? style.background_focused : style.background;
-    auto border = focused_ ? style.border_focused : style.border;
+    auto bg = is_focused() ? style.background_focused : style.background;
+    auto border = is_focused() ? style.border_focused : style.border;
     auto bw = btn_width();
     auto field_rect = Rect{0.0f, 0.0f, rect_.width - bw, rect_.height};
 
@@ -194,7 +194,7 @@ void SpinBox::paint(Painter &painter) {
     auto content_w = rect_.width - bw - style.padding.left - style.padding.right;
 
     painter.push_clip({content_x, 0, content_w, rect_.height});
-    if (focused_ && editing_) {
+    if (is_focused() && editing_) {
         auto s = std::min(sel_anchor_, cursor_pos_);
         auto e = std::max(sel_anchor_, cursor_pos_);
         if (s != e) {
@@ -207,7 +207,7 @@ void SpinBox::paint(Painter &painter) {
         }
     }
     painter.draw_text(text_, {content_x, baseline_y}, style.text, style.font_size);
-    if (focused_ && editing_) {
+    if (is_focused() && editing_) {
         auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         if ((ms / 500) % 2 == 0) {

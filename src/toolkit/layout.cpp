@@ -125,9 +125,9 @@ void VBoxLayout::apply_layout() {
 }
 
 void VBoxLayout::paint(Painter &painter) {
-    if (layout_dirty) {
+    if (state.layout_dirty) {
         apply_layout();
-        layout_dirty = false;
+        state.layout_dirty = false;
     }
 
     for (auto &item : items_) {
@@ -138,9 +138,9 @@ void VBoxLayout::paint(Painter &painter) {
 auto VBoxLayout::handle_mouse(MouseEvent const &event) -> bool {
     auto handled = false;
 
-    if (layout_dirty) {
+    if (state.layout_dirty) {
         apply_layout();
-        layout_dirty = false;
+        state.layout_dirty = false;
     }
 
     for (auto &item : items_) {
@@ -209,9 +209,9 @@ void VBoxLayout::collect_mnemonics(std::vector<Widget *> &out) {
 }
 
 auto VBoxLayout::find_focusable_at(Point p) -> Widget * {
-    if (layout_dirty) {
+    if (state.layout_dirty) {
         apply_layout();
-        layout_dirty = false;
+        state.layout_dirty = false;
     }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
@@ -228,9 +228,9 @@ auto VBoxLayout::find_focusable_at(Point p) -> Widget * {
 }
 
 auto VBoxLayout::widget_at(Point p) -> Widget * {
-    if (layout_dirty) {
+    if (state.layout_dirty) {
         apply_layout();
-        layout_dirty = false;
+        state.layout_dirty = false;
     }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
@@ -364,9 +364,9 @@ void HBoxLayout::apply_layout() {
 }
 
 void HBoxLayout::paint(Painter &painter) {
-    if (layout_dirty) {
+    if (state.layout_dirty) {
         apply_layout();
-        layout_dirty = false;
+        state.layout_dirty = false;
     }
 
     for (auto &item : items_) {
@@ -377,9 +377,9 @@ void HBoxLayout::paint(Painter &painter) {
 auto HBoxLayout::handle_mouse(MouseEvent const &event) -> bool {
     auto handled = false;
 
-    if (layout_dirty) {
+    if (state.layout_dirty) {
         apply_layout();
-        layout_dirty = false;
+        state.layout_dirty = false;
     }
 
     for (auto &item : items_) {
@@ -448,9 +448,9 @@ void HBoxLayout::collect_mnemonics(std::vector<Widget *> &out) {
 }
 
 auto HBoxLayout::find_focusable_at(Point p) -> Widget * {
-    if (layout_dirty) {
+    if (state.layout_dirty) {
         apply_layout();
-        layout_dirty = false;
+        state.layout_dirty = false;
     }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {
@@ -467,9 +467,9 @@ auto HBoxLayout::find_focusable_at(Point p) -> Widget * {
 }
 
 auto HBoxLayout::widget_at(Point p) -> Widget * {
-    if (layout_dirty) {
+    if (state.layout_dirty) {
         apply_layout();
-        layout_dirty = false;
+        state.layout_dirty = false;
     }
     for (auto &item : items_) {
         if (!item.widget->is_visible()) {

@@ -1,5 +1,5 @@
-#include <catch2/catch_test_macros.hpp>
 #include "toolkit/progress_bar.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
@@ -31,7 +31,7 @@ TEST_CASE("ProgressBar clamps to [0,1]", "[progressbar]") {
 
 TEST_CASE("ProgressBar is not focusable", "[progressbar]") {
     ProgressBar pb;
-    REQUIRE(pb.focusable() == false);
+    REQUIRE(pb.is_focusable() == false);
 }
 
 TEST_CASE("ProgressBar mouse event returns false", "[progressbar]") {

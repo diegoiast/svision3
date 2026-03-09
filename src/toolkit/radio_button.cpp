@@ -24,7 +24,7 @@ void RadioGroup::select(RadioButton *rb) {
 
 RadioButton::RadioButton(std::string text, RadioGroup &group)
     : text_(std::move(text)), group_(group) {
-    focusable_ = true;
+    state.focusable = true;
     group_.add(this);
 }
 
@@ -35,7 +35,7 @@ void RadioButton::paint(Painter &painter) {
     auto center = Point{r, rect_.height / 2.0f};
     auto text_x = style.box_size + style.spacing;
     auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
-    auto border = focused_ ? style.border_focused : style.border;
+    auto border = state.focused ? style.border_focused : style.border;
 
     painter.fill_circle(center, r, style.background);
     painter.draw_circle(center, r, border, style.border_width);
@@ -48,7 +48,7 @@ void RadioButton::paint(Painter &painter) {
         painter.fill_circle(center, r * 0.45f, style.indicator);
     }
     painter.draw_text(text_, {text_x, baseline_y}, style.text, style.font_size);
-    if (focused_) {
+    if (is_focused()) {
         painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
     }
 }

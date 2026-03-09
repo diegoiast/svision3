@@ -12,7 +12,7 @@ namespace toolkit {
 Button::Button(std::string text) {
     auto pos = text.find('&');
 
-    focusable_ = true;
+    state.focusable(true);
     if (pos != std::string::npos && pos + 1 < text.size()) {
         mnemonic_index_ = static_cast<int>(pos);
         mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
@@ -97,11 +97,11 @@ void Button::start_auto_repeat_interval() {
 void Button::set_visible(bool v) {
     auto changed = hovered_ || pressed_;
 
-    if (visible_ == v) {
+    if (is_visible() == v) {
         return;
     }
     Widget::set_visible(v);
-    if (!visible_) {
+    if (!is_visible()) {
         hovered_ = false;
         pressed_ = false;
         stop_auto_repeat();
@@ -114,10 +114,10 @@ void Button::set_visible(bool v) {
 void Button::paint(Painter &painter) {
     auto const &style = Theme::current().button;
     auto bg = background_color_.value_or(style.background);
-    auto border_c = focused_ ? style.border_focused : style.border;
-    auto text_c = enabled_ ? style.text : style.text_disabled;
+    auto border_c = is_focused() ? style.border_focused : style.border;
+    auto text_c = is_enabled() ? style.text : style.text_disabled;
 
-    auto text_offset = (style.beveled && pressed_ && enabled_) ? 1.0f : 0.0f;
+    auto text_offset = (style.beveled && pressed_ && is_enabled()) ? 1.0f : 0.0f;
     auto fm = painter.font_metrics(style.font_size);
     auto text_w = painter.text_size(display_text_, style.font_size).width;
     auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
@@ -125,7 +125,7 @@ void Button::paint(Painter &painter) {
     auto text_pos = Point{text_x, baseline_y + text_offset};
     auto local_rect = Rect{0, 0, rect_.width, rect_.height};
 
-    if (enabled_) {
+    if (is_enabled()) {
         if (background_color_) {
             if (pressed_) {
                 bg = background_color_->darken(0.1f);
@@ -135,7 +135,7 @@ void Button::paint(Painter &painter) {
         } else {
             if (pressed_ && style.background_pressed) {
                 bg = *style.background_pressed;
-            } else if (focused_) {
+            } else if (is_focused()) {
                 bg = style.background_selected;
             } else if (!flat_ && hovered_ && style.background_hovered) {
                 bg = *style.background_hovered;
@@ -145,7 +145,7 @@ void Button::paint(Painter &painter) {
 
     bool show_full_frame = !flat_ || hovered_ || pressed_;
     if (show_full_frame) {
-        painter.draw_frame(local_rect, bg, border_c, style, pressed_ && enabled_);
+        painter.draw_frame(local_rect, bg, border_c, style, pressed_ && is_enabled());
     } else if (background_color_) {
         // Flat button, not hovered/pressed, but has a custom background:
         // just fill the background without border.
@@ -158,8 +158,8 @@ void Button::paint(Painter &painter) {
 
     painter.draw_text(display_text_, text_pos, text_c, style.font_size);
 
-    if (mnemonic_index_ >= 0 && enabled_) {
-        // FIXME: mnemonic drawing should be more generalized
+    if (mnemonic_index_ >= 0 && is_enabled()) {
+        // FIXME: mnemonic drawing should be more generalized, and dependent on style
         auto before = display_text_.substr(0, mnemonic_index_);
         auto ch = std::string(1, display_text_[mnemonic_index_]);
         auto before_w = before.empty() ? 0.0f : painter.text_size(before, style.font_size).width;
@@ -170,13 +170,13 @@ void Button::paint(Painter &painter) {
                           2.0f);
     }
 
-    if (focused_ && enabled_) {
+    if (is_focused() && is_enabled()) {
         painter.draw_focus_ring(local_rect, style.corner_radius);
     }
 }
 
 bool Button::trigger_mnemonic(char key) {
-    if (!enabled_) {
+    if (!is_enabled()) {
         return false;
     }
     if (mnemonic_key_ && mnemonic_key_ == key) {
@@ -189,7 +189,7 @@ bool Button::trigger_mnemonic(char key) {
 }
 
 bool Button::handle_key(KeyEvent const &event) {
-    if (!enabled_) {
+    if (!is_enabled()) {
         return false;
     }
     if (Widget::handle_key(event)) {
@@ -208,7 +208,7 @@ bool Button::handle_key(KeyEvent const &event) {
 }
 
 bool Button::handle_mouse(MouseEvent const &event) {
-    if (!enabled_ || !visible_) {
+    if (!is_enabled() || !is_visible()) {
         if (hovered_ || pressed_) {
             hovered_ = false;
             pressed_ = false;

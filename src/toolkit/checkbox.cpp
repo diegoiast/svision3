@@ -7,9 +7,7 @@
 
 namespace toolkit {
 
-Checkbox::Checkbox(std::string text) : text_(std::move(text)) {
-    focusable_ = true;
-}
+Checkbox::Checkbox(std::string text) : text_(std::move(text)) { state.focusable = true; }
 
 void Checkbox::set_checked(bool c) {
     set_check_state(c ? CheckState::Checked : CheckState::Unchecked);
@@ -55,7 +53,7 @@ void Checkbox::paint(Painter &painter) {
     auto box = style.box_size;
     auto box_y = (rect_.height - box) / 2.0f;
     auto box_rect = Rect{0, box_y, box, box};
-    auto border = focused_ ? style.border_focused : style.border;
+    auto border = is_focused() ? style.border_focused : style.border;
 
     painter.draw_frame(box_rect, style.background, border, style, true);
     // FIXME drawing of checkbox should be done by theme
@@ -77,7 +75,7 @@ void Checkbox::paint(Painter &painter) {
     painter.draw_text(text_, {text_x, baseline_y}, style.text, style.font_size);
 
     // FIXME: ring should not be drawed by widgets
-    if (focused_) {
+    if (is_focused()) {
         painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
     }
 }

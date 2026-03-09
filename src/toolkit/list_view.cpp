@@ -193,7 +193,7 @@ void FilterAdapter::rebuild_async() {
 // ── ListView ─────────────────────────────────────────────────────────────────
 
 ListView::ListView(std::shared_ptr<ListAdapter> adapter) : adapter_(std::move(adapter)) {
-    focusable_ = true;
+    state.focusable = true;
     if (adapter_) {
         adapter_->on_data_changed = [this] {
             clamp_scroll();
@@ -397,7 +397,7 @@ void ListView::paint(Painter &painter) {
     }
 
     painter.pop_clip();
-    if (focused_) {
+    if (is_focused()) {
         painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
     }
 }
@@ -464,7 +464,7 @@ bool ListView::handle_mouse(MouseEvent const &event) {
 }
 
 bool ListView::handle_key(KeyEvent const &event) {
-    if (!focused_ || !adapter_ || event.type != KeyEvent::Type::Press) {
+    if (!is_focused() || !adapter_ || event.type != KeyEvent::Type::Press) {
         return false;
     }
 

@@ -11,7 +11,7 @@
 namespace toolkit {
 
 TabWidget::TabWidget() {
-    focusable_ = true;
+    state.focusable = true;
 
     prev_button_ = std::make_unique<Button>("<");
     prev_button_->set_flat(true);
@@ -421,9 +421,9 @@ void TabWidget::paint(Painter &painter) {
         return;
     }
 
-    if (layout_dirty) {
+    if (state.layout_dirty) {
         layout_content();
-        layout_dirty = false;
+        state.layout_dirty = false;
     }
 
     auto const &style = Theme::current().tab_widget;
@@ -608,8 +608,9 @@ void TabWidget::paint(Painter &painter) {
             painter.draw_line({0, thickness}, {rect_.width, thickness}, style.border,
                               style.border_width);
         } else if (orientation_ == TabOrientation::South) {
-            painter.draw_line({0, rect_.height - thickness}, {rect_.width, rect_.height - thickness},
-                              style.border, style.border_width);
+            painter.draw_line({0, rect_.height - thickness},
+                              {rect_.width, rect_.height - thickness}, style.border,
+                              style.border_width);
         } else if (orientation_ == TabOrientation::West) {
             painter.draw_line({thickness, 0}, {thickness, rect_.height}, style.border,
                               style.border_width);
@@ -959,7 +960,7 @@ auto TabWidget::find_focusable_at(Point p) -> Widget * {
 }
 
 auto TabWidget::widget_at(Point p) -> Widget * {
-    if (!visible_ || !hit_test(p)) {
+    if (!is_visible() || !hit_test(p)) {
         return nullptr;
     }
     if (leading_widget_) {
@@ -1004,7 +1005,7 @@ auto TabWidget::widget_at(Point p) -> Widget * {
 }
 
 void TabWidget::collect_focusables(std::vector<Widget *> &out) {
-    if (focusable() && enabled_ && visible_) {
+    if (is_focusable() && is_enabled() && is_visible()) {
         out.push_back(this);
     }
     if (leading_widget_) {

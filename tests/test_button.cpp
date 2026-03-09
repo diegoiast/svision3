@@ -1,11 +1,11 @@
-#include <catch2/catch_test_macros.hpp>
 #include "toolkit/button.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
 TEST_CASE("Button is focusable", "[button]") {
     Button b("Click");
-    REQUIRE(b.focusable() == true);
+    REQUIRE(b.is_focusable() == true);
 }
 
 TEST_CASE("Button mnemonic parsing with &", "[button]") {
@@ -102,13 +102,13 @@ TEST_CASE("Button mouse does nothing when hidden", "[button]") {
 TEST_CASE("Button resets state when hidden", "[button]") {
     Button b("Test");
     b.set_rect({0, 0, 100, 30});
-    
+
     MouseEvent move{};
     move.type = MouseEvent::Type::Move;
     move.position = {50, 15};
     b.handle_mouse(move);
     REQUIRE(b.is_hovered() == true);
-    
+
     b.set_visible(false);
     REQUIRE(b.is_hovered() == false);
 }

@@ -8,9 +8,7 @@
 
 namespace toolkit {
 
-Slider::Slider(SliderOrientation orientation) : orientation_(orientation) {
-    focusable_ = true;
-}
+Slider::Slider(SliderOrientation orientation) : orientation_(orientation) { set_focusable(true); }
 
 void Slider::set_value(float v) {
     v = std::clamp(v, min_, max_);
@@ -135,7 +133,7 @@ void Slider::paint(Painter &painter) {
     painter.draw_rounded_rect(handle_rect, style.handle_border, style.corner_radius,
                               style.border_width);
 
-    if (focused_) {
+    if (is_focused()) {
         painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
     }
 }

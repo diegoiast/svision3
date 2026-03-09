@@ -62,7 +62,7 @@ void StringTableModel::remove_row(int index) {
 }
 
 TableView::TableView(std::shared_ptr<TableModel> model) : model_(std::move(model)) {
-    focusable_ = true;
+    set_focusable(true);
     if (model_) {
         model_->on_data_changed = [this] {
             rebuild_sort_index();
@@ -502,12 +502,10 @@ void TableView::paint(Painter &painter) {
     painter.pop_clip(); // outer
 
     // FIXME: table view ring should be drawen by owner
-    if (focused_) {
+    if (is_focused()) {
         painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
     }
 }
-
-// ── Mouse ───────────────────────────────────────────────────────────────────
 
 bool TableView::handle_mouse(MouseEvent const &event) {
     if (!model_) {
@@ -645,7 +643,7 @@ bool TableView::handle_mouse(MouseEvent const &event) {
 // ── Keyboard ────────────────────────────────────────────────────────────────
 
 bool TableView::handle_key(KeyEvent const &event) {
-    if (!focused_ || !model_ || event.type != KeyEvent::Type::Press) {
+    if (!is_focused() || !model_ || event.type != KeyEvent::Type::Press) {
         return false;
     }
 

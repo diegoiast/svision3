@@ -72,7 +72,7 @@ bool Toolbar::handle_mouse(MouseEvent const &event) { return layout_->handle_mou
 bool Toolbar::handle_key(KeyEvent const &event) { return layout_->handle_key(event); }
 
 Widget *Toolbar::widget_at(Point p) {
-    if (!visible_ || !hit_test(p)) {
+    if (!is_visible() || !hit_test(p)) {
         return nullptr;
     }
     // Check children first

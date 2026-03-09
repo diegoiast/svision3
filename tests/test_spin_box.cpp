@@ -86,7 +86,7 @@ TEST_CASE("SpinBox set_value does not fire on_change", "[spinbox]") {
 
 TEST_CASE("SpinBox is focusable", "[spinbox]") {
     SpinBox sb;
-    REQUIRE(sb.focusable());
+    REQUIRE(sb.is_focusable());
 }
 
 TEST_CASE("SpinBox size_hint has positive dimensions", "[spinbox]") {

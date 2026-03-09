@@ -10,8 +10,9 @@ namespace toolkit {
 bool Widget::debug_show_frames = false;
 
 void Widget::invalidate_layout() {
-    layout_dirty = true;
-    spdlog::trace("Widget layout invalidated: {}", tooltip_.empty() ? "anonymous" : tooltip_);
+    state.layout_dirty = true;
+    spdlog::trace("Widget layout invalidated: {}",
+                  state.tooltip.empty() ? "anonymous" : state.tooltip);
     if (window_) {
         window_->request_redraw("layout");
     }
@@ -21,7 +22,7 @@ void Widget::invalidate_layout() {
 }
 
 bool Widget::is_effectively_visible() const {
-    if (!visible_) {
+    if (!is_visible()) {
         return false;
     }
     if (parent_) {
@@ -30,29 +31,33 @@ bool Widget::is_effectively_visible() const {
     return true;
 }
 
-void Widget::on_theme_changed() {
-    invalidate_layout();
-}
+void Widget::on_theme_changed() { invalidate_layout(); }
 
 void Widget::set_enabled(bool e) {
-    if (enabled_ == e) return;
-    enabled_ = e;
+    if (state.enabled == e) {
+        return;
+    }
+    state.enabled = e;
     if (window_) {
         window_->request_redraw("property change (enabled)");
     }
 }
 
 void Widget::set_visible(bool v) {
-    if (visible_ == v) return;
-    visible_ = v;
+    if (is_visible() == v) {
+        return;
+    }
+    state.visible = v;
     if (window_) {
         window_->request_redraw("property change (visible)");
     }
 }
 
 void Widget::set_tooltip(std::string text) {
-    if (tooltip_ == text) return;
-    tooltip_ = std::move(text);
+    if (state.tooltip == text) {
+        return;
+    }
+    state.tooltip = std::move(text);
     if (window_ && is_effectively_visible()) {
         window_->request_redraw("property change (tooltip)");
     }
@@ -74,7 +79,7 @@ auto Widget::map_to_window(Point p) const -> Point {
 }
 
 void Widget::draw(Painter &painter) {
-    if (!visible_) {
+    if (!is_visible()) {
         return;
     }
     painter.push_clip(rect_);

@@ -21,7 +21,7 @@
 namespace toolkit {
 
 TextEdit::TextEdit(std::string text) {
-    focusable_ = true;
+    set_focusable(true);
     cursor_blink_time_ = std::chrono::steady_clock::now();
 
     select_all_cmd = Command::create("Select All", [this] { select_all(); });
@@ -80,7 +80,7 @@ void TextEdit::set_text(std::string const &text) {
 }
 
 void TextEdit::set_focused(bool focused) {
-    focused_ = focused;
+    set_focused(focused);
     if (!focused) {
         anchor_ = cursor_;
     }
@@ -90,11 +90,15 @@ void TextEdit::set_focused(bool focused) {
 void TextEdit::on_focus() {
     reset_cursor_blink();
     if (window_ && blink_timer_id_ == 0) {
-        blink_timer_id_ = window_->start_timer(0.5f, [this] {
-            if (is_effectively_visible()) {
-                window_->request_redraw("blink");
-            }
-        }, true);
+        // FIXME: cursor blink time should be defined by platform
+        blink_timer_id_ = window_->start_timer(
+            0.5f,
+            [this] {
+                if (is_effectively_visible()) {
+                    window_->request_redraw("blink");
+                }
+            },
+            true);
     }
 }
 
@@ -378,8 +382,8 @@ void TextEdit::paint(Painter &painter) {
     auto lh = line_height();
     auto gw = gutter_width();
     auto fm = painter.font_metrics(style.font_size, kFont);
-    auto bg = focused_ ? style.background_focused : style.background;
-    auto border = focused_ ? style.border_focused : style.border;
+    auto bg = is_focused() ? style.background_focused : style.background;
+    auto border = is_focused() ? style.border_focused : style.border;
     auto local_rect = Rect{0, 0, rect_.width, rect_.height};
 
     painter.draw_frame(local_rect, bg, border, style, true);
@@ -441,7 +445,7 @@ void TextEdit::paint(Painter &painter) {
     }
 
     // Cursor
-    if (focused_) {
+    if (is_focused()) {
         auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         if ((ms / 500) % 2 == 0) {
@@ -489,7 +493,7 @@ void TextEdit::paint(Painter &painter) {
 
     painter.pop_clip(); // outer
 
-    if (focused_) {
+    if (is_focused()) {
         painter.draw_focus_ring(local_rect, style.corner_radius);
     }
 }

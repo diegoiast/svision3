@@ -16,7 +16,7 @@ TEST_CASE("ListView default state", "[listview]") {
     ListView lv(adapter);
     REQUIRE(lv.selected_index() == -1);
     REQUIRE(lv.selection().empty());
-    REQUIRE(lv.focusable() == true);
+    REQUIRE(lv.is_focusable() == true);
     REQUIRE(lv.multi_select() == false);
     REQUIRE(lv.alternating_row_colors() == false);
 }

@@ -39,7 +39,7 @@ TEST_CASE("Checkbox toggle via key fires on_toggle", "[checkbox]") {
 
 TEST_CASE("Checkbox is focusable", "[checkbox]") {
     Checkbox cb("Option");
-    REQUIRE(cb.focusable() == true);
+    REQUIRE(cb.is_focusable() == true);
 }
 
 TEST_CASE("Checkbox toggles on space key", "[checkbox]") {

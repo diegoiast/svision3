@@ -10,7 +10,7 @@
 namespace toolkit {
 
 Combobox::Combobox(std::vector<std::string> items) : items_(std::move(items)) {
-    focusable_ = true;
+    state.focusable = true;
 }
 
 void Combobox::set_items(std::vector<std::string> items) {
@@ -117,7 +117,7 @@ void Combobox::close_dropdown() {
 
 void Combobox::paint(Painter &painter) {
     auto const &style = Theme::current().combobox;
-    auto border = focused_ ? style.border_focused : style.border;
+    auto border = state.focused ? style.border_focused : style.border;
     auto local_rect = Rect{0, 0, rect_.width, rect_.height};
     auto fm = painter.font_metrics(style.font_size);
     auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
@@ -139,7 +139,7 @@ void Combobox::paint(Painter &painter) {
     painter.draw_line({arrow_x - aw, arrow_y - 2.0f}, {arrow_x, arrow_y + 2.0f}, style.arrow, 1.5f);
     painter.draw_line({arrow_x, arrow_y + 2.0f}, {arrow_x + aw, arrow_y - 2.0f}, style.arrow, 1.5f);
 
-    if (focused_ && !open_) {
+    if (is_focused() && !open_) {
         painter.draw_focus_ring(local_rect, style.corner_radius);
     }
 }

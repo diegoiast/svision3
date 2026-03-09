@@ -53,7 +53,7 @@ TEST_CASE("RadioGroup on_change callback", "[radio]") {
 TEST_CASE("RadioButton is focusable", "[radio]") {
     RadioGroup group;
     RadioButton rb("Option", group);
-    REQUIRE(rb.focusable() == true);
+    REQUIRE(rb.is_focusable() == true);
 }
 
 TEST_CASE("RadioButton relative coordinates", "[radio]") {

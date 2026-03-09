@@ -25,8 +25,8 @@ static std::string get_masked_text(std::string_view text, size_t byte_limit = st
 
 LineInput::LineInput(std::string placeholder)
     : placeholder_(std::move(placeholder)), cursor_blink_time_(std::chrono::steady_clock::now()) {
-    focusable_ = true;
-    focused_ = false;
+    state.focusable = true;
+    state.focused = false;    
     read_only_ = false;
 
     select_all_cmd = Command::create("Select All", [this] { select_all(); });
@@ -73,7 +73,7 @@ void LineInput::set_text(std::string const &text) {
 }
 
 void LineInput::set_focused(bool focused) {
-    focused_ = focused;
+    Widget::set_focused(focused);
     if (!focused) {
         sel_anchor_ = cursor_pos_;
     }
@@ -83,11 +83,14 @@ void LineInput::set_focused(bool focused) {
 void LineInput::on_focus() {
     reset_cursor_blink();
     if (window_ && blink_timer_id_ == 0) {
-        blink_timer_id_ = window_->start_timer(0.5f, [this] {
-            if (is_effectively_visible()) {
-                window_->request_redraw("blink");
-            }
-        }, true);
+        blink_timer_id_ = window_->start_timer(
+            0.5f,
+            [this] {
+                if (is_effectively_visible()) {
+                    window_->request_redraw("blink");
+                }
+            },
+            true);
     }
 }
 
@@ -278,8 +281,8 @@ bool LineInput::is_valid() const {
 
 void LineInput::paint(Painter &painter) {
     auto const &style = Theme::current().line_input;
-    auto bg = focused_ ? style.background_focused : style.background;
-    auto border = focused_ ? style.border_focused : style.border;
+    auto bg = is_focused() ? style.background_focused : style.background;
+    auto border = is_focused() ? style.border_focused : style.border;
     auto fm = painter.font_metrics(style.font_size);
     auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
     auto content_x = style.padding.left;
@@ -298,7 +301,7 @@ void LineInput::paint(Painter &painter) {
     painter.push_clip(clip_rect);
     ensure_cursor_visible(painter);
 
-    if (text_.empty() && !focused_) {
+    if (text_.empty() && !is_focused()) {
         painter.draw_text(placeholder_, {tx, baseline_y}, style.placeholder, style.font_size);
     } else {
         if (has_selection()) {
@@ -335,7 +338,7 @@ void LineInput::paint(Painter &painter) {
             }
         }
 
-        if (focused_) {
+        if (is_focused()) {
             auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
             auto cursor_on = (ms / 500) % 2 == 0;
@@ -774,17 +777,14 @@ void LineInput::show_context_menu(Point pos) {
 
     // FIXME: use i18n for menu text
     std::vector<MenuItem> items;
-    items.push_back(MenuItem::action("Cut", [this] { cut(); },
-                                     has_sel && !password_mode_ && !read_only_));
     items.push_back(
-        MenuItem::action("Copy", [this] { copy(); }, has_sel && !password_mode_));
-    items.push_back(
-        MenuItem::action("Paste", [this] { paste(); }, !read_only_ && can_paste));
+        MenuItem::action("Cut", [this] { cut(); }, has_sel && !password_mode_ && !read_only_));
+    items.push_back(MenuItem::action("Copy", [this] { copy(); }, has_sel && !password_mode_));
+    items.push_back(MenuItem::action("Paste", [this] { paste(); }, !read_only_ && can_paste));
     items.push_back(MenuItem::sep());
-    items.push_back(MenuItem::action(
-        "Select All", [this] { select_all(); }, not_empty));
-    items.push_back(MenuItem::action("Delete", [this] { delete_selection(); },
-                                     !read_only_ && has_sel));
+    items.push_back(MenuItem::action("Select All", [this] { select_all(); }, not_empty));
+    items.push_back(
+        MenuItem::action("Delete", [this] { delete_selection(); }, !read_only_ && has_sel));
 
     context_menu_ = std::make_unique<ContextMenu>(std::move(items));
     context_menu_->show(window(), map_to_window(pos));

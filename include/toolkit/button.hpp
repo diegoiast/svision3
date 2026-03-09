@@ -22,7 +22,7 @@ class Button : public Widget {
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
     CursorShape cursor() const override {
-        return enabled_ ? CursorShape::Arrow : CursorShape::NotAllowed;
+        return is_enabled() ? CursorShape::Arrow : CursorShape::NotAllowed;
     }
     bool trigger_mnemonic(char key) override;
     void collect_mnemonics(std::vector<Widget *> &out) override {
