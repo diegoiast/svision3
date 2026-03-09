@@ -43,6 +43,16 @@ void Widget::set_enabled(bool e) {
     }
 }
 
+void Widget::set_focused(bool focused) {
+    if (focused == state.focused) {
+        return;
+    }
+    state.focused = focused;
+    if (window_) {
+        window_->request_redraw("proper change (focused)");
+    }
+}
+
 void Widget::set_visible(bool v) {
     if (is_visible() == v) {
         return;
@@ -72,10 +82,11 @@ auto Widget::dispatch_mouse_event(Widget *w, MouseEvent const &event) -> bool {
 }
 
 auto Widget::map_to_window(Point p) const -> Point {
+    auto r = Point{p.x + rect_.x, p.y + rect_.y};
     if (parent_) {
-        return parent_->map_to_window({p.x + rect_.x, p.y + rect_.y});
+        return parent_->map_to_window(r);
     }
-    return {p.x + rect_.x, p.y + rect_.y};
+    return r;
 }
 
 void Widget::draw(Painter &painter) {
@@ -90,6 +101,21 @@ void Widget::draw(Painter &painter) {
     paint(painter);
     painter.pop_translation();
     painter.pop_clip();
+}
+
+bool Widget::handle_key_impl(KeyEvent const &event) {
+    for (auto const &cmd : commands_) {
+        if (cmd->matches_key_event(event)) {
+            cmd->execute();
+            return true;
+        }
+    }
+
+    if (state.focused || state.non_focus_input) {
+        return handle_key(event);
+    }
+
+    return false;
 }
 
 } // namespace toolkit

@@ -48,7 +48,9 @@ void Window::reset_statistics() {
 }
 
 void Window::set_statistics_logging_enabled(bool enabled) {
-    if (impl_->logging_enabled == enabled) return;
+    if (impl_->logging_enabled == enabled) {
+        return;
+    }
     impl_->logging_enabled = enabled;
 
     if (enabled) {
@@ -58,31 +60,41 @@ void Window::set_statistics_logging_enabled(bool enabled) {
             impl_->draw_time_sum_ms = 0;
             impl_->repaint_time_sum_ms = 0;
 
-            impl_->stats_timer_id = start_timer(2.0f, [this] {
-                auto now = std::chrono::steady_clock::now();
-                auto time_since_log = std::chrono::duration<double>(now - impl_->last_log_time).count();
+            impl_->stats_timer_id = start_timer(
+                2.0f,
+                [this] {
+                    auto now = std::chrono::steady_clock::now();
+                    auto time_since_log =
+                        std::chrono::duration<double>(now - impl_->last_log_time).count();
 
-                if (time_since_log > 0) {
-                    impl_->stats.avg_fps = static_cast<double>(impl_->draws_since_last_log) / time_since_log;
-                    if (impl_->draws_since_last_log > 0) {
-                        impl_->stats.avg_draw_time_ms = impl_->draw_time_sum_ms / static_cast<double>(impl_->draws_since_last_log);
-                        impl_->stats.avg_repaint_time_ms = impl_->repaint_time_sum_ms / static_cast<double>(impl_->draws_since_last_log);
-                    } else {
-                        impl_->stats.avg_draw_time_ms = 0;
-                        impl_->stats.avg_repaint_time_ms = 0;
+                    if (time_since_log > 0) {
+                        impl_->stats.avg_fps =
+                            static_cast<double>(impl_->draws_since_last_log) / time_since_log;
+                        if (impl_->draws_since_last_log > 0) {
+                            impl_->stats.avg_draw_time_ms =
+                                impl_->draw_time_sum_ms /
+                                static_cast<double>(impl_->draws_since_last_log);
+                            impl_->stats.avg_repaint_time_ms =
+                                impl_->repaint_time_sum_ms /
+                                static_cast<double>(impl_->draws_since_last_log);
+                        } else {
+                            impl_->stats.avg_draw_time_ms = 0;
+                            impl_->stats.avg_repaint_time_ms = 0;
+                        }
+
+                        spdlog::info("Window '{}' Stats: draws={}, fps={:.1f}, draw_time={:.2f}ms, "
+                                     "repaint_time={:.2f}ms",
+                                     title_, impl_->stats.total_draws, impl_->stats.avg_fps,
+                                     impl_->stats.avg_draw_time_ms,
+                                     impl_->stats.avg_repaint_time_ms);
                     }
 
-                    spdlog::info(
-                        "Window '{}' Stats: draws={}, fps={:.1f}, draw_time={:.2f}ms, repaint_time={:.2f}ms",
-                        title_, impl_->stats.total_draws, impl_->stats.avg_fps,
-                        impl_->stats.avg_draw_time_ms, impl_->stats.avg_repaint_time_ms);
-                }
-
-                impl_->last_log_time = now;
-                impl_->draws_since_last_log = 0;
-                impl_->draw_time_sum_ms = 0;
-                impl_->repaint_time_sum_ms = 0;
-            }, true);
+                    impl_->last_log_time = now;
+                    impl_->draws_since_last_log = 0;
+                    impl_->draw_time_sum_ms = 0;
+                    impl_->repaint_time_sum_ms = 0;
+                },
+                true);
         }
     } else {
         if (impl_->stats_timer_id != 0) {
@@ -108,9 +120,7 @@ auto Window::scale_factor() const -> float {
     return 1.0f;
 }
 
-auto Window::platform_window() const -> PlatformWindow * {
-    return impl_->platform.get();
-}
+auto Window::platform_window() const -> PlatformWindow * { return impl_->platform.get(); }
 
 void Window::show() {
     if (impl_->platform) {
@@ -119,7 +129,9 @@ void Window::show() {
 }
 
 static void on_theme_changed_recursive(Widget *w) {
-    if (!w) return;
+    if (!w) {
+        return;
+    }
     w->on_theme_changed();
     w->for_each_child([](Widget *child) { on_theme_changed_recursive(child); });
 }
@@ -278,7 +290,8 @@ void Window::handle_paint(Painter &painter) {
 
     auto draw_end = std::chrono::steady_clock::now();
     auto draw_duration = std::chrono::duration<double, std::milli>(draw_end - draw_start).count();
-    auto repaint_duration = std::chrono::duration<double, std::milli>(repaint_end - repaint_start).count();
+    auto repaint_duration =
+        std::chrono::duration<double, std::milli>(repaint_end - repaint_start).count();
 
     impl_->draw_time_sum_ms += draw_duration;
     impl_->repaint_time_sum_ms += repaint_duration;
@@ -463,8 +476,7 @@ void Window::handle_key(KeyEvent const &event) {
     if (focused_widget_) {
         auto w = focused_widget_;
         while (w) {
-            if (w->handle_key(event)) {
-                request_redraw("event");
+            if (w->handle_key_impl(event)) {
                 return;
             }
             w = w->parent();
@@ -504,7 +516,7 @@ bool Window::dispatch_key_event_recursive(Widget *w, KeyEvent const &event) {
     }
 
     // Try the widget itself
-    return w->handle_key(event);
+    return w->handle_key_impl(event);
 }
 
 auto Window::content_min_size() const -> Size {
@@ -532,7 +544,9 @@ void Window::handle_resize(Size new_size) {
 }
 
 void Window::resize_to_fit() {
-    if (!root_) return;
+    if (!root_) {
+        return;
+    }
     auto hint = root_->size_hint();
     Size new_size = size_;
     bool changed = false;

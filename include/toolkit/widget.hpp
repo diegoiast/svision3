@@ -21,6 +21,9 @@ class Widget {
   public:
     virtual ~Widget() = default;
 
+    // This is a global flag, which will force all widgets to draw a red
+    // dashed-border around the perimiters and dotted red border around
+    // layouts.
     static bool debug_show_frames;
 
     void add_command(Command::Ptr cmd) { commands_.push_back(std::move(cmd)); }
@@ -35,15 +38,7 @@ class Widget {
     void draw(Painter &painter);
     virtual void paint(Painter &painter) = 0;
     virtual bool handle_mouse(MouseEvent const &event) = 0;
-    virtual bool handle_key(KeyEvent const &event) {
-        for (auto const &cmd : commands_) {
-            if (cmd->matches_key_event(event)) {
-                cmd->execute();
-                return true;
-            }
-        }
-        return false;
-    }
+    virtual bool handle_key(KeyEvent const &event) { return false; }
     virtual Size size_hint() const { return {0, 0}; }
 
     virtual void set_rect(Rect const &rect) {
@@ -66,12 +61,15 @@ class Widget {
     virtual bool is_layout_dirty() const { return state.layout_dirty; }
     virtual void set_focusable(bool f) { state.focusable = f; }
     virtual bool is_focusable() const { return state.focusable; }
-    virtual void set_focused(bool focused) { state.focused = focused; }
+    virtual void set_focused(bool focused);
     virtual bool is_focused() const { return state.focused; }
     virtual void set_enabled(bool e);
     virtual bool is_enabled() const { return state.enabled; }
     virtual void set_visible(bool v);
     virtual bool is_visible() const { return state.visible; }
+    
+    // FIXME: really? is this a good API?
+    bool can_get_non_focus_input() const { return state.non_focus_input; }
 
     virtual void on_focus() {}
     virtual void on_blur() {}
@@ -130,12 +128,18 @@ class Widget {
     std::optional<Color> background_color() const { return background_color_; }
 
   protected:
+    // Let window call this protected method
+    friend class Window;
+
+    bool handle_key_impl(KeyEvent const &event);
+
     struct {
         bool layout_dirty = true;
         bool focused = false;
         bool enabled = true;
         bool visible = true;
         bool focusable = false;
+        bool non_focus_input = false;
         std::string tooltip;
     } state;
 

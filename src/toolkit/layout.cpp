@@ -159,7 +159,15 @@ auto VBoxLayout::handle_mouse(MouseEvent const &event) -> bool {
 
 bool VBoxLayout::handle_key(KeyEvent const &event) {
     for (auto &item : items_) {
-        if (item.widget->is_visible() && item.widget->handle_key(event)) {
+        auto w = item.widget.get();
+
+        if (!w->is_visible()) {
+            continue;
+        }    
+        if (!w->is_focused() && !w->can_get_non_focus_input()) {
+            continue;
+        }
+        if (w->handle_key(event)) {
             return true;
         }
     }

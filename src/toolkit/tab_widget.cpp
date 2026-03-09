@@ -12,6 +12,7 @@ namespace toolkit {
 
 TabWidget::TabWidget() {
     state.focusable = true;
+    state.non_focus_input = true;
 
     prev_button_ = std::make_unique<Button>("<");
     prev_button_->set_flat(true);

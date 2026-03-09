@@ -11,8 +11,9 @@ namespace toolkit {
 
 Button::Button(std::string text) {
     auto pos = text.find('&');
+    auto const &style = Theme::current().button;
 
-    state.focusable(true);
+    state.focusable = true;
     if (pos != std::string::npos && pos + 1 < text.size()) {
         mnemonic_index_ = static_cast<int>(pos);
         mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
@@ -21,7 +22,6 @@ Button::Button(std::string text) {
         display_text_ = std::move(text);
     }
 
-    auto const &style = Theme::current().button;
     auto_repeat_delay_ = style.auto_repeat_delay;
     auto_repeat_interval_ = style.auto_repeat_interval;
 }
