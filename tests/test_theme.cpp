@@ -24,7 +24,7 @@ TEST_CASE("Theme::create produces named theme", "[theme]") {
 TEST_CASE("Theme::create with all styles and schemes", "[theme]") {
     for (int i = 0; i < theme_style_count; i++) {
         auto style = static_cast<ThemeStyle>(i);
-        for (auto scheme : {ColorScheme::Light, ColorScheme::Dark, ColorScheme::Pink}) {
+        for (auto scheme : {ColorScheme::Light, ColorScheme::Dark}) {
             auto t = Theme::create(style, scheme);
             REQUIRE_FALSE(t.name.empty());
             REQUIRE(t.window.background.a == 1.0f);

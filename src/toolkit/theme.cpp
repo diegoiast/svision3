@@ -77,17 +77,6 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
         p.border = gray(0.38f);
         p.alternate_bg = gray(0.28f);
         break;
-    case ColorScheme::Pink:
-        Color rose = Color::rgb(0.89f, 0.27f, 0.50f);
-        p.window_bg = Color::rgb(0.98f, 0.92f, 0.94f);
-        p.widget_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.input_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.text = gray(0.22f);
-        p.border = Color::rgb(0.82f, 0.70f, 0.74f);
-        p.accent = rose;
-        p.background_selected = rose;
-        p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
-        break;
     }
 }
 
@@ -116,17 +105,6 @@ static void palette_material(Palette &p, ColorScheme scheme) {
         p.background_selected = p.accent;
         p.alternate_bg = Color::rgb(0.16f, 0.16f, 0.16f);
         break;
-    case ColorScheme::Pink:
-        Color rose = Color::rgb(0.89f, 0.27f, 0.50f);
-        p.window_bg = Color::rgb(0.99f, 0.93f, 0.95f);
-        p.widget_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.input_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.text = gray(0.15f);
-        p.border = Color::rgb(0.80f, 0.68f, 0.72f);
-        p.accent = rose;
-        p.background_selected = rose;
-        p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
-        break;
     }
 }
 
@@ -153,17 +131,6 @@ static void palette_win11(Palette &p, ColorScheme scheme) {
         p.border = gray(0.30f);
         p.background_selected = winBlue;
         p.alternate_bg = Color::rgb(0.22f, 0.22f, 0.22f);
-        break;
-    case ColorScheme::Pink:
-        Color rose = Color::rgb(0.89f, 0.27f, 0.50f);
-        p.window_bg = Color::rgb(0.98f, 0.93f, 0.95f);
-        p.widget_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.input_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.text = gray(0.12f);
-        p.border = Color::rgb(0.80f, 0.68f, 0.73f);
-        p.accent = rose;
-        p.background_selected = rose;
-        p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
         break;
     }
 }
@@ -195,18 +162,6 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.shadow = gray(0.12f);
         p.alternate_bg = gray(0.35f);
         break;
-    case ColorScheme::Pink:
-        p.window_bg = Color::rgb(0.78f, 0.65f, 0.70f);
-        p.widget_bg = Color::rgb(0.78f, 0.65f, 0.70f);
-        p.input_bg = gray(1.0f);
-        p.text = gray(0.0f);
-        p.border = gray(0.0f);
-        p.accent = Color::rgb(0.5f, 0.0f, 0.2f);
-        p.background_selected = p.accent;
-        p.highlight = Color::rgb(1.0f, 0.88f, 0.92f);
-        p.shadow = Color::rgb(0.50f, 0.35f, 0.40f);
-        p.alternate_bg = Color::rgb(0.73f, 0.60f, 0.65f);
-        break;
     }
 }
 
@@ -237,16 +192,6 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.background_selected = p.accent;
         p.alternate_bg = Color::rgb(0.23f, 0.25f, 0.27f);
         break;
-    case ColorScheme::Pink:
-        p.window_bg = Color::rgb(0.97f, 0.92f, 0.94f);
-        p.widget_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.input_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.text = Color::rgb(0.16f, 0.15f, 0.16f);
-        p.border = Color::rgb(0.80f, 0.70f, 0.74f);
-        p.accent = roseLt;
-        p.background_selected = p.accent;
-        p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
-        break;
     }
 }
 
@@ -272,17 +217,6 @@ static void palette_gnome(Palette &p, ColorScheme scheme) {
         p.text = gray(0.95f);
         p.border = gray(0.30f);
         p.alternate_bg = Color::rgb(0.26f, 0.26f, 0.26f);
-        break;
-    case ColorScheme::Pink:
-        Color rose = Color::rgb(0.89f, 0.27f, 0.50f);
-        p.window_bg = Color::rgb(0.99f, 0.93f, 0.95f);
-        p.widget_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.input_bg = Color::rgb(1.0f, 0.97f, 0.98f);
-        p.text = Color::rgb(0.20f, 0.18f, 0.19f);
-        p.border = Color::rgb(0.84f, 0.76f, 0.79f);
-        p.accent = rose;
-        p.background_selected = rose;
-        p.alternate_bg = Color::rgb(0.93f, 0.86f, 0.89f);
         break;
     }
 }
@@ -375,6 +309,7 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.progress_bar.chunked = true;
         t.progress_bar.beveled = false;
         t.progress_bar.border_width = 0.0f;
+        t.progress_bar.bar_height = 20.0f;
         t.slider.handle_size = 12.0f;
         t.slider.groove_thickness = 4.0f;
         t.button.auto_repeat_delay = 0.4f;

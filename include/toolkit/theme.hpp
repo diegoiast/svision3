@@ -148,7 +148,7 @@ struct Palette {
     float auto_repeat_interval = 0.4f;
 };
 
-enum class ColorScheme { Light, Dark, Pink };
+enum class ColorScheme { Light, Dark };
 
 enum class ThemeStyle { MacOS, Material, Win11, Win95, Plasma6, GNOME };
 

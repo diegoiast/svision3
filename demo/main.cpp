@@ -369,18 +369,15 @@ int main(int argc, char *argv[]) {
     rb_light->set_tooltip("Light color scheme");
     auto rb_dark = std::make_unique<toolkit::RadioButton>("Dark", scheme_group);
     rb_dark->set_tooltip("Dark color scheme");
-    auto rb_pink = std::make_unique<toolkit::RadioButton>("Pink", scheme_group);
-    rb_pink->set_tooltip("Pink color scheme");
     scheme_group.select(rb_light.get());
     scheme_group.on_change = [&app, window](int index) {
-        constexpr toolkit::ColorScheme schemes[] = {
-            toolkit::ColorScheme::Light, toolkit::ColorScheme::Dark, toolkit::ColorScheme::Pink};
+        constexpr toolkit::ColorScheme schemes[] = {toolkit::ColorScheme::Light,
+                                                    toolkit::ColorScheme::Dark};
         current_scheme = schemes[index];
         apply_theme(app, window);
     };
     tab_main->add_widget(std::move(rb_light));
     tab_main->add_widget(std::move(rb_dark));
-    tab_main->add_widget(std::move(rb_pink));
 
     auto progress = std::make_unique<toolkit::ProgressBar>();
     auto *progress_ptr = progress.get();
