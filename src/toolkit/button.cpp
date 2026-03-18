@@ -137,7 +137,7 @@ void Button::paint(Painter &painter) {
                 bg = *style.background_pressed;
             } else if (is_focused()) {
                 bg = style.background_selected;
-            } else if (!flat_ && hovered_ && style.background_hovered) {
+            } else if (hovered_ && style.background_hovered) {
                 bg = *style.background_hovered;
             }
         }

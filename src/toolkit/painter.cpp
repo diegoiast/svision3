@@ -17,19 +17,35 @@ void Painter::draw_frame(Rect const &rect, Color bg, Color border, WidgetStyle c
         fill_rect(rect, bg);
     }
 
-    if (style.border_width <= 0) return;
+    if (style.border_width <= 0) {
+        return;
+    }
 
-    // Draw border just inside the rectangle to avoid clipping issues.
-    // Stroke is centered on the path, so we inset by half the width.
-    float inset = style.border_width / 2.0f;
-    Rect border_rect = rect.inset(inset);
-    Color border_c = sunken ? border.darken(0.2f) : border;
+    if (style.beveled) {
+        // Simple 3D bevel using highlight and shadow from style
+        Color top_left = sunken ? style.shadow : style.highlight;
+        Color bottom_right = sunken ? style.highlight : style.shadow;
 
-    if (style.corner_radius > 0.0f) {
-        draw_rounded_rect(border_rect, border_c, std::max(0.0f, style.corner_radius - inset),
-                          style.border_width);
+        // Outer lines
+        draw_line({rect.x, rect.y}, {rect.x + rect.width - 1, rect.y}, top_left, 1.0f);
+        draw_line({rect.x, rect.y}, {rect.x, rect.y + rect.height - 1}, top_left, 1.0f);
+        draw_line({rect.x + rect.width - 1, rect.y},
+                  {rect.x + rect.width - 1, rect.y + rect.height - 1}, bottom_right, 1.0f);
+        draw_line({rect.x, rect.y + rect.height - 1},
+                  {rect.x + rect.width - 1, rect.y + rect.height - 1}, bottom_right, 1.0f);
     } else {
-        draw_rect(border_rect, border_c, style.border_width);
+        // Draw flat border just inside the rectangle to avoid clipping issues.
+        // Stroke is centered on the path, so we inset by half the width.
+        auto inset = style.border_width / 2.0f;
+        auto border_rect = rect.inset(inset);
+        auto border_c = sunken ? border.darken(0.2f) : border;
+
+        if (style.corner_radius > 0.0f) {
+            draw_rounded_rect(border_rect, border_c, std::max(0.0f, style.corner_radius - inset),
+                              style.border_width);
+        } else {
+            draw_rect(border_rect, border_c, style.border_width);
+        }
     }
 }
 
@@ -62,7 +78,9 @@ Painter::FontMetrics Painter::measure_font_metrics(float font_size, FontFamily f
 }
 
 float Painter::snap_to_pixel(float val, float scale) {
-    if (scale <= 0.0f) return val;
+    if (scale <= 0.0f) {
+        return val;
+    }
     return std::floor(val * scale + 0.5f) / scale;
 }
 

@@ -145,7 +145,7 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.text = gray(0.0f);
         p.border = gray(0.0f);
         p.accent = Color::rgb(0.0f, 0.0f, 0.5f);
-        p.background_selected = p.accent;
+        p.background_selected = p.widget_bg;
         p.highlight = gray(1.0f);
         p.shadow = gray(0.50f);
         p.alternate_bg = gray(0.90f);
@@ -157,7 +157,7 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.text = gray(0.90f);
         p.border = gray(0.10f);
         p.accent = Color::rgb(0.0f, 0.0f, 0.8f);
-        p.background_selected = p.accent;
+        p.background_selected = p.widget_bg;
         p.highlight = gray(0.45f);
         p.shadow = gray(0.12f);
         p.alternate_bg = gray(0.35f);

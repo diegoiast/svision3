@@ -11,6 +11,7 @@ class ToolButton : public Button {
   public:
     explicit ToolButton(Command::Ptr cmd) : Button(cmd->display_text()), cmd_(std::move(cmd)) {
         set_flat(true);
+        set_padding({4, 8, 4, 8});
         set_tooltip(cmd_->tooltip());
         on_click = [this] { cmd_->execute(); };
     }
@@ -30,10 +31,16 @@ class ToolButton : public Button {
 class ToolbarSeparator : public Widget {
   public:
     void paint(Painter &painter) override {
-        auto const &style = Theme::current().window;
-        auto color = style.background.darken(0.15f);
-        painter.draw_line({rect_.width / 2.0f, 4.0f}, {rect_.width / 2.0f, rect_.height - 4.0f},
-                          color, 1.0f);
+        auto const &style = Theme::current().button;
+        if (style.beveled) {
+            float x = rect_.width / 2.0f;
+            painter.draw_line({x - 1.0f, 4.0f}, {x - 1.0f, rect_.height - 4.0f}, style.shadow, 1.0f);
+            painter.draw_line({x, 4.0f}, {x, rect_.height - 4.0f}, style.highlight, 1.0f);
+        } else {
+            auto color = Theme::current().window.background.darken(0.15f);
+            painter.draw_line({rect_.width / 2.0f, 4.0f}, {rect_.width / 2.0f, rect_.height - 4.0f},
+                              color, 1.0f);
+        }
     }
     bool handle_mouse(MouseEvent const &) override { return false; }
     Size size_hint() const override { return {8.0f, 0.0f}; }
@@ -43,7 +50,6 @@ Toolbar::Toolbar() {
     layout_ = std::make_unique<HBoxLayout>();
     layout_->set_margins({2, 4, 2, 4});
     layout_->set_spacing(2);
-    set_background_color(Theme::current().window.background.darken(0.02f));
 }
 
 void Toolbar::add_command(Command::Ptr cmd) {
@@ -57,12 +63,17 @@ void Toolbar::add_widget(std::unique_ptr<Widget> w, float stretch) {
 void Toolbar::add_separator() { layout_->add_widget(std::make_unique<ToolbarSeparator>()); }
 
 void Toolbar::paint(Painter &painter) {
-    if (background_color_) {
-        painter.fill_rect({0, 0, rect_.width, rect_.height}, *background_color_);
+    auto const &style = Theme::current().button;
+    if (style.beveled) {
+        // Win95 style: highlight at top, shadow at bottom
+        painter.draw_line({0, 0}, {rect_.width, 0}, style.highlight, 1.0f);
+        painter.draw_line({0, rect_.height - 1.0f}, {rect_.width, rect_.height - 1.0f},
+                          style.shadow, 1.0f);
+    } else {
+        // Flat style: subtle border at bottom
+        auto border_c = Theme::current().window.background.darken(0.15f);
+        painter.draw_line({0, rect_.height - 1.0f}, {rect_.width, rect_.height - 1.0f}, border_c, 1.0f);
     }
-    // Draw bottom border
-    auto border_c = Theme::current().window.background.darken(0.15f);
-    painter.draw_line({0, rect_.height - 1.0f}, {rect_.width, rect_.height - 1.0f}, border_c, 1.0f);
 
     layout_->draw(painter);
 }
