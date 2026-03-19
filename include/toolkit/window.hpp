@@ -82,6 +82,7 @@ class Window {
     PlatformWindow *platform_window() const;
 
     void set_focused_widget(Widget *w);
+    Widget *focused_widget() const { return focused_widget_; }
 
     struct Statistics {
         uint64_t total_draws = 0;
@@ -113,6 +114,7 @@ class Window {
     std::vector<std::unique_ptr<Widget>> widgets_;
     std::vector<Command::Ptr> global_commands_;
     Widget *focused_widget_ = nullptr;
+    Widget *saved_focus_ = nullptr;
     std::vector<Popup> popups_;
     CursorShape current_cursor_ = CursorShape::Arrow;
     Widget *hovered_widget_ = nullptr;

@@ -220,6 +220,10 @@ void Window::add_widget(std::unique_ptr<Widget> widget) {
 }
 
 void Window::open_popup(Popup popup) {
+    if (popups_.empty()) {
+        saved_focus_ = focused_widget_;
+        set_focused_widget(nullptr);
+    }
     popups_.push_back(std::move(popup));
     request_redraw("popup open");
 }
@@ -227,6 +231,10 @@ void Window::open_popup(Popup popup) {
 void Window::close_popup() {
     if (!popups_.empty()) {
         popups_.pop_back();
+        if (popups_.empty()) {
+            set_focused_widget(saved_focus_);
+            saved_focus_ = nullptr;
+        }
     }
     request_redraw("popup close");
 }
@@ -234,6 +242,10 @@ void Window::close_popup() {
 void Window::close_all_popups() {
     if (!popups_.empty()) {
         popups_.clear();
+        if (saved_focus_) {
+            set_focused_widget(saved_focus_);
+            saved_focus_ = nullptr;
+        }
         request_redraw("popup close");
     }
 }

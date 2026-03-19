@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+// SPDX-&FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/application.hpp"
 #include "toolkit/button.hpp"
@@ -326,7 +326,7 @@ int main(int argc, char *argv[]) {
     auto menubar = std::make_unique<toolkit::MenuBar>();
     auto *menubar_ptr = menubar.get();
 
-    auto file_menu = menubar->add_menu("File");
+    auto file_menu = menubar->add_menu("&File");
     auto new_cmd = toolkit::Command::create("New", [] { spdlog::info("Menu: New"); });
     new_cmd->set_shortcut("Std+N");
     file_menu->add_action(new_cmd);
@@ -342,15 +342,15 @@ int main(int argc, char *argv[]) {
     file_menu->add_separator();
 
     // Nested menu example
-    auto recent_files_menu = std::make_shared<toolkit::Menu>("Recent Files");
-    recent_files_menu->add_action("File1.txt", [] { spdlog::info("Opening File1.txt"); });
-    recent_files_menu->add_action("File2.txt", [] { spdlog::info("Opening File2.txt"); });
-    file_menu->add_submenu("Recent Files", recent_files_menu);
+    auto recent_files_menu = std::make_shared<toolkit::Menu>("Recent &Files");
+    recent_files_menu->add_action("&File1.txt", [] { spdlog::info("Opening &File1.txt"); });
+    recent_files_menu->add_action("&File2.txt", [] { spdlog::info("Opening &File2.txt"); });
+    file_menu->add_submenu("Recent &Files", recent_files_menu);
 
     file_menu->add_separator();
     file_menu->add_action("Exit", [window] { window->close(); });
 
-    auto edit_menu = menubar->add_menu("Edit");
+    auto edit_menu = menubar->add_menu("&Edit");
     auto undo_cmd = toolkit::Command::create("Undo", [] { spdlog::info("Menu: Undo"); });
     undo_cmd->set_shortcut("Std+Z");
     edit_menu->add_action(undo_cmd);
@@ -364,7 +364,7 @@ int main(int argc, char *argv[]) {
     edit_menu->add_action("Copy", [] { spdlog::info("Menu: Copy"); });
     edit_menu->add_action("Paste", [] { spdlog::info("Menu: Paste"); });
 
-    menubar->add_menu("Help")->add_action("About", [] { spdlog::info("Menu: About"); });
+    menubar->add_menu("&Help")->add_action("About", [] { spdlog::info("Menu: About"); });
 
     // Add shortcuts to the window globally so they are always active
     window->add_command(new_cmd);

@@ -7,7 +7,10 @@
 
 namespace toolkit {
 
-MenuBar::MenuBar() { set_focusable(false); }
+MenuBar::MenuBar() {
+    set_focusable(false);
+    state.non_focus_input = true;
+}
 
 void MenuBar::add_menu(std::shared_ptr<Menu> menu) {
     menus_.push_back(std::move(menu));
@@ -22,7 +25,7 @@ std::shared_ptr<Menu> MenuBar::add_menu(std::string title) {
 
 int MenuBar::find_menu(std::string_view title) const {
     for (auto i = 0; i < static_cast<int>(menus_.size()); ++i) {
-        if (menus_[i]->title() == title) {
+        if (menus_[i]->display_title() == title) {
             return i;
         }
     }
@@ -37,7 +40,7 @@ void MenuBar::paint(Painter &painter) {
 
     for (auto i = 0; i < static_cast<int>(menus_.size()); i++) {
         auto const &menu = menus_[i];
-        auto text_w = painter.text_size(menu->title(), style.font_size).width;
+        auto text_w = painter.text_size(menu->display_title(), style.font_size).width;
         auto item_w = text_w + padding.left + padding.right;
         auto item_rect = Rect{x, 0, item_w, rect_.height};
 
@@ -47,7 +50,20 @@ void MenuBar::paint(Painter &painter) {
         }
 
         auto baseline = (rect_.height - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(menu->title(), {x + padding.left, baseline}, style.text, style.font_size);
+        painter.draw_text(menu->display_title(), {x + padding.left, baseline}, style.text,
+                          style.font_size);
+
+        if (menu->mnemonic_index() >= 0) {
+            auto before = menu->display_title().substr(0, menu->mnemonic_index());
+            auto ch = std::string(1, menu->display_title()[menu->mnemonic_index()]);
+            auto before_w =
+                before.empty() ? 0.0f : painter.text_size(before, style.font_size).width;
+            auto ch_w = painter.text_size(ch, style.font_size).width;
+            auto ul_y = baseline + fm.descent * 0.4f;
+
+            painter.draw_line({x + padding.left + before_w, ul_y},
+                              {x + padding.left + before_w + ch_w, ul_y}, style.text, 2.0f);
+        }
 
         x += item_w;
     }
@@ -67,7 +83,7 @@ int MenuBar::menu_at(Point p) const {
 
     for (auto i = 0; i < static_cast<int>(menus_.size()); i++) {
         auto const &menu = menus_[i];
-        auto text_w = Painter::measure_text(menu->title(), style.font_size).width;
+        auto text_w = Painter::measure_text(menu->display_title(), style.font_size).width;
         auto item_w = text_w + padding.left + padding.right;
         if (p.x >= x && p.x < x + item_w) {
             return i;
@@ -109,6 +125,17 @@ bool MenuBar::handle_key(KeyEvent const &event) {
         return false;
     }
 
+    if (event.key == Key::F10) {
+        if (active_ != -1) { // If a menu is open, close it
+            menus_[active_]->close();
+            active_ = -1;
+        } else { // If no menu is open, activate the first one
+            open_menu(0);
+        }
+        return true;
+    }
+
+    // Existing logic for global shortcuts
     for (auto const &menu : menus_) {
         for (auto const &item : menu->items()) {
             if (item.type == MenuItem::Type::Action && item.command->is_enabled()) {
@@ -127,6 +154,18 @@ bool MenuBar::handle_key(KeyEvent const &event) {
     return false;
 }
 
+void MenuBar::collect_mnemonics(std::vector<Widget *> &out) { out.push_back(this); }
+
+bool MenuBar::trigger_mnemonic(char key) {
+    for (size_t i = 0; i < menus_.size(); ++i) {
+        if (menus_[i]->mnemonic_key() == key) {
+            open_menu(i);
+            return true;
+        }
+    }
+    return false;
+}
+
 void MenuBar::open_menu(int index) {
     if (index < 0 || index >= static_cast<int>(menus_.size())) {
         return;
@@ -140,8 +179,8 @@ void MenuBar::open_menu(int index) {
     auto padding = style.padding;
     auto x = 0.0f;
     for (int i = 0; i < index; ++i) {
-        x += Painter::measure_text(menus_[i]->title(), style.font_size).width + padding.left +
-             padding.right;
+        x += Painter::measure_text(menus_[i]->display_title(), style.font_size).width +
+             padding.left + padding.right;
     }
 
     auto pos = map_to_window({x, rect_.height});
@@ -155,6 +194,10 @@ void MenuBar::open_menu(int index) {
         auto prev_index = (index - 1 + menus_.size()) % menus_.size();
         open_menu(prev_index);
     };
+    menu->on_close_callback = [this] {
+        active_ = -1;
+        hovered_ = -1;
+    };
     menu->show(window(), pos);
 }
 
@@ -164,8 +207,8 @@ Size MenuBar::size_hint() const {
     auto fm = Painter::measure_font_metrics(style.font_size);
     auto w = 0.0f;
     for (auto const &m : menus_) {
-        w +=
-            Painter::measure_text(m->title(), style.font_size).width + padding.left + padding.right;
+        w += Painter::measure_text(m->display_title(), style.font_size).width + padding.left +
+             padding.right;
     }
     return {w, fm.height + padding.top + padding.bottom};
 }

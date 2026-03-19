@@ -24,6 +24,8 @@ class MenuBar : public Widget {
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
+    void collect_mnemonics(std::vector<Widget *> &out) override;
+    bool trigger_mnemonic(char key) override;
 
   private:
     int menu_at(Point p) const;

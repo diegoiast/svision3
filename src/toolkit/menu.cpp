@@ -13,7 +13,17 @@ MenuItem MenuItem::submenu_item(std::string name, std::shared_ptr<class Menu> me
     return {Type::Submenu, std::move(cmd), std::move(menu)};
 }
 
-Menu::Menu(std::string title) : title_(std::move(title)) {}
+Menu::Menu(std::string title) : title_(std::move(title)), mnemonic_index_(-1) {
+    auto pos = title_.find('&');
+    if (pos != std::string::npos && pos + 1 < title_.size()) {
+        mnemonic_index_ = static_cast<int>(pos);
+        mnemonic_key_ =
+            static_cast<char>(std::tolower(static_cast<unsigned char>(title_[pos + 1])));
+        display_title_ = title_.substr(0, pos) + title_.substr(pos + 1);
+    } else {
+        display_title_ = title_;
+    }
+}
 
 void Menu::add_action(std::shared_ptr<Command> cmd) {
     items_.push_back(MenuItem::action(std::move(cmd)));
@@ -94,6 +104,9 @@ void Menu::show(Window *win, Point position) {
 }
 
 void Menu::close() {
+    if (on_close_callback) {
+        on_close_callback();
+    }
     if (window_) {
         window_->close_popup();
     }

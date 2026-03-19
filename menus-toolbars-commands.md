@@ -39,8 +39,8 @@
      4. Submenu: A MenuItem that opens another nested Menu. [done]
      5. Global Coordination:
         1. The MenuBar (or Window) maintains a registry of all active Shortcuts. [WIP - verify, make unit test]
-        2. Mnemonics: Supports "Alt+F" style access to MenuBar items.
-     6. "F10" to open menu (menu keyboard shortcut).
+        2. Mnemonics: Supports "Alt+F" style access to MenuBar items. [done]
+     6. "F10" to open menu (menu keyboard shortcut). [done]
      7. ContextMenu vs Menu classes are those the same?
      8. macOS Specifics & "PC Mode":
         1. Native Mode (Default): MenuBar maps to the global NSMenu bar.

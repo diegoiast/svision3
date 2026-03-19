@@ -58,11 +58,15 @@ class Menu : public std::enable_shared_from_this<Menu> {
     void close();
 
     std::string const &title() const { return title_; }
+    std::string const &display_title() const { return display_title_; }
+    char mnemonic_key() const { return mnemonic_key_; }
+    int mnemonic_index() const { return mnemonic_index_; }
     std::vector<MenuItem> const &items() const { return items_; }
     void set_parent_menu(Menu *parent) { parent_menu_ = parent; }
 
     std::function<void()> on_request_next_menu;
     std::function<void()> on_request_prev_menu;
+    std::function<void()> on_close_callback;
 
   private:
     friend class MenuBar;
@@ -73,6 +77,9 @@ class Menu : public std::enable_shared_from_this<Menu> {
     void open_submenu(int index);
 
     std::string title_;
+    std::string display_title_;
+    char mnemonic_key_ = 0;
+    int mnemonic_index_ = -1;
     std::vector<MenuItem> items_;
     Window *window_ = nullptr;
     Rect bounds_;
