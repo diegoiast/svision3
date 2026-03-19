@@ -61,6 +61,21 @@ struct ComboboxStyle : WidgetStyle {
     Margins padding = {6, 8, 6, 8};
 };
 
+struct MenuStyle : WidgetStyle {
+    std::optional<Color> background_hovered;
+    std::optional<Color> background_pressed;
+    Color item_hovered;
+    Color item_text_hovered;
+    float item_padding = 4.0f;
+    Margins padding = {2, 2, 2, 2};
+};
+
+struct MenuBarStyle : WidgetStyle {
+    std::optional<Color> background_hovered;
+    std::optional<Color> background_pressed;
+    Margins padding = {4, 8, 4, 8};
+};
+
 struct TabWidgetStyle : WidgetStyle {
     Color tab_active_bg;
     Color tab_inactive_bg;
@@ -166,6 +181,8 @@ struct Theme {
     ToggleStyle checkbox;
     ToggleStyle radio;
     ComboboxStyle combobox;
+    MenuStyle menu;
+    MenuBarStyle menubar;
     TabWidgetStyle tab_widget;
     ListViewStyle list_view;
     TableViewStyle table_view;

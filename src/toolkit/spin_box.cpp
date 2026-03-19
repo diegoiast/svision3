@@ -12,7 +12,7 @@ namespace toolkit {
 SpinBox::SpinBox(int value, int min_val, int max_val, int step)
     : value_(value), min_val_(min_val), max_val_(max_val), step_(step),
       cursor_blink_time_(std::chrono::steady_clock::now()) {
-    state.focused = true;
+    state.focusable = true;
     sync_text();
 }
 
@@ -32,7 +32,7 @@ void SpinBox::set_range(int min_val, int max_val) {
 }
 
 void SpinBox::set_focused(bool focused) {
-    Widget::set_focusable(focused);
+    Widget::set_focused(focused);
     if (focused) {
         editing_ = true;
         cursor_pos_ = text_.size();

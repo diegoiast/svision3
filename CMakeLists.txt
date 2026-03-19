@@ -54,6 +54,8 @@ set(TOOLKIT_SOURCES
     src/toolkit/text_edit.cpp
     src/toolkit/table_view.cpp
     src/toolkit/context_menu.cpp
+    src/toolkit/menu.cpp
+    src/toolkit/menubar.cpp
     src/toolkit/layout.cpp
     src/toolkit/theme.cpp
     src/toolkit/window.cpp

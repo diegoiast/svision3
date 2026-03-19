@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
 #include "toolkit/application.hpp"
 #include "toolkit/button.hpp"
 #include "toolkit/checkbox.hpp"
@@ -14,6 +17,8 @@
 #include "toolkit/table_view.hpp"
 #include "toolkit/text_edit.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/menu.hpp"
+#include "toolkit/menubar.hpp"
 #include "toolkit/toolbar.hpp"
 #include "toolkit/window.hpp"
 #include <fstream>
@@ -291,6 +296,76 @@ int main(int argc, char *argv[]) {
     auto root = std::make_unique<toolkit::VBoxLayout>();
     root->set_margins({0, 0, 0, 0});
     root->set_spacing(0);
+
+    // This needs to be acessible by the menu and the editor tab
+    auto editor = new toolkit::TextEdit();
+    editor->set_text("#include <iostream>\n"
+                     "\n"
+                     "int main() {\n"
+                     "    std::cout << \"Hello, world!\" << std::endl;\n"
+                     "    return 0;\n"
+                     "}\n");
+
+    auto open_action = [editor] {
+        NFD_Init();
+        nfdu8char_t *out_path = nullptr;
+        nfdresult_t result = NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
+        if (result == NFD_OKAY && out_path) {
+            std::ifstream f(out_path);
+            if (f) {
+                std::string contents((std::istreambuf_iterator<char>(f)),
+                                     std::istreambuf_iterator<char>());
+                editor->set_text(contents);
+            }
+            NFD_FreePathU8(out_path);
+        }
+        NFD_Quit();
+    };
+
+    // ── MenuBar ─────────────────────────────────────────────────────────
+    auto menubar = std::make_unique<toolkit::MenuBar>();
+    auto *menubar_ptr = menubar.get();
+
+    auto file_menu = menubar->add_menu("File");
+    auto new_cmd = toolkit::Command::create("New", [] { spdlog::info("Menu: New"); });
+    new_cmd->set_shortcut("Std+N");
+    file_menu->add_action(new_cmd);
+
+    auto open_menu_cmd = toolkit::Command::create("Open...", open_action);
+    open_menu_cmd->set_shortcut("F3");
+    file_menu->add_action(open_menu_cmd);
+
+    auto save_cmd = toolkit::Command::create("Save", [] { spdlog::info("Menu: Save"); });
+    save_cmd->set_shortcut("Std+S");
+    file_menu->add_action(save_cmd);
+
+    file_menu->add_separator();
+    file_menu->add_action("Exit", [window] { window->close(); });
+
+    auto edit_menu = menubar->add_menu("Edit");
+    auto undo_cmd = toolkit::Command::create("Undo", [] { spdlog::info("Menu: Undo"); });
+    undo_cmd->set_shortcut("Std+Z");
+    edit_menu->add_action(undo_cmd);
+
+    auto redo_cmd = toolkit::Command::create("Redo", [] { spdlog::info("Menu: Redo"); });
+    redo_cmd->set_shortcut("Std+Y");
+    edit_menu->add_action(redo_cmd);
+
+    edit_menu->add_separator();
+    edit_menu->add_action("Cut", [] { spdlog::info("Menu: Cut"); });
+    edit_menu->add_action("Copy", [] { spdlog::info("Menu: Copy"); });
+    edit_menu->add_action("Paste", [] { spdlog::info("Menu: Paste"); });
+
+    menubar->add_menu("Help")->add_action("About", [] { spdlog::info("Menu: About"); });
+
+    // Add shortcuts to the window globally so they are always active
+    window->add_command(new_cmd);
+    window->add_command(open_menu_cmd);
+    window->add_command(save_cmd);
+    window->add_command(undo_cmd);
+    window->add_command(redo_cmd);
+
+    root->add_widget(std::move(menubar));
 
     // ── Toolbar ──────────────────────────────────────────────────────────
     auto toolbar = std::make_unique<toolkit::Toolbar>();
@@ -592,45 +667,16 @@ int main(int argc, char *argv[]) {
     auto editor_toolbar = std::make_unique<toolkit::HBoxLayout>();
     editor_toolbar->set_spacing(8);
 
-    auto editor =
-        std::make_unique<toolkit::TextEdit>("#include <iostream>\n"
-                                            "\n"
-                                            "int main() {\n"
-                                            "    std::cout << \"Hello, world!\" << std::endl;\n"
-                                            "    return 0;\n"
-                                            "}\n");
-    auto *editor_ptr = editor.get();
-
     auto open_btn = std::make_unique<toolkit::Button>("Open...");
     open_btn->set_tooltip("Open a text file (F3)");
-    auto open_action = [editor_ptr] {
-        NFD_Init();
-        nfdu8char_t *out_path = nullptr;
-        nfdresult_t result = NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
-        if (result == NFD_OKAY && out_path) {
-            std::ifstream f(out_path);
-            if (f) {
-                std::string contents((std::istreambuf_iterator<char>(f)),
-                                     std::istreambuf_iterator<char>());
-                editor_ptr->set_text(contents);
-            }
-            NFD_FreePathU8(out_path);
-        }
-        NFD_Quit();
-    };
     open_btn->on_click = open_action;
-
-    auto open_cmd = toolkit::Command::create("Open", open_action);
-    open_cmd->set_shortcut("F3");
-    open_btn->add_command(open_cmd);
-
     editor_toolbar->add_widget(std::move(open_btn));
 
     auto toolbar_spacer = std::make_unique<toolkit::Label>("");
     editor_toolbar->add_widget(std::move(toolbar_spacer), 1);
 
     tab5->add_widget(std::move(editor_toolbar));
-    tab5->add_widget(std::move(editor), 1);
+    tab5->add_widget(std::unique_ptr<toolkit::TextEdit>(editor));
 
     tabs->add_tab("Editor", std::move(tab5));
 

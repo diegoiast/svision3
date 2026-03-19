@@ -3,28 +3,13 @@
 
 #pragma once
 
-#include "toolkit/command.hpp"
-#include "toolkit/events.hpp"
-#include "toolkit/painter.hpp"
-#include "toolkit/types.hpp"
+#include "toolkit/menu.hpp"
 #include <memory>
 #include <vector>
 
 namespace toolkit {
 
 class Window;
-
-struct MenuItem {
-    std::shared_ptr<Command> command;
-    bool separator = false;
-
-    static MenuItem action(std::string name, std::function<void()> execute,
-                           bool enabled = true) {
-        return {std::make_shared<Command>(std::move(name), std::move(execute), enabled)};
-    }
-
-    static MenuItem sep() { return {nullptr, true}; }
-};
 
 class ContextMenu {
   public:

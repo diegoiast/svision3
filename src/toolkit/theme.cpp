@@ -289,6 +289,8 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.button.background_hovered = dark ? p.widget_bg.lighten(0.08f) : p.widget_bg.darken(0.04f);
         t.button.background_pressed = dark ? p.widget_bg.lighten(0.15f) : p.widget_bg.darken(0.10f);
         t.button.padding = {10, 24, 10, 24};
+        t.menu.padding = {4, 4, 4, 4};
+        t.menubar.padding = {4, 12, 4, 12};
         t.slider.handle_size = 18.0f;
         t.slider.groove_thickness = 4.0f;
         break;
@@ -424,6 +426,17 @@ Theme Theme::from_palette(std::string name, Palette const &p) {
     t.combobox.dropdown_bg = p.input_bg;
     t.combobox.item_hovered = p.background_selected;
     t.combobox.item_text_hovered = gray(1.0f);
+
+    apply_base(t.menu, p);
+    t.menu.background = p.input_bg;
+    t.menu.background_hovered = p.background_selected;
+    t.menu.item_hovered = p.background_selected;
+    t.menu.item_text_hovered = gray(1.0f);
+
+    apply_base(t.menubar, p);
+    t.menubar.background = p.window_bg;
+    t.menubar.background_hovered = p.background_selected;
+    t.menubar.padding = {4, 8, 4, 8};
 
     apply_base(t.tab_widget, p);
     bool is_dark = luma(p.window_bg) < 0.5f;

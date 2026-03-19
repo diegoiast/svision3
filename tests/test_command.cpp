@@ -39,14 +39,14 @@ TEST_CASE("Command name", "[command]") {
 
 TEST_CASE("MenuItem::action creates item with command", "[command]") {
     auto item = MenuItem::action("Do it", [] {});
-    REQUIRE(!item.separator);
+    REQUIRE(!item.is_separator());
     REQUIRE(item.command != nullptr);
     REQUIRE(item.command->name() == "Do it");
 }
 
 TEST_CASE("MenuItem::sep creates separator", "[command]") {
     auto item = MenuItem::sep();
-    REQUIRE(item.separator);
+    REQUIRE(item.is_separator());
     REQUIRE(item.command == nullptr);
 }
 

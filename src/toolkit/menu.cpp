@@ -1,44 +1,72 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/context_menu.hpp"
+#include "toolkit/menu.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <algorithm>
 
 namespace toolkit {
 
-ContextMenu::ContextMenu(std::vector<MenuItem> items) : items_(std::move(items)) {}
+MenuItem MenuItem::submenu_item(std::string name, std::shared_ptr<class Menu> menu) {
+    auto cmd = std::make_shared<Command>(std::move(name), nullptr);
+    return {Type::Submenu, std::move(cmd), std::move(menu)};
+}
+
+Menu::Menu(std::string title) : title_(std::move(title)) {}
+
+void Menu::add_action(std::shared_ptr<Command> cmd) {
+    items_.push_back(MenuItem::action(std::move(cmd)));
+}
+
+void Menu::add_action(std::string name, std::function<void()> execute, bool enabled) {
+    items_.push_back(MenuItem::action(std::move(name), std::move(execute), enabled));
+}
+
+void Menu::add_separator() {
+    items_.push_back(MenuItem::sep());
+}
+
+void Menu::add_submenu(std::string name, std::shared_ptr<Menu> submenu) {
+    items_.push_back(MenuItem::submenu_item(std::move(name), std::move(submenu)));
+}
 
 static auto menu_total_height(std::vector<MenuItem> const &items, float item_h, float sep_h)
     -> float {
     auto h = 0.0f;
-
     for (auto const &item : items) {
         h += (item.type == MenuItem::Type::Separator) ? sep_h : item_h;
     }
     return h;
 }
 
-void ContextMenu::show(Window *win, Point position) {
+void Menu::show(Window *win, Point position) {
     window_ = win;
     if (!window_ || items_.empty()) {
         return;
     }
 
-    auto const &style = Theme::current().combobox;
-    auto max_w = 0.0f;
+    auto const &style = Theme::current().menu;
 
     item_height_ = style.font_size + style.item_padding * 2.0f + 4.0f;
+    float max_name_w = 0.0f;
+    float max_shortcut_w = 0.0f;
     for (auto const &item : items_) {
         if (item.type == MenuItem::Type::Separator) {
             continue;
         }
-        auto w = Painter::measure_text(item.command->name(), style.font_size).width;
-        max_w = std::max(max_w, w);
+        auto name_w = Painter::measure_text(item.command->name(), style.font_size).width;
+        max_name_w = std::max(max_name_w, name_w);
+        if (!item.command->shortcut_string().empty()) {
+            auto shortcut_w = Painter::measure_text(item.command->shortcut_string(), style.font_size).width;
+            max_shortcut_w = std::max(max_shortcut_w, shortcut_w);
+        }
     }
 
-    auto width = max_w + style.padding.left + style.padding.right + 20.0f;
+    auto width = max_name_w + style.padding.left + style.padding.right + 20.0f;
+    if (max_shortcut_w > 0) {
+        width += max_shortcut_w + 20.0f; // Add gap and shortcut width
+    }
     auto height = menu_total_height(items_, item_height_, separator_height_) + 4.0f;
     auto win_size = window_->size();
     auto x = position.x;
@@ -48,14 +76,10 @@ void ContextMenu::show(Window *win, Point position) {
         x = win_size.width - width;
     }
     if (y + height > win_size.height) {
-        y = position.y - height;
+        y = win_size.height - height;
     }
-    if (x < 0) {
-        x = 0;
-    }
-    if (y < 0) {
-        y = 0;
-    }
+    x = std::max(0.0f, x);
+    y = std::max(0.0f, y);
 
     bounds_ = {x, y, width, height};
     hovered_ = -1;
@@ -68,16 +92,15 @@ void ContextMenu::show(Window *win, Point position) {
     window_->open_popup(std::move(popup));
 }
 
-void ContextMenu::close() {
+void Menu::close() {
     if (window_) {
         window_->close_popup();
     }
     window_ = nullptr;
 }
 
-int ContextMenu::item_at(Point p) const {
+int Menu::item_at(Point p) const {
     auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
-
     if (!local_bounds.contains(p)) {
         return -1;
     }
@@ -92,7 +115,7 @@ int ContextMenu::item_at(Point p) const {
     return -1;
 }
 
-void ContextMenu::paint(Painter &painter) {
+void Menu::paint(Painter &painter) {
     auto const &style = Theme::current().combobox;
     auto shadow = Color::rgba(0, 0, 0, 0.12f);
     auto fm = painter.font_metrics(style.font_size);
@@ -131,11 +154,25 @@ void ContextMenu::paint(Painter &painter) {
         auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
         painter.draw_text(item.command->name(), {style.padding.left + 4, baseline}, text_col,
                           style.font_size);
+
+        if (!item.command->shortcut_string().empty()) {
+            auto shortcut_w = painter.text_size(item.command->shortcut_string(), style.font_size).width;
+            auto shortcut_x = bounds_.width - style.padding.right - shortcut_w - 10.0f;
+            painter.draw_text(item.command->shortcut_string(), {shortcut_x, baseline}, text_col,
+                              style.font_size);
+        }
+
+        if (item.type == MenuItem::Type::Submenu) {
+            // Draw arrow for submenu
+            auto arrow_x = bounds_.width - 15.0f;
+            painter.draw_text(">", {arrow_x, baseline}, text_col, style.font_size);
+        }
+
         y += item_height_;
     }
 }
 
-auto ContextMenu::handle_mouse(MouseEvent const &event) -> bool {
+bool Menu::handle_mouse(MouseEvent const &event) {
     auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
 
     if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
@@ -146,10 +183,16 @@ auto ContextMenu::handle_mouse(MouseEvent const &event) -> bool {
     if (event.type == MouseEvent::Type::Press) {
         auto idx = item_at(event.position);
         if (idx >= 0 && items_[idx].command->is_enabled()) {
-            auto cmd = items_[idx].command;
-            close();
-            cmd->execute();
-            return true;
+            if (items_[idx].type == MenuItem::Type::Action) {
+                auto cmd = items_[idx].command;
+                close();
+                cmd->execute();
+                return true;
+            } else if (items_[idx].type == MenuItem::Type::Submenu) {
+                // Submenus not fully implemented in the stack yet, but let's at least show them
+                // This would need section 5.1 of the plan (popup stack)
+                return true;
+            }
         }
         close();
         return false;
@@ -158,7 +201,7 @@ auto ContextMenu::handle_mouse(MouseEvent const &event) -> bool {
     return false;
 }
 
-auto ContextMenu::handle_key(KeyEvent const &event) -> bool {
+bool Menu::handle_key(KeyEvent const &event) {
     if (event.type != KeyEvent::Type::Press) {
         return false;
     }
@@ -183,9 +226,11 @@ auto ContextMenu::handle_key(KeyEvent const &event) -> bool {
         return true;
     case Key::Enter:
         if (hovered_ >= 0 && items_[hovered_].command->is_enabled()) {
-            auto cmd = items_[hovered_].command;
-            close();
-            cmd->execute();
+            if (items_[hovered_].type == MenuItem::Type::Action) {
+                auto cmd = items_[hovered_].command;
+                close();
+                cmd->execute();
+            }
         }
         return true;
     case Key::Escape:
