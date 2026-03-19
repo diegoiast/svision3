@@ -59,6 +59,10 @@ class Menu : public std::enable_shared_from_this<Menu> {
 
     std::string const &title() const { return title_; }
     std::vector<MenuItem> const &items() const { return items_; }
+    void set_parent_menu(Menu *parent) { parent_menu_ = parent; }
+
+    std::function<void()> on_request_next_menu;
+    std::function<void()> on_request_prev_menu;
 
   private:
     friend class MenuBar;
@@ -66,6 +70,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
     bool handle_mouse(MouseEvent const &event);
     bool handle_key(KeyEvent const &event);
     int item_at(Point p) const;
+    void open_submenu(int index);
 
     std::string title_;
     std::vector<MenuItem> items_;
@@ -74,6 +79,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
     int hovered_ = -1;
     float item_height_ = 0;
     float separator_height_ = 7.0f;
+    Menu *parent_menu_ = nullptr;
 };
 
 } // namespace toolkit

@@ -132,6 +132,9 @@ void MenuBar::open_menu(int index) {
         return;
     }
 
+    if (window()) {
+        window()->close_all_popups();
+    }
     active_ = index;
     auto const &style = Theme::current().button;
     auto padding = style.padding;
@@ -142,7 +145,17 @@ void MenuBar::open_menu(int index) {
     }
 
     auto pos = map_to_window({x, rect_.height});
-    menus_[index]->show(window(), pos);
+    auto menu = menus_[index];
+    menu->set_parent_menu(nullptr);
+    menu->on_request_next_menu = [this, index] {
+        auto next_index = (index + 1) % menus_.size();
+        open_menu(next_index);
+    };
+    menu->on_request_prev_menu = [this, index] {
+        auto prev_index = (index - 1 + menus_.size()) % menus_.size();
+        open_menu(prev_index);
+    };
+    menu->show(window(), pos);
 }
 
 Size MenuBar::size_hint() const {

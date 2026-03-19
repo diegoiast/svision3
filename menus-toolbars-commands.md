@@ -1,53 +1,55 @@
 # Menus, Toolbars, and Commands Plan
 
-## 1. Command Interface (Abstraction) [done]
+## 1. Command Interface (Abstraction) [WIP 4/6]
 
-1. Properties: name, tooltip, shortcut, icon (deferred), enabled, checked.
-2. Signal: on_triggered.
-3. Purpose: Decouple the logic from the UI (Menu, Toolbar, Button).
-4. Text Fallback: If both name and icon are missing, "???" will be used.
+1. Properties: name, tooltip, shortcut, icon (deferred), enabled, checked. [done]
+2. Signal: on_triggered. [done]
+3. Purpose: Decouple the logic from the UI (Menu, Toolbar, Button). [done]
+4. Text Fallback: If both name and icon are missing, "???" will be used. [done]
+5. Icon support.
+6. Support for High-DPI (@2x) image assets.
 
-## 2. Widget Integration [done]
+## 2. Widget Integration [DONE]
 
-1. Widgets can own local Commands.
-2. Window owns global Commands.
-3. Event Handling: KeyEvents will be matched against Shortcut strings.
-4. Shortcut Priority: Shortcuts should be checked before focused widget input but after basic navigation keys.
+1. Widgets can own local Commands. [done]
+2. Window owns global Commands. [done]
+3. Event Handling: KeyEvents will be matched against Shortcut strings. [done]
+4. Shortcut Priority: Shortcuts should be checked before focused widget input but after basic navigation keys. [done]
 
-## 3. Toolbar Widget [done]
+## 3. Toolbar Widget [WIP 4/8]
 
-1. Container (HBoxLayout) for ToolButtons and arbitrary Widgets.
-2. Command Actions: ToolButtons are automatically created from a Command; sync with enabled/checked state.
+1. Container (HBoxLayout) for ToolButtons and arbitrary Widgets. [done]
+2. Command Actions: ToolButtons are automatically created from a Command; sync with enabled/checked state. [done]
 3. Embedded Widgets: Support adding any Widget (ComboBox, SpinBox, Label, etc.) to the toolbar.
 4. Layout Management:
   1. Vertical or Horizontal orientation.
   2. Support for "Stretching" widgets to fill available space (e.g., search boxes).
-  3. Vertical/Horizontal Dividers for grouping.
-5. Visuals: Text-only for now; use "???" if no text or icon is provided.
+  3. Vertical/Horizontal Dividers for grouping.[WIP]
+5. Visuals: Text-only for now; use "???" if no text or icon is provided. [done]
+6. Visuals: use icons from command.
 
-## 4. Menu System (Full Hierarchy)
+## 4. Menu System [WIP 6/12]
 
 1. MenuBar: Top-level horizontal container for Menus (File, Edit, etc.). [done]
 2. Menu: A specialized Popup that contains a list of MenuItems. [done]
 3. MenuItem:
      1. Action Item: Triggers a Command. Displays "Name" and "Shortcut" (e.g., "Open... Ctrl+O"). [done]
      2. Separator: A horizontal line to group related items.[done]
-     3. Left/Right keyboard should move to the next/prev menu.
-     4. Global Coordination:
+     3. Left/Right keyboard should move to the next/prev menu. [done]
+     4. Submenu: A MenuItem that opens another nested Menu. [done]
+     5. Global Coordination:
         1. The MenuBar (or Window) maintains a registry of all active Shortcuts. [WIP - verify, make unit test]
         2. Mnemonics: Supports "Alt+F" style access to MenuBar items.
-     5. "F10" to open menu (menu keyboard shortcut).
-     6. Submenu: A MenuItem that opens another nested Menu.
+     6. "F10" to open menu (menu keyboard shortcut).
      7. ContextMenu vs Menu classes are those the same?
      8. macOS Specifics & "PC Mode":
         1. Native Mode (Default): MenuBar maps to the global NSMenu bar.
         2. Embedded Mode ("PC Style"): MenuBar is rendered as a standard widget inside the window's layout, even on macOS.
-     9. Standard Menus: In Native mode, common menus (App, File, Edit, Window, Help) are prioritized and automatically populated.
-     10. Search inside menus like macOS.
+     9. Search inside menus like macOS.
 
 ## 5. Popup and Overlay System
 
-1. Move from a single `std::optional<Popup>` to a `std::vector<Popup>` (a stack) to support nested submenus.
+1. Move from a single `std::optional<Popup>` to a `std::vector<Popup>` (a stack) to support nested submenus. [WIP]
 2. Implement "Recursive Closing" logic: Closing a parent popup automatically closes all its children in the stack.
 3. Formalize `ContextMenu` to use the new `Command` system and stack.
 4. Ensure `ComboBox` dropdowns align with the formalized popup logic.
@@ -70,9 +72,3 @@
 4. Painter Integration:
     1. Add `draw_image(Rect destination, const Image& img)` to the `Painter` interface.
     2. Ensure all backends (Cairo, OpenGL, Win32, Cocoa) implement efficient image scaling and drawing.
-
-## 7. Toolbar & Menu Integration
-
-1. Connect Icons to ToolButtons and MenuItems.
-2. Automatic fallback to "???" text if no icon or name is found.
-3. Support for High-DPI (@2x) image assets.

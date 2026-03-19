@@ -53,7 +53,8 @@ class Window {
 
     void open_popup(Popup popup);
     void close_popup();
-    bool has_popup() const { return popup_.has_value(); }
+    void close_all_popups();
+    bool has_popup() const { return !popups_.empty(); }
 
     void handle_paint(Painter &painter);
     void handle_mouse(MouseEvent const &event);
@@ -112,7 +113,7 @@ class Window {
     std::vector<std::unique_ptr<Widget>> widgets_;
     std::vector<Command::Ptr> global_commands_;
     Widget *focused_widget_ = nullptr;
-    std::optional<Popup> popup_;
+    std::vector<Popup> popups_;
     CursorShape current_cursor_ = CursorShape::Arrow;
     Widget *hovered_widget_ = nullptr;
 

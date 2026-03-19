@@ -23,9 +23,7 @@ void Menu::add_action(std::string name, std::function<void()> execute, bool enab
     items_.push_back(MenuItem::action(std::move(name), std::move(execute), enabled));
 }
 
-void Menu::add_separator() {
-    items_.push_back(MenuItem::sep());
-}
+void Menu::add_separator() { items_.push_back(MenuItem::sep()); }
 
 void Menu::add_submenu(std::string name, std::shared_ptr<Menu> submenu) {
     items_.push_back(MenuItem::submenu_item(std::move(name), std::move(submenu)));
@@ -34,6 +32,7 @@ void Menu::add_submenu(std::string name, std::shared_ptr<Menu> submenu) {
 static auto menu_total_height(std::vector<MenuItem> const &items, float item_h, float sep_h)
     -> float {
     auto h = 0.0f;
+
     for (auto const &item : items) {
         h += (item.type == MenuItem::Type::Separator) ? sep_h : item_h;
     }
@@ -47,31 +46,33 @@ void Menu::show(Window *win, Point position) {
     }
 
     auto const &style = Theme::current().menu;
+    auto max_name_w = 0.0f;
+    auto max_shortcut_w = 0.0f;
 
     item_height_ = style.font_size + style.item_padding * 2.0f + 4.0f;
-    float max_name_w = 0.0f;
-    float max_shortcut_w = 0.0f;
     for (auto const &item : items_) {
         if (item.type == MenuItem::Type::Separator) {
             continue;
         }
         auto name_w = Painter::measure_text(item.command->name(), style.font_size).width;
+
         max_name_w = std::max(max_name_w, name_w);
         if (!item.command->shortcut_string().empty()) {
-            auto shortcut_w = Painter::measure_text(item.command->shortcut_string(), style.font_size).width;
+            auto shortcut_w =
+                Painter::measure_text(item.command->shortcut_string(), style.font_size).width;
             max_shortcut_w = std::max(max_shortcut_w, shortcut_w);
         }
     }
 
     auto width = max_name_w + style.padding.left + style.padding.right + 20.0f;
-    if (max_shortcut_w > 0) {
-        width += max_shortcut_w + 20.0f; // Add gap and shortcut width
-    }
     auto height = menu_total_height(items_, item_height_, separator_height_) + 4.0f;
     auto win_size = window_->size();
     auto x = position.x;
     auto y = position.y;
 
+    if (max_shortcut_w > 0) {
+        width += max_shortcut_w + 20.0f; // Add gap and shortcut width
+    }
     if (x + width > win_size.width) {
         x = win_size.width - width;
     }
@@ -140,24 +141,26 @@ void Menu::paint(Painter &painter) {
 
         auto enabled = item.command->is_enabled();
         auto item_rect = Rect{2, y, bounds_.width - 4, item_height_};
+        auto text_col = style.text;
+        auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
+
         if (i == hovered_ && enabled) {
             painter.fill_rounded_rect(item_rect, style.item_hovered, style.corner_radius * 0.5f);
         }
 
-        auto text_col = style.text;
         if (i == hovered_ && enabled) {
             text_col = style.item_text_hovered;
         } else if (!enabled) {
             text_col.a *= 0.4f;
         }
 
-        auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
         painter.draw_text(item.command->name(), {style.padding.left + 4, baseline}, text_col,
                           style.font_size);
-
         if (!item.command->shortcut_string().empty()) {
-            auto shortcut_w = painter.text_size(item.command->shortcut_string(), style.font_size).width;
+            auto shortcut_w =
+                painter.text_size(item.command->shortcut_string(), style.font_size).width;
             auto shortcut_x = bounds_.width - style.padding.right - shortcut_w - 10.0f;
+
             painter.draw_text(item.command->shortcut_string(), {shortcut_x, baseline}, text_col,
                               style.font_size);
         }
@@ -176,25 +179,32 @@ bool Menu::handle_mouse(MouseEvent const &event) {
     auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
 
     if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
+        auto previously_hovered = hovered_;
         hovered_ = item_at(event.position);
+        if (hovered_ != -1 && previously_hovered != hovered_ && items_[hovered_].is_submenu()) {
+            open_submenu(hovered_);
+        }
         return local_bounds.contains(event.position);
     }
 
     if (event.type == MouseEvent::Type::Press) {
         auto idx = item_at(event.position);
         if (idx >= 0 && items_[idx].command->is_enabled()) {
-            if (items_[idx].type == MenuItem::Type::Action) {
+            if (items_[idx].is_action()) {
                 auto cmd = items_[idx].command;
-                close();
+                if (window_) {
+                    window_->close_all_popups();
+                }
                 cmd->execute();
                 return true;
-            } else if (items_[idx].type == MenuItem::Type::Submenu) {
-                // Submenus not fully implemented in the stack yet, but let's at least show them
-                // This would need section 5.1 of the plan (popup stack)
+            } else if (items_[idx].is_submenu()) {
+                open_submenu(idx);
                 return true;
             }
         }
-        close();
+        if (window_) {
+            window_->close_all_popups();
+        }
         return false;
     }
 
@@ -210,7 +220,8 @@ bool Menu::handle_key(KeyEvent const &event) {
         auto n = static_cast<int>(items_.size());
         for (auto step = 0; step < n; step++) {
             from = (from + dir + n) % n;
-            if (items_[from].type != MenuItem::Type::Separator && items_[from].command->is_enabled()) {
+            if (items_[from].type != MenuItem::Type::Separator &&
+                items_[from].command->is_enabled()) {
                 return from;
             }
         }
@@ -224,21 +235,54 @@ bool Menu::handle_key(KeyEvent const &event) {
     case Key::Up:
         hovered_ = next_enabled(hovered_, -1);
         return true;
-    case Key::Enter:
-        if (hovered_ >= 0 && items_[hovered_].command->is_enabled()) {
-            if (items_[hovered_].type == MenuItem::Type::Action) {
-                auto cmd = items_[hovered_].command;
-                close();
-                cmd->execute();
-            }
+    case Key::Right:
+        if (hovered_ != -1 && items_[hovered_].is_submenu()) {
+            open_submenu(hovered_);
+        } else if (on_request_next_menu) {
+            on_request_next_menu();
+        }
+        return true;
+    case Key::Left:
+        if (parent_menu_) {
+            close();
+        } else if (on_request_prev_menu) {
+            on_request_prev_menu();
         }
         return true;
     case Key::Escape:
         close();
         return true;
+    case Key::Enter:
+        if (hovered_ >= 0 && items_[hovered_].command->is_enabled()) {
+            if (items_[hovered_].is_action()) {
+                auto cmd = items_[hovered_].command;
+                if (window_) {
+                    window_->close_all_popups();
+                }
+                cmd->execute();
+            } else if (items_[hovered_].is_submenu()) {
+                open_submenu(hovered_);
+            }
+        }
+        return true;
     default:
         return false;
     }
+}
+
+void Menu::open_submenu(int index) {
+    if (index < 0 || index >= items_.size() || !items_[index].is_submenu()) {
+        return;
+    }
+    auto const &item = items_[index];
+    auto y = 2.0f;
+
+    item.submenu->set_parent_menu(this);
+    for (auto i = 0; i < index; ++i) {
+        y += (items_[i].is_separator()) ? separator_height_ : item_height_;
+    }
+    auto pos = Point{bounds_.x + bounds_.width, bounds_.y + y};
+    item.submenu->show(window_, pos);
 }
 
 } // namespace toolkit

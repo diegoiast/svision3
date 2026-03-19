@@ -220,13 +220,22 @@ void Window::add_widget(std::unique_ptr<Widget> widget) {
 }
 
 void Window::open_popup(Popup popup) {
-    popup_ = std::move(popup);
+    popups_.push_back(std::move(popup));
     request_redraw("popup open");
 }
 
 void Window::close_popup() {
-    popup_.reset();
+    if (!popups_.empty()) {
+        popups_.pop_back();
+    }
     request_redraw("popup close");
+}
+
+void Window::close_all_popups() {
+    if (!popups_.empty()) {
+        popups_.clear();
+        request_redraw("popup close");
+    }
 }
 
 void Window::set_focused_widget(Widget *w) {
@@ -270,10 +279,12 @@ void Window::handle_paint(Painter &painter) {
         }
     }
 
-    if (popup_ && popup_->on_paint) {
-        painter.push_translation({popup_->bounds.x, popup_->bounds.y});
-        popup_->on_paint(painter);
-        painter.pop_translation();
+    for (auto const &popup : popups_) {
+        if (popup.on_paint) {
+            painter.push_translation({popup.bounds.x, popup.bounds.y});
+            popup.on_paint(painter);
+            painter.pop_translation();
+        }
     }
 
     if (tooltip_visible_ && tooltip_widget_) {
@@ -332,17 +343,29 @@ void Window::focus_next(bool reverse) {
 void Window::handle_mouse(MouseEvent const &event) {
     auto needs_redraw = false;
 
-    if (popup_ && popup_->on_mouse) {
-        auto local_event = event;
-        local_event.position.x -= popup_->bounds.x;
-        local_event.position.y -= popup_->bounds.y;
-        if (popup_->on_mouse(local_event)) {
-            request_redraw("event");
-            return;
+    if (!popups_.empty()) {
+        auto &popup = popups_.back();
+        if (popup.on_mouse) {
+            auto local_event = event;
+            local_event.position.x -= popup.bounds.x;
+            local_event.position.y -= popup.bounds.y;
+            if (popup.on_mouse(local_event)) {
+                request_redraw("event");
+                return;
+            }
         }
         if (event.type == MouseEvent::Type::Press) {
-            close_popup();
-            needs_redraw = true;
+            bool click_inside_any_popup = false;
+            for (auto const &p : popups_) {
+                if (p.bounds.contains(event.position)) {
+                    click_inside_any_popup = true;
+                    break;
+                }
+            }
+            if (!click_inside_any_popup) {
+                close_all_popups();
+                needs_redraw = true;
+            }
         }
     }
 
@@ -433,8 +456,9 @@ void Window::handle_mouse(MouseEvent const &event) {
 }
 
 void Window::handle_key(KeyEvent const &event) {
-    if (popup_ && popup_->on_key) {
-        if (popup_->on_key(event)) {
+    if (!popups_.empty()) {
+        auto &popup = popups_.back();
+        if (popup.on_key && popup.on_key(event)) {
             request_redraw("event");
             return;
         }
@@ -445,6 +469,7 @@ void Window::handle_key(KeyEvent const &event) {
         request_redraw("event");
         return;
     }
+
 
     auto mnemonic_mod = event.alt || event.super || event.ctrl;
     if (event.type == KeyEvent::Type::Press && mnemonic_mod && !event.text.empty()) {
@@ -535,8 +560,8 @@ auto Window::min_size() const -> Size {
 
 void Window::handle_resize(Size new_size) {
     size_ = new_size;
-    if (popup_) {
-        close_popup();
+    if (has_popup()) {
+        close_all_popups();
     }
     if (root_) {
         root_->set_rect({0, 0, size_.width, size_.height});

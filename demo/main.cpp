@@ -340,6 +340,14 @@ int main(int argc, char *argv[]) {
     file_menu->add_action(save_cmd);
 
     file_menu->add_separator();
+
+    // Nested menu example
+    auto recent_files_menu = std::make_shared<toolkit::Menu>("Recent Files");
+    recent_files_menu->add_action("File1.txt", [] { spdlog::info("Opening File1.txt"); });
+    recent_files_menu->add_action("File2.txt", [] { spdlog::info("Opening File2.txt"); });
+    file_menu->add_submenu("Recent Files", recent_files_menu);
+
+    file_menu->add_separator();
     file_menu->add_action("Exit", [window] { window->close(); });
 
     auto edit_menu = menubar->add_menu("Edit");
