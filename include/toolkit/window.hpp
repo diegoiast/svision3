@@ -3,11 +3,12 @@
 
 #pragma once
 
+#include "toolkit/command.hpp"
+#include "toolkit/decorator_style.hpp"
 #include "toolkit/events.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"
-#include "toolkit/command.hpp"
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -19,6 +20,7 @@
 namespace toolkit {
 
 class PlatformWindow;
+class DecoratorWidget;
 
 struct Popup {
     Rect bounds;
@@ -67,6 +69,8 @@ class Window {
 
     void set_min_size(Size s);
     void set_max_size(Size s);
+    void set_client_side_decorations(bool csd);
+    bool client_side_decorations() const;
     Size min_size() const;
     Size max_size() const { return max_size_; }
     Size content_min_size() const;
@@ -105,6 +109,7 @@ class Window {
     void hide_tooltip_window();
 
     void draw_debug_frames_recursive(Painter &painter, Widget *widget);
+    void update_decorator();
 
     std::string title_;
     Size size_;
@@ -124,6 +129,8 @@ class Window {
     bool tooltip_visible_ = false;
     Point tooltip_mouse_pos_;
     std::string tooltip_text_;
+    bool client_side_decorations_ = false;
+    std::unique_ptr<DecoratorWidget> decorator_;
 
     struct Impl;
     std::unique_ptr<Impl> impl_;

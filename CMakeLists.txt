@@ -57,6 +57,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/menu.cpp
     src/toolkit/menubar.cpp
     src/toolkit/layout.cpp
+    src/toolkit/decorator_widget.cpp
     src/toolkit/theme.cpp
     src/toolkit/window.cpp
     src/toolkit/widget.cpp

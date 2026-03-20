@@ -22,6 +22,14 @@
         },
         {
             "executables": {
+                "linux": "SVISION_PAINT=cairo SVISION_BACKEND=wayland build/Debug/demo",
+                "windows": "Debug\\demo.exe"
+            },
+            "name": "Demo (cairo/wayland)",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "executables": {
                 "linux": "build//Debug/sqlite_viewer",
                 "windows": "build\\Debug\\sqlite_viewer.exe"
             },

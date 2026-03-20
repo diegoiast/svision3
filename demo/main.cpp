@@ -9,6 +9,8 @@
 #include "toolkit/layout.hpp"
 #include "toolkit/line_input.hpp"
 #include "toolkit/list_view.hpp"
+#include "toolkit/menu.hpp"
+#include "toolkit/menubar.hpp"
 #include "toolkit/progress_bar.hpp"
 #include "toolkit/radio_button.hpp"
 #include "toolkit/slider.hpp"
@@ -17,8 +19,6 @@
 #include "toolkit/table_view.hpp"
 #include "toolkit/text_edit.hpp"
 #include "toolkit/theme.hpp"
-#include "toolkit/menu.hpp"
-#include "toolkit/menubar.hpp"
 #include "toolkit/toolbar.hpp"
 #include "toolkit/window.hpp"
 #include <fstream>
@@ -766,6 +766,14 @@ int main(int argc, char *argv[]) {
         window->request_redraw();
     };
     bar_wrapper->add_widget(std::move(debug_toggle));
+
+    auto csd_checkbox = std::make_unique<toolkit::Checkbox>("CSD");
+    csd_checkbox->set_checked(window->client_side_decorations());
+    csd_checkbox->set_tooltip("Enable client-side decorations");
+    csd_checkbox->on_state_change = [window](toolkit::CheckState state) {
+        window->set_client_side_decorations(state != toolkit::CheckState::Unchecked);
+    };
+    bar_wrapper->add_widget(std::move(csd_checkbox));
 
     auto stats_toggle = std::make_unique<toolkit::Checkbox>("Show Performance Stats");
     stats_toggle->on_toggle = [window](bool checked) {

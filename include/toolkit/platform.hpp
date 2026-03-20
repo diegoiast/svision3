@@ -17,8 +17,12 @@ class Window;
 class PlatformWindow {
   public:
     virtual ~PlatformWindow() = default;
+    virtual void set_client_side_decorations(bool csd) = 0;
+    virtual bool client_side_decorations() const = 0;
     virtual void show() = 0;
     virtual void close() = 0;
+    virtual void minimize() = 0;
+    virtual void maximize() = 0;
     virtual void set_size(Size s) = 0;
     virtual void request_redraw() = 0;
     virtual void set_min_size(Size s) = 0;
@@ -35,8 +39,9 @@ class PlatformWindow {
 class PlatformApplication {
   public:
     virtual ~PlatformApplication() = default;
+    virtual bool client_side_decorations() const = 0;
     virtual std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
-                                                          Window *owner) = 0;
+                                                          Window *owner, bool csd) = 0;
     virtual int run() = 0;
     virtual void quit() = 0;
     virtual void post_to_main_thread(std::function<void()> fn) = 0;

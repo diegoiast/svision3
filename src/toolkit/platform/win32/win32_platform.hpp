@@ -7,12 +7,12 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #include <functional>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <windows.h>
 
 namespace toolkit {
 
@@ -20,9 +20,9 @@ class Win32PlatformApplication : public PlatformApplication {
   public:
     Win32PlatformApplication();
     ~Win32PlatformApplication() override;
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title,
-                                                   Size size,
-                                                   Window *owner) override;
+    bool client_side_decorations() const override { return false; }
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
+                                                  bool csd) override;
     int run() override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;
@@ -30,8 +30,8 @@ class Win32PlatformApplication : public PlatformApplication {
     void clipboard_set_text(std::string const &text) override;
     Size measure_text(std::string_view text, float font_size,
                       FontFamily font = FontFamily::System) override;
-    Painter::FontMetrics measure_font_metrics(
-        float font_size, FontFamily font = FontFamily::System) override;
+    Painter::FontMetrics measure_font_metrics(float font_size,
+                                              FontFamily font = FontFamily::System) override;
     std::string_view name() const override { return "Win32"; }
     std::string_view painter_name() const override;
     float scale_factor() const override;
@@ -72,17 +72,18 @@ class Win32PlatformApplication : public PlatformApplication {
 
 class Win32PlatformWindow : public PlatformWindow {
   public:
-    Win32PlatformWindow(Win32PlatformApplication *app, std::string_view title,
-                        Size size, Window *owner);
+    Win32PlatformWindow(Win32PlatformApplication *app, std::string_view title, Size size,
+                        Window *owner, bool csd);
     ~Win32PlatformWindow() override;
+    void set_client_side_decorations(bool csd) override;
+    bool client_side_decorations() const override;
     void show() override;
     void close() override;
     void set_size(Size s) override;
     void request_redraw() override;
     void set_min_size(Size s) override;
     void set_max_size(Size s) override;
-    int start_timer(float interval_sec, std::function<void()> callback,
-                    bool repeats) override;
+    int start_timer(float interval_sec, std::function<void()> callback, bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
@@ -97,6 +98,7 @@ class Win32PlatformWindow : public PlatformWindow {
     HGLRC hglrc = nullptr;
     HCURSOR arrow_cursor = nullptr, ibeam_cursor = nullptr;
     HCURSOR hand_cursor = nullptr, not_allowed_cursor = nullptr;
+    bool csd = false;
 };
 
 LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);

@@ -6,9 +6,13 @@
 namespace toolkit {
 
 class DummyPlatformWindow : public PlatformWindow {
-public:
+  public:
+    void set_client_side_decorations(bool) override {}
+    bool client_side_decorations() const override { return false; }
     void show() override {}
     void close() override {}
+    void minimize() override {}
+    void maximize() override {}
     void set_size(Size) override {}
     void request_redraw() override {}
     void set_min_size(Size) override {}
@@ -23,8 +27,10 @@ public:
 };
 
 class DummyPlatformApplication : public PlatformApplication {
-public:
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner) override;
+  public:
+    bool client_side_decorations() const override { return false; }
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
+                                                  bool csd) override;
     int run() override { return 0; }
     void quit() override {}
     void post_to_main_thread(std::function<void()> fn) override { fn(); }
@@ -37,7 +43,7 @@ public:
     std::string_view name() const override { return "dummy"; }
     std::string_view painter_name() const override { return "none"; }
     float scale_factor() const override { return 1.0f; }
-    SystemFonts system_fonts() const override { return { "sans", "mono", 14.0f }; }
+    SystemFonts system_fonts() const override { return {"sans", "mono", 14.0f}; }
 };
 
 struct DummyPlatformGuard {

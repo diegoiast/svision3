@@ -42,9 +42,9 @@ class WaylandPlatformApplication : public PlatformApplication {
   public:
     WaylandPlatformApplication();
     ~WaylandPlatformApplication() override;
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title,
-                                                   Size size,
-                                                   Window *owner) override;
+    bool client_side_decorations() const override { return true; }
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
+                                                  bool csd) override;
     int run() override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;
@@ -52,8 +52,8 @@ class WaylandPlatformApplication : public PlatformApplication {
     void clipboard_set_text(std::string const &text) override;
     Size measure_text(std::string_view text, float font_size,
                       FontFamily font = FontFamily::System) override;
-    Painter::FontMetrics measure_font_metrics(
-        float font_size, FontFamily font = FontFamily::System) override;
+    Painter::FontMetrics measure_font_metrics(float font_size,
+                                              FontFamily font = FontFamily::System) override;
     std::string_view name() const override { return "Wayland"; }
     std::string_view painter_name() const override;
     float scale_factor() const override;
@@ -121,17 +121,20 @@ class WaylandPlatformApplication : public PlatformApplication {
 
 class WaylandPlatformWindow : public PlatformWindow {
   public:
-    WaylandPlatformWindow(WaylandPlatformApplication *app,
-                          std::string_view title, Size size, Window *owner);
+    WaylandPlatformWindow(WaylandPlatformApplication *app, std::string_view title, Size size,
+                          Window *owner, bool csd);
     ~WaylandPlatformWindow() override;
+    void set_client_side_decorations(bool csd) override;
+    bool client_side_decorations() const override;
     void show() override;
     void close() override;
+    void minimize() override;
+    void maximize() override;
     void set_size(Size s) override;
     void request_redraw() override;
     void set_min_size(Size s) override;
     void set_max_size(Size s) override;
-    int start_timer(float interval_sec, std::function<void()> callback,
-                    bool repeats) override;
+    int start_timer(float interval_sec, std::function<void()> callback, bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
@@ -167,6 +170,7 @@ class WaylandPlatformWindow : public PlatformWindow {
 
     wl_egl_window *egl_window = nullptr;
     void *egl_surface = nullptr;
+    bool csd = false;
 
     struct TooltipData {
         std::string text;

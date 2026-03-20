@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/window.hpp"
+#include "toolkit/decorator_widget.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/tab_widget.hpp"
@@ -26,7 +27,15 @@ struct Window::Impl {
 
 Window::Window(std::string_view title, Size size)
     : title_(title), size_(size), impl_(std::make_unique<Impl>()) {
-    impl_->platform = detail::current_platform()->create_window(title, size, this);
+    client_side_decorations_ = detail::current_platform()->client_side_decorations();
+    impl_->platform =
+        detail::current_platform()->create_window(title, size, this, client_side_decorations_);
+    if (client_side_decorations_) {
+        auto theme = Theme::create(Theme::detect_system_style(), ColorScheme::Light);
+        decorator_ = std::make_unique<DecoratorWidget>(theme.decorator, std::string(title_));
+        decorator_->set_callbacks({[this] { close(); }, [this] { impl_->platform->minimize(); },
+                                   [this] { impl_->platform->maximize(); }});
+    }
     spdlog::info("Window '{}' created ({}x{})", title_, size.width, size.height);
 }
 
@@ -172,6 +181,26 @@ void Window::set_max_size(Size s) {
     }
 }
 
+void Window::set_client_side_decorations(bool csd) {
+    client_side_decorations_ = csd;
+    if (impl_->platform) {
+        impl_->platform->set_client_side_decorations(csd);
+    }
+    if (csd) {
+        auto theme = Theme::create(Theme::detect_system_style(), ColorScheme::Light);
+        decorator_ = std::make_unique<DecoratorWidget>(theme.decorator, title_);
+        decorator_->set_callbacks({[this] { close(); }, [this] { impl_->platform->minimize(); },
+                                   [this] { impl_->platform->maximize(); }});
+        decorator_->set_window(this);
+    } else {
+        decorator_.reset();
+    }
+    handle_resize(size_);
+    request_redraw("csd changed");
+}
+
+auto Window::client_side_decorations() const -> bool { return client_side_decorations_; }
+
 auto Window::start_timer(float interval_sec, std::function<void()> callback, bool repeat) -> int {
     if (impl_->platform) {
         return impl_->platform->start_timer(interval_sec, std::move(callback), repeat);
@@ -207,7 +236,7 @@ void Window::set_root(std::unique_ptr<Widget> root) {
     root_ = std::move(root);
     if (root_) {
         root_->set_window(this);
-        root_->set_rect({0, 0, size_.width, size_.height});
+        update_decorator();
         if (impl_->platform) {
             impl_->platform->set_min_size(min_size());
         }
@@ -274,15 +303,31 @@ void Window::handle_paint(Painter &painter) {
     painter.fill_rect({0, 0, size_.width, size_.height}, style.window.background);
 
     auto repaint_start = std::chrono::steady_clock::now();
+
+    if (decorator_) {
+        decorator_->paint_background(painter);
+    }
+
     if (root_) {
         root_->draw(painter);
     }
     for (auto &widget : widgets_) {
         widget->draw(painter);
     }
+
+    if (decorator_) {
+        decorator_->paint_borders(painter);
+    }
+
     auto repaint_end = std::chrono::steady_clock::now();
 
     if (Widget::debug_show_frames) {
+        if (decorator_) {
+            auto offset = decorator_->content_offset();
+            painter.draw_rect({offset.x, offset.y, size_.width - offset.x * 2,
+                               size_.height - offset.y - offset.x},
+                              Color::rgb(0, 1, 0), 1.0f);
+        }
         if (root_) {
             draw_debug_frames_recursive(painter, root_.get());
         }
@@ -381,6 +426,14 @@ void Window::handle_mouse(MouseEvent const &event) {
         }
     }
 
+    if (decorator_ && Widget::dispatch_mouse_event(decorator_.get(), event)) {
+        needs_redraw = true;
+        if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
+            request_redraw("event");
+            return;
+        }
+    }
+
     if (event.type == MouseEvent::Type::Press) {
         auto new_focus = static_cast<Widget *>(nullptr);
         if (root_) {
@@ -404,11 +457,13 @@ void Window::handle_mouse(MouseEvent const &event) {
         needs_redraw = true;
     }
 
-    if (root_ && Widget::dispatch_mouse_event(root_.get(), event)) {
-        needs_redraw = true;
-        if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
-            request_redraw("event");
-            return;
+    if (root_) {
+        if (Widget::dispatch_mouse_event(root_.get(), event)) {
+            needs_redraw = true;
+            if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
+                request_redraw("event");
+                return;
+            }
         }
     }
     for (auto &widget : widgets_) {
@@ -481,7 +536,6 @@ void Window::handle_key(KeyEvent const &event) {
         request_redraw("event");
         return;
     }
-
 
     auto mnemonic_mod = event.alt || event.super || event.ctrl;
     if (event.type == KeyEvent::Type::Press && mnemonic_mod && !event.text.empty()) {
@@ -575,9 +629,7 @@ void Window::handle_resize(Size new_size) {
     if (has_popup()) {
         close_all_popups();
     }
-    if (root_) {
-        root_->set_rect({0, 0, size_.width, size_.height});
-    }
+    update_decorator();
 }
 
 void Window::resize_to_fit() {
@@ -600,7 +652,21 @@ void Window::resize_to_fit() {
         if (impl_->platform) {
             impl_->platform->set_size(size_);
         }
-        root_->set_rect({0, 0, size_.width, size_.height});
+        update_decorator();
+    }
+}
+
+void Window::update_decorator() {
+    if (decorator_) {
+        decorator_->set_rect({0, 0, size_.width, size_.height});
+    }
+    if (root_) {
+        if (decorator_) {
+            auto client = decorator_->client_area();
+            root_->set_rect({client.x, client.y, client.width, client.height});
+        } else {
+            root_->set_rect({0, 0, size_.width, size_.height});
+        }
     }
 }
 

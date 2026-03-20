@@ -38,10 +38,10 @@ static Color blend(Color a, Color b, float t) {
 // ── Base derivation from palette ─────────────────────────────────────────────
 
 static void apply_base(WidgetStyle &ws, Palette const &p) {
-    ws.background          = p.widget_bg;
-    ws.border              = p.border;
-    ws.border_focused      = p.border;
-    ws.text                = p.text;
+    ws.background = p.widget_bg;
+    ws.border = p.border;
+    ws.border_focused = p.border;
+    ws.text = p.text;
     ws.background_selected = p.background_selected;
     ws.highlight = p.highlight;
     ws.shadow = p.shadow;
@@ -320,32 +320,47 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
     }
 
     case ThemeStyle::Plasma6: {
-        t.button.background          = p.widget_bg;
-        t.button.border_focused      = p.accent;
-        t.button.background_hovered  = p.background_selected;
-        t.button.background_pressed  = p.background_selected.darken(0.1f);
+        t.button.background = p.widget_bg;
+        t.button.border_focused = p.accent;
+        t.button.background_hovered = p.background_selected;
+        t.button.background_pressed = p.background_selected.darken(0.1f);
         t.button.background_selected = p.background_selected;
-        t.button.corner_radius       = 5.0f;
-        t.button.padding             = {6, 18, 6, 18};
+        t.button.corner_radius = 5.0f;
+        t.button.padding = {6, 18, 6, 18};
 
-        t.checkbox.background          = p.widget_bg;
-        t.checkbox.border_focused      = p.accent;
-        t.checkbox.corner_radius       = 5.0f;
+        t.checkbox.background = p.widget_bg;
+        t.checkbox.border_focused = p.accent;
+        t.checkbox.corner_radius = 5.0f;
         t.checkbox.background_selected = p.background_selected;
-        t.checkbox.indicator           = gray(0.0f);
+        t.checkbox.indicator = gray(0.0f);
 
-        t.radio.background          = p.widget_bg;
-        t.radio.border_focused      = p.accent;
+        t.radio.background = p.widget_bg;
+        t.radio.border_focused = p.accent;
         t.radio.background_selected = p.background_selected;
-        t.radio.indicator           = gray(0.0f);
+        t.radio.indicator = gray(0.0f);
 
-        t.list_view.selected_bg     = p.accent;
-        t.list_view.hovered_bg      = p.background_selected;
-        t.table_view.selected_bg    = p.accent;
-        t.table_view.hovered_bg     = p.background_selected;
+        t.list_view.selected_bg = p.accent;
+        t.list_view.hovered_bg = p.background_selected;
+        t.table_view.selected_bg = p.accent;
+        t.table_view.hovered_bg = p.background_selected;
 
         t.slider.handle_size = 20.0f;
         t.slider.groove_thickness = 6.0f;
+
+        t.decorator.title_height = 32.0f;
+        t.decorator.button_size = 18.0f;
+        t.decorator.button_spacing = 6.0f;
+        t.decorator.padding = 8.0f;
+        t.decorator.title_text = p.text;
+        t.decorator.title_bg = p.window_bg;
+        t.decorator.title_bg_inactive = p.window_bg.darken(0.05f);
+        t.decorator.button_close = Color::rgb(1.0f, 0.3f, 0.3f);
+        t.decorator.button_minimize = Color::rgb(1.0f, 0.8f, 0.2f);
+        t.decorator.button_maximize = Color::rgb(0.3f, 1.0f, 0.3f);
+        t.decorator.button_hover = Color::rgba(255, 255, 255, 0.1f);
+        t.decorator.button_pressed = Color::rgba(0, 0, 0, 0.1f);
+        t.decorator.border = p.border;
+        t.decorator.border_inactive = p.border.darken(0.1f);
         break;
     }
 
@@ -448,16 +463,16 @@ Theme Theme::from_palette(std::string name, Palette const &p) {
         mid(p.text, is_dark ? p.window_bg.lighten(0.20f) : p.window_bg.darken(0.20f));
 
     apply_base(t.list_view, p);
-    t.list_view.selected_bg   = p.background_selected;
+    t.list_view.selected_bg = p.background_selected;
     t.list_view.selected_text = gray(1.0f);
-    t.list_view.hovered_bg    = is_dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.04f);
-    t.list_view.alternate_bg  = p.alternate_bg;
+    t.list_view.hovered_bg = is_dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.04f);
+    t.list_view.alternate_bg = p.alternate_bg;
 
     apply_base(t.table_view, p);
-    t.table_view.selected_bg    = p.background_selected;
-    t.table_view.selected_text  = gray(1.0f);
-    t.table_view.hovered_bg     = is_dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.04f);
-    t.table_view.alternate_bg   = p.alternate_bg;
+    t.table_view.selected_bg = p.background_selected;
+    t.table_view.selected_text = gray(1.0f);
+    t.table_view.hovered_bg = is_dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.04f);
+    t.table_view.alternate_bg = p.alternate_bg;
     t.table_view.header_bg = is_dark ? p.window_bg.lighten(0.06f) : p.window_bg.darken(0.04f);
     t.table_view.header_text = p.text;
     t.table_view.header_border = p.border;

@@ -51,6 +51,7 @@ struct X11PlatformApplication::Impl {
     bool running = false;
     Atom wm_delete_window, wm_protocols, net_wm_name, utf8_string;
     Atom clipboard_atom, targets_atom, tk_sel;
+    Atom motif_wm_hints;
     XIM xim = nullptr;
 
     struct WindowData {
@@ -88,6 +89,7 @@ struct X11PlatformWindow::Impl {
     GLXContext glx_context = nullptr;
 
     bool needs_redraw = false;
+    bool csd = false;
     cairo_surface_t *cairo_surface = nullptr;
     cairo_surface_t *x11_surface = nullptr;
     int last_pw = 0, last_ph = 0;
@@ -126,6 +128,33 @@ static float detect_x11_scale(Display *display) {
         }
     }
     return 1.0f;
+}
+
+struct MwmHints {
+    enum Flags {
+        Functions = 1 << 0,
+        Decorations = 1 << 1,
+        InputMode = 1 << 2,
+        State = 1 << 3,
+    };
+    enum {
+        All = 0xFFFFFFFF,
+        None = 0,
+    };
+    unsigned long flags = 0;
+    unsigned long functions = 0;
+    unsigned long decorations = 0;
+    long input_mode = 0;
+    unsigned long state = 0;
+};
+
+static void set_motif_hints(::Window window, Display *display, Atom motif_wm_hints,
+                            bool decorated) {
+    MwmHints hints;
+    hints.flags = MwmHints::Decorations;
+    hints.decorations = decorated ? MwmHints::All : MwmHints::None;
+    XChangeProperty(display, window, motif_wm_hints, motif_wm_hints, 32, PropModeReplace,
+                    reinterpret_cast<unsigned char const *>(&hints), 5);
 }
 
 static Key keysym_to_key(KeySym ks) {
@@ -503,6 +532,7 @@ X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>(
     d->clipboard_atom = XInternAtom(d->display, "CLIPBOARD", False);
     d->targets_atom = XInternAtom(d->display, "TARGETS", False);
     d->tk_sel = XInternAtom(d->display, "TK_SELECTION", False);
+    d->motif_wm_hints = XInternAtom(d->display, "_MOTIF_WM_HINTS", False);
     XSetLocaleModifiers("");
     d->xim = XOpenIM(d->display, nullptr, nullptr, nullptr);
     if (!d->xim) {
@@ -544,9 +574,9 @@ X11PlatformApplication::~X11PlatformApplication() {
     }
 }
 
-std::unique_ptr<PlatformWindow> X11PlatformApplication::create_window(std::string_view title,
-                                                                      Size size, Window *owner) {
-    return std::make_unique<X11PlatformWindow>(this, title, size, owner);
+std::unique_ptr<PlatformWindow>
+X11PlatformApplication::create_window(std::string_view title, Size size, Window *owner, bool csd) {
+    return std::make_unique<X11PlatformWindow>(this, title, size, owner, csd);
 }
 
 int X11PlatformApplication::run() {
@@ -734,10 +764,11 @@ std::string_view X11PlatformApplication::painter_name() const {
 }
 
 X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
-                                     Window *owner)
+                                     Window *owner, bool csd)
     : impl_(std::make_unique<Impl>()), app_(app), owner_(owner) {
     auto *d = app_->impl_.get();
     auto *w = impl_.get();
+    w->csd = csd;
 
     Visual *visual = d->visual;
     int depth = d->depth;
@@ -792,10 +823,29 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     w->hand_cursor = XCreateFontCursor(d->display, XC_hand2);
     w->not_allowed_cursor = XCreateFontCursor(d->display, XC_X_cursor);
     d->window_map[w->xwindow] = {owner, xic};
+
+    if (csd) {
+        set_motif_hints(w->xwindow, d->display, d->motif_wm_hints, false);
+    }
+
     impl_->needs_redraw = true;
 }
 
 X11PlatformWindow::~X11PlatformWindow() { cleanup_resources(); }
+
+void X11PlatformWindow::set_client_side_decorations(bool csd) {
+    auto *d = app_->impl_.get();
+    auto *w = impl_.get();
+    if (w->csd == csd) {
+        return;
+    }
+    w->csd = csd;
+    if (w->xwindow != 0L) {
+        set_motif_hints(w->xwindow, d->display, d->motif_wm_hints, !csd);
+    }
+}
+
+auto X11PlatformWindow::client_side_decorations() const -> bool { return impl_->csd; }
 
 void X11PlatformWindow::cleanup_resources() {
     auto *d = app_->impl_.get();
@@ -862,6 +912,32 @@ void X11PlatformWindow::show() {
 }
 
 void X11PlatformWindow::close() { cleanup_resources(); }
+
+void X11PlatformWindow::minimize() {
+    auto *d = app_->impl_.get();
+    XIconifyWindow(d->display, impl_->xwindow, d->screen);
+    XFlush(d->display);
+}
+
+void X11PlatformWindow::maximize() {
+    auto *d = app_->impl_.get();
+    Atom net_wm_state = XInternAtom(d->display, "_NET_WM_STATE", False);
+    Atom net_wm_max_horz = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    Atom net_wm_max_vert = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+
+    XEvent event = {};
+    event.type = ClientMessage;
+    event.xclient.window = impl_->xwindow;
+    event.xclient.message_type = net_wm_state;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = 1;
+    event.xclient.data.l[1] = net_wm_max_horz;
+    event.xclient.data.l[2] = net_wm_max_vert;
+    event.xclient.data.l[3] = 0;
+    XSendEvent(d->display, d->root, False, SubstructureNotifyMask | SubstructureRedirectMask,
+               &event);
+    XFlush(d->display);
+}
 
 void X11PlatformWindow::set_size(Size s) {
     float scale = scale_factor();

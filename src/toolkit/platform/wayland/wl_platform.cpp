@@ -490,40 +490,100 @@ static void process_key(WaylandPlatformApplication *app, uint32_t key) {
 static void keyboard_key(void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t key,
                          uint32_t state) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if (!app->keyboard_focus || !app->xkb_st) {
+        return;
+    }
 
-    if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+    uint32_t keycode = key + 8; // Wayland keycodes are 8 units higher than XKB
+    xkb_keysym_t sym = xkb_state_key_get_one_sym(app->xkb_st, keycode);
+
+    KeyEvent ke;
+    ke.type =
+        (state == WL_KEYBOARD_KEY_STATE_PRESSED) ? KeyEvent::Type::Press : KeyEvent::Type::Release;
+
+    // Modifiers from keyboard_handle_modifiers
+    ke.shift = app->mod_shift;
+    ke.ctrl = app->mod_ctrl;
+    ke.alt = app->mod_alt;
+    ke.super = app->mod_super;
+    ke.key = xkb_to_key(sym);
+
+    // Get text. For Wayland, xkb_state_key_get_utf8 is usually the source.
+    char buf[8] = {};
+    int len = xkb_state_key_get_utf8(app->xkb_st, keycode, buf, sizeof(buf));
+    if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
+        ke.text = std::string(buf, static_cast<size_t>(len));
+    } else {
+        ke.text = ""; // Ensure text is empty if not a printable character
+    }
+
+    // Special handling for modifier keys themselves: adjust the flag based on the event type
+    if (ke.key == Key::LeftShift || ke.key == Key::RightShift) {
+        ke.shift = (ke.type == KeyEvent::Type::Press);
+    }
+    if (ke.key == Key::LeftControl || ke.key == Key::RightControl) {
+        ke.ctrl = (ke.type == KeyEvent::Type::Press);
+    }
+    if (ke.key == Key::LeftAlt || ke.key == Key::RightAlt) {
+        ke.alt = (ke.type == KeyEvent::Type::Press);
+    }
+    if (ke.key == Key::LeftSuper || ke.key == Key::RightSuper) {
+        ke.super = (ke.type == KeyEvent::Type::Press);
+    }
+
+    app->keyboard_focus->owner_->handle_key(ke);
+
+    // Stop and start repeat timers only if it's a press event and not a modifier
+    if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        bool is_modifier =
+            (ke.key == Key::LeftAlt || ke.key == Key::RightAlt || ke.key == Key::LeftControl ||
+             ke.key == Key::RightControl || ke.key == Key::LeftShift || ke.key == Key::RightShift ||
+             ke.key == Key::LeftSuper || ke.key == Key::RightSuper);
+        if (!is_modifier) {
+            stop_keyboard_repeat(app);
+            if (app->repeat_rate > 0) {
+                app->repeating_key = key;
+                float delay = static_cast<float>(app->repeat_delay) / 1000.0f;
+
+                WaylandPlatformApplication::TimerEntry entry;
+                entry.id = app->next_timer_id++;
+                app->repeat_timer_id = entry.id;
+                entry.interval_sec = 1.0f / static_cast<float>(app->repeat_rate);
+                entry.repeats = true;
+                entry.callback = [app, key] {
+                    if (app->repeating_key == key) {
+                        // Re-create a new KeyEvent for repeat
+                        KeyEvent repeat_ke;
+                        repeat_ke.type = KeyEvent::Type::Press;
+                        xkb_keysym_t repeat_sym = xkb_state_key_get_one_sym(app->xkb_st, key + 8);
+                        repeat_ke.key = xkb_to_key(repeat_sym);
+                        repeat_ke.shift = app->mod_shift;
+                        repeat_ke.ctrl = app->mod_ctrl;
+                        repeat_ke.alt = app->mod_alt;
+                        repeat_ke.super = app->mod_super;
+
+                        char repeat_buf[8] = {};
+                        int repeat_len = xkb_state_key_get_utf8(app->xkb_st, key + 8, repeat_buf,
+                                                                sizeof(repeat_buf));
+                        if (repeat_len > 0 && static_cast<unsigned char>(repeat_buf[0]) >= 32) {
+                            repeat_ke.text =
+                                std::string(repeat_buf, static_cast<size_t>(repeat_len));
+                        } else {
+                            repeat_ke.text = "";
+                        }
+                        app->keyboard_focus->owner_->handle_key(repeat_ke);
+                    }
+                };
+                entry.next_fire = std::chrono::steady_clock::now() +
+                                  std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                      std::chrono::duration<float>(delay));
+                app->timers.push_back(std::move(entry));
+            }
+        }
+    } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         if (app->repeating_key == key) {
             stop_keyboard_repeat(app);
         }
-        return;
-    }
-
-    if (state != WL_KEYBOARD_KEY_STATE_PRESSED) {
-        return;
-    }
-
-    process_key(app, key);
-
-    stop_keyboard_repeat(app);
-
-    if (app->repeat_rate > 0) {
-        app->repeating_key = key;
-        float delay = static_cast<float>(app->repeat_delay) / 1000.0f;
-
-        WaylandPlatformApplication::TimerEntry entry;
-        entry.id = app->next_timer_id++;
-        app->repeat_timer_id = entry.id;
-        entry.interval_sec = 1.0f / static_cast<float>(app->repeat_rate);
-        entry.repeats = true;
-        entry.callback = [app, key] {
-            if (app->repeating_key == key) {
-                process_key(app, key);
-            }
-        };
-        entry.next_fire = std::chrono::steady_clock::now() +
-                          std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                              std::chrono::duration<float>(delay));
-        app->timers.push_back(std::move(entry));
     }
 }
 
@@ -592,7 +652,8 @@ static void xdg_popup_configure(void *data, struct xdg_popup *popup, int32_t x, 
 static void xdg_popup_done(void *data, struct xdg_popup *popup);
 static const struct xdg_popup_listener xdg_popup_listener = {xdg_popup_configure, xdg_popup_done};
 
-static void xdg_popup_configure(void *data, struct xdg_popup *, int32_t, int32_t, int32_t, int32_t) {
+static void xdg_popup_configure(void *data, struct xdg_popup *, int32_t, int32_t, int32_t,
+                                int32_t) {
     auto *win = static_cast<WaylandPlatformWindow *>(data);
     win->needs_redraw = true;
 }
@@ -738,9 +799,10 @@ WaylandPlatformApplication::~WaylandPlatformApplication() {
     }
 }
 
-std::unique_ptr<PlatformWindow>
-WaylandPlatformApplication::create_window(std::string_view title, Size size, Window *owner) {
-    return std::make_unique<WaylandPlatformWindow>(this, title, size, owner);
+std::unique_ptr<PlatformWindow> WaylandPlatformApplication::create_window(std::string_view title,
+                                                                          Size size, Window *owner,
+                                                                          bool csd) {
+    return std::make_unique<WaylandPlatformWindow>(this, title, size, owner, csd);
 }
 
 int WaylandPlatformApplication::run() {
@@ -858,8 +920,9 @@ void WaylandPlatformApplication::clipboard_set_text(std::string const &text) {
 // --- WaylandPlatformWindow ---
 
 WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
-                                             std::string_view title, Size size, Window *owner)
-    : app_(app), owner_(owner) {
+                                             std::string_view title, Size size, Window *owner,
+                                             bool csd)
+    : app_(app), owner_(owner), csd(csd) {
     surface = wl_compositor_create_surface(app_->compositor);
     xdg_surf = xdg_wm_base_get_xdg_surface(app_->wm_base, surface);
     xdg_surface_add_listener(xdg_surf, &xdg_surf_listener, this);
@@ -944,6 +1007,16 @@ WaylandPlatformWindow::~WaylandPlatformWindow() {
     hide_tooltip_window();
 }
 
+void WaylandPlatformWindow::set_client_side_decorations(bool new_csd) {
+    if (csd == new_csd) {
+        return;
+    }
+    csd = new_csd;
+    spdlog::warn("Wayland does not support changing decorations at runtime");
+}
+
+auto WaylandPlatformWindow::client_side_decorations() const -> bool { return csd; }
+
 void WaylandPlatformWindow::show() {
     wl_surface_commit(surface);
     wl_display_roundtrip(app_->display);
@@ -957,6 +1030,18 @@ void WaylandPlatformWindow::close() {
     }
     if (app_->keyboard_focus == this) {
         app_->keyboard_focus = nullptr;
+    }
+}
+
+void WaylandPlatformWindow::minimize() {
+    if (toplevel) {
+        xdg_toplevel_set_minimized(toplevel);
+    }
+}
+
+void WaylandPlatformWindow::maximize() {
+    if (toplevel) {
+        xdg_toplevel_set_maximized(toplevel);
     }
 }
 
@@ -1012,7 +1097,9 @@ void WaylandPlatformWindow::set_cursor(CursorShape shape) {
 }
 
 void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
-    if (tooltip_data && tooltip_data->text == text) return;
+    if (tooltip_data && tooltip_data->text == text) {
+        return;
+    }
     hide_tooltip_window();
 
     tooltip_data = std::make_unique<TooltipData>();
@@ -1034,20 +1121,20 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
 
     struct xdg_positioner *pos_obj = xdg_wm_base_create_positioner(app_->wm_base);
     xdg_positioner_set_size(pos_obj, static_cast<int32_t>(std::ceil(tw)),
-                             static_cast<int32_t>(std::ceil(th)));
+                            static_cast<int32_t>(std::ceil(th)));
     xdg_positioner_set_anchor_rect(pos_obj, static_cast<int32_t>(std::round(pos.x)),
                                    static_cast<int32_t>(std::round(pos.y)), 1, 1);
     xdg_positioner_set_gravity(pos_obj, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
     xdg_positioner_set_anchor(pos_obj, XDG_POSITIONER_ANCHOR_TOP_LEFT);
     xdg_positioner_set_offset(pos_obj, 0, 10);
 
-    tooltip_data->popup =
-        xdg_surface_get_popup(tooltip_data->xdg_surf, xdg_surf, pos_obj);
+    tooltip_data->popup = xdg_surface_get_popup(tooltip_data->xdg_surf, xdg_surf, pos_obj);
     xdg_popup_add_listener(tooltip_data->popup, &xdg_popup_listener, this);
     xdg_positioner_destroy(pos_obj);
 
     if (app_->viewporter) {
-        tooltip_data->viewport = wp_viewporter_get_viewport(app_->viewporter, tooltip_data->surface);
+        tooltip_data->viewport =
+            wp_viewporter_get_viewport(app_->viewporter, tooltip_data->surface);
         wp_viewport_set_destination(tooltip_data->viewport, static_cast<int>(std::ceil(tw)),
                                     static_cast<int>(std::ceil(th)));
         wl_surface_set_buffer_scale(tooltip_data->surface, 1);
@@ -1061,15 +1148,31 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
 }
 
 void WaylandPlatformWindow::hide_tooltip_window() {
-    if (!tooltip_data) return;
+    if (!tooltip_data) {
+        return;
+    }
 
-    if (tooltip_data->popup) xdg_popup_destroy(tooltip_data->popup);
-    if (tooltip_data->viewport) wp_viewport_destroy(tooltip_data->viewport);
-    if (tooltip_data->xdg_surf) xdg_surface_destroy(tooltip_data->xdg_surf);
-    if (tooltip_data->buffer) wl_buffer_destroy(tooltip_data->buffer);
-    if (tooltip_data->shm_data) munmap(tooltip_data->shm_data, tooltip_data->shm_size);
-    if (tooltip_data->shm_fd >= 0) ::close(tooltip_data->shm_fd);
-    if (tooltip_data->surface) wl_surface_destroy(tooltip_data->surface);
+    if (tooltip_data->popup) {
+        xdg_popup_destroy(tooltip_data->popup);
+    }
+    if (tooltip_data->viewport) {
+        wp_viewport_destroy(tooltip_data->viewport);
+    }
+    if (tooltip_data->xdg_surf) {
+        xdg_surface_destroy(tooltip_data->xdg_surf);
+    }
+    if (tooltip_data->buffer) {
+        wl_buffer_destroy(tooltip_data->buffer);
+    }
+    if (tooltip_data->shm_data) {
+        munmap(tooltip_data->shm_data, tooltip_data->shm_size);
+    }
+    if (tooltip_data->shm_fd >= 0) {
+        ::close(tooltip_data->shm_fd);
+    }
+    if (tooltip_data->surface) {
+        wl_surface_destroy(tooltip_data->surface);
+    }
 
     tooltip_data.reset();
 }
@@ -1110,13 +1213,17 @@ void WaylandPlatformWindow::create_buffer(int width, int height) {
 }
 
 void WaylandPlatformWindow::paint_to_surface(wl_surface *target_surface, int pw, int ph,
-                                              float current_scale) {
-    if (pw <= 0 || ph <= 0) return;
+                                             float current_scale) {
+    if (pw <= 0 || ph <= 0) {
+        return;
+    }
 
     int stride = pw * 4;
     size_t total = static_cast<size_t>(stride) * static_cast<size_t>(ph);
     int fd = create_shm_file(total);
-    if (fd < 0) return;
+    if (fd < 0) {
+        return;
+    }
 
     void *data = mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (data == MAP_FAILED) {
@@ -1128,9 +1235,8 @@ void WaylandPlatformWindow::paint_to_surface(wl_surface *target_surface, int pw,
     wl_buffer *buf = wl_shm_pool_create_buffer(pool, 0, pw, ph, stride, WL_SHM_FORMAT_ARGB8888);
     wl_shm_pool_destroy(pool);
 
-    cairo_surface_t *cs =
-        cairo_image_surface_create_for_data(static_cast<unsigned char *>(data),
-                                            CAIRO_FORMAT_ARGB32, pw, ph, stride);
+    cairo_surface_t *cs = cairo_image_surface_create_for_data(static_cast<unsigned char *>(data),
+                                                              CAIRO_FORMAT_ARGB32, pw, ph, stride);
     cairo_t *cr = cairo_create(cs);
 
     // Clear with transparency
