@@ -119,7 +119,7 @@ bool MenuBar::handle_mouse(MouseEvent const &event) {
         }
         hovered_ = menu_at(event.position);
         if (active_ != -1 && hovered_ != -1 && hovered_ != active_) {
-            open_menu(hovered_);
+            toggle_menu(hovered_);
         }
         return inside;
     case MouseEvent::Type::Press:
@@ -127,7 +127,7 @@ bool MenuBar::handle_mouse(MouseEvent const &event) {
             if (active_ != -1 && hovered_ == active_) { // Click on active menu, close it
                 menus_[active_]->close();
             } else if (hovered_ != -1) {
-                open_menu(hovered_);
+                toggle_menu(hovered_);
             } else {
                 if (window()) {
                     window()->close_all_popups();
@@ -139,7 +139,7 @@ bool MenuBar::handle_mouse(MouseEvent const &event) {
         }
         active_ = menu_at(event.position);
         if (active_ != -1) {
-            open_menu(active_);
+            toggle_menu(active_);
             return true;
         }
         return false;
@@ -193,11 +193,11 @@ bool MenuBar::handle_key(KeyEvent const &event) {
         // Navigation within the menubar when active_
         if (event.key == Key::Left) {
             auto prev_index = (active_ - 1 + menus_.size()) % menus_.size();
-            open_menu(prev_index);
+            toggle_menu(prev_index);
             return true;
         } else if (event.key == Key::Right) {
             auto next_index = (active_ + 1) % menus_.size();
-            open_menu(next_index);
+            toggle_menu(next_index);
             return true;
         } else if (event.key == Key::Down || event.key == Key::Enter) {
             if (active_ != -1) {
@@ -217,17 +217,18 @@ bool MenuBar::handle_key(KeyEvent const &event) {
 
     // F10 handling
     if (event.key == Key::F10) {
-        if (menu_bar_keyboard_active_ &&
-            window()->has_popup()) { // F10 closes if already active and open
+        if (menu_bar_keyboard_active_ && window()->has_popup()) {
+            // F10 closes if already active and open
             menus_[active_]->close();
             menu_bar_keyboard_active_ = false;
             set_show_mnemonics(false);
-        } else if (!menu_bar_keyboard_active_) { // F10 activates if not active
+        } else if (!menu_bar_keyboard_active_) {
+            // F10 activates if not active
             menu_bar_keyboard_active_ = true;
-            open_menu(0);
+            toggle_menu(0);
             set_show_mnemonics(true);
-        } else if (menu_bar_keyboard_active_ &&
-                   !window()->has_popup()) { // F10 closes if active but no popup
+        } else if (menu_bar_keyboard_active_ && !window()->has_popup()) {
+            // F10 closes if active but no popup
             menu_bar_keyboard_active_ = false;
             set_show_mnemonics(false);
         }
@@ -252,7 +253,8 @@ bool MenuBar::handle_key(KeyEvent const &event) {
 
     // Mnemonic handling
     if (alt_key_down_ && !event.text.empty()) {
-        char key = static_cast<char>(std::tolower(static_cast<unsigned char>(event.text[0])));
+        // FIXME: this will not work with non ASCII letters
+        char key = std::tolower(static_cast<unsigned char>(event.text[0]));
         if (trigger_mnemonic(key)) {
             set_show_mnemonics(false);
             return true;
@@ -267,7 +269,7 @@ void MenuBar::collect_mnemonics(std::vector<Widget *> &out) { out.push_back(this
 bool MenuBar::trigger_mnemonic(char key) {
     for (size_t i = 0; i < menus_.size(); ++i) {
         if (menus_[i]->mnemonic_key() == key) {
-            open_menu(i);
+            toggle_menu(i);
             set_show_mnemonics(false);
             return true;
         }
@@ -275,20 +277,27 @@ bool MenuBar::trigger_mnemonic(char key) {
     return false;
 }
 
-void MenuBar::open_menu(int index) {
+void MenuBar::toggle_menu(int index) {
     if (index < 0 || index >= static_cast<int>(menus_.size())) {
         return;
     }
-
+    if (active_ == index) {
+        menu_bar_keyboard_active_ = false;
+        menus_[active_]->close();
+        return;
+    }
     if (window()) {
         window()->close_all_popups();
     }
-    active_ = index;
-    menu_bar_keyboard_active_ = true; // Ensure keyboard navigation is active when a menu is opened
+
     auto const &style = Theme::current().button;
     auto padding = style.padding;
     auto x = 0.0f;
-    for (int i = 0; i < index; ++i) {
+
+    // Ensure keyboard navigation is active when a menu is opened
+    menu_bar_keyboard_active_ = true;
+    active_ = index;
+    for (auto i = 0; i < index; ++i) {
         x += Painter::measure_text(menus_[i]->display_title(), style.font_size).width +
              padding.left + padding.right;
     }
@@ -298,16 +307,18 @@ void MenuBar::open_menu(int index) {
     menu->set_parent_menu(nullptr);
     menu->on_request_next_menu = [this, index] {
         auto next_index = (index + 1) % menus_.size();
-        open_menu(next_index);
+        toggle_menu(next_index);
     };
     menu->on_request_prev_menu = [this, index] {
         auto prev_index = (index - 1 + menus_.size()) % menus_.size();
-        open_menu(prev_index);
+        toggle_menu(prev_index);
     };
     menu->on_close_callback = [this] {
         active_ = -1;
         hovered_ = -1;
-        if (!window()->has_popup()) { // If all popups are closed, deactivate keyboard nav
+
+        // If all popups are closed, deactivate keyboard nav
+        if (!window()->has_popup()) {
             menu_bar_keyboard_active_ = false;
             set_show_mnemonics(false);
         }

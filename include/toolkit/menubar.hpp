@@ -17,7 +17,7 @@ class MenuBar : public Widget {
     void add_menu(std::shared_ptr<Menu> menu);
     std::shared_ptr<Menu> add_menu(std::string title);
 
-    void open_menu(int index);
+    void toggle_menu(int index);
     int find_menu(std::string_view title) const;
 
     void paint(Painter &painter) override;

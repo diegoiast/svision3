@@ -28,7 +28,7 @@
 5. Visuals: Text-only for now; use "???" if no text or icon is provided. [done]
 6. Visuals: use icons from command.
 
-## 4. Menu System [WIP 6/12]
+## 4. Menu System [WIP 8/19]
 
 1. MenuBar: Top-level horizontal container for Menus (File, Edit, etc.). [done]
 2. Menu: A specialized Popup that contains a list of MenuItems. [done]
@@ -46,14 +46,35 @@
         1. Native Mode (Default): MenuBar maps to the global NSMenu bar.
         2. Embedded Mode ("PC Style"): MenuBar is rendered as a standard widget inside the window's layout, even on macOS.
      9. Search inside menus like macOS.
+4. Current bugs:
+     1. General:
+          2. When I press `alf+f` to open menu, and I press again - it should close. [done]
+          1. Show mnemonics by default - per theme (win95 will show them always)
+          2. When a menu is visible - show mnemonics of all menus.
+          3. When I open the first menu by mouse, and then open the second one,
+             the first one is still marked as active/hovered.
+          4. If a menu has a submenu - opening it - and then selecting a sibling will fail.
+             For example: file->files - opens a sub menu, and if I hover on file->open
+             - it should close the menu.
+          5. If a menu has a submenu - opening it - and then pressing up - will not
+             select the last item in the menu, but the first (? last?) submenu.
+          6. Mnemonics work only with ASCII.
+          7. Navigating only the top level menus (no sub menus) is not working.gg
+          8. Alt and leave - same as F10. Currently - just shows menemonits.
+     2. X11
+        1. ???
+     3. Wayland:
+        1. Pressing alt - does not make mnemonics pop.
+     4. Windows
+        1. Untested
 
-## 5. Popup and Overlay System
+## 5. Popup and Overlay System [WIP 4/5]
 
-1. Move from a single `std::optional<Popup>` to a `std::vector<Popup>` (a stack) to support nested submenus. [WIP]
-2. Implement "Recursive Closing" logic: Closing a parent popup automatically closes all its children in the stack.
-3. Formalize `ContextMenu` to use the new `Command` system and stack.
-4. Ensure `ComboBox` dropdowns align with the formalized popup logic.
-5. Coordinate popup lifecycle (auto-closing on outside clicks/Escape) with the stack.
+1. Move from a single `std::optional<Popup>` to a `std::vector<Popup>` (a stack) to support nested submenus. [done]
+2. Implement "Recursive Closing" logic: Closing a parent popup automatically closes all its children in the stack. [done]
+3. Formalize `ContextMenu` to use the new `Command` system and stack. [done]
+4. Ensure `ComboBox` dropdowns align with the formalized popup logic. [NOT DONE]
+5. Coordinate popup lifecycle (auto-closing on outside clicks/Escape) with the stack. [done]
 
 ## 6. Icon & Image System
 
@@ -72,3 +93,4 @@
 4. Painter Integration:
     1. Add `draw_image(Rect destination, const Image& img)` to the `Painter` interface.
     2. Ensure all backends (Cairo, OpenGL, Win32, Cocoa) implement efficient image scaling and drawing.
+gc
