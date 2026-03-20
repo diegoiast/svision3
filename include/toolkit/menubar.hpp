@@ -26,6 +26,7 @@ class MenuBar : public Widget {
     Size size_hint() const override;
     void collect_mnemonics(std::vector<Widget *> &out) override;
     bool trigger_mnemonic(char key) override;
+    void set_show_mnemonics(bool show);
 
   private:
     int menu_at(Point p) const;
@@ -33,6 +34,9 @@ class MenuBar : public Widget {
     std::vector<std::shared_ptr<Menu>> menus_;
     int hovered_ = -1;
     int active_ = -1;
+    bool alt_key_down_ = false;
+    bool menu_bar_keyboard_active_ = false;
+    bool show_mnemonics_ = false;
 };
 
 } // namespace toolkit

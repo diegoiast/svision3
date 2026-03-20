@@ -20,7 +20,7 @@
 #include <cairo.h>
 #include <spdlog/spdlog.h>
 
-// #undef None
+#undef None
 #undef CursorShape
 
 #include <cmath>
@@ -184,6 +184,22 @@ static Key keysym_to_key(KeySym ks) {
         return Key::F11;
     case XK_F12:
         return Key::F12;
+    case XK_Alt_L:
+        return Key::LeftAlt;
+    case XK_Alt_R:
+        return Key::RightAlt;
+    case XK_Shift_L:
+        return Key::LeftShift;
+    case XK_Shift_R:
+        return Key::RightShift;
+    case XK_Control_L:
+        return Key::LeftControl;
+    case XK_Control_R:
+        return Key::RightControl;
+    case XK_Super_L:
+        return Key::LeftSuper;
+    case XK_Super_R:
+        return Key::RightSuper;
     default:
         return Key::NoKey;
     }
@@ -191,9 +207,9 @@ static Key keysym_to_key(KeySym ks) {
 
 static int detect_click_count(X11PlatformApplication::Impl::WindowData &data, XButtonEvent &btn) {
     constexpr Time double_click_ms = 400;
-    constexpr int double_click_dist = 4;
-    bool in_time = (btn.time - data.last_press_time) < double_click_ms;
-    bool in_range = std::abs(btn.x - data.last_press_x) < double_click_dist &&
+    constexpr auto double_click_dist = 4;
+    auto in_time = (btn.time - data.last_press_time) < double_click_ms;
+    auto in_range = std::abs(btn.x - data.last_press_x) < double_click_dist &&
                     std::abs(btn.y - data.last_press_y) < double_click_dist;
     data.click_count = (in_time && in_range) ? data.click_count + 1 : 1;
     data.last_press_time = btn.time;
@@ -204,9 +220,9 @@ static int detect_click_count(X11PlatformApplication::Impl::WindowData &data, XB
 
 static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
                                X11PlatformApplication::Impl::WindowData &data, XEvent &xev) {
-    Window *win = data.owner;
-    auto *xwin_plat = static_cast<X11PlatformWindow *>(win->platform_window());
-    auto *w = xwin_plat->impl_.get();
+    auto win = data.owner;
+    auto xwin_plat = static_cast<X11PlatformWindow *>(win->platform_window());
+    auto w = xwin_plat->impl_.get();
 
     switch (xev.type) {
     case Expose: {
@@ -228,12 +244,14 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
     }
     case ButtonPress: {
         auto &btn = xev.xbutton;
-        float scale = app->scale;
-        Point pos{static_cast<float>(btn.x) / scale, static_cast<float>(btn.y) / scale};
+        auto scale = app->scale;
+        auto pos = Point{static_cast<float>(btn.x) / scale, static_cast<float>(btn.y) / scale};
         if (btn.button >= 4 && btn.button <= 7) {
-            MouseEvent e{};
+            auto e = MouseEvent{};
             e.type = MouseEvent::Type::Scroll;
             e.position = pos;
+
+            // FIXME: scroll offset should from from the platform, not hardcoded
             switch (btn.button) {
             case 4:
                 e.scroll_dy = 20.0f;
@@ -251,7 +269,8 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
             win->handle_mouse(e);
             break;
         }
-        MouseEvent e{};
+
+        auto e = MouseEvent{};
         e.type = MouseEvent::Type::Press;
         e.position = pos;
         e.button = (btn.button == Button1) ? 0 : (btn.button == Button3) ? 1 : 2;
@@ -264,11 +283,11 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
     }
     case ButtonRelease: {
         auto &btn = xev.xbutton;
-        float scale = app->scale;
+        auto scale = app->scale;
         if (btn.button >= 4 && btn.button <= 7) {
             break;
         }
-        MouseEvent e{};
+        auto e = MouseEvent{};
         e.type = MouseEvent::Type::Release;
         e.position = {static_cast<float>(btn.x) / scale, static_cast<float>(btn.y) / scale};
         e.button = (btn.button == Button1) ? 0 : (btn.button == Button3) ? 1 : 2;
@@ -277,9 +296,10 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
     }
     case MotionNotify: {
         auto &m = xev.xmotion;
-        float scale = app->scale;
         MouseEvent e{};
-        bool held = (m.state & (Button1Mask | Button2Mask | Button3Mask)) != 0;
+        auto scale = app->scale;
+        auto held = (m.state & (Button1Mask | Button2Mask | Button3Mask)) != 0;
+
         e.type = held ? MouseEvent::Type::Drag : MouseEvent::Type::Move;
         e.position = {static_cast<float>(m.x) / scale, static_cast<float>(m.y) / scale};
         win->handle_mouse(e);
@@ -287,48 +307,87 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
     }
     case KeyPress: {
         auto &key = xev.xkey;
+        auto st = key.state;
+        auto len = 0;
+        char buf[64];
+        KeySym keysym = NoSymbol;
+
         KeyEvent ke;
         ke.type = KeyEvent::Type::Press;
-        unsigned st = key.state;
+
+        if (data.xic) {
+            Status status;
+            len = Xutf8LookupString(data.xic, &key, buf, sizeof(buf) - 1, &keysym, &status);
+        } else {
+            len = XLookupString(&key, buf, sizeof(buf) - 1, &keysym, nullptr);
+        }
+
+        // Set modifier flags based on current state (st)
         ke.shift = (st & ShiftMask) != 0;
         ke.ctrl = (st & ControlMask) != 0;
         ke.alt = (st & Mod1Mask) != 0;
         ke.super = (st & Mod4Mask) != 0;
+
+        // Adjust modifier flags if the key pressed IS a modifier key
+        if (keysym == XK_Shift_L || keysym == XK_Shift_R) {
+            ke.shift = true;
+        }
+        if (keysym == XK_Control_L || keysym == XK_Control_R) {
+            ke.ctrl = true;
+        }
+        if (keysym == XK_Alt_L || keysym == XK_Alt_R) {
+            ke.alt = true;
+        }
+        if (keysym == XK_Super_L || keysym == XK_Super_R) {
+            ke.super = true;
+        }
+
+        if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
+            ke.text.assign(buf, len);
+        }
+        ke.key = keysym_to_key(keysym);
+
+        win->handle_key(ke);
+        break;
+    }
+    case KeyRelease: {
+        auto &key = xev.xkey;
+        KeyEvent ke;
+        ke.type = KeyEvent::Type::Release;
+        unsigned st = key.state;
         KeySym keysym = NoSymbol;
         char buf[64] = {};
         int len = 0;
+
         if (data.xic) {
             Status status;
             len = Xutf8LookupString(data.xic, &key, buf, sizeof(buf) - 1, &keysym, &status);
-            if (len > 0) {
-                buf[len] = '\0';
-            }
         } else {
             len = XLookupString(&key, buf, sizeof(buf) - 1, &keysym, nullptr);
-            if (len > 0) {
-                buf[len] = '\0';
-            }
+        }
+
+        ke.shift = (st & ShiftMask) != 0;
+        ke.ctrl = (st & ControlMask) != 0;
+        ke.alt = (st & Mod1Mask) != 0;
+        ke.super = (st & Mod4Mask) != 0;
+
+        if (keysym == XK_Shift_L || keysym == XK_Shift_R) {
+            ke.shift = false;
+        }
+        if (keysym == XK_Control_L || keysym == XK_Control_R) {
+            ke.ctrl = false;
+        }
+        if (keysym == XK_Alt_L || keysym == XK_Alt_R) {
+            ke.alt = false;
+        }
+        if (keysym == XK_Super_L || keysym == XK_Super_R) {
+            ke.super = false;
+        }
+
+        if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
+            ke.text.assign(buf, len);
         }
         ke.key = keysym_to_key(keysym);
-        if (ke.alt || ke.ctrl) {
-            unsigned saved = key.state;
-            key.state = 0;
-            char bb[64] = {};
-            KeySym bs;
-            int bl = XLookupString(&key, bb, sizeof(bb) - 1, &bs, nullptr);
-            key.state = saved;
-            if (bl > 0) {
-                bb[bl] = '\0';
-                if (static_cast<unsigned char>(bb[0]) >= 32 &&
-                    static_cast<unsigned char>(bb[0]) < 127 && ke.key == Key::NoKey) {
-                    ke.text = bb;
-                }
-            }
-        } else if (len > 0 && ke.key == Key::NoKey) {
-            if (static_cast<unsigned char>(buf[0]) >= 32) {
-                ke.text = buf;
-            }
-        }
         win->handle_key(ke);
         break;
     }
@@ -403,7 +462,7 @@ static void process_pending_events(X11PlatformApplication::Impl *d) {
         if (ev.type == SelectionNotify || ev.type == SelectionClear) {
             continue;
         }
-        ::Window xw = extract_event_window(ev);
+        auto xw = extract_event_window(ev);
         if (xw == 0L) {
             continue;
         }
@@ -456,7 +515,7 @@ X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>(
         fcntl(d->wakeup_pipe[1], F_SETFL, O_NONBLOCK);
     }
 
-    if (const char *env = std::getenv("SVISION_PAINT")) {
+    if (auto env = std::getenv("SVISION_PAINT")) {
         if (std::string_view(env) == "opengl") {
             d->opengl_requested = true;
         }
@@ -673,8 +732,6 @@ Painter::FontMetrics X11PlatformApplication::measure_font_metrics(float font_siz
 std::string_view X11PlatformApplication::painter_name() const {
     return impl_->opengl_requested ? "OpenGL" : "Cairo";
 }
-
-// ── X11PlatformWindow ───────────────────────────────────────────────────────
 
 X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
                                      Window *owner)
@@ -974,8 +1031,9 @@ void X11PlatformWindow::set_max_size(Size s) {
 int X11PlatformWindow::start_timer(float interval_sec, std::function<void()> callback,
                                    bool repeats) {
     auto *d = app_->impl_.get();
-    int tid = d->next_timer_id++;
-    X11PlatformApplication::Impl::TimerEntry entry;
+    auto tid = d->next_timer_id++;
+    auto entry = X11PlatformApplication::Impl::TimerEntry{};
+
     entry.id = tid;
     entry.interval_sec = interval_sec;
     entry.repeats = repeats;
@@ -1017,20 +1075,25 @@ void X11PlatformWindow::set_cursor(CursorShape shape) {
 void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local_pos) {
     auto *d = app_->impl_.get();
     auto *w = impl_.get();
-    float scale = d->scale;
+    auto scale = d->scale;
     auto const &style = Theme::current().tooltip;
-    float pad = style.padding, fs = style.font_size;
+    auto pad = style.padding, fs = style.font_size;
     auto tsz = Painter::measure_text(text, fs);
     auto fm = Painter::measure_font_metrics(fs);
-    float tw = tsz.width + pad * 2, th = fm.height + pad * 2;
+    auto tw = tsz.width + pad * 2, th = fm.height + pad * 2;
+
     int sx, sy;
     ::Window child;
     XTranslateCoordinates(d->display, w->xwindow, d->root, static_cast<int>(local_pos.x * scale),
                           static_cast<int>(local_pos.y * scale), &sx, &sy, &child);
-    int piw = std::max(1, static_cast<int>(std::ceil(tw * scale)));
-    int pih = std::max(1, static_cast<int>(std::ceil(th * scale)));
+    auto piw = std::max(1, static_cast<int>(std::ceil(tw * scale)));
+    auto pih = std::max(1, static_cast<int>(std::ceil(th * scale)));
+    auto screen_w = DisplayWidth(d->display, d->screen);
+    auto visual = d->argb_visual ? d->argb_visual : d->visual;
+    auto depth = d->argb_visual ? d->argb_depth : d->depth;
+    auto colormap = d->argb_visual ? d->argb_colormap : d->colormap;
+
     sy -= pih + 4;
-    int screen_w = DisplayWidth(d->display, d->screen);
     if (sx + piw > screen_w) {
         sx = screen_w - piw - 2;
     }
@@ -1040,10 +1103,6 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
     if (sy < 0) {
         sy = sy + pih + 24;
     }
-
-    Visual *visual = d->argb_visual ? d->argb_visual : d->visual;
-    int depth = d->argb_visual ? d->argb_depth : d->depth;
-    Colormap colormap = d->argb_visual ? d->argb_colormap : d->colormap;
 
     if (w->tooltip_xwindow == 0L) {
         XSetWindowAttributes sa = {};
@@ -1087,6 +1146,7 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
 }
 
 void X11PlatformWindow::hide_tooltip_window() {
+
     auto *w = impl_.get();
     if (w->tooltip_xwindow != 0L) {
         XUnmapWindow(app_->impl_->display, w->tooltip_xwindow);
