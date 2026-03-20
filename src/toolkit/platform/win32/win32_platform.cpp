@@ -1,21 +1,20 @@
 #include "win32_platform.hpp"
-#ifdef TOOLKIT_HAS_CAIRO
-#include "toolkit/painters/cairo_painter.hpp"
-#endif
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
-
-#include <GL/gl.h>
-
-#ifdef TOOLKIT_HAS_CAIRO
-#include <cairo.h>
-#endif
 #include <spdlog/spdlog.h>
-
+#include <GL/gl.h>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <objidl.h>
+#include <gdiplus.h>
+
+#ifdef TOOLKIT_HAS_CAIRO
+#include <cairo.h>
+#include "toolkit/painters/cairo_painter.hpp"
+#endif
+
 
 namespace toolkit {
 
@@ -479,9 +478,6 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 }
 
 // --- Win32PlatformApplication ---
-
-#include <gdiplus.h>
-#include <objidl.h>
 
 Win32PlatformApplication::Win32PlatformApplication() {
     enable_dpi_awareness();
