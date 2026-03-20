@@ -89,7 +89,6 @@ struct X11PlatformWindow::Impl {
     GLXContext glx_context = nullptr;
 
     bool needs_redraw = false;
-    bool csd = false;
     cairo_surface_t *cairo_surface = nullptr;
     cairo_surface_t *x11_surface = nullptr;
     int last_pw = 0, last_ph = 0;
@@ -574,9 +573,9 @@ X11PlatformApplication::~X11PlatformApplication() {
     }
 }
 
-std::unique_ptr<PlatformWindow>
-X11PlatformApplication::create_window(std::string_view title, Size size, Window *owner, bool csd) {
-    return std::make_unique<X11PlatformWindow>(this, title, size, owner, csd);
+std::unique_ptr<PlatformWindow> X11PlatformApplication::create_window(std::string_view title,
+                                                                      Size size, Window *owner) {
+    return std::make_unique<X11PlatformWindow>(this, title, size, owner);
 }
 
 int X11PlatformApplication::run() {
@@ -764,11 +763,10 @@ std::string_view X11PlatformApplication::painter_name() const {
 }
 
 X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
-                                     Window *owner, bool csd)
+                                     Window *owner)
     : impl_(std::make_unique<Impl>()), app_(app), owner_(owner) {
     auto *d = app_->impl_.get();
     auto *w = impl_.get();
-    w->csd = csd;
 
     Visual *visual = d->visual;
     int depth = d->depth;
@@ -824,28 +822,10 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     w->not_allowed_cursor = XCreateFontCursor(d->display, XC_X_cursor);
     d->window_map[w->xwindow] = {owner, xic};
 
-    if (csd) {
-        set_motif_hints(w->xwindow, d->display, d->motif_wm_hints, false);
-    }
-
     impl_->needs_redraw = true;
 }
 
 X11PlatformWindow::~X11PlatformWindow() { cleanup_resources(); }
-
-void X11PlatformWindow::set_client_side_decorations(bool csd) {
-    auto *d = app_->impl_.get();
-    auto *w = impl_.get();
-    if (w->csd == csd) {
-        return;
-    }
-    w->csd = csd;
-    if (w->xwindow != 0L) {
-        set_motif_hints(w->xwindow, d->display, d->motif_wm_hints, !csd);
-    }
-}
-
-auto X11PlatformWindow::client_side_decorations() const -> bool { return impl_->csd; }
 
 void X11PlatformWindow::cleanup_resources() {
     auto *d = app_->impl_.get();

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "toolkit/decorator_style.hpp"
 #include "toolkit/types.hpp"
 #include <optional>
 #include <string>
@@ -190,7 +189,6 @@ struct Theme {
     ProgressBarStyle progress_bar;
     SliderStyle slider;
     TooltipStyle tooltip;
-    DecoratorStyle decorator;
 
     static Theme from_palette(std::string name, Palette const &p);
 

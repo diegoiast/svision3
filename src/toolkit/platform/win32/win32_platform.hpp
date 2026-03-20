@@ -20,9 +20,8 @@ class Win32PlatformApplication : public PlatformApplication {
   public:
     Win32PlatformApplication();
     ~Win32PlatformApplication() override;
-    bool client_side_decorations() const override { return false; }
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
-                                                  bool csd) override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
+                                                  Window *owner) override;
     int run() override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;
@@ -73,10 +72,8 @@ class Win32PlatformApplication : public PlatformApplication {
 class Win32PlatformWindow : public PlatformWindow {
   public:
     Win32PlatformWindow(Win32PlatformApplication *app, std::string_view title, Size size,
-                        Window *owner, bool csd);
+                        Window *owner);
     ~Win32PlatformWindow() override;
-    void set_client_side_decorations(bool csd) override;
-    bool client_side_decorations() const override;
     void show() override;
     void close() override;
     void set_size(Size s) override;
@@ -98,7 +95,6 @@ class Win32PlatformWindow : public PlatformWindow {
     HGLRC hglrc = nullptr;
     HCURSOR arrow_cursor = nullptr, ibeam_cursor = nullptr;
     HCURSOR hand_cursor = nullptr, not_allowed_cursor = nullptr;
-    bool csd = false;
 };
 
 LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);

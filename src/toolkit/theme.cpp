@@ -346,21 +346,6 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
 
         t.slider.handle_size = 20.0f;
         t.slider.groove_thickness = 6.0f;
-
-        t.decorator.title_height = 32.0f;
-        t.decorator.button_size = 18.0f;
-        t.decorator.button_spacing = 6.0f;
-        t.decorator.padding = 8.0f;
-        t.decorator.title_text = p.text;
-        t.decorator.title_bg = p.window_bg;
-        t.decorator.title_bg_inactive = p.window_bg.darken(0.05f);
-        t.decorator.button_close = Color::rgb(1.0f, 0.3f, 0.3f);
-        t.decorator.button_minimize = Color::rgb(1.0f, 0.8f, 0.2f);
-        t.decorator.button_maximize = Color::rgb(0.3f, 1.0f, 0.3f);
-        t.decorator.button_hover = Color::rgba(255, 255, 255, 0.1f);
-        t.decorator.button_pressed = Color::rgba(0, 0, 0, 0.1f);
-        t.decorator.border = p.border;
-        t.decorator.border_inactive = p.border.darken(0.1f);
         break;
     }
 

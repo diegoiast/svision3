@@ -549,9 +549,8 @@ SystemFonts Win32PlatformApplication::system_fonts() const {
 }
 
 std::unique_ptr<PlatformWindow> Win32PlatformApplication::create_window(std::string_view title,
-                                                                        Size size, Window *owner,
-                                                                        bool csd) {
-    return std::make_unique<Win32PlatformWindow>(this, title, size, owner, csd);
+                                                                        Size size, Window *owner) {
+    return std::make_unique<Win32PlatformWindow>(this, title, size, owner);
 }
 
 int Win32PlatformApplication::run() {
@@ -636,8 +635,8 @@ void Win32PlatformApplication::clipboard_set_text(std::string const &text) {
 // --- Win32PlatformWindow ---
 
 Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::string_view title,
-                                         Size size, Window *owner, bool csd)
-    : app_(app), owner_(owner), csd(csd) {
+                                         Size size, Window *owner)
+    : app_(app), owner_(owner) {
     arrow_cursor = LoadCursorW(nullptr, IDC_ARROW);
     ibeam_cursor = LoadCursorW(nullptr, IDC_IBEAM);
     hand_cursor = LoadCursorW(nullptr, IDC_HAND);
@@ -645,8 +644,8 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
     std::wstring wtitle = utf8_to_wide(title);
     float scale = static_cast<float>(get_system_dpi()) / 96.0f;
 
-    DWORD style = csd ? WS_POPUP : WS_OVERLAPPEDWINDOW;
-    DWORD adjust_style = csd ? 0 : WS_OVERLAPPEDWINDOW;
+    DWORD style = WS_OVERLAPPEDWINDOW;
+    DWORD adjust_style = WS_OVERLAPPEDWINDOW;
 
     RECT r = {0, 0, static_cast<LONG>(size.width * scale), static_cast<LONG>(size.height * scale)};
     AdjustWindowRectEx(&r, adjust_style, FALSE, 0);
@@ -705,19 +704,6 @@ Win32PlatformWindow::~Win32PlatformWindow() {
         hwnd = nullptr;
     }
 }
-
-void Win32PlatformWindow::set_client_side_decorations(bool new_csd) {
-    if (csd == new_csd || !hwnd) {
-        return;
-    }
-    csd = new_csd;
-    DWORD style = csd ? WS_POPUP : WS_OVERLAPPEDWINDOW;
-    SetWindowLongPtrW(hwnd, GWL_STYLE, style);
-    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
-                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-}
-
-auto Win32PlatformWindow::client_side_decorations() const -> bool { return csd; }
 
 void Win32PlatformWindow::show() {
     ShowWindow(hwnd, SW_SHOW);

@@ -767,14 +767,6 @@ int main(int argc, char *argv[]) {
     };
     bar_wrapper->add_widget(std::move(debug_toggle));
 
-    auto csd_checkbox = std::make_unique<toolkit::Checkbox>("CSD");
-    csd_checkbox->set_checked(window->client_side_decorations());
-    csd_checkbox->set_tooltip("Enable client-side decorations");
-    csd_checkbox->on_state_change = [window](toolkit::CheckState state) {
-        window->set_client_side_decorations(state != toolkit::CheckState::Unchecked);
-    };
-    bar_wrapper->add_widget(std::move(csd_checkbox));
-
     auto stats_toggle = std::make_unique<toolkit::Checkbox>("Show Performance Stats");
     stats_toggle->on_toggle = [window](bool checked) {
         if (checked) {

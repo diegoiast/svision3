@@ -7,8 +7,6 @@ namespace toolkit {
 
 class DummyPlatformWindow : public PlatformWindow {
   public:
-    void set_client_side_decorations(bool) override {}
-    bool client_side_decorations() const override { return false; }
     void show() override {}
     void close() override {}
     void minimize() override {}
@@ -28,9 +26,8 @@ class DummyPlatformWindow : public PlatformWindow {
 
 class DummyPlatformApplication : public PlatformApplication {
   public:
-    bool client_side_decorations() const override { return false; }
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
-                                                  bool csd) override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
+                                                  Window *owner) override;
     int run() override { return 0; }
     void quit() override {}
     void post_to_main_thread(std::function<void()> fn) override { fn(); }

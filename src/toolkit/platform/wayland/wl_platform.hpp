@@ -33,6 +33,8 @@ struct wp_fractional_scale_manager_v1;
 struct wp_fractional_scale_v1;
 struct wp_viewporter;
 struct wp_viewport;
+struct zxdg_decoration_manager_v1;
+struct zxdg_toplevel_decoration_v1;
 
 namespace toolkit {
 
@@ -42,9 +44,8 @@ class WaylandPlatformApplication : public PlatformApplication {
   public:
     WaylandPlatformApplication();
     ~WaylandPlatformApplication() override;
-    bool client_side_decorations() const override { return true; }
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
-                                                  bool csd) override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
+                                                  Window *owner) override;
     int run() override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;
@@ -68,6 +69,7 @@ class WaylandPlatformApplication : public PlatformApplication {
     xdg_wm_base *wm_base = nullptr;
     wp_fractional_scale_manager_v1 *fractional_scale_manager = nullptr;
     wp_viewporter *viewporter = nullptr;
+    zxdg_decoration_manager_v1 *decoration_manager = nullptr;
     wl_cursor_theme *cursor_theme = nullptr;
     wl_surface *cursor_surface = nullptr;
     wl_data_device_manager *data_device_manager = nullptr;
@@ -122,10 +124,8 @@ class WaylandPlatformApplication : public PlatformApplication {
 class WaylandPlatformWindow : public PlatformWindow {
   public:
     WaylandPlatformWindow(WaylandPlatformApplication *app, std::string_view title, Size size,
-                          Window *owner, bool csd);
+                          Window *owner);
     ~WaylandPlatformWindow() override;
-    void set_client_side_decorations(bool csd) override;
-    bool client_side_decorations() const override;
     void show() override;
     void close() override;
     void minimize() override;
@@ -157,6 +157,7 @@ class WaylandPlatformWindow : public PlatformWindow {
     wl_callback *frame_cb = nullptr;
     wp_fractional_scale_v1 *fractional_scale = nullptr;
     wp_viewport *viewport = nullptr;
+    zxdg_toplevel_decoration_v1 *toplevel_decoration = nullptr;
     wl_buffer *buffer = nullptr;
     void *shm_data = nullptr;
     int shm_fd = -1;
@@ -170,7 +171,6 @@ class WaylandPlatformWindow : public PlatformWindow {
 
     wl_egl_window *egl_window = nullptr;
     void *egl_surface = nullptr;
-    bool csd = false;
 
     struct TooltipData {
         std::string text;

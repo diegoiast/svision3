@@ -6,6 +6,7 @@
 
 #include "fractional-scale-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
+#include "xdg-decoration-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 
 #include <EGL/egl.h>
@@ -279,6 +280,9 @@ static void registry_global(void *data, wl_registry *reg, uint32_t name, const c
     } else if (strcmp(iface, "wp_viewporter") == 0) {
         app->viewporter =
             static_cast<wp_viewporter *>(wl_registry_bind(reg, name, &wp_viewporter_interface, 1));
+    } else if (strcmp(iface, "zxdg_decoration_manager_v1") == 0) {
+        app->decoration_manager = static_cast<zxdg_decoration_manager_v1 *>(
+            wl_registry_bind(reg, name, &zxdg_decoration_manager_v1_interface, 1));
     }
 }
 
@@ -799,10 +803,9 @@ WaylandPlatformApplication::~WaylandPlatformApplication() {
     }
 }
 
-std::unique_ptr<PlatformWindow> WaylandPlatformApplication::create_window(std::string_view title,
-                                                                          Size size, Window *owner,
-                                                                          bool csd) {
-    return std::make_unique<WaylandPlatformWindow>(this, title, size, owner, csd);
+std::unique_ptr<PlatformWindow>
+WaylandPlatformApplication::create_window(std::string_view title, Size size, Window *owner) {
+    return std::make_unique<WaylandPlatformWindow>(this, title, size, owner);
 }
 
 int WaylandPlatformApplication::run() {
@@ -920,14 +923,20 @@ void WaylandPlatformApplication::clipboard_set_text(std::string const &text) {
 // --- WaylandPlatformWindow ---
 
 WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
-                                             std::string_view title, Size size, Window *owner,
-                                             bool csd)
-    : app_(app), owner_(owner), csd(csd) {
+                                             std::string_view title, Size size, Window *owner)
+    : app_(app), owner_(owner) {
     surface = wl_compositor_create_surface(app_->compositor);
     xdg_surf = xdg_wm_base_get_xdg_surface(app_->wm_base, surface);
     xdg_surface_add_listener(xdg_surf, &xdg_surf_listener, this);
     toplevel = xdg_surface_get_toplevel(xdg_surf);
     xdg_toplevel_add_listener(toplevel, &toplevel_listener, this);
+
+    if (app_->decoration_manager) {
+        toplevel_decoration =
+            zxdg_decoration_manager_v1_get_toplevel_decoration(app_->decoration_manager, toplevel);
+        zxdg_toplevel_decoration_v1_set_mode(toplevel_decoration,
+                                             ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    }
 
     std::string t(title);
     xdg_toplevel_set_title(toplevel, t.c_str());
@@ -986,6 +995,9 @@ WaylandPlatformWindow::~WaylandPlatformWindow() {
     if (toplevel) {
         xdg_toplevel_destroy(toplevel);
     }
+    if (toplevel_decoration) {
+        zxdg_toplevel_decoration_v1_destroy(toplevel_decoration);
+    }
     if (fractional_scale) {
         wp_fractional_scale_v1_destroy(fractional_scale);
     }
@@ -1006,16 +1018,6 @@ WaylandPlatformWindow::~WaylandPlatformWindow() {
     }
     hide_tooltip_window();
 }
-
-void WaylandPlatformWindow::set_client_side_decorations(bool new_csd) {
-    if (csd == new_csd) {
-        return;
-    }
-    csd = new_csd;
-    spdlog::warn("Wayland does not support changing decorations at runtime");
-}
-
-auto WaylandPlatformWindow::client_side_decorations() const -> bool { return csd; }
 
 void WaylandPlatformWindow::show() {
     wl_surface_commit(surface);

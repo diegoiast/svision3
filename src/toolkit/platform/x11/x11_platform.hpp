@@ -12,9 +12,8 @@ class X11PlatformApplication : public PlatformApplication {
   public:
     X11PlatformApplication();
     ~X11PlatformApplication() override;
-    bool client_side_decorations() const override { return false; }
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
-                                                  bool csd) override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
+                                                  Window *owner) override;
     int run() override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;
@@ -35,11 +34,9 @@ class X11PlatformApplication : public PlatformApplication {
 
 class X11PlatformWindow : public PlatformWindow {
   public:
-    X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size, Window *owner,
-                      bool csd);
+    X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
+                      Window *owner);
     ~X11PlatformWindow() override;
-    void set_client_side_decorations(bool csd) override;
-    bool client_side_decorations() const override;
     void show() override;
     void close() override;
     void minimize() override;

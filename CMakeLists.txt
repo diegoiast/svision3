@@ -57,7 +57,6 @@ set(TOOLKIT_SOURCES
     src/toolkit/menu.cpp
     src/toolkit/menubar.cpp
     src/toolkit/layout.cpp
-    src/toolkit/decorator_widget.cpp
     src/toolkit/theme.cpp
     src/toolkit/window.cpp
     src/toolkit/widget.cpp
@@ -115,6 +114,7 @@ elseif(UNIX)
         set(XDG_SHELL_XML ${WAYLAND_PROTOCOLS_DIR}/stable/xdg-shell/xdg-shell.xml)
         set(FRACTIONAL_SCALE_XML ${WAYLAND_PROTOCOLS_DIR}/staging/fractional-scale/fractional-scale-v1.xml)
         set(VIEWPORTER_XML ${WAYLAND_PROTOCOLS_DIR}/stable/viewporter/viewporter.xml)
+        set(XDG_DECORATION_XML ${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml)
         set(WL_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/wayland-gen)
         file(MAKE_DIRECTORY ${WL_GEN_DIR})
 
@@ -159,6 +159,19 @@ elseif(UNIX)
             DEPENDS ${VIEWPORTER_XML}
         )
 
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/xdg-decoration-client-protocol.h
+            COMMAND ${WAYLAND_SCANNER} client-header
+                    ${XDG_DECORATION_XML} ${WL_GEN_DIR}/xdg-decoration-client-protocol.h
+            DEPENDS ${XDG_DECORATION_XML}
+        )
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/xdg-decoration-protocol.c
+            COMMAND ${WAYLAND_SCANNER} private-code
+                    ${XDG_DECORATION_XML} ${WL_GEN_DIR}/xdg-decoration-protocol.c
+            DEPENDS ${XDG_DECORATION_XML}
+        )
+
         list(APPEND TOOLKIT_SOURCES
             src/toolkit/platform/wayland/wl_platform.cpp
             ${WL_GEN_DIR}/xdg-shell-protocol.c
@@ -167,6 +180,8 @@ elseif(UNIX)
             ${WL_GEN_DIR}/fractional-scale-v1-client-protocol.h
             ${WL_GEN_DIR}/viewporter-protocol.c
             ${WL_GEN_DIR}/viewporter-client-protocol.h
+            ${WL_GEN_DIR}/xdg-decoration-protocol.c
+            ${WL_GEN_DIR}/xdg-decoration-client-protocol.h
         )
     endif()
 
