@@ -230,7 +230,11 @@ void Window::open_popup(Popup popup) {
 
 void Window::close_popup() {
     if (!popups_.empty()) {
+        auto popup = std::move(popups_.back());
         popups_.pop_back();
+        if (popup.on_close) {
+            popup.on_close();
+        }
         if (popups_.empty()) {
             set_focused_widget(saved_focus_);
             saved_focus_ = nullptr;
@@ -240,13 +244,8 @@ void Window::close_popup() {
 }
 
 void Window::close_all_popups() {
-    if (!popups_.empty()) {
-        popups_.clear();
-        if (saved_focus_) {
-            set_focused_widget(saved_focus_);
-            saved_focus_ = nullptr;
-        }
-        request_redraw("popup close");
+    while (!popups_.empty()) {
+        close_popup();
     }
 }
 

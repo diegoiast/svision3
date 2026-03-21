@@ -4,6 +4,7 @@
 #include "toolkit/menubar.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include <spdlog/spdlog.h>
 
 namespace toolkit {
 
@@ -43,37 +44,16 @@ int MenuBar::find_menu(std::string_view title) const {
 }
 
 void MenuBar::paint(Painter &painter) {
-    auto const &style = Theme::current().button;
-    auto padding = style.padding;
-    auto fm = painter.font_metrics(style.font_size);
+    auto const &theme = Theme::current();
     auto x = 0.0f;
 
     for (auto i = 0; i < static_cast<int>(menus_.size()); i++) {
         auto const &menu = menus_[i];
-        auto text_w = painter.text_size(menu->display_title(), style.font_size).width;
-        auto item_w = text_w + padding.left + padding.right;
+        auto item_w = theme.measure_menubar_item(menu->display_title()).width;
         auto item_rect = Rect{x, 0, item_w, rect_.height};
 
-        if (i == hovered_ || i == active_) {
-            painter.fill_rect(item_rect,
-                              style.background_hovered.value_or(style.background.darken(0.1f)));
-        }
-
-        auto baseline = (rect_.height - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(menu->display_title(), {x + padding.left, baseline}, style.text,
-                          style.font_size);
-
-        if (show_mnemonics_ && menu->mnemonic_index() >= 0) {
-            auto before = menu->display_title().substr(0, menu->mnemonic_index());
-            auto ch = std::string(1, menu->display_title()[menu->mnemonic_index()]);
-            auto before_w =
-                before.empty() ? 0.0f : painter.text_size(before, style.font_size).width;
-            auto ch_w = painter.text_size(ch, style.font_size).width;
-            auto ul_y = baseline + fm.descent * 0.4f;
-
-            painter.draw_line({x + padding.left + before_w, ul_y},
-                              {x + padding.left + before_w + ch_w, ul_y}, style.text, 2.0f);
-        }
+        theme.draw_menubar_item(painter, item_rect, menu->display_title(), i == hovered_,
+                                i == active_, show_mnemonics_, menu->mnemonic_index());
 
         x += item_w;
     }
@@ -83,18 +63,25 @@ void MenuBar::paint(Painter &painter) {
     painter.draw_line({0, rect_.height - 1.0f}, {rect_.width, rect_.height - 1.0f}, border_c, 1.0f);
 }
 
+float MenuBar::get_menu_x(int index) const {
+    auto const &theme = Theme::current();
+    auto x = 0.0f;
+    for (auto i = 0; i < index; ++i) {
+        x += theme.measure_menubar_item(menus_[i]->display_title()).width;
+    }
+    return x;
+}
+
 int MenuBar::menu_at(Point p) const {
     if (!hit_test(p)) {
         return -1;
     }
-    auto const &style = Theme::current().button;
-    auto padding = style.padding;
+    auto const &theme = Theme::current();
     auto x = 0.0f;
 
     for (auto i = 0; i < static_cast<int>(menus_.size()); i++) {
         auto const &menu = menus_[i];
-        auto text_w = Painter::measure_text(menu->display_title(), style.font_size).width;
-        auto item_w = text_w + padding.left + padding.right;
+        auto item_w = theme.measure_menubar_item(menu->display_title()).width;
         if (p.x >= x && p.x < x + item_w) {
             return i;
         }
@@ -104,30 +91,30 @@ int MenuBar::menu_at(Point p) const {
 }
 
 bool MenuBar::handle_mouse(MouseEvent const &event) {
-    if (window() && !window()->has_popup()) {
-        active_ = -1;
-        set_show_mnemonics(false);
-        menu_bar_keyboard_active_ = false;
-    }
-
     auto inside = hit_test(event.position);
 
     switch (event.type) {
     case MouseEvent::Type::Move:
+    case MouseEvent::Type::Drag:
+        hovered_ = menu_at(event.position);
         if (menu_bar_keyboard_active_) {
+            if (active_ != -1 && hovered_ != -1 && hovered_ != active_) {
+                toggle_menu(hovered_);
+            }
             return inside;
         }
-        hovered_ = menu_at(event.position);
         if (active_ != -1 && hovered_ != -1 && hovered_ != active_) {
             toggle_menu(hovered_);
         }
         return inside;
+
     case MouseEvent::Type::Press:
         if (menu_bar_keyboard_active_) {
-            if (active_ != -1 && hovered_ == active_) { // Click on active menu, close it
+            auto h = menu_at(event.position);
+            if (active_ != -1 && h == active_) { // Click on active menu, close it
                 menus_[active_]->close();
-            } else if (hovered_ != -1) {
-                toggle_menu(hovered_);
+            } else if (h != -1) {
+                toggle_menu(h);
             } else {
                 if (window()) {
                     window()->close_all_popups();
@@ -135,14 +122,18 @@ bool MenuBar::handle_mouse(MouseEvent const &event) {
                 menu_bar_keyboard_active_ = false;
                 set_show_mnemonics(false);
             }
-            return true;
+            return inside;
         }
         active_ = menu_at(event.position);
         if (active_ != -1) {
             toggle_menu(active_);
             return true;
         }
-        return false;
+        return inside;
+
+    case MouseEvent::Type::Release:
+        return inside;
+
     case MouseEvent::Type::Leave:
         if (!menu_bar_keyboard_active_) {
             hovered_ = -1;
@@ -201,15 +192,13 @@ bool MenuBar::handle_key(KeyEvent const &event) {
             return true;
         } else if (event.key == Key::Down || event.key == Key::Enter) {
             if (active_ != -1) {
-                auto const &style = Theme::current().button;
-                auto padding = style.padding;
-                auto x_pos_on_menubar = 0.0f;
-                for (int i = 0; i < active_; ++i) {
-                    x_pos_on_menubar +=
-                        Painter::measure_text(menus_[i]->display_title(), style.font_size).width +
-                        padding.left + padding.right;
-                }
-                menus_[active_]->show(window(), map_to_window({x_pos_on_menubar, rect_.height}));
+                menus_[active_]->on_close_callback = [this] {
+                    active_ = -1;
+                    hovered_ = -1;
+                    menu_bar_keyboard_active_ = false;
+                    set_show_mnemonics(false);
+                };
+                menus_[active_]->show(window(), map_to_window({get_menu_x(active_), rect_.height}));
                 return true;
             }
         }
@@ -281,7 +270,7 @@ void MenuBar::toggle_menu(int index) {
     if (index < 0 || index >= static_cast<int>(menus_.size())) {
         return;
     }
-    if (active_ == index) {
+    if (active_ == index && window() && window()->has_popup()) {
         menu_bar_keyboard_active_ = false;
         menus_[active_]->close();
         return;
@@ -290,17 +279,13 @@ void MenuBar::toggle_menu(int index) {
         window()->close_all_popups();
     }
 
-    auto const &style = Theme::current().button;
-    auto padding = style.padding;
+    auto const &theme = Theme::current();
     auto x = 0.0f;
 
     // Ensure keyboard navigation is active when a menu is opened
     menu_bar_keyboard_active_ = true;
     active_ = index;
-    for (auto i = 0; i < index; ++i) {
-        x += Painter::measure_text(menus_[i]->display_title(), style.font_size).width +
-             padding.left + padding.right;
-    }
+    x = get_menu_x(index);
 
     auto pos = map_to_window({x, rect_.height});
     auto menu = menus_[index];
@@ -316,9 +301,7 @@ void MenuBar::toggle_menu(int index) {
     menu->on_close_callback = [this] {
         active_ = -1;
         hovered_ = -1;
-
-        // If all popups are closed, deactivate keyboard nav
-        if (!window()->has_popup()) {
+        if (window() && !window()->has_popup()) {
             menu_bar_keyboard_active_ = false;
             set_show_mnemonics(false);
         }
@@ -327,15 +310,14 @@ void MenuBar::toggle_menu(int index) {
 }
 
 Size MenuBar::size_hint() const {
-    auto const &style = Theme::current().button;
-    auto padding = style.padding;
+    auto const &theme = Theme::current();
+    auto const &style = theme.menubar;
     auto fm = Painter::measure_font_metrics(style.font_size);
     auto w = 0.0f;
     for (auto const &m : menus_) {
-        w += Painter::measure_text(m->display_title(), style.font_size).width + padding.left +
-             padding.right;
+        w += theme.measure_menubar_item(m->display_title()).width;
     }
-    return {w, fm.height + padding.top + padding.bottom};
+    return {w, fm.height + style.padding.top + style.padding.bottom};
 }
 
 } // namespace toolkit

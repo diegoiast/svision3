@@ -3,8 +3,8 @@
 Legend: [x] done [ ] pending
 
 Implemented: 111
-Total: 208
-Progress: 111 / 208 ≈ 53.3%
+Total: 209
+Progress: 111 / 209 ≈ 53%
 
 This document is not final (note that the menus and toolbars support is done in
 another document). The idea is to reach version 0.9 with all these items marked.
@@ -140,7 +140,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 14. [ ] Simplify and minimize the theme structs.
 15. [ ] Theme should be in application, then window then widget, in all but app - optional.
 16. [ ] Load them from config file (which theme?).
-17. [ ] Draw premetives from theme
+17. [ ] Themes should not be an enum, but virtual classes.
+18. [ ] Draw premetives from theme
     1. [ ] Borders
     2. [ ] Background
     3. [ ] Tabs

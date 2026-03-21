@@ -100,10 +100,18 @@ void Menu::show(Window *win, Point position) {
     popup.on_paint = [this](Painter &p) { paint(p); };
     popup.on_mouse = [this](MouseEvent const &e) { return handle_mouse(e); };
     popup.on_key = [this](KeyEvent const &e) { return handle_key(e); };
+    popup.on_close = [this] {
+        if (on_close_callback) {
+            on_close_callback();
+        }
+    };
     window_->open_popup(std::move(popup));
 }
 
 void Menu::close() {
+    if (!window_) {
+        return;
+    }
     if (on_close_callback) {
         on_close_callback();
     }
@@ -205,9 +213,7 @@ bool Menu::handle_mouse(MouseEvent const &event) {
         if (idx >= 0 && items_[idx].command->is_enabled()) {
             if (items_[idx].is_action()) {
                 auto cmd = items_[idx].command;
-                if (window_) {
-                    window_->close_all_popups();
-                }
+                close();
                 cmd->execute();
                 return true;
             } else if (items_[idx].is_submenu()) {
@@ -269,9 +275,7 @@ bool Menu::handle_key(KeyEvent const &event) {
         if (hovered_ >= 0 && items_[hovered_].command->is_enabled()) {
             if (items_[hovered_].is_action()) {
                 auto cmd = items_[hovered_].command;
-                if (window_) {
-                    window_->close_all_popups();
-                }
+                close();
                 cmd->execute();
             } else if (items_[hovered_].is_submenu()) {
                 open_submenu(hovered_);

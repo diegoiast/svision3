@@ -72,4 +72,29 @@ class Painter {
     static float snap_to_pixel(float val, float scale);
 };
 
+// Used for testing
+class MockPainter : public Painter {
+public:
+    void push_clip(Rect const&) override {}
+    void pop_clip() override {}
+    void push_translation(Point) override {}
+    void pop_translation() override {}
+    void set_line_style(LineStyle) override {}
+    void fill_rect(Rect const&, Color const&) override {}
+    void draw_rect(Rect const&, Color const&, float) override {}
+    void fill_rounded_rect(Rect const&, Color const&, float) override {}
+    void draw_rounded_rect(Rect const&, Color const&, float, float) override {}
+    void draw_line(Point, Point, Color const&, float) override {}
+    void fill_circle(Point, float, Color const&) override {}
+    void draw_circle(Point, float, Color const&, float) override {}
+    void draw_text(std::string_view, Point, Color const&, float, FontFamily, TextOrientation) override {}
+    Size text_size(std::string_view text, float font_size, FontFamily) override {
+        return {static_cast<float>(text.size()) * font_size * 0.6f, font_size + 2.0f};
+    }
+    FontMetrics font_metrics(float font_size, FontFamily) override {
+        return {font_size * 0.8f, font_size * 0.2f, font_size};
+    }
+    std::string_view name() const override { return "mock"; }
+};
+
 } // namespace toolkit

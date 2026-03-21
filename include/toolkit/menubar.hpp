@@ -29,6 +29,7 @@ class MenuBar : public Widget {
     void set_show_mnemonics(bool show);
 
   private:
+    float get_menu_x(int index) const;
     int menu_at(Point p) const;
 
     std::vector<std::shared_ptr<Menu>> menus_;

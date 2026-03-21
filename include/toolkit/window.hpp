@@ -25,6 +25,7 @@ struct Popup {
     std::function<void(Painter &)> on_paint;
     std::function<bool(MouseEvent const &)> on_mouse;
     std::function<bool(KeyEvent const &)> on_key;
+    std::function<void()> on_close;
 };
 
 class Window {

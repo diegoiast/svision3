@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/theme.hpp"
+#include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
 #include <algorithm>
 #include <cctype>
@@ -18,6 +19,54 @@ static Theme &mutable_current() {
 Theme const &Theme::current() { return mutable_current(); }
 
 void Theme::set_current(Theme theme) { mutable_current() = std::move(theme); }
+
+Size Theme::measure_menubar_item(std::string_view title) const {
+    auto text_w = Painter::measure_text(title, menubar.font_size).width;
+    return {text_w + menubar.padding.left + menubar.padding.right, 0};
+}
+
+void Theme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
+                              bool hovered, bool active, bool show_mnemonics,
+                              int mnemonic_index) const {
+    auto const &style = menubar;
+    auto padding = style.padding;
+    auto fm = painter.font_metrics(style.font_size);
+
+    if (hovered || active) {
+        Color bg = style.background_hovered.value_or(style.background.darken(0.1f));
+        if (this->style == ThemeStyle::Win11) {
+            // Windows 11 style: subtle rounded rect for hover/active
+            auto hover_rect = rect.inset(2.0f);
+            painter.fill_rounded_rect(hover_rect, bg, style.corner_radius);
+        } else {
+            painter.fill_rect(rect, bg);
+        }
+    }
+
+    auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
+    Color text_c = style.text;
+    if ((hovered || active) && this->style == ThemeStyle::Win11) {
+        // If it's blue background, we might need white text
+        // palette_win11 sets background_selected to winBlue.
+        auto luma = [](Color c) { return 0.299f * c.r + 0.587f * c.g + 0.114f * c.b; };
+        if (luma(style.background_hovered.value_or(Color::rgb(0, 0, 0))) < 0.5f) {
+            text_c = Color::rgb(1, 1, 1);
+        }
+    }
+
+    painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, style.font_size);
+
+    if (show_mnemonics && mnemonic_index >= 0) {
+        auto before = title.substr(0, mnemonic_index);
+        auto ch = std::string(1, title[mnemonic_index]);
+        auto before_w = before.empty() ? 0.0f : painter.text_size(before, style.font_size).width;
+        auto ch_w = painter.text_size(ch, style.font_size).width;
+        auto ul_y = baseline + fm.descent * 0.4f;
+
+        painter.draw_line({rect.x + padding.left + before_w, ul_y},
+                          {rect.x + padding.left + before_w + ch_w, ul_y}, text_c, 1.0f);
+    }
+}
 
 // FIXME: this should move to the color struct
 static Color gray(float v) { return Color::rgb(v, v, v); }
@@ -299,6 +348,8 @@ static void apply_style(Theme &t, ThemeStyle style, Palette const &p) {
         t.button.background_hovered = dark ? p.widget_bg.lighten(0.06f) : p.widget_bg.darken(0.06f);
         t.button.background_pressed = dark ? p.widget_bg.lighten(0.14f) : p.widget_bg.darken(0.14f);
         t.button.padding = {6, 20, 6, 20};
+        t.menubar.padding = {4, 12, 4, 12};
+        t.menubar.background_hovered = p.accent.with_alpha(dark ? 0.2f : 0.1f);
         t.slider.handle_size = 20.0f;
         t.slider.groove_thickness = 4.0f;
         break;
@@ -491,6 +542,7 @@ Theme Theme::from_palette(std::string name, Palette const &p) {
 
 Theme Theme::create(ThemeStyle style, Palette const &palette) {
     auto t = from_palette(style_name(style), palette);
+    t.style = style;
     apply_style(t, style, palette);
     return t;
 }

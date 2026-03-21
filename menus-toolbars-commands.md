@@ -48,19 +48,22 @@
      9. Search inside menus like macOS.
 4. Current bugs:
      1. General:
-          2. When I press `alf+f` to open menu, and I press again - it should close. [done]
-          1. Show mnemonics by default - per theme (win95 will show them always)
-          2. When a menu is visible - show mnemonics of all menus.
-          3. When I open the first menu by mouse, and then open the second one,
+          1. When I press `alf+f` to open menu, and I press again - it should close. [done]
+          2. When I open help menu by keyboard, and choose about from the keyboard
+             the help menu is still marked active. [done]
+          3. When a menu is visible - show mnemonics of all menus.g
+          4. Show mnemonics by default - per theme (win95 will show them always)
+          5. When I open the first menu by mouse, and then open the second one,
              the first one is still marked as active/hovered.
-          4. If a menu has a submenu - opening it - and then selecting a sibling will fail.
+          6. If a menu has a submenu - opening it - and then selecting a sibling will fail.
              For example: file->files - opens a sub menu, and if I hover on file->open
              - it should close the menu.
-          5. If a menu has a submenu - opening it - and then pressing up - will not
+          7. If a menu has a submenu - opening it - and then pressing up - will not
              select the last item in the menu, but the first (? last?) submenu.
-          6. Mnemonics work only with ASCII.
-          7. Navigating only the top level menus (no sub menus) is not working.gg
-          8. Alt and leave - same as F10. Currently - just shows menemonits.
+          8. Mnemonics work only with ASCII.
+          9. Navigating only the top level menus (no sub menus) is not working.gg
+          10. Alt and leave - same as F10. Currently - just shows menemonits.
+
      2. X11
         1. ???
      3. Wayland:

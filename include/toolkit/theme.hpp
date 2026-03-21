@@ -169,8 +169,11 @@ enum class ThemeStyle { MacOS, Material, Win11, Win95, Plasma6, GNOME };
 
 inline constexpr int theme_style_count = 6;
 
+class Painter;
+
 struct Theme {
     std::string name;
+    ThemeStyle style;
     std::string system_font;
     std::string monospace_font;
     WindowStyle window;
@@ -189,6 +192,10 @@ struct Theme {
     ProgressBarStyle progress_bar;
     SliderStyle slider;
     TooltipStyle tooltip;
+
+    Size measure_menubar_item(std::string_view title) const;
+    void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
+                           bool active, bool show_mnemonics, int mnemonic_index) const;
 
     static Theme from_palette(std::string name, Palette const &p);
 

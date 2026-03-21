@@ -66,6 +66,7 @@ struct Color {
         auto clamp = [](float v) { return v > 1 ? 1.0f : v; };
         return {clamp(r + amount), clamp(g + amount), clamp(b + amount), a};
     }
+    constexpr Color with_alpha(float new_alpha) const { return {r, g, b, new_alpha}; }
 };
 
 struct Margins {
