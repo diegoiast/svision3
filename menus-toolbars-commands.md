@@ -51,18 +51,21 @@
           1. When I press `alf+f` to open menu, and I press again - it should close. [done]
           2. When I open help menu by keyboard, and choose about from the keyboard
              the help menu is still marked active. [done]
-          3. When a menu is visible - show mnemonics of all menus.g
-          4. Show mnemonics by default - per theme (win95 will show them always)
-          5. When I open the first menu by mouse, and then open the second one,
-             the first one is still marked as active/hovered.
-          6. If a menu has a submenu - opening it - and then selecting a sibling will fail.
+          3. When I open the first menu by mouse, and then open the second one,
+             the first one is still marked as active/hovered. [done]
+          4. When a menu is visible - show mnemonics of all menus.
+          5. If a menu has a submenu - opening it - and then selecting a sibling will fail.
              For example: file->files - opens a sub menu, and if I hover on file->open
-             - it should close the menu.
-          7. If a menu has a submenu - opening it - and then pressing up - will not
+             - it should close the files menu.
+          6. If a menu has a submenu - opening it - and then pressing up - will not
              select the last item in the menu, but the first (? last?) submenu.
+          7. If a menu has a submenu - I hover it, and sub menu open. I click the
+             parnet item (which leads to the sub menu) - whole menu is closed. I expect
+             original menu to keep open, only sub menu to close.
           8. Mnemonics work only with ASCII.
-          9. Navigating only the top level menus (no sub menus) is not working.gg
+          9. Navigating only the top level menus (no sub menus) is not working.
           10. Alt and leave - same as F10. Currently - just shows menemonits.
+          11. Show mnemonics by default - per theme (win95 will show them always).
 
      2. X11
         1. ???
