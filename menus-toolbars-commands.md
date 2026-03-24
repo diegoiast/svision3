@@ -56,7 +56,7 @@
           4. When a menu is visible - show mnemonics of all menus.
           5. If a menu has a submenu - opening it - and then selecting a sibling will fail.
              For example: file->files - opens a sub menu, and if I hover on file->open
-             - it should close the files menu.
+             - it should close the files menu. [done]
           6. If a menu has a submenu - opening it - and then pressing up - will not
              select the last item in the menu, but the first (? last?) submenu.
           7. If a menu has a submenu - I hover it, and sub menu open. I click the

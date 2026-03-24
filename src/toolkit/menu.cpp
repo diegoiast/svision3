@@ -9,20 +9,38 @@
 namespace toolkit {
 
 MenuItem MenuItem::submenu_item(std::string name, std::shared_ptr<class Menu> menu) {
+    if (name.empty() && menu) {
+        name = menu->title();
+    }
     auto cmd = std::make_shared<Command>(std::move(name), nullptr);
     return {Type::Submenu, std::move(cmd), std::move(menu)};
 }
 
-Menu::Menu(std::string title) : title_(std::move(title)), mnemonic_index_(-1) {
-    auto pos = title_.find('&');
-    if (pos != std::string::npos && pos + 1 < title_.size()) {
-        mnemonic_index_ = static_cast<int>(pos);
-        mnemonic_key_ =
-            static_cast<char>(std::tolower(static_cast<unsigned char>(title_[pos + 1])));
-        display_title_ = title_.substr(0, pos) + title_.substr(pos + 1);
-    } else {
-        display_title_ = title_;
+static char get_mnemonic(std::string_view name) {
+    auto pos = name.find('&');
+    if (pos != std::string_view::npos && pos + 1 < name.size()) {
+        return static_cast<char>(std::tolower(static_cast<unsigned char>(name[pos + 1])));
     }
+    return 0;
+}
+
+static std::string strip_mnemonic(std::string_view name) {
+    auto pos = name.find('&');
+    if (pos != std::string_view::npos) {
+        std::string res(name.substr(0, pos));
+        res += name.substr(pos + 1);
+        return res;
+    }
+    return std::string(name);
+}
+
+Menu::Menu(std::string title) : title_(std::move(title)), mnemonic_index_(-1) {
+    mnemonic_key_ = get_mnemonic(title_);
+    auto pos = title_.find('&');
+    if (pos != std::string::npos) {
+        mnemonic_index_ = static_cast<int>(pos);
+    }
+    display_title_ = strip_mnemonic(title_);
 }
 
 void Menu::add_action(std::shared_ptr<Command> cmd) {
@@ -175,8 +193,27 @@ void Menu::paint(Painter &painter) {
             text_col.a *= 0.4f;
         }
 
-        painter.draw_text(item.command->name(), {style.padding.left + 4, baseline}, text_col,
+        auto display_name = strip_mnemonic(item.command->name());
+        auto mnemonic_idx = -1;
+        auto ampersand_pos = item.command->name().find('&');
+        if (ampersand_pos != std::string::npos) {
+            mnemonic_idx = static_cast<int>(ampersand_pos);
+        }
+
+        painter.draw_text(display_name, {style.padding.left + 4, baseline}, text_col,
                           style.font_size);
+
+        if (mnemonic_idx != -1) {
+            auto m_char = display_name.substr(mnemonic_idx, 1);
+            auto text_before_m = display_name.substr(0, mnemonic_idx);
+            auto x_before = painter.text_size(text_before_m, style.font_size).width;
+            auto m_size = painter.text_size(m_char, style.font_size);
+            auto underline_y = baseline + 2.0f;
+            painter.draw_line({style.padding.left + 4 + x_before, underline_y},
+                              {style.padding.left + 4 + x_before + m_size.width, underline_y},
+                              text_col, 1.0f);
+        }
+
         if (!item.command->shortcut_string().empty()) {
             auto shortcut_w =
                 painter.text_size(item.command->shortcut_string(), style.font_size).width;
@@ -202,10 +239,43 @@ bool Menu::handle_mouse(MouseEvent const &event) {
     if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
         auto previously_hovered = hovered_;
         hovered_ = item_at(event.position);
-        if (hovered_ != -1 && previously_hovered != hovered_ && items_[hovered_].is_submenu()) {
-            open_submenu(hovered_);
+        if (hovered_ != -1 && previously_hovered != hovered_) {
+            // If we moved to a different item, and we have a submenu open,
+            // we should close it.
+            if (open_submenu_index_ != -1 && hovered_ != open_submenu_index_) {
+                if (window_) {
+                    // Close everything above this menu because we moved away
+                    // from the item that opened the child.
+                    // Since Window::handle_mouse only closes if size changes,
+                    // we need to close it here.
+                    while (window_->num_popups() > 0) {
+                        // How to know if we are at popups_[i]?
+                        // This is tricky. Let's use a simpler heuristic:
+                        // we just close the popups above us.
+                        // But Menu doesn't know its index in the window.
+                        
+                        // Let's assume for now that if we are handling the mouse,
+                        // and we have an open child, it's the one at the top.
+                        window_->close_popup();
+                        if (open_submenu_index_ == -1) break; // Should not happen
+                        break; // Close only one level
+                    }
+                }
+                open_submenu_index_ = -1;
+            }
+
+            if (items_[hovered_].is_submenu()) {
+                open_submenu(hovered_);
+            }
         }
         return local_bounds.contains(event.position);
+    }
+
+    if (event.type == MouseEvent::Type::Leave) {
+        // We don't close submenus on Leave, because the mouse might be
+        // moving into the submenu itself.
+        hovered_ = -1;
+        return true;
     }
 
     if (event.type == MouseEvent::Type::Press) {
@@ -283,6 +353,22 @@ bool Menu::handle_key(KeyEvent const &event) {
         }
         return true;
     default:
+        if (!event.text.empty()) {
+            auto key = static_cast<char>(std::tolower(static_cast<unsigned char>(event.text[0])));
+            for (int i = 0; i < static_cast<int>(items_.size()); ++i) {
+                if (get_mnemonic(items_[i].command->name()) == key) {
+                    if (items_[i].is_action()) {
+                        auto cmd = items_[i].command;
+                        close();
+                        cmd->execute();
+                        return true;
+                    } else if (items_[i].is_submenu()) {
+                        open_submenu(i);
+                        return true;
+                    }
+                }
+            }
+        }
         return false;
     }
 }
@@ -291,6 +377,7 @@ void Menu::open_submenu(int index) {
     if (index < 0 || index >= items_.size() || !items_[index].is_submenu()) {
         return;
     }
+    open_submenu_index_ = index;
     auto const &item = items_[index];
     auto y = 2.0f;
 

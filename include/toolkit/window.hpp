@@ -56,6 +56,7 @@ class Window {
     void close_popup();
     void close_all_popups();
     bool has_popup() const { return !popups_.empty(); }
+    size_t num_popups() const { return popups_.size(); }
 
     void handle_paint(Painter &painter);
     void handle_mouse(MouseEvent const &event);

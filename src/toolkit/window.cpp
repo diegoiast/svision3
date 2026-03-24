@@ -357,16 +357,55 @@ void Window::handle_mouse(MouseEvent const &event) {
     auto needs_redraw = false;
 
     if (!popups_.empty()) {
-        auto &popup = popups_.back();
-        if (popup.on_mouse) {
-            auto local_event = event;
-            local_event.position.x -= popup.bounds.x;
-            local_event.position.y -= popup.bounds.y;
-            if (popup.on_mouse(local_event)) {
-                request_redraw("event");
-                return;
+        for (int i = static_cast<int>(popups_.size()) - 1; i >= 0; --i) {
+            auto &popup = popups_[i];
+            if (popup.on_mouse) {
+                auto size_before = popups_.size();
+                auto local_event = event;
+                local_event.position.x -= popup.bounds.x;
+                local_event.position.y -= popup.bounds.y;
+                if (popup.on_mouse(local_event)) {
+                    auto size_after = popups_.size();
+                    // If a "parent" popup handled the event, close all "child" popups
+                    // But ONLY if we didn't just open a new child.
+                    if (size_after < size_before) {
+                        while (static_cast<int>(popups_.size()) - 1 > i) {
+                            close_popup();
+                        }
+                    } else if (size_after > size_before) {
+                        // We opened a new child. Close any other children that were
+                        // already there (siblings of the new child).
+                        while (static_cast<int>(popups_.size()) - 1 > (i + 1)) {
+                            // Close the one that WAS at i+1, but now is at i+1 after popping?
+                            // No, if we just pushed to 'size_after', then 'size_after-1'
+                            // is the NEW child. Everything between 'i' and 'size_after-1'
+                            // should be closed.
+                            auto new_child = std::move(popups_.back());
+                            popups_.pop_back();
+                            while (static_cast<int>(popups_.size()) - 1 > i) {
+                                close_popup();
+                            }
+                            popups_.push_back(std::move(new_child));
+                        }
+                    } else {
+                        // size_after == size_before.
+                        // For Press events, we always want to close children of the clicked popup.
+                        if (event.type == MouseEvent::Type::Press) {
+                            while (static_cast<int>(popups_.size()) - 1 > i) {
+                                close_popup();
+                            }
+                        }
+                        // For Move events, we DON'T close children here.
+                        // The individual popups (like Menu) are responsible for
+                        // opening new submenus (which triggers the size_after > size_before case)
+                        // or closing them if they want to.
+                    }
+                    request_redraw("event");
+                    return;
+                }
             }
         }
+
         if (event.type == MouseEvent::Type::Press) {
             bool click_inside_any_popup = false;
             for (auto const &p : popups_) {

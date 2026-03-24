@@ -84,6 +84,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
     Window *window_ = nullptr;
     Rect bounds_;
     int hovered_ = -1;
+    int open_submenu_index_ = -1;
     float item_height_ = 0;
     float separator_height_ = 7.0f;
     Menu *parent_menu_ = nullptr;
