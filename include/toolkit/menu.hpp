@@ -8,19 +8,15 @@
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace toolkit {
 
 class Window;
 
 struct MenuItem {
-    enum class Type {
-        Action,
-        Separator,
-        Submenu
-    };
+    enum class Type { Action, Separator, Submenu };
 
     Type type = Type::Action;
     std::shared_ptr<Command> command;
@@ -38,9 +34,7 @@ struct MenuItem {
         return action(std::make_shared<Command>(std::move(name), std::move(execute), enabled));
     }
 
-    static MenuItem sep() {
-        return {Type::Separator, nullptr, nullptr};
-    }
+    static MenuItem sep() { return {Type::Separator, nullptr, nullptr}; }
 
     static MenuItem submenu_item(std::string name, std::shared_ptr<class Menu> menu);
 };
@@ -56,6 +50,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
 
     void show(Window *window, Point position);
     void close();
+    void select_first();
 
     std::string const &title() const { return title_; }
     std::string const &display_title() const { return display_title_; }

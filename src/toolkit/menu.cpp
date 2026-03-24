@@ -139,6 +139,16 @@ void Menu::close() {
     window_ = nullptr;
 }
 
+void Menu::select_first() {
+    for (auto i = 0; i < static_cast<int>(items_.size()); ++i) {
+        if (items_[i].type != MenuItem::Type::Separator) {
+            hovered_ = i;
+            return;
+        }
+    }
+    hovered_ = -1;
+}
+
 int Menu::item_at(Point p) const {
     auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
     if (!local_bounds.contains(p)) {
@@ -253,11 +263,13 @@ bool Menu::handle_mouse(MouseEvent const &event) {
                         // This is tricky. Let's use a simpler heuristic:
                         // we just close the popups above us.
                         // But Menu doesn't know its index in the window.
-                        
+
                         // Let's assume for now that if we are handling the mouse,
                         // and we have an open child, it's the one at the top.
                         window_->close_popup();
-                        if (open_submenu_index_ == -1) break; // Should not happen
+                        if (open_submenu_index_ == -1) {
+                            break;
+                        }
                         break; // Close only one level
                     }
                 }
@@ -304,7 +316,9 @@ bool Menu::handle_key(KeyEvent const &event) {
 
     auto next_enabled = [&](int current, int dir) -> int {
         auto n = static_cast<int>(items_.size());
-        if (n == 0) return -1;
+        if (n == 0) {
+            return -1;
+        }
 
         int start = current;
         if (start == -1) {
@@ -347,20 +361,24 @@ bool Menu::handle_key(KeyEvent const &event) {
         close();
         return true;
     case Key::Enter:
-        if (hovered_ >= 0 && items_[hovered_].command->is_enabled()) {
-            if (items_[hovered_].is_action()) {
-                auto cmd = items_[hovered_].command;
-                close();
-                cmd->execute();
-            } else if (items_[hovered_].is_submenu()) {
-                open_submenu(hovered_);
-            }
+        if (hovered_ != -1 && items_[hovered_].is_submenu()) {
+            open_submenu(hovered_);
+            return true;
+        }
+        if (hovered_ >= 0 && items_[hovered_].is_action() &&
+            items_[hovered_].command->is_enabled()) {
+            auto cmd = items_[hovered_].command;
+            close();
+            cmd->execute();
         }
         return true;
     default:
         if (!event.text.empty()) {
             auto key = static_cast<char>(std::tolower(static_cast<unsigned char>(event.text[0])));
             for (int i = 0; i < static_cast<int>(items_.size()); ++i) {
+                if (items_[i].is_separator()) {
+                    continue;
+                }
                 if (get_mnemonic(items_[i].command->name()) == key) {
                     if (items_[i].is_action()) {
                         auto cmd = items_[i].command;
@@ -382,9 +400,6 @@ void Menu::open_submenu(int index) {
     if (index < 0 || index >= items_.size() || !items_[index].is_submenu()) {
         return;
     }
-    if (open_submenu_index_ == index) {
-        return;
-    }
     open_submenu_index_ = index;
     auto const &item = items_[index];
     auto y = 2.0f;
@@ -395,6 +410,7 @@ void Menu::open_submenu(int index) {
     }
     auto pos = Point{bounds_.x + bounds_.width, bounds_.y + y};
     item.submenu->show(window_, pos);
+    item.submenu->select_first();
 }
 
 } // namespace toolkit
