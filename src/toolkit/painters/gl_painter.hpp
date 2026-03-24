@@ -24,25 +24,22 @@ class GLPainter : public Painter {
 
     void fill_rect(Rect const &rect, Color const &color) override;
 
-    void draw_rect(Rect const &rect, Color const &color,
-                   float line_width) override;
-    void fill_rounded_rect(Rect const &rect, Color const &color,
-                           float radius) override;
+    void draw_rect(Rect const &rect, Color const &color, float line_width) override;
+    void fill_rounded_rect(Rect const &rect, Color const &color, float radius) override;
     void draw_rounded_rect(Rect const &rect, Color const &color, float radius,
                            float line_width) override;
-    void draw_line(Point from, Point to, Color const &color,
-                   float line_width) override;
-    void fill_circle(Point center, float radius,
-                     Color const &color) override;
-    void draw_circle(Point center, float radius, Color const &color,
-                     float line_width) override;
-    void draw_text(std::string_view text, Point position, Color const &color,
-                   float font_size, FontFamily font = FontFamily::System,
+    void draw_line(Point from, Point to, Color const &color, float line_width) override;
+    void fill_circle(Point center, float radius, Color const &color) override;
+    void draw_circle(Point center, float radius, Color const &color, float line_width) override;
+    void draw_text(std::string_view text, Point position, Color const &color, float font_size,
+                   FontFamily font = FontFamily::System,
                    TextOrientation orientation = TextOrientation::Horizontal) override;
+    void draw_image(ImageData const &image, Point position) override;
+    void draw_image_scaled(ImageData const &image, Rect const &dest) override;
+
     Size text_size(std::string_view text, float font_size,
                    FontFamily font = FontFamily::System) override;
-    FontMetrics font_metrics(float font_size,
-                             FontFamily font = FontFamily::System) override;
+    FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) override;
 
     std::string_view name() const override { return "OpenGL"; }
 

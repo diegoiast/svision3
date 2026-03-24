@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/image_loader.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
 #include <optional>
@@ -16,6 +17,9 @@ class Button : public Widget {
 
     void set_text(std::string text);
     std::string const &text() const { return display_text_; }
+
+    void set_icon(ImageData icon);
+    void clear_icon();
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
@@ -53,6 +57,7 @@ class Button : public Widget {
     void start_auto_repeat_interval();
 
     std::string display_text_;
+    std::optional<ImageData> icon_;
     int mnemonic_index_ = -1;
     char mnemonic_key_ = 0;
     bool hovered_ = false;

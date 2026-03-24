@@ -130,4 +130,17 @@ void Command::set_shortcut(std::string s) {
     shortcut_ = Shortcut::parse(shortcut_string_);
 }
 
+void Command::set_icon(std::string icon) {
+    icon_ = std::move(icon);
+    icon_image_.reset();
+}
+
+auto Command::icon_image() const -> std::optional<ImageData> {
+    if (!icon_.empty() && !icon_image_) {
+        static XdgImageLoader loader("Faenza");
+        icon_image_ = loader.load(icon_, 16, "actions");
+    }
+    return icon_image_;
+}
+
 } // namespace toolkit

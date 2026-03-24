@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/events.hpp"
+#include "toolkit/image_loader.hpp"
 #include <functional>
 #include <memory>
 #include <string>
@@ -27,12 +28,10 @@ class Command {
   public:
     using Ptr = std::shared_ptr<Command>;
 
-    Command(std::string name, std::function<void()> execute,
-            bool enabled = true)
+    Command(std::string name, std::function<void()> execute, bool enabled = true)
         : name_(std::move(name)), execute_(std::move(execute)), enabled_(enabled) {}
 
-    static Ptr create(std::string name, std::function<void()> execute,
-                      bool enabled = true) {
+    static Ptr create(std::string name, std::function<void()> execute, bool enabled = true) {
         return std::make_shared<Command>(std::move(name), std::move(execute), enabled);
     }
 
@@ -41,6 +40,10 @@ class Command {
 
     std::string const &tooltip() const { return tooltip_; }
     void set_tooltip(std::string tooltip) { tooltip_ = std::move(tooltip); }
+
+    std::string const &icon() const { return icon_; }
+    void set_icon(std::string icon);
+    auto icon_image() const -> std::optional<ImageData>;
 
     std::string const &shortcut_string() const { return shortcut_string_; }
     Shortcut const &shortcut() const { return shortcut_; }
@@ -67,13 +70,13 @@ class Command {
         return name_;
     }
 
-    bool matches_key_event(class KeyEvent const &event) const {
-        return shortcut_.matches(event);
-    }
+    bool matches_key_event(class KeyEvent const &event) const { return shortcut_.matches(event); }
 
   private:
     std::string name_;
     std::string tooltip_;
+    std::string icon_;
+    mutable std::optional<ImageData> icon_image_;
     std::string shortcut_string_;
     Shortcut shortcut_;
     bool enabled_ = true;

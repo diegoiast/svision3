@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/image_loader.hpp"
 #include "toolkit/types.hpp"
 #include <string_view>
 
@@ -20,11 +21,7 @@ class Painter {
         float height;
     };
 
-    enum class LineStyle {
-        Solid,
-        Dashed,
-        Dotted
-    };
+    enum class LineStyle { Solid, Dashed, Dotted };
 
     enum class TextOrientation {
         Horizontal,
@@ -52,6 +49,8 @@ class Painter {
     virtual void draw_text(std::string_view text, Point position, Color const &color,
                            float font_size = 14.0f, FontFamily font = FontFamily::System,
                            TextOrientation orientation = TextOrientation::Horizontal) = 0;
+    virtual void draw_image(ImageData const &image, Point position) = 0;
+    virtual void draw_image_scaled(ImageData const &image, Rect const &dest) = 0;
 
     virtual Size text_size(std::string_view text, float font_size = 14.0f,
                            FontFamily font = FontFamily::System) = 0;
@@ -74,20 +73,23 @@ class Painter {
 
 // Used for testing
 class MockPainter : public Painter {
-public:
-    void push_clip(Rect const&) override {}
+  public:
+    void push_clip(Rect const &) override {}
     void pop_clip() override {}
     void push_translation(Point) override {}
     void pop_translation() override {}
     void set_line_style(LineStyle) override {}
-    void fill_rect(Rect const&, Color const&) override {}
-    void draw_rect(Rect const&, Color const&, float) override {}
-    void fill_rounded_rect(Rect const&, Color const&, float) override {}
-    void draw_rounded_rect(Rect const&, Color const&, float, float) override {}
-    void draw_line(Point, Point, Color const&, float) override {}
-    void fill_circle(Point, float, Color const&) override {}
-    void draw_circle(Point, float, Color const&, float) override {}
-    void draw_text(std::string_view, Point, Color const&, float, FontFamily, TextOrientation) override {}
+    void fill_rect(Rect const &, Color const &) override {}
+    void draw_rect(Rect const &, Color const &, float) override {}
+    void fill_rounded_rect(Rect const &, Color const &, float) override {}
+    void draw_rounded_rect(Rect const &, Color const &, float, float) override {}
+    void draw_line(Point, Point, Color const &, float) override {}
+    void fill_circle(Point, float, Color const &) override {}
+    void draw_circle(Point, float, Color const &, float) override {}
+    void draw_text(std::string_view, Point, Color const &, float, FontFamily,
+                   TextOrientation) override {}
+    void draw_image(ImageData const &, Point) override {}
+    void draw_image_scaled(ImageData const &, Rect const &) override {}
     Size text_size(std::string_view text, float font_size, FontFamily) override {
         return {static_cast<float>(text.size()) * font_size * 0.6f, font_size + 2.0f};
     }

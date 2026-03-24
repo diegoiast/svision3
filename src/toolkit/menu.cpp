@@ -197,6 +197,13 @@ void Menu::paint(Painter &painter) {
             painter.fill_rounded_rect(item_rect, style.item_hovered, style.corner_radius * 0.5f);
         }
 
+        auto icon_data = item.command->icon_image();
+        if (icon_data) {
+            auto icon_x = style.padding.left + 4;
+            auto icon_y = y + (item_height_ - 16.0f) / 2.0f;
+            painter.draw_image(*icon_data, Point{icon_x, icon_y});
+        }
+
         if (i == hovered_ && enabled) {
             text_col = style.item_text_hovered;
         } else if (!enabled) {
@@ -210,8 +217,11 @@ void Menu::paint(Painter &painter) {
             mnemonic_idx = static_cast<int>(ampersand_pos);
         }
 
-        painter.draw_text(display_name, {style.padding.left + 4, baseline}, text_col,
-                          style.font_size);
+        auto text_x = style.padding.left + 4;
+        if (!item.command->icon().empty()) {
+            text_x += 20;
+        }
+        painter.draw_text(display_name, {text_x, baseline}, text_col, style.font_size);
 
         if (mnemonic_idx != -1) {
             auto m_char = display_name.substr(mnemonic_idx, 1);
@@ -219,9 +229,8 @@ void Menu::paint(Painter &painter) {
             auto x_before = painter.text_size(text_before_m, style.font_size).width;
             auto m_size = painter.text_size(m_char, style.font_size);
             auto underline_y = baseline + 2.0f;
-            painter.draw_line({style.padding.left + 4 + x_before, underline_y},
-                              {style.padding.left + 4 + x_before + m_size.width, underline_y},
-                              text_col, 1.0f);
+            painter.draw_line({text_x + x_before, underline_y},
+                              {text_x + x_before + m_size.width, underline_y}, text_col, 1.0f);
         }
 
         if (!item.command->shortcut_string().empty()) {

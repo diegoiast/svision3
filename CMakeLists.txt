@@ -7,6 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(spdlog REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
+find_package(stb CONFIG REQUIRED)
 
 if(WIN32)
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" OFF)
@@ -39,6 +40,7 @@ endif()
 set(TOOLKIT_SOURCES
     src/toolkit/painter.cpp
     src/toolkit/command.cpp
+    src/toolkit/image_loader.cpp
     src/toolkit/toolbar.cpp
     src/toolkit/button.cpp
     src/toolkit/checkbox.cpp
@@ -192,7 +194,8 @@ endif()
 
 add_library(toolkit STATIC ${TOOLKIT_SOURCES})
 target_include_directories(toolkit PUBLIC include PRIVATE src)
-target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus)
+target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
+target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus stb::stb)
 
 if(HAS_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)
@@ -380,5 +383,6 @@ add_executable(tests
     tests/test_menubar.cpp
     tests/test_catalog.cpp
     tests/test_db.cpp
+    tests/test_image_loader.cpp
 )
 target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2WithMain)

@@ -14,13 +14,25 @@ class ToolButton : public Button {
         set_padding({4, 8, 4, 8});
         set_tooltip(cmd_->tooltip());
         on_click = [this] { cmd_->execute(); };
+
+        if (!cmd_->icon().empty()) {
+            auto icon_data = cmd_->icon_image();
+            if (icon_data) {
+                set_icon(*icon_data);
+            }
+        }
     }
 
     void paint(Painter &painter) override {
-        // Sync state before paint
         set_enabled(cmd_->is_enabled());
         set_text(cmd_->display_text());
         set_tooltip(cmd_->tooltip());
+        if (!cmd_->icon().empty()) {
+            auto icon_data = cmd_->icon_image();
+            if (icon_data) {
+                set_icon(*icon_data);
+            }
+        }
         Button::paint(painter);
     }
 
@@ -34,7 +46,8 @@ class ToolbarSeparator : public Widget {
         auto const &style = Theme::current().button;
         if (style.beveled) {
             float x = rect_.width / 2.0f;
-            painter.draw_line({x - 1.0f, 4.0f}, {x - 1.0f, rect_.height - 4.0f}, style.shadow, 1.0f);
+            painter.draw_line({x - 1.0f, 4.0f}, {x - 1.0f, rect_.height - 4.0f}, style.shadow,
+                              1.0f);
             painter.draw_line({x, 4.0f}, {x, rect_.height - 4.0f}, style.highlight, 1.0f);
         } else {
             auto color = Theme::current().window.background.darken(0.15f);
@@ -72,7 +85,8 @@ void Toolbar::paint(Painter &painter) {
     } else {
         // Flat style: subtle border at bottom
         auto border_c = Theme::current().window.background.darken(0.15f);
-        painter.draw_line({0, rect_.height - 1.0f}, {rect_.width, rect_.height - 1.0f}, border_c, 1.0f);
+        painter.draw_line({0, rect_.height - 1.0f}, {rect_.width, rect_.height - 1.0f}, border_c,
+                          1.0f);
     }
 
     layout_->draw(painter);

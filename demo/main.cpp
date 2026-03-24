@@ -5,6 +5,7 @@
 #include "toolkit/button.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
+#include "toolkit/image_loader.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/line_input.hpp"
@@ -348,7 +349,9 @@ int main(int argc, char *argv[]) {
     file_menu->add_submenu("Recent &Files", recent_files_menu);
 
     file_menu->add_separator();
-    file_menu->add_action("Exit", [window] { window->close(); });
+    auto exit_cmd = toolkit::Command::create("Exit", [window] { window->close(); });
+    exit_cmd->set_icon("gtk-close");
+    file_menu->add_action(exit_cmd);
 
     auto edit_menu = menubar->add_menu("&Edit");
     auto undo_cmd = toolkit::Command::create("Undo", [] { spdlog::info("Menu: Undo"); });
@@ -381,11 +384,11 @@ int main(int argc, char *argv[]) {
     auto ok_action = [] { spdlog::info("Toolbar: OK triggered"); };
     auto ok_cmd = toolkit::Command::create("OK", ok_action);
     ok_cmd->set_tooltip("Trigger the OK action");
+    ok_cmd->set_icon("gtk-apply");
     toolbar->add_command(ok_cmd);
 
-    auto close_cmd = toolkit::Command::create("Close", [window] { window->close(); });
-    close_cmd->set_tooltip("Close the application");
-    toolbar->add_command(close_cmd);
+    exit_cmd->set_tooltip("Close the application");
+    toolbar->add_command(exit_cmd);
 
     toolbar->add_separator();
 
@@ -481,12 +484,23 @@ int main(int argc, char *argv[]) {
     };
     repeat_btn->on_click = repeat_action;
 
+    auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
+    toolkit::XdgImageLoader loader("Faenza");
+    spdlog::info("XDG theme: {}", loader.theme_name());
+    auto icon = loader.load("gtk-open", 16, "actions");
+    spdlog::info("Loaded icon: {}x{}", icon ? icon->width : 0, icon ? icon->height : 0);
+    if (icon) {
+        open_icon_btn->set_icon(*icon);
+    }
+    open_icon_btn->set_tooltip("Open file");
+
     autoclick_cmd->set_execute_func(repeat_action);
     autoclick_cmd->set_shortcut("F4");
     autoclick_cmd->set_tooltip("Press F4");
     repeat_btn->add_command(autoclick_cmd);
 
     repeat_row->add_widget(std::move(repeat_btn));
+    repeat_row->add_widget(std::move(open_icon_btn));
     repeat_row->add_widget(std::move(repeat_label), 1);
     tab_main->add_widget(std::move(repeat_row));
 

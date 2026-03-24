@@ -6,8 +6,8 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <windows.h>
 #include <GL/gl.h>
+#include <windows.h>
 #else
 #include <GL/gl.h>
 #endif
@@ -270,6 +270,76 @@ void GLPainter::draw_text(std::string_view text, Point pos, Color const &c, floa
 
     glDisable(GL_TEXTURE_2D);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDeleteTextures(1, &tex);
+}
+
+void GLPainter::draw_image(ImageData const &image, Point position) {
+    if (image.width <= 0 || image.height <= 0) {
+        return;
+    }
+
+    GLuint tex;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 image.pixels.data());
+
+    glEnable(GL_TEXTURE_2D);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glPushMatrix();
+    glTranslatef(position.x, position.y, 0);
+
+    glColor4f(1, 1, 1, 1);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0, 0);
+    glVertex2f(0, 0);
+    glTexCoord2f(1, 0);
+    glVertex2f(static_cast<float>(image.width), 0);
+    glTexCoord2f(1, 1);
+    glVertex2f(static_cast<float>(image.width), static_cast<float>(image.height));
+    glTexCoord2f(0, 1);
+    glVertex2f(0, static_cast<float>(image.height));
+    glEnd();
+    glPopMatrix();
+
+    glDisable(GL_TEXTURE_2D);
+    glDeleteTextures(1, &tex);
+}
+
+void GLPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
+    if (image.width <= 0 || image.height <= 0 || dest.width <= 0 || dest.height <= 0) {
+        return;
+    }
+
+    GLuint tex;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 image.pixels.data());
+
+    glEnable(GL_TEXTURE_2D);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glColor4f(1, 1, 1, 1);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0, 0);
+    glVertex2f(dest.x, dest.y);
+    glTexCoord2f(1, 0);
+    glVertex2f(dest.x + dest.width, dest.y);
+    glTexCoord2f(1, 1);
+    glVertex2f(dest.x + dest.width, dest.y + dest.height);
+    glTexCoord2f(0, 1);
+    glVertex2f(dest.x, dest.y + dest.height);
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D);
     glDeleteTextures(1, &tex);
 }
 

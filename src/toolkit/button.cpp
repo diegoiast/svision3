@@ -54,6 +54,20 @@ void Button::set_text(std::string text) {
     }
 }
 
+void Button::set_icon(ImageData icon) {
+    icon_ = std::move(icon);
+    if (window_) {
+        window_->request_redraw("button icon");
+    }
+}
+
+void Button::clear_icon() {
+    icon_ = std::nullopt;
+    if (window_) {
+        window_->request_redraw("button icon");
+    }
+}
+
 void Button::stop_auto_repeat() {
     if (auto_repeat_timer_id_ && window_) {
         window_->stop_timer(auto_repeat_timer_id_);
@@ -116,12 +130,19 @@ void Button::paint(Painter &painter) {
     auto bg = background_color_.value_or(style.background);
     auto border_c = is_focused() ? style.border_focused : style.border;
     auto text_c = is_enabled() ? style.text : style.text_disabled;
-
     auto text_offset = (style.beveled && pressed_ && is_enabled()) ? 1.0f : 0.0f;
     auto fm = painter.font_metrics(style.font_size);
     auto text_w = painter.text_size(display_text_, style.font_size).width;
+    auto icon_w = 0.0f;
+    auto icon_h = 0.0f;
+
+    if (icon_) {
+        icon_w = static_cast<float>((*icon_).width);
+        icon_h = static_cast<float>((*icon_).height);
+    }
+    auto total_w = text_w + (icon_ ? (icon_w + 4.0f) : 0.0f);
     auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
-    auto text_x = (rect_.width - text_w) / 2.0f + text_offset;
+    auto text_x = (rect_.width - total_w) / 2.0f + text_offset + (icon_ ? icon_w + 4.0f : 0.0f);
     auto text_pos = Point{text_x, baseline_y + text_offset};
     auto local_rect = Rect{0, 0, rect_.width, rect_.height};
 
@@ -154,6 +175,12 @@ void Button::paint(Painter &painter) {
         } else {
             painter.fill_rect(local_rect, bg);
         }
+    }
+
+    if (icon_) {
+        auto icon_x = (rect_.width - total_w) / 2.0f + text_offset;
+        auto icon_y = (rect_.height - icon_h) / 2.0f;
+        painter.draw_image(*icon_, Point{icon_x, icon_y});
     }
 
     painter.draw_text(display_text_, text_pos, text_c, style.font_size);
@@ -284,7 +311,11 @@ Size Button::size_hint() const {
     auto padding = padding_override_.value_or(style.padding);
     auto text_w = Painter::measure_text(display_text_, style.font_size).width;
     auto fm = Painter::measure_font_metrics(style.font_size);
-    return {text_w + padding.left + padding.right, fm.height + padding.top + padding.bottom};
+    auto icon_w = icon_ ? static_cast<float>((*icon_).width) : 0.0f;
+    auto icon_h = icon_ ? static_cast<float>((*icon_).height) : 0.0f;
+    auto content_w = text_w + (icon_ ? (icon_w + 4.0f) : 0.0f);
+    auto content_h = std::max(fm.height, icon_h);
+    return {content_w + padding.left + padding.right, content_h + padding.top + padding.bottom};
 }
 
 } // namespace toolkit

@@ -16,7 +16,7 @@
 3. Event Handling: KeyEvents will be matched against Shortcut strings. [done]
 4. Shortcut Priority: Shortcuts should be checked before focused widget input but after basic navigation keys. [done]
 
-## 3. Toolbar Widget [WIP 4/8]
+## 3. Toolbar Widget [WIP 5/8]
 
 1. Container (HBoxLayout) for ToolButtons and arbitrary Widgets. [done]
 2. Command Actions: ToolButtons are automatically created from a Command; sync with enabled/checked state. [done]
@@ -26,7 +26,7 @@
   2. Support for "Stretching" widgets to fill available space (e.g., search boxes).
   3. Vertical/Horizontal Dividers for grouping.[WIP]
 5. Visuals: Text-only for now; use "???" if no text or icon is provided. [done]
-6. Visuals: use icons from command.
+6. Visuals: use icons from command. [done]
 
 ## 4. Menu System [WIP 8/19]
 
@@ -82,21 +82,20 @@
 4. Ensure `ComboBox` dropdowns align with the formalized popup logic. [NOT DONE]
 5. Coordinate popup lifecycle (auto-closing on outside clicks/Escape) with the stack. [done]
 
-## 6. Icon & Image System
+## 6. Icon & Image System [7/11]
 
 1. Platform Image Loading API:
-    1. Abstract interface for loading pixel data from files or memory.
+    1. Abstract interface for loading pixel data from files or memory. [done]
     2. Windows: Native implementation using WIC (Windows Imaging Component) or GDI+.
-    3. Linux/macOS: Implementation using `stb_image` or similar lightweight library.
+    3. Linux/macOS: Implementation using `stb_image` or similar lightweight library. [done]
 2. Cross-Platform Icon Engine:
-    1. The lookup API must be available on all platforms (Windows, macOS, Linux).
-    2. Configurable Pixmap Root: Developers define a root directory for assets; the engine recursively searches for matching icon names.
-    3. XDG Spec Integration (Linux): On Linux, default to standard system icon themes; on other platforms, use the custom Pixmap Root as the primary source.
-    4. Theme-aware lookup: resolve generic names (e.g., "document-open") to specific files.
-    5. Size-based selection: automatically choose the best-matching resolution for the requested size.
+    1. The lookup API must be available on all platforms (Windows, macOS, Linux). [done]
+    2. Configurable Pixmap Root: Developers define a root directory for assets; the engine recursively searches for matching icon names.[done]
+    3. XDG Spec Integration (Linux): On Linux, default to standard system icon themes; on other platforms, use the custom Pixmap Root as the primary source.[done]
+    4. Theme-aware lookup: resolve generic names (e.g., "document-open") to specific files. [done]
+    5. Size-based selection: automatically choose the best-matching resolution for the requested size. [done]
 3. Icon Registry & Cache:
     1. Centralized cache to manage loaded image resources and avoid redundant I/O.
 4. Painter Integration:
-    1. Add `draw_image(Rect destination, const Image& img)` to the `Painter` interface.
+    1. Add `draw_image(Rect destination, const Image& img)` to the `Painter` interface. [done]
     2. Ensure all backends (Cairo, OpenGL, Win32, Cocoa) implement efficient image scaling and drawing.
-gc

@@ -3,9 +3,10 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
-#include <cairo.h>
 #include <algorithm>
+#include <cairo.h>
 #include <cmath>
+#include <spdlog/spdlog.h>
 #include <string>
 
 namespace toolkit {
@@ -46,8 +47,7 @@ void CairoPainter::fill_rect(Rect const &rect, Color const &color) {
     cairo_fill(cr_);
 }
 
-void CairoPainter::draw_rect(Rect const &rect, Color const &color,
-                              float line_width) {
+void CairoPainter::draw_rect(Rect const &rect, Color const &color, float line_width) {
     cairo_new_path(cr_);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);
@@ -60,46 +60,41 @@ static void rounded_rect_path(cairo_t *cr, Rect const &r, float radius) {
     cairo_new_path(cr);
     cairo_new_sub_path(cr);
     cairo_arc(cr, r.x + r.width - rad, r.y + rad, rad, -M_PI / 2, 0);
-    cairo_arc(cr, r.x + r.width - rad, r.y + r.height - rad, rad, 0,
-              M_PI / 2);
+    cairo_arc(cr, r.x + r.width - rad, r.y + r.height - rad, rad, 0, M_PI / 2);
     cairo_arc(cr, r.x + rad, r.y + r.height - rad, rad, M_PI / 2, M_PI);
     cairo_arc(cr, r.x + rad, r.y + rad, rad, M_PI, 3 * M_PI / 2);
     cairo_close_path(cr);
 }
 
-void CairoPainter::fill_rounded_rect(Rect const &rect, Color const &color,
-                                      float radius) {
+void CairoPainter::fill_rounded_rect(Rect const &rect, Color const &color, float radius) {
     rounded_rect_path(cr_, rect, radius);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_fill(cr_);
 }
 
-void CairoPainter::draw_rounded_rect(Rect const &rect, Color const &color,
-                                      float radius, float line_width) {
+void CairoPainter::draw_rounded_rect(Rect const &rect, Color const &color, float radius,
+                                     float line_width) {
     rounded_rect_path(cr_, rect, radius);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);
     cairo_stroke(cr_);
 }
 
-void CairoPainter::draw_line(Point from, Point to, Color const &color,
-                             float line_width) {
+void CairoPainter::draw_line(Point from, Point to, Color const &color, float line_width) {
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);
     cairo_move_to(cr_, from.x, from.y);
     cairo_line_to(cr_, to.x, to.y);
     cairo_stroke(cr_);
 }
-void CairoPainter::fill_circle(Point center, float radius,
-                                Color const &color) {
+void CairoPainter::fill_circle(Point center, float radius, Color const &color) {
     cairo_new_path(cr_);
     cairo_arc(cr_, center.x, center.y, radius, 0, 2 * M_PI);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_fill(cr_);
 }
 
-void CairoPainter::draw_circle(Point center, float radius,
-                                Color const &color, float line_width) {
+void CairoPainter::draw_circle(Point center, float radius, Color const &color, float line_width) {
     cairo_new_path(cr_);
     cairo_arc(cr_, center.x, center.y, radius, 0, 2 * M_PI);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
@@ -133,20 +128,47 @@ void CairoPainter::draw_text(std::string_view text, Point position, Color const 
     cairo_restore(cr_);
 }
 
-Size CairoPainter::text_size(std::string_view text, float font_size,
-                              FontFamily font) {
+void CairoPainter::draw_image(ImageData const &image, Point position) {
+    auto *data = new uint8_t[image.width * image.height * 4];
+    for (size_t i = 0; i < static_cast<size_t>(image.width) * image.height; ++i) {
+        data[i * 4 + 0] = image.pixels[i * 4 + 2];
+        data[i * 4 + 1] = image.pixels[i * 4 + 1];
+        data[i * 4 + 2] = image.pixels[i * 4 + 0];
+        data[i * 4 + 3] = image.pixels[i * 4 + 3];
+    }
+    auto surface = cairo_image_surface_create_for_data(data, CAIRO_FORMAT_ARGB32, image.width,
+                                                       image.height, image.width * 4);
+    cairo_set_source_surface(cr_, surface, position.x, position.y);
+    cairo_paint(cr_);
+    cairo_surface_destroy(surface);
+    delete[] data;
+}
+
+void CairoPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
+    auto surface = cairo_image_surface_create_for_data(const_cast<uint8_t *>(image.pixels.data()),
+                                                       CAIRO_FORMAT_ARGB32, image.width,
+                                                       image.height, image.width * 4);
+    cairo_set_source_surface(cr_, surface, dest.x, dest.y);
+    cairo_pattern_set_filter(cairo_get_source(cr_), CAIRO_FILTER_NEAREST);
+    cairo_matrix_t matrix;
+    cairo_matrix_init_scale(&matrix, static_cast<double>(image.width) / dest.width,
+                            static_cast<double>(image.height) / dest.height);
+    cairo_pattern_set_matrix(cairo_get_source(cr_), &matrix);
+    cairo_paint(cr_);
+    cairo_surface_destroy(surface);
+}
+
+Size CairoPainter::text_size(std::string_view text, float font_size, FontFamily font) {
     cairo_select_font_face(cr_, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr_, std::round(font_size));
     cairo_text_extents_t extents;
     std::string str(text);
     cairo_text_extents(cr_, str.c_str(), &extents);
-    return {static_cast<float>(extents.x_advance),
-            static_cast<float>(extents.height)};
+    return {static_cast<float>(extents.x_advance), static_cast<float>(extents.height)};
 }
 
-Painter::FontMetrics CairoPainter::font_metrics(float font_size,
-                                                 FontFamily font) {
+Painter::FontMetrics CairoPainter::font_metrics(float font_size, FontFamily font) {
     cairo_select_font_face(cr_, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr_, std::round(font_size));
@@ -156,8 +178,7 @@ Painter::FontMetrics CairoPainter::font_metrics(float font_size,
             static_cast<float>(fe.ascent + fe.descent)};
 }
 
-Size cairo_measure_text(std::string_view text, float font_size,
-                        FontFamily font) {
+Size cairo_measure_text(std::string_view text, float font_size, FontFamily font) {
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *cr = cairo_create(surf);
     CairoPainter p(cr);
@@ -167,8 +188,7 @@ Size cairo_measure_text(std::string_view text, float font_size,
     return sz;
 }
 
-Painter::FontMetrics cairo_measure_font_metrics(float font_size,
-                                                FontFamily font) {
+Painter::FontMetrics cairo_measure_font_metrics(float font_size, FontFamily font) {
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *cr = cairo_create(surf);
     CairoPainter p(cr);
@@ -182,11 +202,12 @@ bool cairo_save_to_png(Window *window, std::string const &path) {
     float scale = window->scale_factor();
     int lw = static_cast<int>(window->size().width);
     int lh = static_cast<int>(window->size().height);
-    if (lw <= 0 || lh <= 0) return false;
+    if (lw <= 0 || lh <= 0) {
+        return false;
+    }
     int pw = static_cast<int>(std::ceil(lw * scale));
     int ph = static_cast<int>(std::ceil(lh * scale));
-    cairo_surface_t *surf =
-        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
+    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
     cairo_t *cr = cairo_create(surf);
     cairo_scale(cr, scale, scale);
     CairoPainter painter(cr);
@@ -198,16 +219,18 @@ bool cairo_save_to_png(Window *window, std::string const &path) {
     return status == CAIRO_STATUS_SUCCESS;
 }
 
-RasterizedText CairoTextRasterizer::rasterize(
-    std::string_view text, float font_size, float scale, FontFamily font) {
-    if (text.empty()) return {};
+RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_size, float scale,
+                                              FontFamily font) {
+    if (text.empty()) {
+        return {};
+    }
 
     cairo_surface_t *temp_surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *temp_cr = cairo_create(temp_surf);
     cairo_select_font_face(temp_cr, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(temp_cr, std::floor(font_size));
-    
+
     cairo_text_extents_t te;
     cairo_font_extents_t fe;
     std::string str(text);
@@ -218,13 +241,14 @@ RasterizedText CairoTextRasterizer::rasterize(
 
     float lw = static_cast<float>(te.width + te.x_bearing);
     float lh = static_cast<float>(fe.height);
-    
+
     int pw = static_cast<int>(std::ceil(lw * scale)) + 2;
     int ph = static_cast<int>(std::ceil(lh * scale)) + 2;
-    if (pw <= 0 || ph <= 0) return {};
+    if (pw <= 0 || ph <= 0) {
+        return {};
+    }
 
-    cairo_surface_t *surf =
-        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
+    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
     cairo_t *cr = cairo_create(surf);
     cairo_scale(cr, scale, scale);
 
@@ -232,7 +256,7 @@ RasterizedText CairoTextRasterizer::rasterize(
     cairo_select_font_face(cr, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, std::floor(font_size));
-    
+
     cairo_move_to(cr, 0, fe.ascent);
     cairo_show_text(cr, str.c_str());
     cairo_surface_flush(surf);
@@ -242,7 +266,7 @@ RasterizedText CairoTextRasterizer::rasterize(
     result.width = pw;
     result.height = ph;
     result.ascent = static_cast<float>(fe.ascent);
-    
+
     size_t size = static_cast<size_t>(pw * ph * 4);
     result.pixels.resize(size);
     for (size_t i = 0; i < size; i += 4) {
@@ -258,13 +282,11 @@ RasterizedText CairoTextRasterizer::rasterize(
     return result;
 }
 
-Size CairoTextRasterizer::measure(std::string_view text, float font_size,
-                                  FontFamily font) {
+Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFamily font) {
     return cairo_measure_text(text, font_size, font);
 }
 
-Painter::FontMetrics CairoTextRasterizer::metrics(float font_size,
-                                                  FontFamily font) {
+Painter::FontMetrics CairoTextRasterizer::metrics(float font_size, FontFamily font) {
     return cairo_measure_font_metrics(font_size, font);
 }
 
