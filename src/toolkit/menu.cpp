@@ -305,13 +305,21 @@ bool Menu::handle_key(KeyEvent const &event) {
         return false;
     }
 
-    auto next_enabled = [&](int from, int dir) -> int {
+    auto next_enabled = [&](int current, int dir) -> int {
         auto n = static_cast<int>(items_.size());
+        if (n == 0) return -1;
+
+        int start = current;
+        if (start == -1) {
+            start = (dir == 1) ? n - 1 : 0;
+        }
+
+        int idx = start;
         for (auto step = 0; step < n; step++) {
-            from = (from + dir + n) % n;
-            if (items_[from].type != MenuItem::Type::Separator &&
-                items_[from].command->is_enabled()) {
-                return from;
+            idx = (idx + dir + n) % n;
+            if (items_[idx].type != MenuItem::Type::Separator &&
+                items_[idx].command->is_enabled()) {
+                return idx;
             }
         }
         return -1;
