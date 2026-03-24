@@ -291,9 +291,6 @@ bool Menu::handle_mouse(MouseEvent const &event) {
                 return true;
             }
         }
-        if (window_) {
-            window_->close_all_popups();
-        }
         return false;
     }
 
@@ -383,6 +380,9 @@ bool Menu::handle_key(KeyEvent const &event) {
 
 void Menu::open_submenu(int index) {
     if (index < 0 || index >= items_.size() || !items_[index].is_submenu()) {
+        return;
+    }
+    if (open_submenu_index_ == index) {
         return;
     }
     open_submenu_index_ = index;

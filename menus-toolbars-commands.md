@@ -61,11 +61,11 @@
              not select the last item in the menu, but the first (? last?) submenu. [done]
           7. If a menu has a submenu - I hover it, and sub menu open. I click the
              parnet item (which leads to the sub menu) - whole menu is closed. I expect
-             original menu to keep open, only sub menu to close.
-          8. Mnemonics work only with ASCII.
-          9. Navigating only the top level menus (no sub menus) is not working.
-          10. Alt and leave - same as F10. Currently - just shows menemonits.
-          11. Show mnemonics by default - per theme (win95 will show them always).
+             original menu to keep open, only sub menu to close. [done]
+          8. Navigating only the top level menus (no sub menus) is not working.
+          9. Alt and leave - same as F10. Currently - just shows menemonits.
+          10. Show mnemonics by default - per theme (win95 will show them always).
+          11. Mnemonics work only with ASCII.
 
      2. X11
         1. ???
