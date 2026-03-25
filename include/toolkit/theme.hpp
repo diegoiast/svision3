@@ -223,7 +223,7 @@ class Theme {
                                 bool enabled, bool checkable, bool checked) const = 0;
     virtual void draw_menu_separator(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
-                                  bool enabled) const = 0;
+                                   bool enabled) const = 0;
     virtual void draw_slider(Painter &painter, Rect const &rect, float value, bool hovered,
                              bool pressed, bool focused, bool enabled) const = 0;
     virtual void draw_tab_bar_background(Painter &painter, Rect const &rect) const = 0;
@@ -236,6 +236,8 @@ class Theme {
 
     // Metrics and Styles
     virtual Size measure_button(std::string_view text, Icon const &icon) const = 0;
+    virtual Size measure_checkbox(std::string_view text) const = 0;
+    virtual Size measure_radio_button(std::string_view text) const = 0;
     virtual Size measure_menubar_item(std::string_view text) const = 0;
     virtual Size measure_menu_item(std::string_view text, Icon const &icon,
                                    std::string_view shortcut) const = 0;

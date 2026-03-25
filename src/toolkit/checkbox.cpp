@@ -74,14 +74,6 @@ bool Checkbox::handle_key(KeyEvent const &event) {
     return false;
 }
 
-Size Checkbox::size_hint() const {
-    auto const &style = Theme::current().checkbox;
-    auto fm = Painter::measure_font_metrics(style.font_size);
-    auto tw = Painter::measure_text(text_, style.font_size).width;
-    auto h = std::max(style.box_size, fm.height);
-
-    // FIXME: what is this +4?
-    return {style.box_size + style.spacing + tw, h + 4.0f};
-}
+Size Checkbox::size_hint() const { return Theme::current().measure_checkbox(text_); }
 
 } // namespace toolkit

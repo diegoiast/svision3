@@ -235,16 +235,6 @@ bool Button::handle_mouse(MouseEvent const &event) {
     return false;
 }
 
-Size Button::size_hint() const {
-    auto const &style = Theme::current().button;
-    auto padding = padding_override_.value_or(style.padding);
-    auto text_w = Painter::measure_text(display_text_, style.font_size).width;
-    auto fm = Painter::measure_font_metrics(style.font_size);
-    auto icon_w = icon_ ? static_cast<float>(icon_->width) : 0.0f;
-    auto icon_h = icon_ ? static_cast<float>(icon_->height) : 0.0f;
-    auto content_w = text_w + (icon_ ? (icon_w + 4.0f) : 0.0f);
-    auto content_h = std::max(fm.height, icon_h);
-    return {content_w + padding.left + padding.right, content_h + padding.top + padding.bottom};
-}
+Size Button::size_hint() const { return Theme::current().measure_button(display_text_, icon_); }
 
 } // namespace toolkit

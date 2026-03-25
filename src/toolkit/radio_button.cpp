@@ -55,12 +55,6 @@ bool RadioButton::handle_key(KeyEvent const &event) {
     return false;
 }
 
-Size RadioButton::size_hint() const {
-    auto const &style = Theme::current().radio;
-    auto fm = Painter::measure_font_metrics(style.font_size);
-    auto tw = Painter::measure_text(text_, style.font_size).width;
-    auto h = std::max(style.box_size, fm.height);
-    return {style.box_size + style.spacing + tw, h + 4.0f};
-}
+Size RadioButton::size_hint() const { return Theme::current().measure_radio_button(text_); }
 
 } // namespace toolkit

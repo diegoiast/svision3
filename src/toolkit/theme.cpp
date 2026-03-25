@@ -472,6 +472,20 @@ class BaseTheme : public Theme {
         return {w, h};
     }
 
+    Size measure_checkbox(std::string_view text) const override {
+        auto text_w = Painter::measure_text(text, checkbox.font_size).width;
+        auto w = checkbox.box_size + checkbox.spacing + text_w;
+        auto h = std::max(checkbox.box_size, checkbox.font_size);
+        return Size{w, h};
+    }
+
+    Size measure_radio_button(std::string_view text) const override {
+        auto text_w = Painter::measure_text(text, radio.font_size).width;
+        auto w = radio.box_size + radio.spacing + text_w;
+        auto h = std::max(radio.box_size, radio.font_size);
+        return Size{w, h};
+    }
+
     Size measure_menubar_item(std::string_view text) const override {
         auto text_w = Painter::measure_text(text, menubar.font_size).width;
         return {text_w + menubar.padding.left + menubar.padding.right, 0};
