@@ -350,7 +350,7 @@ int main(int argc, char *argv[]) {
 
     file_menu->add_separator();
     auto exit_cmd = toolkit::Command::create("Exit", [window] { window->close(); });
-    exit_cmd->set_icon("gtk-close");
+    exit_cmd->set_icon("application-exit");
     file_menu->add_action(exit_cmd);
 
     auto edit_menu = menubar->add_menu("&Edit");
@@ -384,7 +384,7 @@ int main(int argc, char *argv[]) {
     auto ok_action = [] { spdlog::info("Toolbar: OK triggered"); };
     auto ok_cmd = toolkit::Command::create("OK", ok_action);
     ok_cmd->set_tooltip("Trigger the OK action");
-    ok_cmd->set_icon("gtk-apply");
+    ok_cmd->set_icon("dialog-apply");
     toolbar->add_command(ok_cmd);
 
     exit_cmd->set_tooltip("Close the application");
@@ -485,9 +485,11 @@ int main(int argc, char *argv[]) {
     repeat_btn->on_click = repeat_action;
 
     auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
+    // For now download theme from here - https://packages.debian.org/source/bullseye/faenza-icon-theme
+    // This theme has only PNG images, newer modern have SVG which we do not suppor yet.
     toolkit::XdgImageLoader loader("Faenza");
     spdlog::info("XDG theme: {}", loader.theme_name());
-    auto icon = loader.load("gtk-open", 16, "actions");
+    auto icon = loader.load("document-open", 16, "actions");
     spdlog::info("Loaded icon: {}x{}", icon ? icon->width : 0, icon ? icon->height : 0);
     if (icon) {
         open_icon_btn->set_icon(*icon);

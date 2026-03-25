@@ -50,6 +50,8 @@ class Win32TextRasterizer : public TextRasterizer {
       void draw_text(std::string_view text, Point position, Color const &color,
                      float font_size, FontFamily font = FontFamily::System,
                      TextOrientation orientation = TextOrientation::Horizontal) override;
+      void draw_image(ImageData const &image, Point position) override;
+      void draw_image_scaled(ImageData const &image, Rect const &dest) override;
       Size text_size(std::string_view text, float font_size,
                      FontFamily font = FontFamily::System) override;
               FontMetrics font_metrics(float font_size,

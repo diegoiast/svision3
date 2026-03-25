@@ -367,6 +367,36 @@ Painter::FontMetrics GDIPainter::font_metrics(float font_size, FontFamily family
     return font_metrics_gdiplus(font_size, family);
 }
 
+void GDIPainter::draw_image(ImageData const &image, Point position) {
+    if (image.width <= 0 || image.height <= 0) {
+        OutputDebugStringA("draw_image: image is empty");
+        return;
+    }
+
+    Gdiplus::Bitmap bmp(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
+                        (BYTE *)image.pixels.data());
+    if (bmp.GetLastStatus() != Gdiplus::Ok) {
+        OutputDebugStringA("draw_image: failed to create bitmap");
+        return;
+    }
+    impl_->graphics->DrawImage(&bmp, position.x, position.y, static_cast<float>(image.width),
+                               static_cast<float>(image.height));
+}
+
+void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
+    if (image.width <= 0 || image.height <= 0 || dest.width <= 0 || dest.height <= 0) {
+        OutputDebugStringA("draw_image_scaled: image or destination is empty");
+        return;
+    }
+    Gdiplus::Bitmap bmp(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
+                        (BYTE *)image.pixels.data());
+    if (bmp.GetLastStatus() != Gdiplus::Ok) {
+        OutputDebugStringA("draw_image_scaled: failed to create bitmap");
+        return;
+    }
+    impl_->graphics->DrawImage(&bmp, dest.x, dest.y, dest.width, dest.height);
+}
+
 Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, FontFamily family) {
     auto wtext = to_wide(text);
     if (wtext.empty()) {

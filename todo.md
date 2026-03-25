@@ -11,7 +11,7 @@ another document). The idea is to reach version 0.9 with all these items marked.
 
 Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
-## Core Architecture [19/39]
+## Core Architecture [19/41]
 
 1. [x] Cross-platform GUI toolkit in C++20
 2. [x] macOS backend (Cocoa/CoreGraphics)
@@ -52,6 +52,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 37. [ ] Signals/slots (beyond single std::function) - or alternative.
 38. [ ] Serialization (save/restore widget state).
 39. [ ] Declarative UI support.
+40. [ ] All setters should return a reference to self - for chainability.
+41. [ ] Winwodws should have a Window::add<T> template that
+        internally creates the shared ptr, and returns a reference.
 
 ## Platform – Not Yet Implemented
 
@@ -190,14 +193,14 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 11. [ ] Global keyboard shortcuts / accelerators.
 12. [ ] Mouse enter/leave events on widgets.
 
-## Button features [3/7]
+## Button features [4/7]
 
 1. [x] Background color defintion.
-2. [ ] Attach a menu (long click, or sub-button).
-3. [x] Flat display (borders on hover only).
-4. [ ] Toggle buttton - on/off.
-5. [x] Auto repeat.
-6. [ ] Icon support (image + text)
+2. [x] Flat display (borders on hover only).
+3. [x] Auto repeat.
+4. [x] Icon support (image + text)
+5. [ ] Toggle buttton - on/off.
+6. [ ] Attach a menu (long click, or sub-button).
 7. [ ] Button group (mutually exclusive toggles)
 
 ## LineInput Features [DONE]
