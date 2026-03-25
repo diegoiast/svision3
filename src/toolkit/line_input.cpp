@@ -280,85 +280,31 @@ bool LineInput::is_valid() const {
 }
 
 void LineInput::paint(Painter &painter) {
-    auto const &style = Theme::current().line_input;
-    auto bg = is_focused() ? style.background_focused : style.background;
+    auto const &theme = Theme::current();
+    auto const &style = theme.line_input;
+
+    std::optional<Color> bg;
     if (validation_mode_ == ValidationMode::Notify && !is_valid()) {
-        bg = Theme::current().error_color();
+        bg = theme.error_color();
     }
 
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    auto border = is_focused() ? style.border_focused : style.border;
-    painter.draw_frame(rect, bg, border, style, true);
 
-    auto content_x = style.padding.left;
-    auto content_w = content_available_width();
-    auto clip_rect = Rect{content_x, 0, content_w, rect_.height};
-    auto tx = content_x - scroll_offset_;
-    auto fm = painter.font_metrics(style.font_size);
-    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
-    auto d_text = password_mode_ ? get_masked_text(text_) : text_;
-    painter.push_clip(clip_rect);
+    auto sel_start_pos = has_selection() ? static_cast<int>(sel_start()) : -1;
+    auto sel_end_pos = has_selection() ? static_cast<int>(sel_end()) : -1;
+
     ensure_cursor_visible(painter);
 
-    if (text_.empty() && !is_focused()) {
-        painter.draw_text(placeholder_, {tx, baseline_y}, style.placeholder, style.font_size);
-    } else {
-        if (has_selection()) {
-            auto s = sel_start();
-            auto e = sel_end();
-            auto before_s = password_mode_ ? get_masked_text(text_, s) : text_.substr(0, s);
-            auto before_e = password_mode_ ? get_masked_text(text_, e) : text_.substr(0, e);
-            auto sx = tx + painter.text_size(before_s, style.font_size).width;
-            auto ex = tx + painter.text_size(before_e, style.font_size).width;
-            // FIXME: I would like a function to get half the height
-            auto hy = (rect_.height - fm.height) / 2.0f - 1.0f;
-            // FIXME: selection color should come from theme
-            auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
-            painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
-        }
+    auto d_text = password_mode_ ? get_masked_text(text_) : text_;
 
-        if (!text_.empty()) {
-            if (password_mode_) {
-                auto dot_radius = style.font_size * 0.25f;
-                auto char_w = painter.text_size("8", style.font_size).width;
-                auto center_off_y = (fm.ascent - fm.descent) / 2.0f;
-                auto char_count = 0;
-                auto i = 0;
+    theme.draw_line_input(painter, rect, d_text, placeholder_, static_cast<int>(cursor_pos_),
+                          sel_start_pos, sel_end_pos, is_focused(), !read_only_, password_mode_,
+                          scroll_offset_, bg);
 
-                while (i < text_.size()) {
-                    auto cx = tx + char_count * char_w + char_w / 2.0f;
-                    auto cy = baseline_y - center_off_y;
-                    painter.fill_circle({cx, cy}, dot_radius, style.text);
-                    char_count++;
-                    i = Utf8Iterator::next(text_, i);
-                }
-            } else {
-                painter.draw_text(d_text, {tx, baseline_y}, style.text, style.font_size);
-            }
-        }
+    paint_buttons(painter);
+}
 
-        if (is_focused()) {
-            auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
-            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-            auto cursor_on = (ms / 500) % 2 == 0;
-
-            if (cursor_on) {
-                auto before = password_mode_ ? get_masked_text(text_, cursor_pos_)
-                                             : text_.substr(0, cursor_pos_);
-                auto cx = tx;
-                auto cy_top = (rect_.height - fm.height) / 2.0f - 1.0f;
-                auto cy_bot = cy_top + fm.height + 2.0f;
-
-                if (!before.empty()) {
-                    cx += painter.text_size(before, style.font_size).width;
-                }
-                painter.draw_line({cx, cy_top}, {cx, cy_bot}, style.cursor, 1.5f);
-            }
-        }
-    }
-
-    painter.pop_clip();
-
+void LineInput::paint_buttons(Painter &painter) {
     bool clear_visible = !text_.empty() && !read_only_;
     if (clear_visible || is_password_field_) {
         auto const &style = Theme::current().line_input;
@@ -404,11 +350,9 @@ void LineInput::paint(Painter &painter) {
             auto eye_col = style.text;
             eye_col.a = peek_hovered_ ? 0.8f : 0.45f;
 
-            // Draw an eye shape
             float eye_radius = sz * 0.35f;
             float pupil_radius = sz * 0.15f;
 
-            // Eye outline
             painter.draw_circle({cx, cy}, eye_radius, eye_col, 1.2f);
 
             if (password_mode_) {

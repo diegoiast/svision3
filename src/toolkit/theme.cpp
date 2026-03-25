@@ -4,6 +4,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/utf8.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -278,35 +279,68 @@ class BaseTheme : public Theme {
 
     void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
                          std::string_view placeholder, int cursor_pos, int selection_start,
-                         int selection_end, bool focused, bool enabled) const override {
+                         int selection_end, bool focused, bool enabled, bool password_mode,
+                         float scroll_offset, std::optional<Color> background) const override {
         auto const &style = line_input;
-        auto bg = focused ? style.background_focused : style.background;
+        auto bg = background.value_or(focused ? style.background_focused : style.background);
         auto border = focused ? style.border_focused : style.border;
         auto fm = painter.font_metrics(style.font_size);
-        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto content_x = style.padding.left;
         auto content_w = rect.width - style.padding.left - style.padding.right;
+        auto tx = rect.x + content_x - scroll_offset;
 
         painter.draw_frame(rect, bg, border, style, true);
 
+        auto clip_rect = Rect{rect.x + content_x, rect.y, content_w, rect.height};
+        painter.push_clip(clip_rect);
+
         auto text_c = enabled ? style.text : mid(style.text, style.background);
+
+        if (selection_start >= 0 && selection_end > selection_start) {
+            auto before_s = text.substr(0, selection_start);
+            auto before_e = text.substr(0, selection_end);
+            auto sx = tx + painter.text_size(before_s, style.font_size).width;
+            auto ex = tx + painter.text_size(before_e, style.font_size).width;
+            auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
+            auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
+            painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
+        }
+
         if (text.empty() && !focused) {
-            painter.draw_text(placeholder, {rect.x + content_x, baseline_y}, style.placeholder,
-                              style.font_size);
+            painter.draw_text(placeholder, {tx, baseline_y}, style.placeholder, style.font_size);
         } else if (!text.empty()) {
-            painter.draw_text(text, {rect.x + content_x, baseline_y}, text_c, style.font_size);
+            if (password_mode) {
+                auto dot_radius = style.font_size * 0.25f;
+                auto char_w = painter.text_size("8", style.font_size).width;
+                auto center_off_y = (fm.ascent - fm.descent) / 2.0f;
+                auto char_count = 0;
+                auto i = 0;
+
+                while (i < text.size()) {
+                    auto cx = tx + char_count * char_w + char_w / 2.0f;
+                    auto cy = baseline_y - center_off_y;
+                    painter.fill_circle({cx, cy}, dot_radius, text_c);
+                    char_count++;
+                    i = Utf8Iterator::next(text, i);
+                }
+            } else {
+                painter.draw_text(text, {tx, baseline_y}, text_c, style.font_size);
+            }
         }
 
         if (focused && cursor_pos >= 0) {
             auto before = text.substr(0, cursor_pos);
-            auto cx = rect.x + content_x;
+            auto cx = tx;
             if (!before.empty()) {
                 cx += painter.text_size(before, style.font_size).width;
             }
-            auto cy_top = (rect.height - fm.height) / 2.0f - 1.0f;
+            auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
             auto cy_bot = cy_top + fm.height + 2.0f;
             painter.draw_line({cx, cy_top}, {cx, cy_bot}, style.cursor, 1.5f);
         }
+
+        painter.pop_clip();
     }
 
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,

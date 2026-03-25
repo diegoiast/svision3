@@ -17,6 +17,7 @@ class LineInput : public Widget {
     explicit LineInput(std::string placeholder = "");
 
     void paint(Painter &painter) override;
+    void paint_buttons(Painter &painter);
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
@@ -37,7 +38,9 @@ class LineInput : public Widget {
     bool is_read_only() const { return read_only_; }
 
     enum class ValidationMode { None, Block, Notify };
-    void set_validator(std::function<bool(std::string const &)> validator) { validator_ = std::move(validator); }
+    void set_validator(std::function<bool(std::string const &)> validator) {
+        validator_ = std::move(validator);
+    }
     void set_validation_mode(ValidationMode mode) { validation_mode_ = mode; }
     ValidationMode validation_mode() const { return validation_mode_; }
     bool is_valid() const;
