@@ -128,7 +128,7 @@ void Button::set_visible(bool v) {
 void Button::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
     Theme::current().draw_button(painter, rect, display_text_, icon_, hovered_, pressed_,
-                                 is_focused(), is_enabled(), flat_);
+                                 is_focused(), is_enabled(), flat_, background_color_);
 }
 
 bool Button::trigger_mnemonic(char key) {

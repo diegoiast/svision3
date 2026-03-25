@@ -163,10 +163,10 @@ class BaseTheme : public Theme {
     }
 
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
-                     bool hovered, bool pressed, bool focused, bool enabled,
-                     bool flat) const override {
+                     bool hovered, bool pressed, bool focused, bool enabled, bool flat,
+                     std::optional<Color> background) const override {
         auto const &style = button;
-        auto bg = style.background;
+        auto bg = background.value_or(style.background);
         auto border_c = focused ? style.border_focused : style.border;
         auto text_c = enabled ? style.text : style.text_disabled;
         auto text_offset = (style.beveled && pressed && enabled) ? 1.0f : 0.0f;
@@ -184,7 +184,7 @@ class BaseTheme : public Theme {
         auto text_x = (rect.width - total_w) / 2.0f + text_offset + (icon ? icon_w + 4.0f : 0.0f);
         auto text_pos = Point{text_x, baseline_y + text_offset};
 
-        if (enabled) {
+        if (enabled && !background) {
             if (pressed && style.background_pressed) {
                 bg = *style.background_pressed;
             } else if (focused) {
