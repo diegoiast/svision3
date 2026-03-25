@@ -43,7 +43,7 @@ class Command {
 
     std::string const &icon() const { return icon_; }
     void set_icon(std::string icon);
-    auto icon_image() const -> std::optional<ImageData>;
+    auto icon_image() const -> Icon;
 
     std::string const &shortcut_string() const { return shortcut_string_; }
     Shortcut const &shortcut() const { return shortcut_; }
