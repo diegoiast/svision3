@@ -76,19 +76,8 @@ void Toolbar::add_widget(std::unique_ptr<Widget> w, float stretch) {
 void Toolbar::add_separator() { layout_->add_widget(std::make_unique<ToolbarSeparator>()); }
 
 void Toolbar::paint(Painter &painter) {
-    auto const &style = Theme::current().button;
-    if (style.beveled) {
-        // Win95 style: highlight at top, shadow at bottom
-        painter.draw_line({0, 0}, {rect_.width, 0}, style.highlight, 1.0f);
-        painter.draw_line({0, rect_.height - 1.0f}, {rect_.width, rect_.height - 1.0f},
-                          style.shadow, 1.0f);
-    } else {
-        // Flat style: subtle border at bottom
-        auto border_c = Theme::current().window.background.darken(0.15f);
-        painter.draw_line({0, rect_.height - 1.0f}, {rect_.width, rect_.height - 1.0f}, border_c,
-                          1.0f);
-    }
-
+    auto rect = Rect{0, 0, rect_.width, rect_.height};
+    Theme::current().draw_toolbar(painter, rect);
     layout_->draw(painter);
 }
 

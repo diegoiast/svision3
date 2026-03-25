@@ -472,6 +472,21 @@ class BaseTheme : public Theme {
         painter.draw_text(text, {text_x, baseline_y}, style.text, style.font_size);
     }
 
+    void draw_toolbar(Painter &painter, Rect const &rect) const override {
+        auto const &style = button;
+        if (style.beveled) {
+            painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, style.highlight,
+                              1.0f);
+            painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
+                              {rect.x + rect.width, rect.y + rect.height - 1.0f}, style.shadow,
+                              1.0f);
+        } else {
+            auto border_c = palette_.window.darken(0.15f);
+            painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
+                              {rect.x + rect.width, rect.y + rect.height - 1.0f}, border_c, 1.0f);
+        }
+    }
+
     Size measure_button(std::string_view text, Icon const &icon) const override {
         auto text_w = Painter::measure_text(text, button.font_size).width;
         auto icon_w = 0.0f;

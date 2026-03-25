@@ -233,6 +233,7 @@ class Theme {
                                 Icon const &icon, bool selected, bool hovered,
                                 bool alternate) const = 0;
     virtual void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const = 0;
+    virtual void draw_toolbar(Painter &painter, Rect const &rect) const = 0;
 
     // Metrics and Styles
     virtual Size measure_button(std::string_view text, Icon const &icon) const = 0;
