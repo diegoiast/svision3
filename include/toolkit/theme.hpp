@@ -4,9 +4,12 @@
 #pragma once
 
 #include "toolkit/image_loader.hpp"
+#include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
+#include "toolkit/widget.hpp"
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 
 namespace toolkit {
@@ -236,8 +239,8 @@ class Theme {
     virtual void draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
                                 Icon const &icon, bool selected, bool hovered,
                                 bool alternate) const = 0;
-    virtual void draw_list_background(Painter &painter, Rect const &rect) const = 0;
-    virtual void draw_table_background(Painter &painter, Rect const &rect) const = 0;
+    virtual void draw_list_background(Painter &painter, Rect const &rect, bool focused) const = 0;
+    virtual void draw_table_background(Painter &painter, Rect const &rect, bool focused) const = 0;
     virtual void draw_combobox(Painter &painter, Rect const &rect, std::string_view text,
                                bool focused, bool open) const = 0;
     virtual void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
@@ -255,6 +258,8 @@ class Theme {
                                 int first_visible_line, float line_height, float gutter_width,
                                 float scroll_x, float scroll_y, bool focused, bool enabled,
                                 std::chrono::steady_clock::time_point cursor_blink_time) const = 0;
+    virtual void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const = 0;
+    virtual void draw_focus_ring_for_widget(Painter &painter, Widget const *widget) const;
     virtual Size measure_label(std::string_view text, float font_size) const = 0;
 
     virtual Color error_color() const { return Color::rgb(1.0f, 0.85f, 0.85f); }
@@ -279,6 +284,9 @@ class Theme {
     ThemeStyle style;
     std::string system_font;
     std::string monospace_font;
+    float focus_ring_margin = 5.0f;
+    float focus_ring_corner_radius = 5.0f;
+    Painter::LineStyle focus_ring_line_style = Painter::LineStyle::Dashed;
     WindowStyle window;
     ButtonStyle button;
     LabelStyle label;

@@ -342,7 +342,7 @@ void ListView::paint(Painter &painter) {
     auto fm = painter.font_metrics(style.font_size);
     auto n = adapter_->count();
 
-    Theme::current().draw_list_background(painter, {0, 0, rect_.width, rect_.height});
+    Theme::current().draw_list_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
 
     painter.push_clip({0, 0, rect_.width, rect_.height});
 
@@ -387,9 +387,6 @@ void ListView::paint(Painter &painter) {
     }
 
     painter.pop_clip();
-    if (is_focused()) {
-        painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
-    }
 }
 bool ListView::handle_mouse(MouseEvent const &event) {
     if (!adapter_) {

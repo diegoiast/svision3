@@ -145,7 +145,7 @@ void SpinBox::paint(Painter &painter) {
     auto rect = Rect{0.0f, 0.0f, rect_.width, rect_.height};
 
     theme.draw_spinbox(painter, rect, text_, cursor_pos, sel_start_pos, sel_end_pos, is_focused(),
-                       !read_only_, hovered_zone_ == HitZone::Up, pressed_zone_ == HitZone::Up,
+                       is_enabled(), hovered_zone_ == HitZone::Up, pressed_zone_ == HitZone::Up,
                        hovered_zone_ == HitZone::Down, pressed_zone_ == HitZone::Down);
 }
 

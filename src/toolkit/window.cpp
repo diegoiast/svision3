@@ -281,8 +281,11 @@ void Window::handle_paint(Painter &painter) {
         widget->draw(painter);
     }
 
-    auto repaint_end = std::chrono::steady_clock::now();
+    if (focused_widget_ && focused_widget_->is_focused() && focused_widget_->is_focusable()) {
+        Theme::current().draw_focus_ring_for_widget(painter, focused_widget_);
+    }
 
+    auto repaint_end = std::chrono::steady_clock::now();
     if (Widget::debug_show_frames) {
         if (root_) {
             draw_debug_frames_recursive(painter, root_.get());

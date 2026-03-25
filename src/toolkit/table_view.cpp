@@ -385,7 +385,8 @@ void TableView::paint(Painter &painter) {
     auto nrows = model_->row_count();
     auto ncols = model_->column_count();
 
-    Theme::current().draw_table_background(painter, {0, 0, rect_.width, rect_.height});
+    Theme::current().draw_table_background(painter, {0, 0, rect_.width, rect_.height},
+                                           is_focused());
 
     painter.push_clip({0, 0, rect_.width, rect_.height});
 
@@ -490,11 +491,6 @@ void TableView::paint(Painter &painter) {
 
     painter.pop_clip(); // body
     painter.pop_clip(); // outer
-
-    // FIXME: table view ring should be drawen by owner
-    if (is_focused()) {
-        painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
-    }
 }
 
 bool TableView::handle_mouse(MouseEvent const &event) {

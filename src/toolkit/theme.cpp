@@ -212,10 +212,6 @@ class BaseTheme : public Theme {
         }
 
         painter.draw_text(text, text_pos, text_c, style.font_size);
-
-        if (focused && enabled) {
-            painter.draw_focus_ring(rect, style.corner_radius);
-        }
     }
 
     void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text, CheckState state,
@@ -246,10 +242,6 @@ class BaseTheme : public Theme {
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_c = enabled ? style.text : mid(style.text, style.background);
         painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
-
-        if (focused) {
-            painter.draw_focus_ring(rect, style.corner_radius);
-        }
     }
 
     void draw_radio_button(Painter &painter, Rect const &rect, std::string_view text, bool checked,
@@ -273,9 +265,6 @@ class BaseTheme : public Theme {
         }
         auto text_c = enabled ? style.text : mid(style.text, style.background);
         painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
-        if (focused) {
-            painter.draw_focus_ring(rect, style.corner_radius);
-        }
     }
 
     void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
@@ -569,7 +558,7 @@ class BaseTheme : public Theme {
         painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
     }
 
-    void draw_list_background(Painter &painter, Rect const &rect) const override {
+    void draw_list_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = list_view;
         if (style.beveled) {
             painter.draw_frame(rect, style.background, style.border, style, true);
@@ -580,9 +569,12 @@ class BaseTheme : public Theme {
                                           style.border_width);
             }
         }
+        if (focused) {
+            painter.draw_focus_ring(rect, style.corner_radius);
+        }
     }
 
-    void draw_table_background(Painter &painter, Rect const &rect) const override {
+    void draw_table_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = table_view;
         if (style.beveled) {
             painter.draw_frame(rect, style.background, style.border, style, true);
@@ -592,6 +584,9 @@ class BaseTheme : public Theme {
                 painter.draw_rounded_rect(rect, style.border, style.corner_radius,
                                           style.border_width);
             }
+        }
+        if (focused) {
+            painter.draw_focus_ring(rect, style.corner_radius);
         }
     }
 
@@ -618,10 +613,6 @@ class BaseTheme : public Theme {
                           1.5f);
         painter.draw_line({arrow_x, arrow_y + 2.0f}, {arrow_x + aw, arrow_y - 2.0f}, style.arrow,
                           1.5f);
-
-        if (focused && !open) {
-            painter.draw_focus_ring(rect, style.corner_radius);
-        }
     }
 
     void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
@@ -856,6 +847,62 @@ class BaseTheme : public Theme {
         painter.pop_clip();
     }
 
+    void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const override {
+        Color ring = line_input.border_focused;
+        ring.a = 0.5f;
+        float lw = 2.0f;
+        float inset = lw / 2.0f + 0.5f;
+        Rect r = rect.inset(inset);
+
+        float dash_len = 4.0f;
+        float gap_len = 4.0f;
+
+        auto draw_dashed_line = [&](Point start, Point end) {
+            float dx = end.x - start.x;
+            float dy = end.y - start.y;
+            float len = std::sqrt(dx * dx + dy * dy);
+            if (len < 0.001f) {
+                return;
+            }
+            float ux = dx / len;
+            float uy = dy / len;
+            float pos = 0.0f;
+            bool drawing = true;
+            while (pos < len) {
+                float seg_len = drawing ? dash_len : gap_len;
+                float next_pos = std::min(pos + seg_len, len);
+                if (drawing) {
+                    painter.draw_line({start.x + ux * pos, start.y + uy * pos},
+                                      {start.x + ux * next_pos, start.y + uy * next_pos}, ring, lw);
+                }
+                pos = next_pos;
+                drawing = !drawing;
+            }
+        };
+
+        float cr = std::max(0.0f, corner_radius - inset);
+        if (cr > 0.0f) {
+            auto top_left = Point{r.x + cr, r.y + cr};
+            auto top_right = Point{r.x + r.width - cr, r.y + cr};
+            auto bottom_left = Point{r.x + cr, r.y + r.height - cr};
+            auto bottom_right = Point{r.x + r.width - cr, r.y + r.height - cr};
+
+            draw_dashed_line({r.x, r.y + cr}, top_right);
+            draw_dashed_line(top_right, {r.x + r.width, r.y + cr});
+            draw_dashed_line({r.x + r.width, r.y + cr}, bottom_right);
+            draw_dashed_line(bottom_right, {r.x + r.width, r.y + r.height - cr});
+            draw_dashed_line({r.x + r.width, r.y + r.height - cr}, bottom_left);
+            draw_dashed_line(bottom_left, {r.x, r.y + r.height - cr});
+            draw_dashed_line({r.x, r.y + r.height - cr}, {r.x, r.y + cr});
+            draw_dashed_line({r.x, r.y + cr}, top_left);
+        } else {
+            draw_dashed_line({r.x, r.y}, {r.x + r.width, r.y});
+            draw_dashed_line({r.x + r.width, r.y}, {r.x + r.width, r.y + r.height});
+            draw_dashed_line({r.x + r.width, r.y + r.height}, {r.x, r.y + r.height});
+            draw_dashed_line({r.x, r.y + r.height}, {r.x, r.y});
+        }
+    }
+
     Size measure_label(std::string_view text, float font_size) const override {
         auto fm = Painter::measure_font_metrics(font_size);
         auto w = Painter::measure_text(text, font_size).width;
@@ -970,6 +1017,69 @@ class Win95Theme : public BaseTheme {
         name = "Windows 95";
         progress_bar.chunked = true;
         progress_bar.bar_height = 20.0f;
+        focus_ring_margin = 0.0f;
+        focus_ring_corner_radius = 0.0f;
+        focus_ring_line_style = Painter::LineStyle::Dotted;
+    }
+
+    void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const override {
+        Color ring = line_input.border_focused;
+        ring.a = 0.5f;
+        float lw = 2.0f;
+
+        painter.draw_rect(rect, ring, lw);
+
+        float dash_len = 4.0f;
+        float gap_len = 4.0f;
+        float x = rect.x;
+        float y = rect.y;
+        float w = rect.width;
+        float h = rect.height;
+
+        auto draw_dashed_line = [&](Point start, Point end) {
+            float dx = end.x - start.x;
+            float dy = end.y - start.y;
+            float len = std::sqrt(dx * dx + dy * dy);
+            if (len < 0.001f) {
+                return;
+            }
+            float ux = dx / len;
+            float uy = dy / len;
+            float pos = 0.0f;
+            bool drawing = true;
+            while (pos < len) {
+                float seg_len = drawing ? dash_len : gap_len;
+                float next_pos = std::min(pos + seg_len, len);
+                if (drawing) {
+                    painter.draw_line({start.x + ux * pos, start.y + uy * pos},
+                                      {start.x + ux * next_pos, start.y + uy * next_pos}, ring, lw);
+                }
+                pos = next_pos;
+                drawing = !drawing;
+            }
+        };
+
+        if (corner_radius > 0.0f) {
+            float cr = std::max(0.0f, corner_radius);
+            auto top_left = Point{x + cr, y + cr};
+            auto top_right = Point{x + w - cr, y + cr};
+            auto bottom_left = Point{x + cr, y + h - cr};
+            auto bottom_right = Point{x + w - cr, y + h - cr};
+
+            draw_dashed_line({x, y + cr}, top_right);
+            draw_dashed_line(top_right, {x + w, y + cr});
+            draw_dashed_line({x + w, y + cr}, bottom_right);
+            draw_dashed_line(bottom_right, {x + w, y + h - cr});
+            draw_dashed_line({x + w, y + h - cr}, bottom_left);
+            draw_dashed_line(bottom_left, {x, y + h - cr});
+            draw_dashed_line({x, y + cr}, {x, y + h - cr});
+            draw_dashed_line({x, y + cr}, top_left);
+        } else {
+            draw_dashed_line({x, y}, {x + w, y});
+            draw_dashed_line({x + w, y}, {x + w, y + h});
+            draw_dashed_line({x + w, y + h}, {x, y + h});
+            draw_dashed_line({x, y + h}, {x, y});
+        }
     }
 };
 
@@ -1115,6 +1225,30 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
     p.auto_repeat_interval = p.fonts.auto_repeat_interval;
 
     return p;
+}
+
+void Theme::draw_focus_ring_for_widget(Painter &painter, Widget const *widget) const {
+    if (!widget) {
+        return;
+    }
+
+    auto global_x = 0.0f;
+    auto global_y = 0.0f;
+    Widget const *w = widget;
+    while (w) {
+        global_x += w->rect().x;
+        global_y += w->rect().y;
+        w = w->parent();
+    }
+
+    auto margin = focus_ring_margin;
+    auto r = Rect{global_x - margin, global_y - margin, widget->rect().width + margin * 2,
+                  widget->rect().height + margin * 2};
+    auto corner_radius = line_input.corner_radius + focus_ring_corner_radius;
+
+    painter.set_line_style(focus_ring_line_style);
+    draw_focus_ring(painter, r, corner_radius);
+    painter.set_line_style(Painter::LineStyle::Solid);
 }
 
 std::unique_ptr<Theme> Theme::create(ThemeStyle style, ColorScheme scheme) {
