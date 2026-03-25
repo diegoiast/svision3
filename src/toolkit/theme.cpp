@@ -342,15 +342,58 @@ class BaseTheme : public Theme {
     }
 
     void draw_menu_background(Painter &painter, Rect const &rect) const override {
-        painter.fill_rect(rect, menu.background);
-        painter.draw_rect(rect, menu.border, menu.border_width);
+        auto const &style = combobox;
+        auto shadow = Color::rgba(0, 0, 0, 0.12f);
+        painter.fill_rounded_rect({rect.x + 1, rect.y + 1, rect.width, rect.height}, shadow,
+                                  style.corner_radius);
+        painter.fill_rounded_rect(rect, style.dropdown_bg, style.corner_radius);
+        painter.draw_rounded_rect(rect, style.border, style.corner_radius, style.border_width);
     }
 
     void draw_menu_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                         std::string_view shortcut, bool hovered, bool enabled, bool checkable,
-                        bool checked) const override {}
+                        bool checked) const override {
+        auto const &style = combobox;
+        auto fm = painter.font_metrics(style.font_size);
+        auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto text_col = style.text;
 
-    void draw_menu_separator(Painter &painter, Rect const &rect) const override {}
+        if (hovered && enabled) {
+            painter.fill_rounded_rect(rect, style.item_hovered, style.corner_radius * 0.5f);
+        }
+
+        if (checkable && checked) {
+            auto check_rect = Rect{rect.x + 4, rect.y + (rect.height - 12) / 2, 12, 12};
+            painter.fill_rounded_rect(check_rect, style.border, 2.0f);
+        }
+
+        auto icon_x = rect.x + style.padding.left + 4;
+        if (icon) {
+            auto icon_y = rect.y + (rect.height - static_cast<float>(icon->height)) / 2.0f;
+            painter.draw_image(*icon, Point{icon_x, icon_y});
+            icon_x += static_cast<float>(icon->width) + 4;
+        }
+
+        auto text_x = icon_x;
+        if (!enabled) {
+            text_col.a *= 0.4f;
+        }
+        painter.draw_text(text, {text_x, baseline}, text_col, style.font_size);
+
+        if (!shortcut.empty()) {
+            auto shortcut_w = painter.text_size(shortcut, style.font_size).width;
+            auto shortcut_x = rect.x + rect.width - style.padding.right - shortcut_w - 10.0f;
+            painter.draw_text(shortcut, {shortcut_x, baseline}, text_col, style.font_size);
+        }
+    }
+
+    void draw_menu_separator(Painter &painter, Rect const &rect) const override {
+        auto const &style = combobox;
+        auto mid_y = rect.y + rect.height / 2.0f;
+        auto sep_col = style.border;
+        sep_col.a *= 0.5f;
+        painter.draw_line({rect.x + 8, mid_y}, {rect.x + rect.width - 8, mid_y}, sep_col, 0.5f);
+    }
 
     void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                            bool enabled) const override {

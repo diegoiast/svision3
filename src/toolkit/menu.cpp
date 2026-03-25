@@ -166,86 +166,34 @@ int Menu::item_at(Point p) const {
 }
 
 void Menu::paint(Painter &painter) {
-    auto const &style = Theme::current().combobox;
-    auto shadow = Color::rgba(0, 0, 0, 0.12f);
-    auto fm = painter.font_metrics(style.font_size);
-    auto y = 2.0f;
-    auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
+    Theme::current().draw_menu_background(painter, {0, 0, bounds_.width, bounds_.height});
 
-    painter.fill_rounded_rect({1, 1, bounds_.width, bounds_.height}, shadow, style.corner_radius);
-    painter.fill_rounded_rect(local_bounds, style.dropdown_bg, style.corner_radius);
-    painter.draw_rounded_rect(local_bounds, style.border, style.corner_radius, style.border_width);
+    auto y = 2.0f;
 
     for (auto i = 0; i < static_cast<int>(items_.size()); i++) {
         auto const &item = items_[i];
 
         if (item.type == MenuItem::Type::Separator) {
-            auto mid_y = y + separator_height_ / 2.0f;
-            auto sep_col = style.border;
-            sep_col.a *= 0.5f;
-            painter.draw_line({8, mid_y}, {bounds_.width - 8, mid_y}, sep_col, 0.5f);
+            Theme::current().draw_menu_separator(painter, {0, y, bounds_.width, separator_height_});
             y += separator_height_;
             continue;
         }
 
         auto enabled = item.command->is_enabled();
         auto item_rect = Rect{2, y, bounds_.width - 4, item_height_};
-        auto text_col = style.text;
-        auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
-
-        if (i == hovered_ && enabled) {
-            painter.fill_rounded_rect(item_rect, style.item_hovered, style.corner_radius * 0.5f);
-        }
-
         auto icon_data = item.command->icon_image();
-        if (icon_data) {
-            auto icon_x = style.padding.left + 4;
-            auto icon_y = y + (item_height_ - 16.0f) / 2.0f;
-            painter.draw_image(*icon_data, Point{icon_x, icon_y});
-        }
+        auto shortcut = item.command->shortcut_string();
+        auto text = strip_mnemonic(item.command->name());
 
-        if (i == hovered_ && enabled) {
-            text_col = style.item_text_hovered;
-        } else if (!enabled) {
-            text_col.a *= 0.4f;
-        }
-
-        auto display_name = strip_mnemonic(item.command->name());
-        auto mnemonic_idx = -1;
-        auto ampersand_pos = item.command->name().find('&');
-        if (ampersand_pos != std::string::npos) {
-            mnemonic_idx = static_cast<int>(ampersand_pos);
-        }
-
-        auto text_x = style.padding.left + 4;
-        if (!item.command->icon().empty()) {
-            text_x += 20;
-        }
-        painter.draw_text(display_name, {text_x, baseline}, text_col, style.font_size);
-
-        if (mnemonic_idx != -1) {
-            auto m_char = display_name.substr(mnemonic_idx, 1);
-            auto text_before_m = display_name.substr(0, mnemonic_idx);
-            auto x_before = painter.text_size(text_before_m, style.font_size).width;
-            auto m_size = painter.text_size(m_char, style.font_size);
-            auto underline_y = baseline + 2.0f;
-            painter.draw_line({text_x + x_before, underline_y},
-                              {text_x + x_before + m_size.width, underline_y}, text_col, 1.0f);
-        }
-
-        if (!item.command->shortcut_string().empty()) {
-            auto shortcut_w =
-                painter.text_size(item.command->shortcut_string(), style.font_size).width;
-            auto shortcut_x = bounds_.width - style.padding.right - shortcut_w - 10.0f;
-
-            painter.draw_text(item.command->shortcut_string(), {shortcut_x, baseline}, text_col,
-                              style.font_size);
-        }
+        Theme::current().draw_menu_item(painter, item_rect, text, icon_data, shortcut,
+                                        i == hovered_, enabled, false, false);
 
         if (item.type == MenuItem::Type::Submenu) {
-            // Draw arrow for submenu
+            auto const &style = Theme::current().combobox;
+            auto fm = painter.font_metrics(style.font_size);
+            auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
             auto arrow_x = bounds_.width - 15.0f;
-            painter.draw_text(">", {arrow_x, baseline}, text_col, style.font_size);
+            painter.draw_text(">", {arrow_x, baseline}, style.text, style.font_size);
         }
 
         y += item_height_;

@@ -93,49 +93,31 @@ int ContextMenu::item_at(Point p) const {
 }
 
 void ContextMenu::paint(Painter &painter) {
-    auto const &style = Theme::current().combobox;
-    auto shadow = Color::rgba(0, 0, 0, 0.12f);
-    auto fm = painter.font_metrics(style.font_size);
-    auto y = 2.0f;
-    auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
+    Theme::current().draw_menu_background(painter, {0, 0, bounds_.width, bounds_.height});
 
-    painter.fill_rounded_rect({1, 1, bounds_.width, bounds_.height}, shadow, style.corner_radius);
-    painter.fill_rounded_rect(local_bounds, style.dropdown_bg, style.corner_radius);
-    painter.draw_rounded_rect(local_bounds, style.border, style.corner_radius, style.border_width);
+    auto y = 2.0f;
 
     for (auto i = 0; i < static_cast<int>(items_.size()); i++) {
         auto const &item = items_[i];
 
         if (item.type == MenuItem::Type::Separator) {
-            auto mid_y = y + separator_height_ / 2.0f;
-            auto sep_col = style.border;
-            sep_col.a *= 0.5f;
-            painter.draw_line({8, mid_y}, {bounds_.width - 8, mid_y}, sep_col, 0.5f);
+            Theme::current().draw_menu_separator(painter, {0, y, bounds_.width, separator_height_});
             y += separator_height_;
             continue;
         }
 
         auto enabled = item.command->is_enabled();
         auto item_rect = Rect{2, y, bounds_.width - 4, item_height_};
-        if (i == hovered_ && enabled) {
-            painter.fill_rounded_rect(item_rect, style.item_hovered, style.corner_radius * 0.5f);
-        }
 
-        auto text_col = style.text;
-        if (i == hovered_ && enabled) {
-            text_col = style.item_text_hovered;
-        } else if (!enabled) {
-            text_col.a *= 0.4f;
-        }
+        Icon icon;
+        Theme::current().draw_menu_item(painter, item_rect, item.command->name(), icon, "",
+                                        i == hovered_, enabled, false, false);
 
-        auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(item.command->name(), {style.padding.left + 4, baseline}, text_col,
-                          style.font_size);
         y += item_height_;
     }
 }
 
-auto ContextMenu::handle_mouse(MouseEvent const &event) -> bool {
+bool ContextMenu::handle_mouse(MouseEvent const &event) {
     auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
 
     if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
@@ -158,7 +140,7 @@ auto ContextMenu::handle_mouse(MouseEvent const &event) -> bool {
     return false;
 }
 
-auto ContextMenu::handle_key(KeyEvent const &event) -> bool {
+bool ContextMenu::handle_key(KeyEvent const &event) {
     if (event.type != KeyEvent::Type::Press) {
         return false;
     }
@@ -167,7 +149,8 @@ auto ContextMenu::handle_key(KeyEvent const &event) -> bool {
         auto n = static_cast<int>(items_.size());
         for (auto step = 0; step < n; step++) {
             from = (from + dir + n) % n;
-            if (items_[from].type != MenuItem::Type::Separator && items_[from].command->is_enabled()) {
+            if (items_[from].type != MenuItem::Type::Separator &&
+                items_[from].command->is_enabled()) {
                 return from;
             }
         }
