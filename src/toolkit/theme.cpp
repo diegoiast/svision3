@@ -549,6 +549,8 @@ class BaseTheme : public Theme {
         return {w, fm.height + 4.0f};
     }
 
+    Color error_color() const override { return palette_.error.lighten(0.3f); }
+
     Size measure_button(std::string_view text, Icon const &icon) const override {
         auto text_w = Painter::measure_text(text, button.font_size).width;
         auto icon_w = 0.0f;

@@ -237,6 +237,8 @@ class Theme {
     virtual void draw_toolbar(Painter &painter, Rect const &rect) const = 0;
     virtual Size measure_label(std::string_view text, float font_size) const = 0;
 
+    virtual Color error_color() const { return Color::rgb(1.0f, 0.85f, 0.85f); }
+
     // Metrics and Styles
     virtual Size measure_button(std::string_view text, Icon const &icon) const = 0;
     virtual Size measure_checkbox(std::string_view text) const = 0;

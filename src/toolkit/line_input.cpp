@@ -26,7 +26,7 @@ static std::string get_masked_text(std::string_view text, size_t byte_limit = st
 LineInput::LineInput(std::string placeholder)
     : placeholder_(std::move(placeholder)), cursor_blink_time_(std::chrono::steady_clock::now()) {
     state.focusable = true;
-    state.focused = false;    
+    state.focused = false;
     read_only_ = false;
 
     select_all_cmd = Command::create("Select All", [this] { select_all(); });
@@ -282,22 +282,21 @@ bool LineInput::is_valid() const {
 void LineInput::paint(Painter &painter) {
     auto const &style = Theme::current().line_input;
     auto bg = is_focused() ? style.background_focused : style.background;
+    if (validation_mode_ == ValidationMode::Notify && !is_valid()) {
+        bg = Theme::current().error_color();
+    }
+
+    auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto border = is_focused() ? style.border_focused : style.border;
-    auto fm = painter.font_metrics(style.font_size);
-    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
+    painter.draw_frame(rect, bg, border, style, true);
+
     auto content_x = style.padding.left;
     auto content_w = content_available_width();
     auto clip_rect = Rect{content_x, 0, content_w, rect_.height};
     auto tx = content_x - scroll_offset_;
-    // This text is used only for space calculations only
+    auto fm = painter.font_metrics(style.font_size);
+    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
     auto d_text = password_mode_ ? get_masked_text(text_) : text_;
-    // FIXME: this color should come from theme
-    if (validation_mode_ == ValidationMode::Notify && !is_valid()) {
-        // Error background
-        bg = Color::rgb(1.0f, 0.85f, 0.85f);
-    }
-
-    painter.draw_frame({0, 0, rect_.width, rect_.height}, bg, border, style, true);
     painter.push_clip(clip_rect);
     ensure_cursor_visible(painter);
 
