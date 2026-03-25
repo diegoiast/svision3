@@ -2,17 +2,17 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "linux_utils.hpp"
-#include <spdlog/spdlog.h>
-#include <toml++/toml.hpp>
-#include <fstream>
-#include <sstream>
-#include <cstdlib>
 #include <algorithm>
+#include <cstdlib>
+#include <fstream>
+#include <spdlog/spdlog.h>
+#include <sstream>
+#include <toml++/toml.hpp>
 
 namespace toolkit::linux_utils {
 
 static SystemFonts detect_kde_fonts() {
-    SystemFonts result = {"sans-serif", "monospace"};
+    SystemFonts result = {"sans-serif", "monospace", 0};
     const char *home = std::getenv("HOME");
     if (!home) {
         return result;
@@ -70,8 +70,10 @@ static SystemFonts detect_kde_fonts() {
                     auto next_comma = val.find(',', comma + 1);
                     if (next_comma != std::string::npos) {
                         try {
-                            result.font_size = std::stof(val.substr(comma + 1, next_comma - comma - 1));
-                        } catch (...) {}
+                            result.font_size =
+                                std::stof(val.substr(comma + 1, next_comma - comma - 1));
+                        } catch (...) {
+                        }
                     }
                 } else {
                     result.system = val;
@@ -85,7 +87,8 @@ static SystemFonts detect_kde_fonts() {
             }
         }
     } catch (const toml::parse_error &err) {
-        spdlog::debug("KDE: toml++ parse error in {}: {} (at line {})", path, err.description(), err.source().begin.line);
+        spdlog::debug("KDE: toml++ parse error in {}: {} (at line {})", path, err.description(),
+                      err.source().begin.line);
     } catch (...) {
         spdlog::debug("KDE: Unknown error parsing {}", path);
     }
@@ -93,8 +96,6 @@ static SystemFonts detect_kde_fonts() {
     return result;
 }
 
-SystemFonts detect_system_fonts() {
-    return detect_kde_fonts();
-}
+SystemFonts detect_system_fonts() { return detect_kde_fonts(); }
 
 } // namespace toolkit::linux_utils

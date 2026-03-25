@@ -93,9 +93,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 19. [x] TextArea (multi-line input).
 20. [ ] TreeView.
 21. [x] TableView / DataGrid.
-22. [ ] MenuBar / Menu / ContextMenu. - see [menus-toolbars-commands.md](separate document).
+22. [x] MenuBar / Menu / ContextMenu. - see [menus-toolbars-commands.md](separate document).
 23. [x] Toolbar.
-24. [ ] Toolbar + images.
+24. [x] Toolbar + images.
 25. [ ] Toolbar + custom widgets.
 26. [ ] Dialog (modal/modeles).
 27. [ ] StatusBar.

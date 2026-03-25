@@ -18,7 +18,7 @@ TEST_CASE("theme_style_count matches enum", "[theme]") {
 
 TEST_CASE("Theme::create produces named theme", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Light);
-    REQUIRE(t.name == "macOS");
+    REQUIRE(t->name == "macOS");
 }
 
 TEST_CASE("Theme::create with all styles and schemes", "[theme]") {
@@ -26,10 +26,10 @@ TEST_CASE("Theme::create with all styles and schemes", "[theme]") {
         auto style = static_cast<ThemeStyle>(i);
         for (auto scheme : {ColorScheme::Light, ColorScheme::Dark}) {
             auto t = Theme::create(style, scheme);
-            REQUIRE_FALSE(t.name.empty());
-            REQUIRE(t.window.background.a == 1.0f);
-            REQUIRE(t.button.font_size > 0);
-            REQUIRE(t.label.font_size > 0);
+            REQUIRE_FALSE(t->name.empty());
+            REQUIRE(t->window.background.a == 1.0f);
+            REQUIRE(t->button.font_size > 0);
+            REQUIRE(t->label.font_size > 0);
         }
     }
 }
@@ -57,21 +57,21 @@ TEST_CASE("Non-Win95 palettes are not beveled", "[theme]") {
 
 TEST_CASE("Theme::set_current / current round-trip", "[theme]") {
     auto t = Theme::create(ThemeStyle::Material, ColorScheme::Dark);
-    Theme::set_current(t);
+    Theme::set_current(std::move(t));
     REQUIRE(Theme::current().name == "Material");
 }
 
 TEST_CASE("Dark theme has lighter text than background", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Dark);
-    float text_luma = 0.299f * t.label.text.r + 0.587f * t.label.text.g + 0.114f * t.label.text.b;
-    float bg_luma = 0.299f * t.window.background.r + 0.587f * t.window.background.g + 0.114f * t.window.background.b;
+    float text_luma = 0.299f * t->label.text.r + 0.587f * t->label.text.g + 0.114f * t->label.text.b;
+    float bg_luma = 0.299f * t->window.background.r + 0.587f * t->window.background.g + 0.114f * t->window.background.b;
     REQUIRE(text_luma > bg_luma);
 }
 
 TEST_CASE("Light theme has darker text than background", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Light);
-    float text_luma = 0.299f * t.label.text.r + 0.587f * t.label.text.g + 0.114f * t.label.text.b;
-    float bg_luma = 0.299f * t.window.background.r + 0.587f * t.window.background.g + 0.114f * t.window.background.b;
+    float text_luma = 0.299f * t->label.text.r + 0.587f * t->label.text.g + 0.114f * t->label.text.b;
+    float bg_luma = 0.299f * t->window.background.r + 0.587f * t->window.background.g + 0.114f * t->window.background.b;
     REQUIRE(text_luma < bg_luma);
 }
 
@@ -82,22 +82,22 @@ TEST_CASE("Theme from custom palette", "[theme]") {
     p.text = Color::rgb(0.9f, 0.9f, 0.9f);
     p.border = Color::rgb(0.5f, 0.5f, 0.5f);
     p.accent = Color::rgb(1.0f, 0.0f, 0.0f);
-    p.alternate_bg = Color::rgb(0.25f, 0.25f, 0.25f);
+    p.alternate = Color::rgb(0.25f, 0.25f, 0.25f);
     p.font_size = 16.0f;
 
     auto t = Theme::create(ThemeStyle::MacOS, p);
-    REQUIRE(t.window.background.r == 0.1f);
-    REQUIRE(t.label.font_size == 16.0f);
-    REQUIRE(t.list_view.alternate_bg.r == 0.25f);
+    REQUIRE(t->window.background.r == 0.1f);
+    REQUIRE(t->label.font_size == 16.0f);
+    REQUIRE(t->list_view.alternate_bg.r == 0.25f);
 }
 
 TEST_CASE("ProgressBar style has Win95 chunked", "[theme]") {
     auto t = Theme::create(ThemeStyle::Win95, ColorScheme::Light);
-    REQUIRE(t.progress_bar.chunked == true);
-    REQUIRE(t.progress_bar.bar_height == 20.0f);
+    REQUIRE(t->progress_bar.chunked == true);
+    REQUIRE(t->progress_bar.bar_height == 20.0f);
 }
 
 TEST_CASE("Non-Win95 ProgressBar is not chunked", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Light);
-    REQUIRE(t.progress_bar.chunked == false);
+    REQUIRE(t->progress_bar.chunked == false);
 }

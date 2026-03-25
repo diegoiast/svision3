@@ -3,7 +3,9 @@
 
 #pragma once
 
+#include "toolkit/image_loader.hpp"
 #include "toolkit/types.hpp"
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -143,22 +145,36 @@ struct WindowStyle {
 };
 
 struct Palette {
+    Color window;           // Main background for windows
+    Color base;             // Background for input widgets/lists
+    Color alternate;        // Alternate background for lists
+    Color text;             // Normal text color
+    Color placeholder;      // Placeholder/de-emphasized text
+    Color highlight;        // Background for selected items
+    Color highlighted_text; // Text color for selected items
+    Color border;           // Border color for widgets
+    Color accent;           // Primary brand/action color
+    Color link;             // Color for links/actions
+
+    // Semantic colors
+    Color success;
+    Color warning;
+    Color error;
+
+    // Platform-specific defaults
+    SystemFonts fonts;
+
+    // Backward compatibility fields
     Color window_bg;
-    Color widget_bg = Color::rgb(1, 1, 1);
-    Color input_bg = Color::rgb(1, 1, 1);
-    Color text;
-    Color border;
-    Color accent;
-    Color background_selected = Color::rgba(0, 0, 0, 0);
-    Color alternate_bg = Color::rgb(0.94f, 0.94f, 0.94f);
+    Color widget_bg;
+    Color input_bg;
     float font_size = 14.0f;
     std::string system_font = "sans-serif";
     std::string monospace_font = "monospace";
     float corner_radius = 0.0f;
     float border_width = 1.0f;
     bool beveled = false;
-    Color highlight = Color::rgba(0, 0, 0, 0);
-    Color shadow = Color::rgba(0, 0, 0, 0);
+    Color shadow;
     float auto_repeat_delay = 0.5f;
     float auto_repeat_interval = 0.4f;
 };
@@ -171,7 +187,67 @@ inline constexpr int theme_style_count = 6;
 
 class Painter;
 
-struct Theme {
+class Theme {
+  public:
+    virtual ~Theme() = default;
+
+    // Factory methods
+    static std::unique_ptr<Theme> create(ThemeStyle style, ColorScheme scheme = ColorScheme::Light);
+    static std::unique_ptr<Theme> create(ThemeStyle style, Palette const &palette);
+    static const Theme &current();
+    static void set_current(std::unique_ptr<Theme> theme);
+    static ThemeStyle detect_system_style();
+    static const char *style_name(ThemeStyle style);
+    static Palette default_palette(ThemeStyle style, ColorScheme scheme = ColorScheme::Light);
+
+    // Primitive Drawing Methods
+    virtual void draw_button(Painter &painter, Rect const &rect, std::string_view text,
+                             Icon const &icon, bool hovered, bool pressed, bool focused,
+                             bool enabled, bool flat) const = 0;
+    virtual void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
+                               CheckState state, bool hovered, bool pressed, bool focused,
+                               bool enabled) const = 0;
+    virtual void draw_radio_button(Painter &painter, Rect const &rect, std::string_view text,
+                                   bool checked, bool hovered, bool pressed, bool focused,
+                                   bool enabled) const = 0;
+    virtual void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
+                                 std::string_view placeholder, int cursor_pos, int selection_start,
+                                 int selection_end, bool focused, bool enabled) const = 0;
+    virtual void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
+                                   bool hovered, bool active, bool show_mnemonics,
+                                   int mnemonic_index) const = 0;
+    virtual void draw_menubar_background(Painter &painter, Rect const &rect) const = 0;
+    virtual void draw_menu_background(Painter &painter, Rect const &rect) const = 0;
+    virtual void draw_menu_item(Painter &painter, Rect const &rect, std::string_view text,
+                                Icon const &icon, std::string_view shortcut, bool hovered,
+                                bool enabled, bool checkable, bool checked) const = 0;
+    virtual void draw_menu_separator(Painter &painter, Rect const &rect) const = 0;
+    virtual void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
+                                  bool enabled) const = 0;
+    virtual void draw_slider(Painter &painter, Rect const &rect, float value, bool hovered,
+                             bool pressed, bool focused, bool enabled) const = 0;
+    virtual void draw_tab_bar_background(Painter &painter, Rect const &rect) const = 0;
+    virtual void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
+                          bool hovered, bool enabled) const = 0;
+    virtual void draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
+                                Icon const &icon, bool selected, bool hovered,
+                                bool alternate) const = 0;
+    virtual void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const = 0;
+
+    // Metrics and Styles
+    virtual Size measure_button(std::string_view text, Icon const &icon) const = 0;
+    virtual Size measure_menubar_item(std::string_view text) const = 0;
+    virtual Size measure_menu_item(std::string_view text, Icon const &icon,
+                                   std::string_view shortcut) const = 0;
+    virtual float menu_separator_height() const = 0;
+    virtual Size measure_tab(std::string_view text) const = 0;
+    virtual float list_item_height() const = 0;
+    virtual Size measure_tooltip(std::string_view text) const = 0;
+
+    virtual Margins button_padding() const = 0;
+    virtual Margins line_input_padding() const = 0;
+
+    // Members for backward compatibility during migration
     std::string name;
     ThemeStyle style;
     std::string system_font;
@@ -192,21 +268,6 @@ struct Theme {
     ProgressBarStyle progress_bar;
     SliderStyle slider;
     TooltipStyle tooltip;
-
-    Size measure_menubar_item(std::string_view title) const;
-    void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
-                           bool active, bool show_mnemonics, int mnemonic_index) const;
-
-    static Theme from_palette(std::string name, Palette const &p);
-
-    static const char *style_name(ThemeStyle style);
-    static Palette default_palette(ThemeStyle style, ColorScheme scheme = ColorScheme::Light);
-    static Theme create(ThemeStyle style, Palette const &palette);
-    static Theme create(ThemeStyle style, ColorScheme scheme = ColorScheme::Light);
-
-    static Theme const &current();
-    static void set_current(Theme theme);
-    static ThemeStyle detect_system_style();
 };
 
 } // namespace toolkit
