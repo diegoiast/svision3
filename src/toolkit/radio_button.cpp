@@ -29,28 +29,9 @@ RadioButton::RadioButton(std::string text, RadioGroup &group)
 }
 
 void RadioButton::paint(Painter &painter) {
-    auto const &style = Theme::current().radio;
-    auto fm = painter.font_metrics(style.font_size);
-    auto r = style.box_size / 2.0f;
-    auto center = Point{r, rect_.height / 2.0f};
-    auto text_x = style.box_size + style.spacing;
-    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
-    auto border = state.focused ? style.border_focused : style.border;
-
-    painter.fill_circle(center, r, style.background);
-    painter.draw_circle(center, r, border, style.border_width);
-
-    // FIXME: this should be drawed by the theme, not here
-    if (style.beveled) {
-        painter.draw_circle(center, r - 1.0f, style.shadow, 1.0f);
-    }
-    if (selected_) {
-        painter.fill_circle(center, r * 0.45f, style.indicator);
-    }
-    painter.draw_text(text_, {text_x, baseline_y}, style.text, style.font_size);
-    if (is_focused()) {
-        painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
-    }
+    auto rect = Rect{0, 0, rect_.width, rect_.height};
+    Theme::current().draw_radio_button(painter, rect, text_, selected_, false, false, is_focused(),
+                                       is_enabled());
 }
 
 bool RadioButton::handle_mouse(MouseEvent const &event) {

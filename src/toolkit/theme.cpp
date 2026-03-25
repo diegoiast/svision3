@@ -8,6 +8,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <spdlog/spdlog.h>
 
 namespace toolkit {
 
@@ -27,6 +28,21 @@ static Color mid(Color a, Color b) {
 class BaseTheme : public Theme {
   public:
     explicit BaseTheme(Palette p) : palette_(std::move(p)) {
+        // Backward compatibility: use old field names if new ones not set
+        if (palette_.window.r == 0 && palette_.window.g == 0 && palette_.window.b == 0) {
+            if (palette_.window_bg.r > 0 || palette_.window_bg.g > 0 || palette_.window_bg.b > 0) {
+                palette_.window = palette_.window_bg;
+            }
+        }
+        if (palette_.base.r == 0 && palette_.base.g == 0 && palette_.base.b == 0) {
+            if (palette_.widget_bg.r > 0 || palette_.widget_bg.g > 0 || palette_.widget_bg.b > 0) {
+                palette_.base = palette_.widget_bg;
+            }
+        }
+        if (palette_.fonts.font_size == 0 && palette_.font_size > 0) {
+            palette_.fonts.font_size = palette_.font_size;
+        }
+
         // Initialize backward compatibility members
         name = "Base";
         style = ThemeStyle::Material;
@@ -703,6 +719,7 @@ std::unique_ptr<Theme> Theme::create(ThemeStyle style, Palette const &palette) {
         t = std::make_unique<BaseTheme>(palette);
         break;
     }
+
     t->name = style_name(style);
     t->style = style;
     return t;

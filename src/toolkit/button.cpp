@@ -126,80 +126,9 @@ void Button::set_visible(bool v) {
 }
 
 void Button::paint(Painter &painter) {
-    auto const &style = Theme::current().button;
-    auto bg = background_color_.value_or(style.background);
-    auto border_c = is_focused() ? style.border_focused : style.border;
-    auto text_c = is_enabled() ? style.text : style.text_disabled;
-    auto text_offset = (style.beveled && pressed_ && is_enabled()) ? 1.0f : 0.0f;
-    auto fm = painter.font_metrics(style.font_size);
-    auto text_w = painter.text_size(display_text_, style.font_size).width;
-    auto icon_w = 0.0f;
-    auto icon_h = 0.0f;
-
-    if (icon_) {
-        icon_w = static_cast<float>(icon_->width);
-        icon_h = static_cast<float>(icon_->height);
-    }
-    auto total_w = text_w + (icon_ ? (icon_w + 4.0f) : 0.0f);
-    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
-    auto text_x = (rect_.width - total_w) / 2.0f + text_offset + (icon_ ? icon_w + 4.0f : 0.0f);
-    auto text_pos = Point{text_x, baseline_y + text_offset};
-    auto local_rect = Rect{0, 0, rect_.width, rect_.height};
-
-    if (is_enabled()) {
-        if (background_color_) {
-            if (pressed_) {
-                bg = background_color_->darken(0.1f);
-            } else if (hovered_) {
-                bg = background_color_->lighten(0.1f);
-            }
-        } else {
-            if (pressed_ && style.background_pressed) {
-                bg = *style.background_pressed;
-            } else if (is_focused()) {
-                bg = style.background_selected;
-            } else if (hovered_ && style.background_hovered) {
-                bg = *style.background_hovered;
-            }
-        }
-    }
-
-    bool show_full_frame = !flat_ || hovered_ || pressed_;
-    if (show_full_frame) {
-        painter.draw_frame(local_rect, bg, border_c, style, pressed_ && is_enabled());
-    } else if (background_color_) {
-        // Flat button, not hovered/pressed, but has a custom background:
-        // just fill the background without border.
-        if (style.corner_radius > 0.0f) {
-            painter.fill_rounded_rect(local_rect, bg, style.corner_radius);
-        } else {
-            painter.fill_rect(local_rect, bg);
-        }
-    }
-
-    if (icon_) {
-        auto icon_x = (rect_.width - total_w) / 2.0f + text_offset;
-        auto icon_y = (rect_.height - icon_h) / 2.0f;
-        painter.draw_image(*icon_, Point{icon_x, icon_y});
-    }
-
-    painter.draw_text(display_text_, text_pos, text_c, style.font_size);
-
-    if (mnemonic_index_ >= 0 && is_enabled()) {
-        // FIXME: mnemonic drawing should be more generalized, and dependent on style
-        auto before = display_text_.substr(0, mnemonic_index_);
-        auto ch = std::string(1, display_text_[mnemonic_index_]);
-        auto before_w = before.empty() ? 0.0f : painter.text_size(before, style.font_size).width;
-        auto ch_w = painter.text_size(ch, style.font_size).width;
-        auto ul_y = baseline_y + text_offset + fm.descent * 0.4f;
-
-        painter.draw_line({text_x + before_w, ul_y}, {text_x + before_w + ch_w, ul_y}, text_c,
-                          2.0f);
-    }
-
-    if (is_focused() && is_enabled()) {
-        painter.draw_focus_ring(local_rect, style.corner_radius);
-    }
+    auto rect = Rect{0, 0, rect_.width, rect_.height};
+    Theme::current().draw_button(painter, rect, display_text_, icon_, hovered_, pressed_,
+                                 is_focused(), is_enabled(), flat_);
 }
 
 bool Button::trigger_mnemonic(char key) {
