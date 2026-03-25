@@ -455,6 +455,19 @@ class BaseTheme : public Theme {
         painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
     }
 
+    void draw_list_background(Painter &painter, Rect const &rect) const override {
+        auto const &style = list_view;
+        if (style.beveled) {
+            painter.draw_frame(rect, style.background, style.border, style, true);
+        } else {
+            painter.fill_rounded_rect(rect, style.background, style.corner_radius);
+            if (style.border_width > 0) {
+                painter.draw_rounded_rect(rect, style.border, style.corner_radius,
+                                          style.border_width);
+            }
+        }
+    }
+
     void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const override {
         auto const &style = tooltip;
 
