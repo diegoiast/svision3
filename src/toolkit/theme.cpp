@@ -459,7 +459,7 @@ class BaseTheme : public Theme {
     }
 
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
-                  bool hovered, bool enabled, bool has_close) const override {
+                  bool hovered, bool enabled, bool has_close, bool hovered_close) const override {
         auto const &style = tab_widget;
         auto bg =
             active ? style.tab_active_bg : (hovered ? style.tab_hover_bg : style.tab_inactive_bg);
@@ -469,10 +469,39 @@ class BaseTheme : public Theme {
 
         auto fm = painter.font_metrics(style.font_size);
         auto text_w = painter.text_size(text, style.font_size).width;
-        auto text_x = rect.x + (rect.width - text_w) / 2.0f;
+
+        auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
+        auto left_space = style.tab_padding_h;
+        auto text_area_w = rect.width - left_space - right_space;
+        auto text_x = rect.x + left_space + (text_area_w - text_w) / 2.0f;
+        if (text_x < rect.x + left_space) {
+            text_x = rect.x + left_space;
+        }
 
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
         painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+
+        if (has_close) {
+            auto close_btn_size = 14.0f;
+            auto close_gap = 6.0f;
+            auto close_x = rect.x + rect.width - style.tab_padding_h - close_btn_size;
+            auto close_rect = Rect{close_x, rect.y + (rect.height - close_btn_size) / 2.0f,
+                                   close_btn_size, close_btn_size};
+            auto close_cy = rect.y + rect.height / 2.0f;
+            auto close_cx = close_x + close_btn_size / 2.0f;
+
+            if (hovered_close) {
+                painter.fill_rounded_rect(close_rect, Color::rgb(0.9f, 0.2f, 0.2f), 4.0f);
+            }
+
+            auto cs = close_btn_size * 0.3f;
+            auto x_col = hovered_close ? Color::rgb(1.0f, 1.0f, 1.0f)
+                                       : Color::rgba(text_c.r, text_c.g, text_c.b, 0.6f);
+            painter.draw_line({close_cx - cs, close_cy - cs}, {close_cx + cs, close_cy + cs}, x_col,
+                              1.5f);
+            painter.draw_line({close_cx + cs, close_cy - cs}, {close_cx - cs, close_cy + cs}, x_col,
+                              1.5f);
+        }
     }
 
     void draw_list_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,

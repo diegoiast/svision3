@@ -456,50 +456,12 @@ void TabWidget::paint(Painter &painter) {
             vertical ? Rect{bar_x, draw_y, thickness, size} : Rect{draw_x, bar_y, size, thickness};
         auto active = (i == current_);
         auto hovered = (i == hovered_tab_ && !active);
-        auto bg = active    ? style.tab_active_bg
-                  : hovered ? style.tab_hover_bg
-                            : style.tab_inactive_bg;
-        auto text_col = active ? style.tab_active_text : style.tab_inactive_text;
+        auto hovered_close = (i == hovered_close_);
 
-        if (active && style.corner_radius > 0) {
-            auto r = style.corner_radius;
-            painter.fill_rounded_rect(tab_rect, bg, r);
-        } else {
-            painter.fill_rect(tab_rect, bg);
-        }
+        Theme::current().draw_tab(painter, tab_rect, tabs_[i].title, active, hovered, true, true,
+                                  hovered_close);
 
-        // Draw text centered, accounting for close button on the right
-        auto text_w = painter.text_size(tabs_[i].title, style.font_size).width;
-        auto right_space = style.tab_padding_h + close_btn_size_ + close_btn_gap_;
-        auto left_space = style.tab_padding_h;
-        auto text_area_w = tab_rect.width - left_space - right_space;
-        auto text_x = tab_rect.x + left_space + (text_area_w - text_w) / 2.0f;
-        if (text_x < tab_rect.x + left_space) {
-            text_x = tab_rect.x + left_space;
-        }
-        auto text_y = tab_rect.y + (tab_rect.height - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(tabs_[i].title, {text_x, text_y}, text_col, style.font_size);
-
-        // Draw close button
-        auto close_x = tab_rect.x + tab_rect.width - style.tab_padding_h - close_btn_size_;
-        auto close_cy = tab_rect.y + tab_rect.height / 2.0f;
-        auto close_cx = close_x + close_btn_size_ / 2.0f;
-
-        if (i == hovered_close_) {
-            auto cr = close_btn_size_ / 2.0f + 1.0f;
-            auto hover_circle = Color::rgba(text_col.r, text_col.g, text_col.b, 0.15f);
-            painter.fill_circle({close_cx, close_cy}, cr, hover_circle);
-        }
-
-        auto cs = close_btn_size_ * 0.3f;
-        auto x_col = (i == hovered_close_) ? text_col
-                                           : Color::rgba(text_col.r, text_col.g, text_col.b, 0.5f);
-        painter.draw_line({close_cx - cs, close_cy - cs}, {close_cx + cs, close_cy + cs}, x_col,
-                          1.5f);
-        painter.draw_line({close_cx + cs, close_cy - cs}, {close_cx - cs, close_cy + cs}, x_col,
-                          1.5f);
-
-        if (active) {
+        if (!vertical && active) {
             auto indicator = Rect{};
             if (orientation_ == TabOrientation::North) {
                 indicator = {tab_rect.x, tab_rect.y + thickness - 3, tab_rect.width, 2};
