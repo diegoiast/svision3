@@ -248,6 +248,13 @@ class Theme {
                               int cursor_pos, int selection_start, int selection_end, bool focused,
                               bool enabled, bool hovered_up, bool pressed_up, bool hovered_down,
                               bool pressed_down) const = 0;
+    virtual void draw_text_edit(Painter &painter, Rect const &rect,
+                                std::span<std::string const> lines, int cursor_line, int cursor_col,
+                                int selection_start_line, int selection_start_col,
+                                int selection_end_line, int selection_end_col,
+                                int first_visible_line, float line_height, float gutter_width,
+                                float scroll_x, float scroll_y, bool focused, bool enabled,
+                                std::chrono::steady_clock::time_point cursor_blink_time) const = 0;
     virtual Size measure_label(std::string_view text, float font_size) const = 0;
 
     virtual Color error_color() const { return Color::rgb(1.0f, 0.85f, 0.85f); }

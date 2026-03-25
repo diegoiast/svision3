@@ -4,6 +4,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/types.hpp"
 #include "toolkit/utf8.hpp"
 #include <algorithm>
 #include <cctype>
@@ -750,6 +751,109 @@ class BaseTheme : public Theme {
 
         draw_spinbox_button(up_rect, hovered_up, pressed_up);
         draw_spinbox_button(down_rect, hovered_down, pressed_down);
+    }
+
+    void draw_text_edit(Painter &painter, Rect const &rect, std::span<std::string const> lines,
+                        int cursor_line, int cursor_col, int selection_start_line,
+                        int selection_start_col, int selection_end_line, int selection_end_col,
+                        int first_visible_line, float line_height, float gutter_width,
+                        float scroll_x, float scroll_y, bool focused, bool enabled,
+                        std::chrono::steady_clock::time_point cursor_blink_time) const override {
+        auto const &style = text_edit;
+        auto fm = painter.font_metrics(style.font_size, FontFamily::Monospace);
+        auto bg = focused ? style.background_focused : style.background;
+        auto border = focused ? style.border_focused : style.border;
+        auto text_c = enabled ? style.text : mid(style.text, style.background);
+
+        painter.draw_frame(rect, bg, border, style, true);
+        painter.push_clip(rect);
+
+        auto last = std::min(static_cast<int>(lines.size()) - 1,
+                             first_visible_line + static_cast<int>(rect.height / line_height));
+
+        auto gutter_rect = Rect{rect.x, rect.y, gutter_width, rect.height};
+        auto gutter_bg = style.background.darken(0.03f);
+        painter.fill_rect(gutter_rect, gutter_bg);
+
+        for (auto i = first_visible_line; i <= last; i++) {
+            auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
+            auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
+            auto num = std::to_string(i + 1);
+            auto nw = Painter::measure_text(num, style.font_size, FontFamily::Monospace).width;
+            painter.draw_text(num, {rect.x + gutter_width - nw - 8.0f, baseline}, style.placeholder,
+                              style.font_size, FontFamily::Monospace);
+        }
+
+        auto text_area =
+            Rect{rect.x + gutter_width, rect.y, rect.width - gutter_width, rect.height};
+        auto tx0 = rect.x + gutter_width - scroll_x;
+        auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
+
+        auto has_sel = selection_start_line >= 0 && selection_end_line >= 0 &&
+                       (selection_start_line < selection_end_line ||
+                        (selection_start_line == selection_end_line &&
+                         selection_start_col < selection_end_col));
+
+        painter.push_clip(text_area);
+        for (auto i = first_visible_line; i <= last; i++) {
+            auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
+            auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
+
+            if (has_sel) {
+                auto line_start_col = 0;
+                auto line_end_col = static_cast<int>(lines[i].size());
+                auto sel_start = (i == selection_start_line) ? selection_start_col : line_start_col;
+                auto sel_end = (i == selection_end_line) ? selection_end_col : line_end_col;
+
+                if (sel_start < sel_end) {
+                    auto sx =
+                        tx0 + (sel_start > 0
+                                   ? Painter::measure_text(lines[i].substr(0, sel_start),
+                                                           style.font_size, FontFamily::Monospace)
+                                         .width
+                                   : 0.0f);
+                    auto ex = tx0 + Painter::measure_text(lines[i].substr(0, sel_end),
+                                                          style.font_size, FontFamily::Monospace)
+                                        .width;
+                    if (i != selection_end_line) {
+                        ex += style.font_size * 0.4f;
+                    }
+                    painter.fill_rect({sx, y, ex - sx, line_height}, sel_bg);
+                }
+            }
+
+            painter.draw_text(lines[i], {tx0, baseline}, text_c, style.font_size,
+                              FontFamily::Monospace);
+        }
+
+        if (focused) {
+            auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time;
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+            if ((ms / 500) % 2 == 0) {
+                auto cy =
+                    rect.y + line_height * static_cast<float>(cursor_line - first_visible_line);
+                auto cx = tx0;
+                if (cursor_col > 0 && cursor_line < static_cast<int>(lines.size())) {
+                    cx += Painter::measure_text(lines[cursor_line].substr(0, cursor_col),
+                                                style.font_size, FontFamily::Monospace)
+                              .width;
+                }
+                painter.draw_line({cx, cy}, {cx, cy + line_height}, style.cursor, 1.5f);
+            }
+        }
+
+        painter.pop_clip();
+
+        auto content_h = line_height * static_cast<float>(lines.size());
+        if (content_h > rect.height) {
+            auto bar_h = std::max(20.0f, rect.height * (rect.height / content_h));
+            auto bar_y = (scroll_y / content_h) * rect.height;
+            auto sb = Rect{rect.x + rect.width - 6.0f, rect.y + bar_y, 4.0f, bar_h};
+            painter.fill_rounded_rect(
+                sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.25f), 2.0f);
+        }
+
+        painter.pop_clip();
     }
 
     Size measure_label(std::string_view text, float font_size) const override {

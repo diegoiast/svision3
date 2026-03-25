@@ -378,124 +378,26 @@ void TextEdit::sync_commands() {
 }
 
 void TextEdit::paint(Painter &painter) {
-    auto const &style = Theme::current().text_edit;
+    auto const &theme = Theme::current();
     auto lh = line_height();
     auto gw = gutter_width();
-    auto fm = painter.font_metrics(style.font_size, kFont);
-    auto bg = is_focused() ? style.background_focused : style.background;
-    auto border = is_focused() ? style.border_focused : style.border;
     auto local_rect = Rect{0, 0, rect_.width, rect_.height};
 
-    painter.draw_frame(local_rect, bg, border, style, true);
-    painter.push_clip(local_rect);
     clamp_scroll();
 
     auto first = std::max(0, static_cast<int>(scroll_y_ / lh));
-    auto last = std::min(static_cast<int>(lines_.size()) - 1,
-                         static_cast<int>((scroll_y_ + rect_.height) / lh));
 
-    // Gutter background
-    // FIXME: use colors from theme
-    auto gutter_rect = Rect{0, 0, gw, rect_.height};
-    auto gutter_bg = style.background.darken(0.03f);
-    painter.fill_rect(gutter_rect, gutter_bg);
-
-    for (auto i = first; i <= last; i++) {
-        auto y = lh * i - scroll_y_;
-        auto baseline = y + (lh - fm.height) / 2.0f + fm.ascent;
-        auto num = std::to_string(i + 1);
-        auto nw = Painter::measure_text(num, style.font_size, kFont).width;
-
-        painter.draw_text(num, {gw - nw - 8.0f, baseline}, style.placeholder, style.font_size,
-                          kFont);
-    }
-
-    // Text area clipping
-    auto text_area = Rect{gw, 0, rect_.width - gw, rect_.height};
-    auto tx0 = gw - scroll_x_;
     auto ss = sel_start();
     auto se = sel_end();
-    auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
 
-    painter.push_clip(text_area);
-    for (auto i = first; i <= last; i++) {
-        auto y = lh * i - scroll_y_;
-        auto baseline = y + (lh - fm.height) / 2.0f + fm.ascent;
+    auto sel_start_line = has_selection() ? ss.line : -1;
+    auto sel_start_col = has_selection() ? ss.col : -1;
+    auto sel_end_line = has_selection() ? se.line : -1;
+    auto sel_end_col = has_selection() ? se.col : -1;
 
-        // Selection highlight
-        // FIXME: do we need static cast? This is barely readable
-        if (has_selection() && Pos{i, 0} <= se &&
-            ss < Pos{i, static_cast<int>(lines_[i].size()) + 1}) {
-            auto sc = (i == ss.line) ? ss.col : 0;
-            auto ec = (i == se.line) ? se.col : static_cast<int>(lines_[i].size());
-            auto sx =
-                tx0 +
-                (sc > 0
-                     ? Painter::measure_text(lines_[i].substr(0, sc), style.font_size, kFont).width
-                     : 0.0f);
-            auto ex =
-                tx0 + Painter::measure_text(lines_[i].substr(0, ec), style.font_size, kFont).width;
-            if (i != se.line) {
-                ex += style.font_size * 0.4f;
-            }
-            painter.fill_rect({sx, y, ex - sx, lh}, sel_bg);
-        }
-
-        painter.draw_text(lines_[i], {tx0, baseline}, style.text, style.font_size, kFont);
-    }
-
-    // Cursor
-    if (is_focused()) {
-        auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        if ((ms / 500) % 2 == 0) {
-            auto cy = lh * cursor_.line - scroll_y_;
-            auto cx = tx0;
-            if (cursor_.col > 0) {
-                cx += Painter::measure_text(lines_[cursor_.line].substr(0, cursor_.col),
-                                            style.font_size, kFont)
-                          .width;
-            }
-            painter.draw_line({cx, cy}, {cx, cy + lh}, style.cursor, 1.5f);
-        }
-    }
-
-    painter.pop_clip(); // text area
-
-    // ── Scrollbars ──────────────────────────────────────────────────────────
-    auto content_h = lh * static_cast<float>(lines_.size());
-    auto visible_h = rect_.height;
-    if (content_h > visible_h) {
-        auto bar_h = std::max(20.0f, visible_h * (visible_h / content_h));
-        auto bar_y = (scroll_y_ / content_h) * visible_h;
-        auto sb = Rect{rect_.width - 6.0f, bar_y, 4.0f, bar_h};
-
-        painter.fill_rounded_rect(sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.25f),
-                                  2.0f);
-    }
-
-    auto max_line_w = 0.0f;
-    for (int i = first; i <= last; i++) {
-        float w = Painter::measure_text(lines_[i], style.font_size, kFont).width;
-        if (w > max_line_w) {
-            max_line_w = w;
-        }
-    }
-    auto content_w = max_line_w + 20.0f;
-    auto visible_w = rect_.width - gw;
-    if (content_w > visible_w) {
-        auto bar_w = std::max(20.0f, rect_.width * (visible_w / content_w));
-        auto bar_x = (scroll_x_ / content_w) * rect_.width;
-        Rect sb{bar_x, rect_.height - 6.0f, bar_w, 4.0f};
-        painter.fill_rounded_rect(sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.25f),
-                                  2.0f);
-    }
-
-    painter.pop_clip(); // outer
-
-    if (is_focused()) {
-        painter.draw_focus_ring(local_rect, style.corner_radius);
-    }
+    theme.draw_text_edit(painter, local_rect, lines_, cursor_.line, cursor_.col, sel_start_line,
+                         sel_start_col, sel_end_line, sel_end_col, first, lh, gw, scroll_x_,
+                         scroll_y_, is_focused(), is_enabled(), cursor_blink_time_);
 }
 
 // ── Mouse ───────────────────────────────────────────────────────────────────
