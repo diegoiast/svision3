@@ -149,18 +149,149 @@ class BaseTheme : public Theme {
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                      bool hovered, bool pressed, bool focused, bool enabled,
                      bool flat) const override {
-        // Fallback to widget logic for now during migration phase 3
+        auto const &style = button;
+        auto bg = style.background;
+        auto border_c = focused ? style.border_focused : style.border;
+        auto text_c = enabled ? style.text : style.text_disabled;
+        auto text_offset = (style.beveled && pressed && enabled) ? 1.0f : 0.0f;
+        auto fm = painter.font_metrics(style.font_size);
+        auto text_w = painter.text_size(text, style.font_size).width;
+        auto icon_w = 0.0f;
+        auto icon_h = 0.0f;
+
+        if (icon) {
+            icon_w = static_cast<float>(icon->width);
+            icon_h = static_cast<float>(icon->height);
+        }
+        auto total_w = text_w + (icon ? (icon_w + 4.0f) : 0.0f);
+        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto text_x = (rect.width - total_w) / 2.0f + text_offset + (icon ? icon_w + 4.0f : 0.0f);
+        auto text_pos = Point{text_x, baseline_y + text_offset};
+
+        if (enabled) {
+            if (pressed && style.background_pressed) {
+                bg = *style.background_pressed;
+            } else if (focused) {
+                bg = style.background_selected;
+            } else if (hovered && style.background_hovered) {
+                bg = *style.background_hovered;
+            }
+        }
+
+        bool show_full_frame = !flat || hovered || pressed;
+        if (show_full_frame) {
+            painter.draw_frame(rect, bg, border_c, style, pressed && enabled);
+        } else if (style.corner_radius > 0.0f) {
+            painter.fill_rounded_rect(rect, bg, style.corner_radius);
+        } else {
+            painter.fill_rect(rect, bg);
+        }
+
+        if (icon) {
+            auto icon_x = (rect.width - total_w) / 2.0f + text_offset;
+            auto icon_y = (rect.height - icon_h) / 2.0f;
+            painter.draw_image(*icon, Point{icon_x, icon_y});
+        }
+
+        painter.draw_text(text, text_pos, text_c, style.font_size);
+
+        if (focused && enabled) {
+            painter.draw_focus_ring(rect, style.corner_radius);
+        }
     }
 
     void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text, CheckState state,
-                       bool hovered, bool pressed, bool focused, bool enabled) const override {}
+                       bool hovered, bool pressed, bool focused, bool enabled) const override {
+        auto const &style = checkbox;
+        auto fm = painter.font_metrics(style.font_size);
+        auto box = style.box_size;
+        auto box_y = (rect.height - box) / 2.0f;
+        auto box_rect = Rect{rect.x, box_y, box, box};
+        auto border = focused ? style.border_focused : style.border;
+
+        painter.draw_frame(box_rect, style.background, border, style, true);
+
+        if (state == CheckState::Checked) {
+            auto cx = box_rect.x + box * 0.22f;
+            auto cy = box_rect.y + box * 0.5f;
+            auto lw = std::max(1.5f, box * 0.14f);
+            painter.draw_line({cx, cy}, {cx + box * 0.18f, cy + box * 0.2f}, style.indicator, lw);
+            painter.draw_line({cx + box * 0.18f, cy + box * 0.2f},
+                              {cx + box * 0.55f, cy - box * 0.25f}, style.indicator, lw);
+        } else if (state == CheckState::Partial) {
+            auto gap = box * 0.25f;
+            auto inner = box_rect.inset(gap);
+            painter.fill_rect(inner, style.indicator);
+        }
+
+        auto text_x = rect.x + box + style.spacing;
+        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto text_c = enabled ? style.text : mid(style.text, style.background);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+
+        if (focused) {
+            painter.draw_focus_ring(rect, style.corner_radius);
+        }
+    }
 
     void draw_radio_button(Painter &painter, Rect const &rect, std::string_view text, bool checked,
-                           bool hovered, bool pressed, bool focused, bool enabled) const override {}
+                           bool hovered, bool pressed, bool focused, bool enabled) const override {
+        auto const &style = radio;
+        auto fm = painter.font_metrics(style.font_size);
+        auto r = style.box_size / 2.0f;
+        auto center = Point{rect.x + r, rect.height / 2.0f};
+        auto text_x = rect.x + style.box_size + style.spacing;
+        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto border = focused ? style.border_focused : style.border;
+
+        painter.fill_circle(center, r, style.background);
+        painter.draw_circle(center, r, border, style.border_width);
+
+        if (style.beveled) {
+            painter.draw_circle(center, r - 1.0f, style.shadow, 1.0f);
+        }
+        if (checked) {
+            painter.fill_circle(center, r * 0.45f, style.indicator);
+        }
+        auto text_c = enabled ? style.text : mid(style.text, style.background);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+        if (focused) {
+            painter.draw_focus_ring(rect, style.corner_radius);
+        }
+    }
 
     void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
                          std::string_view placeholder, int cursor_pos, int selection_start,
-                         int selection_end, bool focused, bool enabled) const override {}
+                         int selection_end, bool focused, bool enabled) const override {
+        auto const &style = line_input;
+        auto bg = focused ? style.background_focused : style.background;
+        auto border = focused ? style.border_focused : style.border;
+        auto fm = painter.font_metrics(style.font_size);
+        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto content_x = style.padding.left;
+        auto content_w = rect.width - style.padding.left - style.padding.right;
+
+        painter.draw_frame(rect, bg, border, style, true);
+
+        auto text_c = enabled ? style.text : mid(style.text, style.background);
+        if (text.empty() && !focused) {
+            painter.draw_text(placeholder, {rect.x + content_x, baseline_y}, style.placeholder,
+                              style.font_size);
+        } else if (!text.empty()) {
+            painter.draw_text(text, {rect.x + content_x, baseline_y}, text_c, style.font_size);
+        }
+
+        if (focused && cursor_pos >= 0) {
+            auto before = text.substr(0, cursor_pos);
+            auto cx = rect.x + content_x;
+            if (!before.empty()) {
+                cx += painter.text_size(before, style.font_size).width;
+            }
+            auto cy_top = (rect.height - fm.height) / 2.0f - 1.0f;
+            auto cy_bot = cy_top + fm.height + 2.0f;
+            painter.draw_line({cx, cy_top}, {cx, cy_bot}, style.cursor, 1.5f);
+        }
+    }
 
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
                            bool active, bool show_mnemonics, int mnemonic_index) const override {
@@ -206,22 +337,124 @@ class BaseTheme : public Theme {
     void draw_menu_separator(Painter &painter, Rect const &rect) const override {}
 
     void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
-                           bool enabled) const override {}
+                           bool enabled) const override {
+        auto const &style = progress_bar;
+        auto bg = enabled ? style.background : style.background.darken(0.1f);
+        auto fill_c = enabled ? style.fill : style.fill.darken(0.2f);
+
+        painter.draw_frame(rect, bg, style.border, style, true);
+
+        auto inner = rect.inset(style.border_width);
+        auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
+        auto fill_rect = Rect{inner.x, inner.y, fill_w, inner.height};
+
+        if (style.chunked) {
+            auto chunk_count =
+                static_cast<int>(inner.width / (style.chunk_width + style.chunk_gap));
+            for (int i = 0; i < chunk_count; ++i) {
+                auto cx = inner.x + i * (style.chunk_width + style.chunk_gap);
+                if (cx + style.chunk_width > inner.x + fill_w) {
+                    break;
+                }
+                painter.fill_rect({cx, inner.y, style.chunk_width, inner.height}, fill_c);
+            }
+        } else {
+            painter.fill_rect(fill_rect, fill_c);
+        }
+    }
 
     void draw_slider(Painter &painter, Rect const &rect, float value, bool hovered, bool pressed,
-                     bool focused, bool enabled) const override {}
+                     bool focused, bool enabled) const override {
+        auto const &style = slider;
+        auto groove_y = rect.y + (rect.height - style.groove_thickness) / 2.0f;
+        auto groove_rect = Rect{rect.x, groove_y, rect.width, style.groove_thickness};
+
+        painter.fill_rounded_rect(groove_rect, style.groove, style.groove_thickness / 2.0f);
+
+        auto handle_x = rect.x + rect.width * std::clamp(value, 0.0f, 1.0f);
+        auto handle_rect = Rect{handle_x - style.handle_size / 2.0f,
+                                rect.y + (rect.height - style.handle_size) / 2.0f,
+                                style.handle_size, style.handle_size};
+
+        auto bg = pressed ? style.handle.darken(0.1f)
+                          : (hovered ? style.handle.lighten(0.1f) : style.handle);
+        painter.fill_rounded_rect(handle_rect, bg, style.handle_size / 4.0f);
+        painter.draw_rounded_rect(handle_rect, style.handle_border, style.handle_size / 4.0f, 1.0f);
+    }
 
     void draw_tab_bar_background(Painter &painter, Rect const &rect) const override {}
 
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
-                  bool hovered, bool enabled) const override {}
+                  bool hovered, bool enabled) const override {
+        auto const &style = tab_widget;
+        auto bg =
+            active ? style.tab_active_bg : (hovered ? style.tab_hover_bg : style.tab_inactive_bg);
+        auto text_c = active ? style.tab_active_text : style.tab_inactive_text;
+
+        painter.fill_rect(rect, bg);
+
+        auto fm = painter.font_metrics(style.font_size);
+        auto text_w = painter.text_size(text, style.font_size).width;
+        auto text_x = rect.x + (rect.width - text_w) / 2.0f;
+        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+    }
 
     void draw_list_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
-                        bool selected, bool hovered, bool alternate) const override {}
+                        bool selected, bool hovered, bool alternate) const override {
+        auto const &style = list_view;
+        Color bg;
 
-    void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const override {}
+        if (selected) {
+            bg = style.selected_bg;
+        } else if (hovered) {
+            bg = style.hovered_bg;
+        } else if (alternate) {
+            bg = style.alternate_bg;
+        } else {
+            bg = style.background;
+        }
 
-    Size measure_button(std::string_view text, Icon const &icon) const override { return {0, 0}; }
+        painter.fill_rect(rect, bg);
+
+        auto fm = painter.font_metrics(style.font_size);
+        auto text_x = rect.x + style.item_padding_h;
+        if (icon) {
+            text_x += static_cast<float>(icon->width) + style.item_padding;
+        }
+        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto text_c = selected ? style.selected_text : style.text;
+        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+    }
+
+    void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const override {
+        auto const &style = tooltip;
+
+        if (style.corner_radius > 0.0f) {
+            painter.fill_rounded_rect(rect, style.background, style.corner_radius);
+            painter.draw_rounded_rect(rect, style.border, style.corner_radius, style.border_width);
+        } else {
+            painter.fill_rect(rect, style.background);
+            painter.draw_rect(rect, style.border, style.border_width);
+        }
+
+        auto fm = painter.font_metrics(style.font_size);
+        auto text_x = rect.x + style.padding;
+        auto baseline_y = rect.y + style.padding + fm.ascent;
+        painter.draw_text(text, {text_x, baseline_y}, style.text, style.font_size);
+    }
+
+    Size measure_button(std::string_view text, Icon const &icon) const override {
+        auto text_w = Painter::measure_text(text, button.font_size).width;
+        auto icon_w = 0.0f;
+        if (icon) {
+            icon_w = static_cast<float>(icon->width);
+        }
+        auto total_w = text_w + (icon ? icon_w + 4.0f : 0.0f);
+        auto w = total_w + button.padding.left + button.padding.right;
+        auto h = button.font_size + button.padding.top + button.padding.bottom;
+        return {w, h};
+    }
 
     Size measure_menubar_item(std::string_view text) const override {
         auto text_w = Painter::measure_text(text, menubar.font_size).width;
@@ -230,13 +463,32 @@ class BaseTheme : public Theme {
 
     Size measure_menu_item(std::string_view text, Icon const &icon,
                            std::string_view shortcut) const override {
-        return {0, 0};
+        auto w = menu.item_padding * 2;
+        if (icon) {
+            w += static_cast<float>(icon->width) + menu.item_padding;
+        }
+        w += Painter::measure_text(text, menu.font_size).width;
+        if (!shortcut.empty()) {
+            w += menu.item_padding + Painter::measure_text(shortcut, menu.font_size).width;
+        }
+        auto h = menu.font_size + menu.item_padding * 2;
+        return {w, h};
     }
 
     float menu_separator_height() const override { return 8.0f; }
-    Size measure_tab(std::string_view text) const override { return {0, 0}; }
+    Size measure_tab(std::string_view text) const override {
+        auto text_w = Painter::measure_text(text, tab_widget.font_size).width;
+        auto w = text_w + tab_widget.tab_padding_h * 2;
+        auto h = tab_widget.font_size + tab_widget.tab_padding_v * 2;
+        return {w, h};
+    }
     float list_item_height() const override { return 24.0f; }
-    Size measure_tooltip(std::string_view text) const override { return {0, 0}; }
+    Size measure_tooltip(std::string_view text) const override {
+        auto text_w = Painter::measure_text(text, tooltip.font_size).width;
+        auto w = text_w + tooltip.padding * 2;
+        auto h = tooltip.font_size + tooltip.padding * 2;
+        return {w, h};
+    }
 
     Margins button_padding() const override { return button.padding; }
     Margins line_input_padding() const override { return line_input.padding; }
@@ -246,6 +498,11 @@ class BaseTheme : public Theme {
 };
 
 // ── Specific Themes ──────────────────────────────────────────────────────────
+
+class MacOSTheme : public BaseTheme {
+  public:
+    using BaseTheme::BaseTheme;
+};
 
 class Win11Theme : public BaseTheme {
   public:
@@ -433,6 +690,9 @@ std::unique_ptr<Theme> Theme::create(ThemeStyle style, ColorScheme scheme) {
 std::unique_ptr<Theme> Theme::create(ThemeStyle style, Palette const &palette) {
     std::unique_ptr<Theme> t;
     switch (style) {
+    case ThemeStyle::MacOS:
+        t = std::make_unique<MacOSTheme>(palette);
+        break;
     case ThemeStyle::Win11:
         t = std::make_unique<Win11Theme>(palette);
         break;
