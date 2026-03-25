@@ -453,10 +453,13 @@ class BaseTheme : public Theme {
         painter.draw_rounded_rect(handle_rect, style.handle_border, style.handle_size / 4.0f, 1.0f);
     }
 
-    void draw_tab_bar_background(Painter &painter, Rect const &rect) const override {}
+    void draw_tab_bar_background(Painter &painter, Rect const &rect) const override {
+        auto const &style = tab_widget;
+        painter.fill_rect(rect, style.tab_inactive_bg);
+    }
 
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
-                  bool hovered, bool enabled) const override {
+                  bool hovered, bool enabled, bool has_close) const override {
         auto const &style = tab_widget;
         auto bg =
             active ? style.tab_active_bg : (hovered ? style.tab_hover_bg : style.tab_inactive_bg);
@@ -467,6 +470,7 @@ class BaseTheme : public Theme {
         auto fm = painter.font_metrics(style.font_size);
         auto text_w = painter.text_size(text, style.font_size).width;
         auto text_x = rect.x + (rect.width - text_w) / 2.0f;
+
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
         painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
     }

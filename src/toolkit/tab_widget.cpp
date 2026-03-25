@@ -448,7 +448,7 @@ void TabWidget::paint(Painter &painter) {
         }
     }
 
-    painter.fill_rect({bar_x, bar_y, bar_w, bar_h}, style.tab_inactive_bg);
+    Theme::current().draw_tab_bar_background(painter, {bar_x, bar_y, bar_w, bar_h});
 
     auto paint_tab = [&](int i, float draw_x, float draw_y) {
         auto size = tab_size(i);
@@ -468,42 +468,22 @@ void TabWidget::paint(Painter &painter) {
             painter.fill_rect(tab_rect, bg);
         }
 
-        painter.push_clip(tab_rect);
-        if (vertical) {
-            if (orientation_ == TabOrientation::West) {
-                auto text_x = tab_rect.x + (tab_rect.width - fm.height) / 2.0f + fm.ascent;
-                painter.draw_text(tabs_[i].title, {text_x, tab_rect.y + size - style.tab_padding_h},
-                                  text_col, style.font_size, FontFamily::System,
-                                  Painter::TextOrientation::VerticalCCW);
-            } else {
-                auto text_x = tab_rect.x + (tab_rect.width + fm.height) / 2.0f - fm.ascent;
-                painter.draw_text(tabs_[i].title, {text_x, tab_rect.y + style.tab_padding_h},
-                                  text_col, style.font_size, FontFamily::System,
-                                  Painter::TextOrientation::VerticalCW);
-            }
-        } else {
-            auto text_y = tab_rect.y + (tab_rect.height - fm.height) / 2.0f + fm.ascent;
-            painter.draw_text(tabs_[i].title, {tab_rect.x + style.tab_padding_h, text_y}, text_col,
-                              style.font_size);
-        }
-
+        // Draw text centered, accounting for close button on the right
         auto text_w = painter.text_size(tabs_[i].title, style.font_size).width;
-        auto close_cx = 0.0f;
-        auto close_cy = 0.0f;
-        if (vertical) {
-            close_cx = tab_rect.x + tab_rect.width / 2.0f;
-            if (orientation_ == TabOrientation::West) {
-                close_cy = tab_rect.y + size - style.tab_padding_h - text_w - close_btn_gap_ -
-                           close_btn_size_ / 2.0f;
-            } else {
-                close_cy = tab_rect.y + style.tab_padding_h + text_w + close_btn_gap_ +
-                           close_btn_size_ / 2.0f;
-            }
-        } else {
-            auto close_x = tab_rect.x + style.tab_padding_h + text_w + close_btn_gap_;
-            close_cy = tab_rect.y + tab_rect.height / 2.0f;
-            close_cx = close_x + close_btn_size_ / 2.0f;
+        auto right_space = style.tab_padding_h + close_btn_size_ + close_btn_gap_;
+        auto left_space = style.tab_padding_h;
+        auto text_area_w = tab_rect.width - left_space - right_space;
+        auto text_x = tab_rect.x + left_space + (text_area_w - text_w) / 2.0f;
+        if (text_x < tab_rect.x + left_space) {
+            text_x = tab_rect.x + left_space;
         }
+        auto text_y = tab_rect.y + (tab_rect.height - fm.height) / 2.0f + fm.ascent;
+        painter.draw_text(tabs_[i].title, {text_x, text_y}, text_col, style.font_size);
+
+        // Draw close button
+        auto close_x = tab_rect.x + tab_rect.width - style.tab_padding_h - close_btn_size_;
+        auto close_cy = tab_rect.y + tab_rect.height / 2.0f;
+        auto close_cx = close_x + close_btn_size_ / 2.0f;
 
         if (i == hovered_close_) {
             auto cr = close_btn_size_ / 2.0f + 1.0f;
@@ -518,7 +498,6 @@ void TabWidget::paint(Painter &painter) {
                           1.5f);
         painter.draw_line({close_cx + cs, close_cy - cs}, {close_cx - cs, close_cy + cs}, x_col,
                           1.5f);
-        painter.pop_clip();
 
         if (active) {
             auto indicator = Rect{};

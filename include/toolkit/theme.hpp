@@ -228,7 +228,7 @@ class Theme {
                              bool hovered, bool pressed, bool focused, bool enabled) const = 0;
     virtual void draw_tab_bar_background(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
-                          bool hovered, bool enabled) const = 0;
+                          bool hovered, bool enabled, bool has_close = false) const = 0;
     virtual void draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
                                 Icon const &icon, bool selected, bool hovered,
                                 bool alternate) const = 0;
