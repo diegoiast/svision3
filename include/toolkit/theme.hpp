@@ -224,8 +224,8 @@ class Theme {
     virtual void draw_menu_separator(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                                    bool enabled) const = 0;
-    virtual void draw_slider(Painter &painter, Rect const &rect, float value, bool hovered,
-                             bool pressed, bool focused, bool enabled) const = 0;
+    virtual void draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal,
+                             bool hovered, bool pressed, bool focused, bool enabled) const = 0;
     virtual void draw_tab_bar_background(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                           bool hovered, bool enabled) const = 0;

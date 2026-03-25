@@ -379,18 +379,30 @@ class BaseTheme : public Theme {
         }
     }
 
-    void draw_slider(Painter &painter, Rect const &rect, float value, bool hovered, bool pressed,
-                     bool focused, bool enabled) const override {
+    void draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal, bool hovered,
+                     bool pressed, bool focused, bool enabled) const override {
         auto const &style = slider;
-        auto groove_y = rect.y + (rect.height - style.groove_thickness) / 2.0f;
-        auto groove_rect = Rect{rect.x, groove_y, rect.width, style.groove_thickness};
+
+        auto groove_rect = Rect{};
+        auto handle_rect = Rect{};
+
+        if (horizontal) {
+            auto groove_y = rect.y + (rect.height - style.groove_thickness) / 2.0f;
+            groove_rect = {rect.x, groove_y, rect.width, style.groove_thickness};
+            auto handle_x = rect.x + rect.width * std::clamp(value, 0.0f, 1.0f);
+            handle_rect = {handle_x - style.handle_size / 2.0f,
+                           rect.y + (rect.height - style.handle_size) / 2.0f, style.handle_size,
+                           style.handle_size};
+        } else {
+            auto groove_x = rect.x + (rect.width - style.groove_thickness) / 2.0f;
+            groove_rect = {groove_x, rect.y, style.groove_thickness, rect.height};
+            auto handle_y = rect.y + rect.height * std::clamp(value, 0.0f, 1.0f);
+            handle_rect = {rect.x + (rect.width - style.handle_size) / 2.0f,
+                           handle_y - style.handle_size / 2.0f, style.handle_size,
+                           style.handle_size};
+        }
 
         painter.fill_rounded_rect(groove_rect, style.groove, style.groove_thickness / 2.0f);
-
-        auto handle_x = rect.x + rect.width * std::clamp(value, 0.0f, 1.0f);
-        auto handle_rect = Rect{handle_x - style.handle_size / 2.0f,
-                                rect.y + (rect.height - style.handle_size) / 2.0f,
-                                style.handle_size, style.handle_size};
 
         auto bg = pressed ? style.handle.darken(0.1f)
                           : (hovered ? style.handle.lighten(0.1f) : style.handle);

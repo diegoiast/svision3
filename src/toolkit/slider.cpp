@@ -105,37 +105,10 @@ void Slider::update_value_from_pos(Point p) {
 }
 
 void Slider::paint(Painter &painter) {
-    auto const &style = Theme::current().slider;
+    auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto horizontal = orientation_ == SliderOrientation::Horizontal;
-    auto h_size = style.handle_size;
-    auto g_thick = style.groove_thickness;
-
-    // FIXME: drawing should be done by theme, not widget
-
-    // Draw groove
-    auto groove_rect = Rect{};
-    if (horizontal) {
-        groove_rect = {h_size / 2, (rect_.height - g_thick) / 2, rect_.width - h_size, g_thick};
-    } else {
-        groove_rect = {(rect_.width - g_thick) / 2, h_size / 2, g_thick, rect_.height - h_size};
-    }
-    painter.fill_rounded_rect(groove_rect, style.groove, g_thick / 2);
-
-    auto hp = value_to_pos(value_);
-    auto handle_rect = Rect{};
-    if (horizontal) {
-        handle_rect = {hp - h_size / 2, (rect_.height - h_size) / 2, h_size, h_size};
-    } else {
-        handle_rect = {(rect_.width - h_size) / 2, hp - h_size / 2, h_size, h_size};
-    }
-
-    painter.fill_rounded_rect(handle_rect, style.handle, style.corner_radius);
-    painter.draw_rounded_rect(handle_rect, style.handle_border, style.corner_radius,
-                              style.border_width);
-
-    if (is_focused()) {
-        painter.draw_focus_ring({0, 0, rect_.width, rect_.height}, style.corner_radius);
-    }
+    Theme::current().draw_slider(painter, rect, value_, horizontal, false, false, is_focused(),
+                                 is_enabled());
 }
 
 bool Slider::handle_mouse(MouseEvent const &event) {
