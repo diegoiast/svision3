@@ -133,97 +133,20 @@ Size SpinBox::size_hint() const {
 }
 
 void SpinBox::paint(Painter &painter) {
-    auto const &style = Theme::current().line_input;
-    auto bg = is_focused() ? style.background_focused : style.background;
-    auto border = is_focused() ? style.border_focused : style.border;
-    auto bw = btn_width();
-    auto field_rect = Rect{0.0f, 0.0f, rect_.width - bw, rect_.height};
+    auto const &theme = Theme::current();
 
-    painter.draw_frame(field_rect, bg, border, style, true);
+    auto sel_start_pos =
+        (is_focused() && editing_) ? static_cast<int>(std::min(sel_anchor_, cursor_pos_)) : -1;
+    auto sel_end_pos =
+        (is_focused() && editing_) ? static_cast<int>(std::max(sel_anchor_, cursor_pos_)) : -1;
 
-    // Up button
-    auto up = up_btn_rect();
-    {
-        auto const &btn_style = Theme::current().button;
-        auto hov = hovered_zone_ == HitZone::Up;
-        auto press = pressed_zone_ == HitZone::Up;
-        auto btn_bg = btn_style.background;
-        auto cx = up.x + up.width / 2.0f;
-        auto cy = up.y + up.height / 2.0f;
-        auto arrow_sz = 3.5f;
+    auto cursor_pos = (is_focused() && editing_) ? static_cast<int>(cursor_pos_) : -1;
 
-        if (press && btn_style.background_pressed) {
-            btn_bg = *btn_style.background_pressed;
-        } else if (hov && btn_style.background_hovered) {
-            btn_bg = *btn_style.background_hovered;
-        }
-        painter.draw_frame(up, btn_bg, border, btn_style, false);
-        painter.draw_line({cx - arrow_sz, cy + arrow_sz * 0.4f}, {cx, cy - arrow_sz * 0.4f},
-                          style.text, 1.5f);
-        painter.draw_line({cx, cy - arrow_sz * 0.4f}, {cx + arrow_sz, cy + arrow_sz * 0.4f},
-                          style.text, 1.5f);
-    }
+    auto rect = Rect{0.0f, 0.0f, rect_.width, rect_.height};
 
-    // Down button
-    auto down = down_btn_rect();
-    {
-        auto hov = hovered_zone_ == HitZone::Down;
-        auto press = pressed_zone_ == HitZone::Down;
-        auto const &btn_style = Theme::current().button;
-        auto btn_bg = btn_style.background;
-        auto cx = down.x + down.width / 2.0f;
-        auto cy = down.y + down.height / 2.0f;
-        auto arrow_sz = 3.5f;
-
-        if (press && btn_style.background_pressed) {
-            btn_bg = *btn_style.background_pressed;
-        } else if (hov && btn_style.background_hovered) {
-            btn_bg = *btn_style.background_hovered;
-        }
-        painter.draw_frame(down, btn_bg, border, btn_style, false);
-        painter.draw_line({cx - arrow_sz, cy - arrow_sz * 0.4f}, {cx, cy + arrow_sz * 0.4f},
-                          style.text, 1.5f);
-        painter.draw_line({cx, cy + arrow_sz * 0.4f}, {cx + arrow_sz, cy - arrow_sz * 0.4f},
-                          style.text, 1.5f);
-    }
-
-    // Text
-    auto fm = painter.font_metrics(style.font_size);
-    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
-    auto content_x = style.padding.left;
-    auto content_w = rect_.width - bw - style.padding.left - style.padding.right;
-
-    painter.push_clip({content_x, 0, content_w, rect_.height});
-    if (is_focused() && editing_) {
-        auto s = std::min(sel_anchor_, cursor_pos_);
-        auto e = std::max(sel_anchor_, cursor_pos_);
-        if (s != e) {
-            auto ex = content_x + painter.text_size(text_.substr(0, e), style.font_size).width;
-            auto hy = (rect_.height - fm.height) / 2.0f - 1.0f;
-            auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
-            auto sx = content_x +
-                      (s > 0 ? painter.text_size(text_.substr(0, s), style.font_size).width : 0.0f);
-            painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
-        }
-    }
-    painter.draw_text(text_, {content_x, baseline_y}, style.text, style.font_size);
-    if (is_focused() && editing_) {
-        auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        if ((ms / 500) % 2 == 0) {
-            auto before = text_.substr(0, cursor_pos_);
-            auto cx = content_x;
-            auto cy_top = (rect_.height - fm.height) / 2.0f - 1.0f;
-            auto cy_bot = cy_top + fm.height + 2.0f;
-
-            if (!before.empty()) {
-                cx += painter.text_size(before, style.font_size).width;
-            }
-            painter.draw_line({cx, cy_top}, {cx, cy_bot}, style.cursor, 1.5f);
-        }
-    }
-
-    painter.pop_clip();
+    theme.draw_spinbox(painter, rect, text_, cursor_pos, sel_start_pos, sel_end_pos, is_focused(),
+                       !read_only_, hovered_zone_ == HitZone::Up, pressed_zone_ == HitZone::Up,
+                       hovered_zone_ == HitZone::Down, pressed_zone_ == HitZone::Down);
 }
 
 bool SpinBox::handle_mouse(MouseEvent const &event) {

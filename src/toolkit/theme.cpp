@@ -669,6 +669,89 @@ class BaseTheme : public Theme {
         }
     }
 
+    void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text, int cursor_pos,
+                      int selection_start, int selection_end, bool focused, bool enabled,
+                      bool hovered_up, bool pressed_up, bool hovered_down,
+                      bool pressed_down) const override {
+        auto const &style = line_input;
+        auto const &btn_style = button;
+        auto bw = rect.height;
+        auto field_rect = Rect{rect.x, rect.y, rect.width - bw, rect.height};
+        auto bg = focused ? style.background_focused : style.background;
+        auto border = focused ? style.border_focused : style.border;
+
+        painter.draw_frame(field_rect, bg, border, style, true);
+
+        auto content_x = field_rect.x + style.padding.left;
+        auto content_w = field_rect.width - style.padding.left - style.padding.right;
+        auto fm = painter.font_metrics(style.font_size);
+        auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+
+        auto clip_rect = Rect{content_x, rect.y, content_w, rect.height};
+        painter.push_clip(clip_rect);
+
+        if (selection_start >= 0 && selection_end > selection_start) {
+            auto before_s = text.substr(0, selection_start);
+            auto before_e = text.substr(0, selection_end);
+            auto sx = content_x + painter.text_size(before_s, style.font_size).width;
+            auto ex = content_x + painter.text_size(before_e, style.font_size).width;
+            auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
+            auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
+            painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
+        }
+
+        auto text_c = enabled ? style.text : mid(style.text, style.background);
+        painter.draw_text(text, {content_x, baseline_y}, text_c, style.font_size);
+
+        if (focused && cursor_pos >= 0) {
+            auto before = text.substr(0, cursor_pos);
+            auto cx = content_x;
+            if (!before.empty()) {
+                cx += painter.text_size(before, style.font_size).width;
+            }
+            auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
+            auto cy_bot = cy_top + fm.height + 2.0f;
+            painter.draw_line({cx, cy_top}, {cx, cy_bot}, style.cursor, 1.5f);
+        }
+
+        painter.pop_clip();
+
+        auto btn_w = bw;
+        auto up_rect = Rect{rect.x + rect.width - btn_w, rect.y, btn_w, rect.height / 2.0f};
+        auto down_rect = Rect{rect.x + rect.width - btn_w, rect.y + rect.height / 2.0f, btn_w,
+                              rect.height / 2.0f};
+
+        auto draw_spinbox_button = [&](Rect const &r, bool hovered, bool pressed) {
+            auto b_bg = btn_style.background;
+            if (pressed && btn_style.background_pressed) {
+                b_bg = *btn_style.background_pressed;
+            } else if (hovered && btn_style.background_hovered) {
+                b_bg = *btn_style.background_hovered;
+            }
+            painter.draw_frame(r, b_bg, border, btn_style, false);
+
+            auto cx = r.x + r.width / 2.0f;
+            auto cy = r.y + r.height / 2.0f;
+            auto arrow_sz = 3.5f;
+            auto tc = style.text;
+
+            if (r.y < rect.y + rect.height / 2.0f) {
+                painter.draw_line({cx - arrow_sz, cy + arrow_sz * 0.4f}, {cx, cy - arrow_sz * 0.4f},
+                                  tc, 1.5f);
+                painter.draw_line({cx, cy - arrow_sz * 0.4f}, {cx + arrow_sz, cy + arrow_sz * 0.4f},
+                                  tc, 1.5f);
+            } else {
+                painter.draw_line({cx - arrow_sz, cy - arrow_sz * 0.4f}, {cx, cy + arrow_sz * 0.4f},
+                                  tc, 1.5f);
+                painter.draw_line({cx, cy + arrow_sz * 0.4f}, {cx + arrow_sz, cy - arrow_sz * 0.4f},
+                                  tc, 1.5f);
+            }
+        };
+
+        draw_spinbox_button(up_rect, hovered_up, pressed_up);
+        draw_spinbox_button(down_rect, hovered_down, pressed_down);
+    }
+
     Size measure_label(std::string_view text, float font_size) const override {
         auto fm = Painter::measure_font_metrics(font_size);
         auto w = Painter::measure_text(text, font_size).width;

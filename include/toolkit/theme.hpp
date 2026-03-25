@@ -244,6 +244,10 @@ class Theme {
                                     bool hovered) const = 0;
     virtual void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const = 0;
     virtual void draw_toolbar(Painter &painter, Rect const &rect) const = 0;
+    virtual void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text,
+                              int cursor_pos, int selection_start, int selection_end, bool focused,
+                              bool enabled, bool hovered_up, bool pressed_up, bool hovered_down,
+                              bool pressed_down) const = 0;
     virtual Size measure_label(std::string_view text, float font_size) const = 0;
 
     virtual Color error_color() const { return Color::rgb(1.0f, 0.85f, 0.85f); }
