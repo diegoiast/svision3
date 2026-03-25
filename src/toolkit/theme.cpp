@@ -339,6 +339,9 @@ class BaseTheme : public Theme {
 
     void draw_menubar_background(Painter &painter, Rect const &rect) const override {
         painter.fill_rect(rect, menubar.background);
+        auto border_c = window.background.darken(0.15f);
+        painter.draw_line({rect.x, rect.height - 1.0f}, {rect.x + rect.width, rect.height - 1.0f},
+                          border_c, 1.0f);
     }
 
     void draw_menu_background(Painter &painter, Rect const &rect) const override {
@@ -555,6 +558,49 @@ class BaseTheme : public Theme {
                                           style.border_width);
             }
         }
+    }
+
+    void draw_combobox(Painter &painter, Rect const &rect, std::string_view text, bool focused,
+                       bool open) const override {
+        auto const &style = combobox;
+        auto border = focused ? style.border_focused : style.border;
+        auto fm = painter.font_metrics(style.font_size);
+        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+
+        painter.draw_frame(rect, style.background, border, style, true);
+
+        if (!text.empty()) {
+            auto clip_w = rect.width - style.padding.left - style.padding.right - 16.0f;
+            painter.push_clip({style.padding.left, 0, clip_w, rect.height});
+            painter.draw_text(text, {style.padding.left, baseline_y}, style.text, style.font_size);
+            painter.pop_clip();
+        }
+
+        auto arrow_x = rect.width - style.padding.right - 8.0f;
+        auto arrow_y = rect.height / 2.0f;
+        auto aw = 4.0f;
+        painter.draw_line({arrow_x - aw, arrow_y - 2.0f}, {arrow_x, arrow_y + 2.0f}, style.arrow,
+                          1.5f);
+        painter.draw_line({arrow_x, arrow_y + 2.0f}, {arrow_x + aw, arrow_y - 2.0f}, style.arrow,
+                          1.5f);
+
+        if (focused && !open) {
+            painter.draw_focus_ring(rect, style.corner_radius);
+        }
+    }
+
+    void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
+                            bool hovered) const override {
+        auto const &style = combobox;
+        auto fm = painter.font_metrics(style.font_size);
+        auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto tc = hovered ? style.item_text_hovered : style.text;
+
+        if (hovered) {
+            painter.fill_rect(rect, style.item_hovered);
+        }
+
+        painter.draw_text(text, {rect.x + style.padding.left, baseline}, tc, style.font_size);
     }
 
     void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const override {

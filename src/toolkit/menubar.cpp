@@ -45,6 +45,9 @@ int MenuBar::find_menu(std::string_view title) const {
 
 void MenuBar::paint(Painter &painter) {
     auto const &theme = Theme::current();
+
+    theme.draw_menubar_background(painter, rect_);
+
     auto x = 0.0f;
 
     for (auto i = 0; i < static_cast<int>(menus_.size()); i++) {
@@ -57,10 +60,6 @@ void MenuBar::paint(Painter &painter) {
 
         x += item_w;
     }
-
-    // Bottom border
-    auto border_c = Theme::current().window.background.darken(0.15f);
-    painter.draw_line({0, rect_.height - 1.0f}, {rect_.width, rect_.height - 1.0f}, border_c, 1.0f);
 }
 
 float MenuBar::get_menu_x(int index) const {

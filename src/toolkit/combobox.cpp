@@ -116,32 +116,8 @@ void Combobox::close_dropdown() {
 }
 
 void Combobox::paint(Painter &painter) {
-    auto const &style = Theme::current().combobox;
-    auto border = state.focused ? style.border_focused : style.border;
-    auto local_rect = Rect{0, 0, rect_.width, rect_.height};
-    auto fm = painter.font_metrics(style.font_size);
-    auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
-    auto text_x = style.padding.left;
-    auto txt = selected_text();
-    auto arrow_x = rect_.width - style.padding.right - 8.0f;
-    auto arrow_y = rect_.height / 2.0f;
-    auto aw = 4.0f;
-
-    painter.draw_frame(local_rect, style.background, border, style, true);
-
-    if (!txt.empty()) {
-        auto clip_w = rect_.width - style.padding.left - style.padding.right - 16.0f;
-        painter.push_clip({text_x, 0, clip_w, rect_.height});
-        painter.draw_text(txt, {text_x, baseline_y}, style.text, style.font_size);
-        painter.pop_clip();
-    }
-
-    painter.draw_line({arrow_x - aw, arrow_y - 2.0f}, {arrow_x, arrow_y + 2.0f}, style.arrow, 1.5f);
-    painter.draw_line({arrow_x, arrow_y + 2.0f}, {arrow_x + aw, arrow_y - 2.0f}, style.arrow, 1.5f);
-
-    if (is_focused() && !open_) {
-        painter.draw_focus_ring(local_rect, style.corner_radius);
-    }
+    auto rect = Rect{0, 0, rect_.width, rect_.height};
+    Theme::current().draw_combobox(painter, rect, selected_text(), is_focused(), open_);
 }
 
 void Combobox::paint_dropdown(Painter &painter) {
@@ -151,7 +127,6 @@ void Combobox::paint_dropdown(Painter &painter) {
     auto item_h = dropdown_item_height();
     auto total = static_cast<int>(items_.size());
     auto scrollable = drop_max_visible_ < total;
-    auto fm = painter.font_metrics(style.font_size);
 
     painter.fill_rect(local_db, style.dropdown_bg);
     painter.push_clip(local_db);
@@ -159,18 +134,12 @@ void Combobox::paint_dropdown(Painter &painter) {
     for (auto i = 0; i < total; i++) {
         auto iy = item_h * static_cast<float>(i) - drop_scroll_;
         auto item_rect = Rect{0, iy, db.width, item_h};
-        auto baseline = iy + (item_h - fm.height) / 2.0f + fm.ascent;
-        auto tc = (i == hovered_index_) ? style.item_text_hovered : style.text;
 
         if (iy + item_h < 0 || iy > db.height) {
             continue;
         }
 
-        if (i == hovered_index_) {
-            painter.fill_rect(item_rect, style.item_hovered);
-        }
-
-        painter.draw_text(items_[i], {style.padding.left, baseline}, tc, style.font_size);
+        Theme::current().draw_combobox_item(painter, item_rect, items_[i], i == hovered_index_);
     }
 
     if (scrollable) {

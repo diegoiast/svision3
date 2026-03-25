@@ -236,6 +236,10 @@ class Theme {
                                 bool alternate) const = 0;
     virtual void draw_list_background(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_table_background(Painter &painter, Rect const &rect) const = 0;
+    virtual void draw_combobox(Painter &painter, Rect const &rect, std::string_view text,
+                               bool focused, bool open) const = 0;
+    virtual void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
+                                    bool hovered) const = 0;
     virtual void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const = 0;
     virtual void draw_toolbar(Painter &painter, Rect const &rect) const = 0;
     virtual Size measure_label(std::string_view text, float font_size) const = 0;
