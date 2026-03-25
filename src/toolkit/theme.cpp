@@ -487,6 +487,12 @@ class BaseTheme : public Theme {
         }
     }
 
+    Size measure_label(std::string_view text, float font_size) const override {
+        auto fm = Painter::measure_font_metrics(font_size);
+        auto w = Painter::measure_text(text, font_size).width;
+        return {w, fm.height + 4.0f};
+    }
+
     Size measure_button(std::string_view text, Icon const &icon) const override {
         auto text_w = Painter::measure_text(text, button.font_size).width;
         auto icon_w = 0.0f;

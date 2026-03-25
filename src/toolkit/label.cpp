@@ -55,11 +55,10 @@ bool Label::handle_mouse(MouseEvent const &) { return false; }
 Size Label::size_hint() const {
     auto const &style = Theme::current().label;
     auto font_size = font_size_override_.value_or(style.font_size);
-    auto font_metrics = Painter::measure_font_metrics(font_size);
-    auto w = (!shrinkable_ && !text_.empty()) ? Painter::measure_text(text_, font_size).width : 0;
-
-    // FIXME: what is this extra 4.0f gap?
-    return {w, font_metrics.height + 4.0f};
+    if (shrinkable_ || text_.empty()) {
+        return {0, Painter::measure_font_metrics(font_size).height + 4.0f};
+    }
+    return Theme::current().measure_label(text_, font_size);
 }
 
 } // namespace toolkit
