@@ -54,7 +54,7 @@ void Button::set_text(std::string text) {
     }
 }
 
-void Button::set_icon(ImageData icon) {
+void Button::set_icon(Icon icon) {
     icon_ = std::move(icon);
     if (window_) {
         window_->request_redraw("button icon");
@@ -62,7 +62,7 @@ void Button::set_icon(ImageData icon) {
 }
 
 void Button::clear_icon() {
-    icon_ = std::nullopt;
+    icon_ = nullptr;
     if (window_) {
         window_->request_redraw("button icon");
     }
@@ -137,8 +137,8 @@ void Button::paint(Painter &painter) {
     auto icon_h = 0.0f;
 
     if (icon_) {
-        icon_w = static_cast<float>((*icon_).width);
-        icon_h = static_cast<float>((*icon_).height);
+        icon_w = static_cast<float>(icon_->width);
+        icon_h = static_cast<float>(icon_->height);
     }
     auto total_w = text_w + (icon_ ? (icon_w + 4.0f) : 0.0f);
     auto baseline_y = (rect_.height - fm.height) / 2.0f + fm.ascent;
@@ -311,8 +311,8 @@ Size Button::size_hint() const {
     auto padding = padding_override_.value_or(style.padding);
     auto text_w = Painter::measure_text(display_text_, style.font_size).width;
     auto fm = Painter::measure_font_metrics(style.font_size);
-    auto icon_w = icon_ ? static_cast<float>((*icon_).width) : 0.0f;
-    auto icon_h = icon_ ? static_cast<float>((*icon_).height) : 0.0f;
+    auto icon_w = icon_ ? static_cast<float>(icon_->width) : 0.0f;
+    auto icon_h = icon_ ? static_cast<float>(icon_->height) : 0.0f;
     auto content_w = text_w + (icon_ ? (icon_w + 4.0f) : 0.0f);
     auto content_h = std::max(fm.height, icon_h);
     return {content_w + padding.left + padding.right, content_h + padding.top + padding.bottom};

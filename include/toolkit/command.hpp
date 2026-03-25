@@ -76,7 +76,7 @@ class Command {
     std::string name_;
     std::string tooltip_;
     std::string icon_;
-    mutable std::optional<ImageData> icon_image_;
+    mutable Icon icon_image_;
     std::string shortcut_string_;
     Shortcut shortcut_;
     bool enabled_ = true;

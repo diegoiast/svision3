@@ -79,10 +79,10 @@
 1. Move from a single `std::optional<Popup>` to a `std::vector<Popup>` (a stack) to support nested submenus. [done]
 2. Implement "Recursive Closing" logic: Closing a parent popup automatically closes all its children in the stack. [done]
 3. Formalize `ContextMenu` to use the new `Command` system and stack. [done]
-4. Ensure `ComboBox` dropdowns align with the formalized popup logic. [NOT DONE]
-5. Coordinate popup lifecycle (auto-closing on outside clicks/Escape) with the stack. [done]
+4. Coordinate popup lifecycle (auto-closing on outside clicks/Escape) with the stack. [done]
+5. Ensure `ComboBox` dropdowns align with the formalized popup logic. [NOT DONE]
 
-## 6. Icon & Image System [7/11]
+## 6. Icon & Image System [8/11]
 
 1. Platform Image Loading API:
     1. Abstract interface for loading pixel data from files or memory. [done]
@@ -95,7 +95,7 @@
     4. Theme-aware lookup: resolve generic names (e.g., "document-open") to specific files. [done]
     5. Size-based selection: automatically choose the best-matching resolution for the requested size. [done]
 3. Icon Registry & Cache:
-    1. Centralized cache to manage loaded image resources and avoid redundant I/O.
+    1. Centralized cache to manage loaded image resources and avoid redundant I/O. [done]
 4. Painter Integration:
     1. Add `draw_image(Rect destination, const Image& img)` to the `Painter` interface. [done]
     2. Ensure all backends (Cairo, OpenGL, Win32, Cocoa) implement efficient image scaling and drawing.

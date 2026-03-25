@@ -12,20 +12,20 @@
 
 namespace toolkit {
 
-auto ImageLoader::load(std::string_view path) -> std::optional<ImageData> {
+auto ImageLoader::load(std::string_view path) -> Icon {
     int w = 0, h = 0, c = 0;
     auto *data = stbi_load(std::string(path).c_str(), &w, &h, &c, STBI_rgb_alpha);
 
     if (!data) {
-        return std::nullopt;
+        return nullptr;
     }
 
-    ImageData img;
-    img.width = w;
-    img.height = h;
-    img.channels = 4;
-    img.pixels.resize(static_cast<size_t>(w) * h * 4);
-    std::copy(data, data + img.pixels.size(), img.pixels.begin());
+    auto img = std::make_shared<ImageData>();
+    img->width = w;
+    img->height = h;
+    img->channels = 4;
+    img->pixels.resize(static_cast<size_t>(w) * h * 4);
+    std::copy(data, data + img->pixels.size(), img->pixels.begin());
     stbi_image_free(data);
 
     return img;
@@ -255,10 +255,10 @@ auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::s
 }
 
 auto XdgImageLoader::load(std::string_view icon_name, int size, std::string_view context)
-    -> std::optional<ImageData> {
+    -> Icon {
     auto path_opt = find_icon_path(icon_name, size, context);
     if (!path_opt) {
-        return std::nullopt;
+        return nullptr;
     }
     return loader->load(*path_opt);
 }

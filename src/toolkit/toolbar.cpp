@@ -18,7 +18,7 @@ class ToolButton : public Button {
         if (!cmd_->icon().empty()) {
             auto icon_data = cmd_->icon_image();
             if (icon_data) {
-                set_icon(*icon_data);
+                set_icon(icon_data);
             }
         }
     }
@@ -30,7 +30,7 @@ class ToolButton : public Button {
         if (!cmd_->icon().empty()) {
             auto icon_data = cmd_->icon_image();
             if (icon_data) {
-                set_icon(*icon_data);
+                set_icon(icon_data);
             }
         }
         Button::paint(painter);

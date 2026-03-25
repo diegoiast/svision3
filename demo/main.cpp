@@ -281,6 +281,7 @@ int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
 
     toolkit::Application app;
+    app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("Faenza"));
 
     std::string screenshot_path;
     for (int i = 1; i < argc; i++) {
@@ -485,14 +486,9 @@ int main(int argc, char *argv[]) {
     repeat_btn->on_click = repeat_action;
 
     auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
-    // For now download theme from here - https://packages.debian.org/source/bullseye/faenza-icon-theme
-    // This theme has only PNG images, newer modern have SVG which we do not suppor yet.
-    toolkit::XdgImageLoader loader("Faenza");
-    spdlog::info("XDG theme: {}", loader.theme_name());
-    auto icon = loader.load("document-open", 16, "actions");
-    spdlog::info("Loaded icon: {}x{}", icon ? icon->width : 0, icon ? icon->height : 0);
+    auto icon = app.load_icon("document-open", 16, "actions");
     if (icon) {
-        open_icon_btn->set_icon(*icon);
+        open_icon_btn->set_icon(icon);
     }
     open_icon_btn->set_tooltip("Open file");
 

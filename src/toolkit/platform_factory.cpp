@@ -1,12 +1,15 @@
 #include "toolkit/application.hpp"
 #include "toolkit/clipboard.hpp"
+#include "toolkit/image_loader.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 
 #include <cstdlib>
+#include <map>
 #include <spdlog/spdlog.h>
+#include <spdlog/fmt/fmt.h>
 
 #if defined(__APPLE__)
 #ifdef TOOLKIT_HAS_CAIRO
@@ -26,6 +29,13 @@
 #endif
 
 namespace toolkit {
+
+class DummyIconProvider : public IconProvider {
+  public:
+    auto load(std::string_view, int, std::string_view) -> Icon override {
+        return nullptr;
+    }
+};
 
 static PlatformApplication *s_platform = nullptr;
 static Application *s_application = nullptr;
@@ -98,11 +108,16 @@ std::unique_ptr<PlatformApplication> create_platform_application() {
 
 struct Application::Impl {
     std::unique_ptr<PlatformApplication> platform;
+    std::unique_ptr<IconProvider> icon_provider;
+    std::map<std::string, Icon> icon_cache;
 };
 
 Application::Application() : impl_(std::make_unique<Impl>()) {
+    detail::set_current_application(this);
     impl_->platform = create_platform_application();
     detail::set_current_platform(impl_->platform.get());
+
+    impl_->icon_provider = std::make_unique<DummyIconProvider>();
 
     // Refresh theme now that platform is active to detect correct fonts/scale
     Theme::set_current(Theme::create(Theme::detect_system_style()));
@@ -113,7 +128,12 @@ Application::Application() : impl_(std::make_unique<Impl>()) {
                  impl_->platform->scale_factor());
 }
 
-Application::~Application() { detail::set_current_platform(nullptr); }
+Application::~Application() {
+    detail::set_current_platform(nullptr);
+    detail::set_current_application(nullptr);
+}
+
+Application &Application::instance() { return *detail::current_application(); }
 
 Window *Application::create_window(std::string_view title, Size size) {
     windows_.push_back(std::make_unique<Window>(title, size));
@@ -131,6 +151,31 @@ void Application::notify_theme_changed() {
     for (auto &win : windows_) {
         win->on_theme_changed();
     }
+}
+
+void Application::set_icon_provider(std::unique_ptr<IconProvider> provider) {
+    if (provider) {
+        impl_->icon_provider = std::move(provider);
+    } else {
+        impl_->icon_provider = std::make_unique<DummyIconProvider>();
+    }
+    impl_->icon_cache.clear();
+}
+
+IconProvider *Application::icon_provider() const { return impl_->icon_provider.get(); }
+
+Icon Application::load_icon(std::string_view icon_name, int size, std::string_view context) {
+    auto key = fmt::format("{}:{}:{}", icon_name, size, context);
+    auto it = impl_->icon_cache.find(key);
+    if (it != impl_->icon_cache.end()) {
+        return it->second;
+    }
+
+    auto icon = impl_->icon_provider->load(icon_name, size, context);
+    if (icon) {
+        impl_->icon_cache[key] = icon;
+    }
+    return icon;
 }
 
 void Application::post_to_main_thread(std::function<void()> fn) {

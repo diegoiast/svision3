@@ -7,7 +7,7 @@ TEST_CASE("ImageLoader::load returns image data", "[image]") {
     ImageLoader loader;
 
     auto img = loader.load("themes/Faenza/actions/16/gtk-edit.png");
-    REQUIRE(img.has_value());
+    REQUIRE(img);
     REQUIRE(img->width > 0);
     REQUIRE(img->height > 0);
     REQUIRE(img->channels == 4);
@@ -18,7 +18,7 @@ TEST_CASE("ImageLoader::load returns nullopt for invalid path", "[image]") {
     ImageLoader loader;
 
     auto img = loader.load("nonexistent/image.png");
-    REQUIRE(!img.has_value());
+    REQUIRE(!img);
 }
 
 TEST_CASE("ImageLoader::supported_extensions", "[image]") {
@@ -33,7 +33,7 @@ TEST_CASE("XdgImageLoader loads action icon", "[image]") {
     XdgImageLoader loader("Faenza");
 
     auto img = loader.load("gtk-edit", 16, "actions");
-    REQUIRE(img.has_value());
+    REQUIRE(img);
     REQUIRE(img->width == 16);
     REQUIRE(img->height == 16);
 }
@@ -55,19 +55,19 @@ TEST_CASE("XdgImageLoader::set_theme changes theme", "[image]") {
 
     loader.set_theme("NonExistent");
     auto img = loader.load("gtk-edit", 16, "actions");
-    REQUIRE(!img.has_value());
+    REQUIRE(!img);
 
     loader.set_theme("Faenza");
     img = loader.load("gtk-edit", 16, "actions");
-    REQUIRE(img.has_value());
+    REQUIRE(img);
 }
 
 TEST_CASE("XdgImageLoader loads icons from different contexts", "[image]") {
     XdgImageLoader loader("Faenza");
 
     auto img = loader.load("gtk-edit", 16, "actions");
-    REQUIRE(img.has_value());
+    REQUIRE(img);
 
     img = loader.load("document-open", 16, "actions");
-    REQUIRE(img.has_value());
+    REQUIRE(img);
 }

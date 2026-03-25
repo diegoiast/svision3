@@ -4,16 +4,21 @@
 #pragma once
 
 #include "toolkit/window.hpp"
+#include "toolkit/image_loader.hpp"
 #include <memory>
 #include <string_view>
 #include <vector>
 
 namespace toolkit {
 
+class IconProvider;
+
 class Application {
   public:
     Application();
     ~Application();
+
+    static Application &instance();
 
     Application(Application const &) = delete;
     Application &operator=(Application const &) = delete;
@@ -26,6 +31,10 @@ class Application {
     std::string_view painter_name() const;
 
     void notify_theme_changed();
+
+    void set_icon_provider(std::unique_ptr<IconProvider> provider);
+    IconProvider *icon_provider() const;
+    Icon load_icon(std::string_view icon_name, int size, std::string_view context = "actions");
 
     static void post_to_main_thread(std::function<void()> fn);
 

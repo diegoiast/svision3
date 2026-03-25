@@ -7,7 +7,7 @@
 3. Configure:
 ```
 conan install . -s build_type=Debug --build=missing
-cmake --preset conan-release -G Ninja
+cmake --preset conan-debug -G Ninja
 ```
 3. Build:
 ```
@@ -32,6 +32,8 @@ cmake --preset conan-debug -G Ninja
     1. When working on a widget, do not modify platform code - keep modifications
        inside the widget code. If platform changes are needed - prompt developer
        to modify those things.
+    1. Painting new widgets, should be done by drawing widgets primities for this
+       widget. (`theme->draw_button_background()`
 1. Variables
     1. Variable names are `snake_case`.
     2. Macros (`#define`) are always UPPER_CASE.
@@ -51,3 +53,11 @@ cmake --preset conan-debug -G Ninja
     1. Class names are `PascalNotation`.
     2. Methods are `camelCase`.
 
+## Classes for  Windows/Widgets
+1. Widgets
+    1. All widgets will have a default empty constrctor.
+    1. All setters for the widget (`set_text()`, `set_icon()` etc), will
+       return a reference to `this`. This is for chainability.
+2. Windows
+    1. Will have a `add<T>` widget which will allocate the widget using
+       `make_unique<T>` and then return a refernce to the created widget.

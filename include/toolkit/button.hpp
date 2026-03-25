@@ -18,7 +18,7 @@ class Button : public Widget {
     void set_text(std::string text);
     std::string const &text() const { return display_text_; }
 
-    void set_icon(ImageData icon);
+    void set_icon(Icon icon);
     void clear_icon();
 
     void paint(Painter &painter) override;
@@ -57,7 +57,7 @@ class Button : public Widget {
     void start_auto_repeat_interval();
 
     std::string display_text_;
-    std::optional<ImageData> icon_;
+    Icon icon_;
     int mnemonic_index_ = -1;
     char mnemonic_key_ = 0;
     bool hovered_ = false;

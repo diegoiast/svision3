@@ -20,11 +20,13 @@ struct ImageData {
     int channels = 4;
 };
 
+using Icon = std::shared_ptr<ImageData>;
+
 class ImageLoader {
   public:
     virtual ~ImageLoader() = default;
 
-    virtual auto load(std::string_view path) -> std::optional<ImageData>;
+    virtual auto load(std::string_view path) -> Icon;
     virtual auto supported_extensions() const -> std::vector<std::string>;
 };
 
@@ -43,13 +45,20 @@ struct IconTheme {
     std::vector<IconDirectory> directories;
 };
 
-class XdgImageLoader {
+class IconProvider {
+  public:
+    virtual ~IconProvider() = default;
+    virtual auto load(std::string_view icon_name, int size,
+                      std::string_view context = "actions") -> Icon = 0;
+};
+
+class XdgImageLoader : public IconProvider {
   public:
     explicit XdgImageLoader();
     explicit XdgImageLoader(std::string_view theme_name);
 
     auto load(std::string_view icon_name, int size, std::string_view context = "actions")
-        -> std::optional<ImageData>;
+        -> Icon override;
     auto set_theme(std::string_view theme_name) -> void;
     auto theme_name() const -> std::string_view;
 

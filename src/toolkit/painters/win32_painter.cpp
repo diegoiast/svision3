@@ -14,6 +14,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
+#include <spdlog/spdlog.h>
 #include <cmath>
 #include <cstring>
 #include <string>
@@ -369,14 +370,14 @@ Painter::FontMetrics GDIPainter::font_metrics(float font_size, FontFamily family
 
 void GDIPainter::draw_image(ImageData const &image, Point position) {
     if (image.width <= 0 || image.height <= 0) {
-        OutputDebugStringA("draw_image: image is empty");
+        spdlog::error("draw_image: image is empty ({}x{})", image.width, image.height);
         return;
     }
 
     Gdiplus::Bitmap bmp(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
                         (BYTE *)image.pixels.data());
     if (bmp.GetLastStatus() != Gdiplus::Ok) {
-        OutputDebugStringA("draw_image: failed to create bitmap");
+        spdlog::error("draw_image: failed to create GDI+ bitmap (status: {})", (int)bmp.GetLastStatus());
         return;
     }
     impl_->graphics->DrawImage(&bmp, position.x, position.y, static_cast<float>(image.width),
@@ -385,13 +386,14 @@ void GDIPainter::draw_image(ImageData const &image, Point position) {
 
 void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     if (image.width <= 0 || image.height <= 0 || dest.width <= 0 || dest.height <= 0) {
-        OutputDebugStringA("draw_image_scaled: image or destination is empty");
+        spdlog::error("draw_image_scaled: image or destination is empty (image: {}x{}, dest: {}x{})",
+                      image.width, image.height, dest.width, dest.height);
         return;
     }
     Gdiplus::Bitmap bmp(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
                         (BYTE *)image.pixels.data());
     if (bmp.GetLastStatus() != Gdiplus::Ok) {
-        OutputDebugStringA("draw_image_scaled: failed to create bitmap");
+        spdlog::error("draw_image_scaled: failed to create GDI+ bitmap (status: {})", (int)bmp.GetLastStatus());
         return;
     }
     impl_->graphics->DrawImage(&bmp, dest.x, dest.y, dest.width, dest.height);

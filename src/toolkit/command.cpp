@@ -2,7 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/command.hpp"
+#include "toolkit/application.hpp"
 #include "toolkit/events.hpp"
+#include "toolkit/image_loader.hpp"
 #include <algorithm>
 #include <cctype>
 #include <vector>
@@ -132,13 +134,12 @@ void Command::set_shortcut(std::string s) {
 
 void Command::set_icon(std::string icon) {
     icon_ = std::move(icon);
-    icon_image_.reset();
+    icon_image_ = nullptr;
 }
 
-auto Command::icon_image() const -> std::optional<ImageData> {
+auto Command::icon_image() const -> Icon {
     if (!icon_.empty() && !icon_image_) {
-        static XdgImageLoader loader("Faenza");
-        icon_image_ = loader.load(icon_, 16, "actions");
+        icon_image_ = Application::instance().load_icon(icon_, 16, "actions");
     }
     return icon_image_;
 }
