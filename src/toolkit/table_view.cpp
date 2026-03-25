@@ -385,17 +385,7 @@ void TableView::paint(Painter &painter) {
     auto nrows = model_->row_count();
     auto ncols = model_->column_count();
 
-    if (style.beveled) {
-        painter.draw_frame({0, 0, rect_.width, rect_.height}, style.background, style.border, style,
-                           true);
-    } else {
-        painter.fill_rounded_rect({0, 0, rect_.width, rect_.height}, style.background,
-                                  style.corner_radius);
-        if (style.border_width > 0) {
-            painter.draw_rounded_rect({0, 0, rect_.width, rect_.height}, style.border,
-                                      style.corner_radius, style.border_width);
-        }
-    }
+    Theme::current().draw_table_background(painter, {0, 0, rect_.width, rect_.height});
 
     painter.push_clip({0, 0, rect_.width, rect_.height});
 
