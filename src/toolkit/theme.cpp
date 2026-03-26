@@ -854,8 +854,8 @@ class BaseTheme : public Theme {
         float inset = lw / 2.0f + 0.5f;
         Rect r = rect.inset(inset);
 
-        float dash_len = 4.0f;
-        float gap_len = 4.0f;
+        float dash_len = 2.0f;
+        float gap_len = 2.0f;
 
         auto draw_dashed_line = [&](Point start, Point end) {
             float dx = end.x - start.x;
@@ -887,14 +887,17 @@ class BaseTheme : public Theme {
             auto bottom_left = Point{r.x + cr, r.y + r.height - cr};
             auto bottom_right = Point{r.x + r.width - cr, r.y + r.height - cr};
 
-            draw_dashed_line({r.x, r.y + cr}, top_right);
-            draw_dashed_line(top_right, {r.x + r.width, r.y + cr});
-            draw_dashed_line({r.x + r.width, r.y + cr}, bottom_right);
-            draw_dashed_line(bottom_right, {r.x + r.width, r.y + r.height - cr});
-            draw_dashed_line({r.x + r.width, r.y + r.height - cr}, bottom_left);
-            draw_dashed_line(bottom_left, {r.x, r.y + r.height - cr});
+            draw_dashed_line({r.x + cr, r.y}, {r.x + r.width - cr, r.y});
+            draw_dashed_line({r.x + r.width, r.y + cr}, {r.x + r.width, r.y + r.height - cr});
+            draw_dashed_line({r.x + r.width - cr, r.y + r.height}, {r.x + cr, r.y + r.height});
             draw_dashed_line({r.x, r.y + r.height - cr}, {r.x, r.y + cr});
-            draw_dashed_line({r.x, r.y + cr}, top_left);
+
+            // Connect corners with diagonals
+            draw_dashed_line({r.x + cr, r.y}, {r.x, r.y + cr});
+            draw_dashed_line({r.x + r.width - cr, r.y}, {r.x + r.width, r.y + cr});
+            draw_dashed_line({r.x + r.width, r.y + r.height - cr},
+                             {r.x + r.width - cr, r.y + r.height});
+            draw_dashed_line({r.x + cr, r.y + r.height}, {r.x, r.y + r.height - cr});
         } else {
             draw_dashed_line({r.x, r.y}, {r.x + r.width, r.y});
             draw_dashed_line({r.x + r.width, r.y}, {r.x + r.width, r.y + r.height});
@@ -982,12 +985,20 @@ class BaseTheme : public Theme {
 
 class MacOSTheme : public BaseTheme {
   public:
-    using BaseTheme::BaseTheme;
+    explicit MacOSTheme(Palette p) : BaseTheme(std::move(p)) {
+        name = "macOS";
+        focus_ring_margin = 2.0f;
+        focus_ring_corner_radius = 4.0f;
+    }
 };
-
 class Win11Theme : public BaseTheme {
   public:
-    using BaseTheme::BaseTheme;
+    explicit Win11Theme(Palette p) : BaseTheme(std::move(p)) {
+        name = "Windows 11";
+        focus_ring_margin = 3.0f;
+        focus_ring_corner_radius = 4.0f;
+    }
+
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
                            bool active, bool show_mnemonics, int mnemonic_index) const override {
         auto const &style = menubar;
@@ -1023,33 +1034,31 @@ class Win95Theme : public BaseTheme {
     }
 
     void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const override {
-        Color ring = line_input.border_focused;
+        auto lw = 2.0f;
+        auto dash_len = 2.0f;
+        auto gap_len = 2.0f;
+        auto x = rect.x;
+        auto y = rect.y;
+        auto w = rect.width;
+        auto h = rect.height;
+        auto ring = line_input.border_focused;
         ring.a = 0.5f;
-        float lw = 2.0f;
 
         painter.draw_rect(rect, ring, lw);
-
-        float dash_len = 4.0f;
-        float gap_len = 4.0f;
-        float x = rect.x;
-        float y = rect.y;
-        float w = rect.width;
-        float h = rect.height;
-
         auto draw_dashed_line = [&](Point start, Point end) {
-            float dx = end.x - start.x;
-            float dy = end.y - start.y;
-            float len = std::sqrt(dx * dx + dy * dy);
+            auto dx = end.x - start.x;
+            auto dy = end.y - start.y;
+            auto len = std::sqrt(dx * dx + dy * dy);
             if (len < 0.001f) {
                 return;
             }
-            float ux = dx / len;
-            float uy = dy / len;
-            float pos = 0.0f;
-            bool drawing = true;
+            auto ux = dx / len;
+            auto uy = dy / len;
+            auto pos = 0.0f;
+            auto drawing = true;
             while (pos < len) {
-                float seg_len = drawing ? dash_len : gap_len;
-                float next_pos = std::min(pos + seg_len, len);
+                auto seg_len = drawing ? dash_len : gap_len;
+                auto next_pos = std::min(pos + seg_len, len);
                 if (drawing) {
                     painter.draw_line({start.x + ux * pos, start.y + uy * pos},
                                       {start.x + ux * next_pos, start.y + uy * next_pos}, ring, lw);
@@ -1066,19 +1075,107 @@ class Win95Theme : public BaseTheme {
             auto bottom_left = Point{x + cr, y + h - cr};
             auto bottom_right = Point{x + w - cr, y + h - cr};
 
-            draw_dashed_line({x, y + cr}, top_right);
-            draw_dashed_line(top_right, {x + w, y + cr});
-            draw_dashed_line({x + w, y + cr}, bottom_right);
-            draw_dashed_line(bottom_right, {x + w, y + h - cr});
-            draw_dashed_line({x + w, y + h - cr}, bottom_left);
-            draw_dashed_line(bottom_left, {x, y + h - cr});
-            draw_dashed_line({x, y + cr}, {x, y + h - cr});
-            draw_dashed_line({x, y + cr}, top_left);
+            draw_dashed_line({x + cr, y}, {x + w - cr, y});
+            draw_dashed_line({x + w, y + cr}, {x + w, y + h - cr});
+            draw_dashed_line({x + w - cr, y + h}, {x + cr, y + h});
+            draw_dashed_line({x, y + h - cr}, {x, y + cr});
+
+            // Connect corners with diagonals
+            draw_dashed_line({x + cr, y}, {x, y + cr});
+            draw_dashed_line({x + w - cr, y}, {x + w, y + cr});
+            draw_dashed_line({x + w, y + h - cr}, {x + w - cr, y + h});
+            draw_dashed_line({x + cr, y + h}, {x, y + h - cr});
         } else {
             draw_dashed_line({x, y}, {x + w, y});
             draw_dashed_line({x + w, y}, {x + w, y + h});
             draw_dashed_line({x + w, y + h}, {x, y + h});
             draw_dashed_line({x, y + h}, {x, y});
+        }
+    }
+};
+
+class MaterialTheme : public BaseTheme {
+  public:
+    explicit MaterialTheme(Palette p) : BaseTheme(std::move(p)) {
+        auto is_dark = luma(palette_.window) < 0.5f;
+        name = "Material";
+        button.background_hovered =
+            is_dark ? palette_.window.lighten(0.08f) : palette_.window.darken(0.04f);
+        button.background_pressed =
+            is_dark ? palette_.window.lighten(0.15f) : palette_.window.darken(0.10f);
+        button.padding = {10, 24, 10, 24};
+        button.corner_radius = 4.0f;
+
+        menu.padding = {4, 4, 4, 4};
+        menubar.padding = {4, 12, 4, 12};
+        slider.handle_size = 18.0f;
+        slider.groove_thickness = 4.0f;
+
+        focus_ring_margin = 3.0f;
+        focus_ring_corner_radius = 3.0f;
+    }
+};
+
+class GnomeTheme : public BaseTheme {
+  public:
+    explicit GnomeTheme(Palette p) : BaseTheme(std::move(p)) {
+        name = "GNOME";
+        bool dark = luma(palette_.window) < 0.5f;
+        Color btn_bg = dark ? palette_.window.lighten(0.04f) : palette_.window.darken(0.03f);
+        button.background = btn_bg;
+        button.background_hovered = dark ? btn_bg.lighten(0.04f) : btn_bg.darken(0.04f);
+        button.background_pressed = dark ? btn_bg.darken(0.06f) : btn_bg.darken(0.10f);
+        button.border = dark ? palette_.border.lighten(0.04f) : palette_.border.darken(0.06f);
+        button.padding = {8, 20, 8, 20};
+        button.corner_radius = 8.0f;
+
+        checkbox.corner_radius = 5.0f;
+        checkbox.border_width = 2.0f;
+        radio.border_width = 2.0f;
+        line_input.corner_radius = palette_.corner_radius;
+        combobox.corner_radius = palette_.corner_radius;
+        slider.handle_size = 22.0f;
+        slider.groove_thickness = 6.0f;
+
+        focus_ring_margin = 2.0f;
+        focus_ring_corner_radius = 2.0f;
+    }
+};
+
+class Plasma6Theme : public BaseTheme {
+  public:
+    explicit Plasma6Theme(Palette p) : BaseTheme(std::move(p)) {
+        name = "Plasma 6";
+        button.padding = {6, 18, 6, 18};
+        button.corner_radius = 5.0f;
+        button.background_hovered = palette_.highlight;
+        button.background_pressed = palette_.highlight.darken(0.1f);
+
+        checkbox.corner_radius = 5.0f;
+        checkbox.indicator = gray(0.0f);
+
+        radio.indicator = gray(0.0f);
+
+        slider.handle_size = 20.0f;
+        slider.groove_thickness = 6.0f;
+
+        focus_ring_margin = 2.0f;
+        focus_ring_corner_radius = 4.0f;
+    }
+
+    void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
+                     bool hovered, bool pressed, bool focused, bool enabled, bool flat,
+                     std::optional<Color> background) const override {
+        BaseTheme::draw_button(painter, rect, text, icon, hovered, pressed, focused, enabled, flat,
+                               background);
+
+        if (enabled && !flat && !pressed) {
+            auto line_c = palette_.border;
+            line_c.a = 0.3f;
+            painter.draw_line(
+                {rect.x + button.corner_radius, rect.y + rect.height - 2.0f},
+                {rect.x + rect.width - button.corner_radius, rect.y + rect.height - 2.0f}, line_c,
+                1.0f);
         }
     }
 };
@@ -1146,6 +1243,32 @@ static void palette_win11(Palette &p, ColorScheme scheme) {
     }
 }
 
+static void palette_material(Palette &p, ColorScheme scheme) {
+    p.corner_radius = 4.0f;
+    Color matPurple = Color::rgb(0.384f, 0.0f, 0.933f);
+    p.accent = matPurple;
+    p.highlight = matPurple;
+
+    switch (scheme) {
+    case ColorScheme::Light:
+        p.window = gray(0.98f);
+        p.base = gray(1.0f);
+        p.text = gray(0.13f);
+        p.border = gray(0.74f);
+        p.alternate = gray(0.90f);
+        break;
+    case ColorScheme::Dark:
+        p.window = Color::rgb(0.07f, 0.07f, 0.07f);
+        p.base = Color::rgb(0.12f, 0.12f, 0.12f);
+        p.text = gray(0.93f);
+        p.border = gray(0.33f);
+        p.accent = Color::rgb(0.55f, 0.33f, 0.97f);
+        p.highlight = p.accent;
+        p.alternate = Color::rgb(0.16f, 0.16f, 0.16f);
+        break;
+    }
+}
+
 static void palette_win95(Palette &p, ColorScheme scheme) {
     p.beveled = true;
     switch (scheme) {
@@ -1168,6 +1291,54 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.highlight = Color::rgb(0.0f, 0.0f, 0.8f);
         p.shadow = gray(0.12f);
         p.alternate = gray(0.35f);
+        break;
+    }
+}
+
+static void palette_plasma6(Palette &p, ColorScheme scheme) {
+    p.corner_radius = 5.0f;
+    switch (scheme) {
+    case ColorScheme::Light:
+        p.window = Color::from_argb(0xFFeff0f1);
+        p.base = gray(1.0f);
+        p.text = Color::rgb(0.137f, 0.149f, 0.161f);
+        p.border = Color::rgb(0.737f, 0.753f, 0.773f);
+        p.accent = Color::from_argb(0xFF3daee9);
+        p.highlight = Color::from_argb(0xFFd6ecf8);
+        p.alternate = gray(0.90f);
+        break;
+    case ColorScheme::Dark:
+        p.window = Color::rgb(0.137f, 0.149f, 0.161f);
+        p.base = Color::rgb(0.192f, 0.212f, 0.231f);
+        p.text = Color::rgb(0.937f, 0.941f, 0.945f);
+        p.border = gray(0.30f);
+        p.accent = Color::rgb(0.239f, 0.682f, 0.914f);
+        p.highlight = p.accent;
+        p.alternate = Color::rgb(0.23f, 0.25f, 0.27f);
+        break;
+    }
+}
+
+static void palette_gnome(Palette &p, ColorScheme scheme) {
+    p.corner_radius = 8.0f;
+    Color gnomeBlue = Color::rgb(0.21f, 0.52f, 0.89f);
+    p.accent = gnomeBlue;
+    p.highlight = gnomeBlue;
+
+    switch (scheme) {
+    case ColorScheme::Light:
+        p.window = Color::rgb(0.98f, 0.98f, 0.98f);
+        p.base = gray(1.0f);
+        p.text = Color::rgb(0.18f, 0.20f, 0.21f);
+        p.border = Color::rgb(0.86f, 0.84f, 0.83f);
+        p.alternate = gray(0.90f);
+        break;
+    case ColorScheme::Dark:
+        p.window = Color::rgb(0.14f, 0.14f, 0.14f);
+        p.base = Color::rgb(0.22f, 0.22f, 0.22f);
+        p.text = gray(0.95f);
+        p.border = gray(0.30f);
+        p.alternate = Color::rgb(0.26f, 0.26f, 0.26f);
         break;
     }
 }
@@ -1203,11 +1374,20 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
     case ThemeStyle::MacOS:
         palette_macos(p, scheme);
         break;
+    case ThemeStyle::Material:
+        palette_material(p, scheme);
+        break;
     case ThemeStyle::Win11:
         palette_win11(p, scheme);
         break;
     case ThemeStyle::Win95:
         palette_win95(p, scheme);
+        break;
+    case ThemeStyle::Plasma6:
+        palette_plasma6(p, scheme);
+        break;
+    case ThemeStyle::GNOME:
+        palette_gnome(p, scheme);
         break;
     default:
         palette_win11(p, scheme);
@@ -1261,11 +1441,20 @@ std::unique_ptr<Theme> Theme::create(ThemeStyle style, Palette const &palette) {
     case ThemeStyle::MacOS:
         t = std::make_unique<MacOSTheme>(palette);
         break;
+    case ThemeStyle::Material:
+        t = std::make_unique<MaterialTheme>(palette);
+        break;
     case ThemeStyle::Win11:
         t = std::make_unique<Win11Theme>(palette);
         break;
     case ThemeStyle::Win95:
         t = std::make_unique<Win95Theme>(palette);
+        break;
+    case ThemeStyle::Plasma6:
+        t = std::make_unique<Plasma6Theme>(palette);
+        break;
+    case ThemeStyle::GNOME:
+        t = std::make_unique<GnomeTheme>(palette);
         break;
     default:
         t = std::make_unique<BaseTheme>(palette);

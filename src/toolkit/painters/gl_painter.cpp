@@ -101,22 +101,27 @@ void GLPainter::pop_translation() {
 void GLPainter::apply_line_style() {
     switch (style_) {
     case Painter::LineStyle::Dashed:
+        glDisable(GL_LINE_SMOOTH);
         glEnable(GL_LINE_STIPPLE);
-        glLineStipple(1, 0xF0F0);
+        glLineStipple(1, 0x00FF);
         break;
     case Painter::LineStyle::Dotted:
+        glDisable(GL_LINE_SMOOTH);
         glEnable(GL_LINE_STIPPLE);
         glLineStipple(1, 0xAAAA);
         break;
     case Painter::LineStyle::Solid:
     default:
         glDisable(GL_LINE_STIPPLE);
+        glEnable(GL_LINE_SMOOTH);
+        glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
         break;
     }
 }
 
 void GLPainter::fill_rect(Rect const &r, Color const &c) {
     glDisable(GL_LINE_STIPPLE);
+    glDisable(GL_LINE_SMOOTH);
     set_color(c);
     glBegin(GL_QUADS);
     glVertex2f(r.x, r.y);
@@ -141,6 +146,7 @@ void GLPainter::draw_rect(Rect const &r, Color const &c, float lw) {
 
 void GLPainter::fill_rounded_rect(Rect const &r, Color const &c, float radius) {
     glDisable(GL_LINE_STIPPLE);
+    glDisable(GL_LINE_SMOOTH);
     float rad = std::min({radius, r.width / 2.0f, r.height / 2.0f});
     if (rad <= 0) {
         fill_rect(r, c);
@@ -167,29 +173,23 @@ void GLPainter::draw_rounded_rect(Rect const &r, Color const &c, float radius, f
     set_color(c);
     glLineWidth(lw * scale_);
     apply_line_style();
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     auto pts = rounded_rect_verts(r.x, r.y, r.width, r.height, rad);
     glBegin(GL_LINE_LOOP);
     for (auto &[px, py] : pts) {
         glVertex2f(px, py);
     }
     glEnd();
-    glDisable(GL_LINE_SMOOTH);
 }
 
 void GLPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     set_color(c);
     glLineWidth(lw * scale_);
     apply_line_style();
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
     glBegin(GL_LINES);
     glVertex2f(a.x, a.y);
     glVertex2f(b.x, b.y);
     glEnd();
-    glDisable(GL_LINE_SMOOTH);
 }
 
 void GLPainter::fill_circle(Point center, float radius, Color const &c) {
