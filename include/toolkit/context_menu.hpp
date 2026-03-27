@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/button_state.hpp"
 #include "toolkit/menu.hpp"
 #include <memory>
 #include <vector>
@@ -28,8 +29,10 @@ class ContextMenu {
     Window *window_ = nullptr;
     Rect bounds_;
     int hovered_ = -1;
+    int pressed_item_ = -1;
     float item_height_ = 0;
     float separator_height_ = 7.0f;
+    ButtonStateHandler state_handler_;
 };
 
 } // namespace toolkit

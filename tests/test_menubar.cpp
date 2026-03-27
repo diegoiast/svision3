@@ -49,10 +49,14 @@ TEST_CASE("MenuBar interaction", "[menubar]") {
     // In MockPainter, fm.height = font_size = 14.
     // MenuBar height is fm.height + padding.top + padding.bottom = 14 + 6 + 6 = 26.
     // MenuItem height in Menu is style.font_size + style.item_padding * 2.0f + 4.0f = 14 + 2*4 + 4
-    // = 26. Popup starts at (0, 26). Items inside popup start at y=2. So "New" is at y=[26+2,
+    // = 26. Popup starts at (0, 26). Items inside popup start at y=2. So "New" is at y=[28,
     // 26+2+26] = [28, 54].
     me.position = {20, 40};
-    spdlog::info("Simulating click at (20, 40) for New action");
+    spdlog::info("Simulating press at (20, 40) for New action");
+    win.handle_mouse(me);
+
+    me.type = MouseEvent::Type::Release;
+    spdlog::info("Simulating release at (20, 40) for New action");
     win.handle_mouse(me);
 
     REQUIRE(action1_called == true);

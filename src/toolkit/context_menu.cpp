@@ -8,7 +8,13 @@
 
 namespace toolkit {
 
-ContextMenu::ContextMenu(std::vector<MenuItem> items) : items_(std::move(items)) {}
+ContextMenu::ContextMenu(std::vector<MenuItem> items) : items_(std::move(items)) {
+    state_handler_.on_state_change_callback = [this] {
+        if (window_) {
+            window_->request_redraw("context menu state");
+        }
+    };
+}
 
 static auto menu_total_height(std::vector<MenuItem> const &items, float item_h, float sep_h)
     -> float {
@@ -119,22 +125,50 @@ void ContextMenu::paint(Painter &painter) {
 
 bool ContextMenu::handle_mouse(MouseEvent const &event) {
     auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
+    auto inside = local_bounds.contains(event.position);
 
     if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
+        auto previously_hovered = hovered_;
         hovered_ = item_at(event.position);
-        return local_bounds.contains(event.position);
+
+        if (inside) {
+            state_handler_.on_mouse_enter();
+        } else {
+            state_handler_.on_mouse_leave();
+        }
+
+        return inside;
+    }
+
+    if (event.type == MouseEvent::Type::Leave) {
+        hovered_ = -1;
+        state_handler_.on_mouse_leave();
+        return true;
     }
 
     if (event.type == MouseEvent::Type::Press) {
         auto idx = item_at(event.position);
         if (idx >= 0 && items_[idx].command->is_enabled()) {
-            auto cmd = items_[idx].command;
-            close();
-            cmd->execute();
+            state_handler_.on_mouse_click(event);
+            pressed_item_ = idx;
             return true;
         }
         close();
         return false;
+    }
+
+    if (event.type == MouseEvent::Type::Release) {
+        auto idx = item_at(event.position);
+        if (state_handler_.button_state == ButtonState::ClickedInside && idx == pressed_item_) {
+            if (idx >= 0 && items_[idx].command->is_enabled()) {
+                auto cmd = items_[idx].command;
+                close();
+                cmd->execute();
+            }
+        }
+        state_handler_.on_mouse_click(event);
+        pressed_item_ = -1;
+        return inside;
     }
 
     return false;

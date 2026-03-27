@@ -41,6 +41,11 @@ Menu::Menu(std::string title) : title_(std::move(title)), mnemonic_index_(-1) {
         mnemonic_index_ = static_cast<int>(pos);
     }
     display_title_ = strip_mnemonic(title_);
+    state_handler_.on_state_change_callback = [this] {
+        if (window_) {
+            window_->request_redraw("menu state");
+        }
+    };
 }
 
 void Menu::add_action(std::shared_ptr<Command> cmd) {
@@ -202,32 +207,27 @@ void Menu::paint(Painter &painter) {
 
 bool Menu::handle_mouse(MouseEvent const &event) {
     auto local_bounds = Rect{0, 0, bounds_.width, bounds_.height};
+    auto inside = local_bounds.contains(event.position);
 
     if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
         auto previously_hovered = hovered_;
         hovered_ = item_at(event.position);
+
+        if (inside) {
+            state_handler_.on_mouse_enter();
+        } else {
+            state_handler_.on_mouse_leave();
+        }
+
         if (hovered_ != -1 && previously_hovered != hovered_) {
-            // If we moved to a different item, and we have a submenu open,
-            // we should close it.
             if (open_submenu_index_ != -1 && hovered_ != open_submenu_index_) {
                 if (window_) {
-                    // Close everything above this menu because we moved away
-                    // from the item that opened the child.
-                    // Since Window::handle_mouse only closes if size changes,
-                    // we need to close it here.
                     while (window_->num_popups() > 0) {
-                        // How to know if we are at popups_[i]?
-                        // This is tricky. Let's use a simpler heuristic:
-                        // we just close the popups above us.
-                        // But Menu doesn't know its index in the window.
-
-                        // Let's assume for now that if we are handling the mouse,
-                        // and we have an open child, it's the one at the top.
                         window_->close_popup();
                         if (open_submenu_index_ == -1) {
                             break;
                         }
-                        break; // Close only one level
+                        break;
                     }
                 }
                 open_submenu_index_ = -1;
@@ -237,13 +237,12 @@ bool Menu::handle_mouse(MouseEvent const &event) {
                 open_submenu(hovered_);
             }
         }
-        return local_bounds.contains(event.position);
+        return inside;
     }
 
     if (event.type == MouseEvent::Type::Leave) {
-        // We don't close submenus on Leave, because the mouse might be
-        // moving into the submenu itself.
         hovered_ = -1;
+        state_handler_.on_mouse_leave();
         return true;
     }
 
@@ -251,9 +250,8 @@ bool Menu::handle_mouse(MouseEvent const &event) {
         auto idx = item_at(event.position);
         if (idx >= 0 && items_[idx].command->is_enabled()) {
             if (items_[idx].is_action()) {
-                auto cmd = items_[idx].command;
-                close();
-                cmd->execute();
+                state_handler_.on_mouse_click(event);
+                pressed_item_ = idx;
                 return true;
             } else if (items_[idx].is_submenu()) {
                 open_submenu(idx);
@@ -261,6 +259,20 @@ bool Menu::handle_mouse(MouseEvent const &event) {
             }
         }
         return false;
+    }
+
+    if (event.type == MouseEvent::Type::Release) {
+        auto idx = item_at(event.position);
+        if (state_handler_.button_state == ButtonState::ClickedInside && idx == pressed_item_) {
+            if (idx >= 0 && items_[idx].is_action() && items_[idx].command->is_enabled()) {
+                auto cmd = items_[idx].command;
+                close();
+                cmd->execute();
+            }
+        }
+        state_handler_.on_mouse_click(event);
+        pressed_item_ = -1;
+        return inside;
     }
 
     return false;

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/button_state.hpp"
 #include "toolkit/command.hpp"
 #include "toolkit/events.hpp"
 #include "toolkit/painter.hpp"
@@ -80,7 +81,9 @@ class Menu : public std::enable_shared_from_this<Menu> {
     Window *window_ = nullptr;
     Rect bounds_;
     int hovered_ = -1;
+    int pressed_item_ = -1;
     int open_submenu_index_ = -1;
+    ButtonStateHandler state_handler_;
     float item_height_ = 0;
     float separator_height_ = 7.0f;
     Menu *parent_menu_ = nullptr;
