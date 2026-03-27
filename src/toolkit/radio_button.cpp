@@ -3,6 +3,7 @@
 
 #include "toolkit/radio_button.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/window.hpp"
 #include <algorithm>
 
 namespace toolkit {
@@ -22,24 +23,62 @@ void RadioGroup::select(RadioButton *rb) {
     }
 }
 
+void RadioButton::on_state_changed() {
+    if (window_) {
+        window_->request_redraw("radio button state");
+    }
+}
+
+bool RadioButton::should_fire_click() const {
+    return state_handler_.button_state == ButtonState::ClickedInside;
+}
+
 RadioButton::RadioButton(std::string text, RadioGroup &group)
     : text_(std::move(text)), group_(group) {
     state.focusable = true;
     group_.add(this);
+    state_handler_.on_state_change_callback = [this] { on_state_changed(); };
 }
 
 void RadioButton::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    Theme::current().draw_radio_button(painter, rect, text_, selected_, false, false, is_focused(),
-                                       is_enabled());
+    auto pressed = state_handler_.button_state == ButtonState::ClickedInside;
+    Theme::current().draw_radio_button(painter, rect, text_, selected_, pressed, false,
+                                       is_focused(), is_enabled());
 }
 
 bool RadioButton::handle_mouse(MouseEvent const &event) {
-    if (event.type == MouseEvent::Type::Press) {
-        if (Rect{0, 0, rect_.width, rect_.height}.contains(event.position)) {
-            group_.select(this);
+    auto inside = Rect{0, 0, rect_.width, rect_.height}.contains(event.position);
+
+    switch (event.type) {
+    case MouseEvent::Type::Move:
+        if (inside) {
+            state_handler_.on_mouse_enter();
+        } else {
+            state_handler_.on_mouse_leave();
+        }
+        return inside;
+    case MouseEvent::Type::Press:
+        if (inside) {
+            state_handler_.on_mouse_click(event);
             return true;
         }
+        return false;
+    case MouseEvent::Type::Release:
+        if (state_handler_.button_state == ButtonState::ClickedInside && inside) {
+            state_handler_.on_mouse_click(event);
+            group_.select(this);
+        } else if (state_handler_.button_state == ButtonState::ClickedOutside) {
+            state_handler_.on_mouse_click(event);
+        } else if (state_handler_.button_state == ButtonState::ClickedInside && !inside) {
+            state_handler_.on_mouse_click(event);
+        }
+        return inside;
+    case MouseEvent::Type::Leave:
+        state_handler_.on_mouse_leave();
+        return true;
+    default:
+        break;
     }
     return false;
 }

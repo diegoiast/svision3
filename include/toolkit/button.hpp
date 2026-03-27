@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/button_state.hpp"
 #include "toolkit/image_loader.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
@@ -47,26 +48,30 @@ class Button : public Widget {
 
     void stop_auto_repeat();
     void set_visible(bool v) override;
-    bool is_hovered() const { return hovered_; }
-    bool is_pressed() const { return pressed_; }
+    bool is_hovered() const {
+        return state_handler_.button_state == ButtonState::Hovered ||
+               state_handler_.button_state == ButtonState::ClickedInside;
+    }
+    bool is_pressed() const { return state_handler_.button_state == ButtonState::ClickedInside; }
 
     std::function<void()> on_click;
 
   private:
     void start_auto_repeat_delay();
     void start_auto_repeat_interval();
+    void on_state_changed();
+    bool should_fire_click() const;
 
     std::string display_text_;
     Icon icon_;
     int mnemonic_index_ = -1;
     char mnemonic_key_ = 0;
-    bool hovered_ = false;
-    bool pressed_ = false;
     bool flat_ = false;
     bool auto_repeat_ = false;
     float auto_repeat_delay_ = 0.5f;
     float auto_repeat_interval_ = 0.4f;
     int auto_repeat_timer_id_ = 0;
+    ButtonStateHandler state_handler_;
     std::optional<Margins> padding_override_;
 };
 

@@ -112,3 +112,138 @@ TEST_CASE("Button resets state when hidden", "[button]") {
     b.set_visible(false);
     REQUIRE(b.is_hovered() == false);
 }
+
+TEST_CASE("Button auto-repeat continues on mouse move inside", "[button]") {
+    Button b("Test");
+    int click_count = 0;
+    b.on_click = [&] { click_count++; };
+    b.set_rect({0, 0, 100, 30});
+    b.set_auto_repeat(true);
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = {50, 15};
+    REQUIRE(b.handle_mouse(press) == true);
+    REQUIRE(b.is_pressed() == true);
+
+    MouseEvent move_inside{};
+    move_inside.type = MouseEvent::Type::Move;
+    move_inside.position = {60, 15};
+    REQUIRE(b.handle_mouse(move_inside) == true);
+    REQUIRE(b.is_pressed() == true);
+    REQUIRE(click_count == 0);
+
+    MouseEvent move_inside2{};
+    move_inside2.type = MouseEvent::Type::Move;
+    move_inside2.position = {80, 15};
+    REQUIRE(b.handle_mouse(move_inside2) == true);
+    REQUIRE(b.is_pressed() == true);
+    REQUIRE(click_count == 0);
+
+    MouseEvent release{};
+    release.type = MouseEvent::Type::Release;
+    release.position = {80, 15};
+    b.handle_mouse(release);
+    REQUIRE(b.is_pressed() == false);
+}
+
+TEST_CASE("Button auto-repeat continues on mouse leave until release", "[button]") {
+    Button b("Test");
+    int click_count = 0;
+    b.on_click = [&] { click_count++; };
+    b.set_rect({0, 0, 100, 30});
+    b.set_auto_repeat(true);
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = {50, 15};
+    REQUIRE(b.handle_mouse(press) == true);
+    REQUIRE(b.is_pressed() == true);
+
+    MouseEvent move_outside{};
+    move_outside.type = MouseEvent::Type::Move;
+    move_outside.position = {200, 200};
+    REQUIRE(b.handle_mouse(move_outside) == false);
+    REQUIRE(b.is_pressed() == false);
+
+    MouseEvent release_outside{};
+    release_outside.type = MouseEvent::Type::Release;
+    release_outside.position = {200, 200};
+    b.handle_mouse(release_outside);
+    REQUIRE(b.is_pressed() == false);
+}
+
+TEST_CASE("Button click from normal state fires on_click", "[button]") {
+    Button b("Test");
+    int click_count = 0;
+    b.on_click = [&] { click_count++; };
+    b.set_rect({0, 0, 100, 30});
+
+    REQUIRE(b.is_hovered() == false);
+    REQUIRE(b.is_pressed() == false);
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = {50, 15};
+    REQUIRE(b.handle_mouse(press) == true);
+    REQUIRE(b.is_pressed() == true);
+
+    MouseEvent release{};
+    release.type = MouseEvent::Type::Release;
+    release.position = {50, 15};
+    b.handle_mouse(release);
+    REQUIRE(b.is_pressed() == false);
+    REQUIRE(click_count == 1);
+}
+
+TEST_CASE("Button release outside does not fire on_click", "[button]") {
+    Button b("Test");
+    int click_count = 0;
+    b.on_click = [&] { click_count++; };
+    b.set_rect({0, 0, 100, 30});
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = {50, 15};
+    REQUIRE(b.handle_mouse(press) == true);
+    REQUIRE(b.is_pressed() == true);
+
+    MouseEvent move_outside{};
+    move_outside.type = MouseEvent::Type::Move;
+    move_outside.position = {200, 200};
+    b.handle_mouse(move_outside);
+    REQUIRE(b.is_pressed() == false);
+    REQUIRE(b.is_hovered() == false);
+
+    MouseEvent release_outside{};
+    release_outside.type = MouseEvent::Type::Release;
+    release_outside.position = {200, 200};
+    b.handle_mouse(release_outside);
+    REQUIRE(click_count == 0);
+    REQUIRE(b.is_pressed() == false);
+}
+
+TEST_CASE("Button drag outside then release does not fire on_click", "[button]") {
+    Button b("Test");
+    int click_count = 0;
+    b.on_click = [&] { click_count++; };
+    b.set_rect({0, 0, 100, 30});
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = {50, 15};
+    REQUIRE(b.handle_mouse(press) == true);
+    REQUIRE(b.is_pressed() == true);
+
+    MouseEvent drag_outside{};
+    drag_outside.type = MouseEvent::Type::Drag;
+    drag_outside.position = {200, 200};
+    b.handle_mouse(drag_outside);
+    REQUIRE(b.is_pressed() == false);
+
+    MouseEvent release_outside{};
+    release_outside.type = MouseEvent::Type::Release;
+    release_outside.position = {200, 200};
+    b.handle_mouse(release_outside);
+    REQUIRE(click_count == 0);
+}

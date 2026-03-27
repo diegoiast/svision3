@@ -43,6 +43,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/image_loader.cpp
     src/toolkit/toolbar.cpp
     src/toolkit/button.cpp
+    src/toolkit/button_state.cpp
     src/toolkit/checkbox.cpp
     src/toolkit/combobox.cpp
     src/toolkit/radio_button.cpp

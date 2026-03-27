@@ -89,17 +89,23 @@ TEST_CASE("Checkbox relative coordinates", "[checkbox]") {
     Checkbox cb("Option");
     cb.set_rect({100, 100, 200, 30});
 
-    MouseEvent e{};
-    e.type = MouseEvent::Type::Press;
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
 
     // Relative position (10, 10) should succeed
-    e.position = {10, 10};
-    REQUIRE(cb.handle_mouse(e) == true);
+    press.position = {10, 10};
+    REQUIRE(cb.handle_mouse(press) == true);
+    REQUIRE(cb.checked() == false);
+
+    MouseEvent release{};
+    release.type = MouseEvent::Type::Release;
+    release.position = {10, 10};
+    cb.handle_mouse(release);
     REQUIRE(cb.checked() == true);
 
     // Absolute position (110, 110) should fail
     Checkbox cb2("Option 2");
     cb2.set_rect({100, 150, 200, 30});
-    e.position = {110, 160};
-    REQUIRE(cb2.handle_mouse(e) == false);
+    press.position = {110, 160};
+    REQUIRE(cb2.handle_mouse(press) == false);
 }

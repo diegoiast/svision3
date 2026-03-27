@@ -9,6 +9,19 @@
 
 namespace toolkit {
 
+void Button::on_state_changed() {
+    if (window_) {
+        window_->request_redraw("button state");
+    }
+    if (auto_repeat_ && state_handler_.button_state == ButtonState::ClickedInside) {
+        start_auto_repeat_delay();
+    }
+}
+
+bool Button::should_fire_click() const {
+    return state_handler_.button_state == ButtonState::ClickedInside;
+}
+
 Button::Button(std::string text) {
     auto pos = text.find('&');
     auto const &style = Theme::current().button;
@@ -24,6 +37,8 @@ Button::Button(std::string text) {
 
     auto_repeat_delay_ = style.auto_repeat_delay;
     auto_repeat_interval_ = style.auto_repeat_interval;
+
+    state_handler_.on_state_change_callback = [this] { on_state_changed(); };
 }
 
 void Button::set_text(std::string text) {
@@ -55,6 +70,9 @@ void Button::set_text(std::string text) {
 }
 
 void Button::set_icon(Icon icon) {
+    if (icon_ == icon) {
+        return;
+    }
     icon_ = std::move(icon);
     if (window_) {
         window_->request_redraw("button icon");
@@ -62,6 +80,9 @@ void Button::set_icon(Icon icon) {
 }
 
 void Button::clear_icon() {
+    if (!icon_) {
+        return;
+    }
     icon_ = nullptr;
     if (window_) {
         window_->request_redraw("button icon");
@@ -81,7 +102,9 @@ void Button::start_auto_repeat_delay() {
         auto_repeat_timer_id_ = window_->start_timer(
             auto_repeat_delay_,
             [this] {
-                if (pressed_ && hovered_ && on_click) {
+                if ((state_handler_.button_state == ButtonState::ClickedInside ||
+                     state_handler_.button_state == ButtonState::ClickedOutside) &&
+                    on_click) {
                     on_click();
                     start_auto_repeat_interval();
                 } else {
@@ -98,7 +121,9 @@ void Button::start_auto_repeat_interval() {
         auto_repeat_timer_id_ = window_->start_timer(
             auto_repeat_interval_,
             [this] {
-                if (pressed_ && hovered_ && on_click) {
+                if ((state_handler_.button_state == ButtonState::ClickedInside ||
+                     state_handler_.button_state == ButtonState::ClickedOutside) &&
+                    on_click) {
                     on_click();
                 } else {
                     stop_auto_repeat();
@@ -109,15 +134,14 @@ void Button::start_auto_repeat_interval() {
 }
 
 void Button::set_visible(bool v) {
-    auto changed = hovered_ || pressed_;
+    auto changed = state_handler_.button_state != ButtonState::Normal;
 
     if (is_visible() == v) {
         return;
     }
     Widget::set_visible(v);
     if (!is_visible()) {
-        hovered_ = false;
-        pressed_ = false;
+        state_handler_.button_state = ButtonState::Normal;
         stop_auto_repeat();
         if (changed && window_) {
             window_->request_redraw("button state");
@@ -127,7 +151,11 @@ void Button::set_visible(bool v) {
 
 void Button::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    Theme::current().draw_button(painter, rect, display_text_, icon_, hovered_, pressed_,
+    auto hovered = state_handler_.button_state == ButtonState::Hovered ||
+                   state_handler_.button_state == ButtonState::ClickedInside;
+    auto pressed = state_handler_.button_state == ButtonState::ClickedInside ||
+                   state_handler_.button_state == ButtonState::ClickedOutside;
+    Theme::current().draw_button(painter, rect, display_text_, icon_, hovered, pressed,
                                  is_focused(), is_enabled(), flat_, background_color_);
 }
 
@@ -165,9 +193,8 @@ bool Button::handle_key(KeyEvent const &event) {
 
 bool Button::handle_mouse(MouseEvent const &event) {
     if (!is_enabled() || !is_visible()) {
-        if (hovered_ || pressed_) {
-            hovered_ = false;
-            pressed_ = false;
+        if (state_handler_.button_state != ButtonState::Normal) {
+            state_handler_.button_state = ButtonState::Normal;
             stop_auto_repeat();
             if (window_) {
                 window_->request_redraw("button state");
@@ -179,56 +206,44 @@ bool Button::handle_mouse(MouseEvent const &event) {
 
     switch (event.type) {
     case MouseEvent::Type::Move:
-        if (hovered_ != inside) {
-            hovered_ = inside;
-            if (auto_repeat_ && pressed_) {
-                if (hovered_) {
-                    start_auto_repeat_delay();
-                } else {
-                    stop_auto_repeat();
-                }
-            }
-            if (window()) {
-                window()->request_redraw("button state");
-            }
+        if (inside) {
+            state_handler_.on_mouse_enter();
+        } else {
+            state_handler_.on_mouse_leave();
         }
         return inside;
     case MouseEvent::Type::Press:
         if (inside) {
-            pressed_ = true;
+            state_handler_.on_mouse_click(event);
             if (auto_repeat_ && on_click && window_) {
                 on_click();
                 start_auto_repeat_delay();
-            }
-            if (window()) {
-                window()->request_redraw("button state");
             }
             return true;
         }
         return false;
     case MouseEvent::Type::Release:
-        if (pressed_) {
-            pressed_ = false;
+        if (state_handler_.button_state == ButtonState::ClickedInside ||
+            state_handler_.button_state == ButtonState::ClickedOutside) {
+            auto fire_click = should_fire_click();
             stop_auto_repeat();
-            if (inside && on_click && !auto_repeat_) {
+            state_handler_.on_mouse_click(event);
+            if (fire_click && on_click && !auto_repeat_) {
                 on_click();
-            }
-            if (window()) {
-                window()->request_redraw("button state");
             }
         }
         return inside;
+
     case MouseEvent::Type::Leave:
-        if (hovered_ || pressed_) {
-            hovered_ = false;
-            pressed_ = false;
-            stop_auto_repeat();
-            if (window()) {
-                window()->request_redraw("button state");
-            }
-        }
+        state_handler_.on_mouse_leave();
         return true;
     case MouseEvent::Type::Drag:
+        if (inside) {
+            state_handler_.on_mouse_enter();
+        } else {
+            state_handler_.on_mouse_leave();
+        }
+        return inside;
     case MouseEvent::Type::Scroll:
         return false;
     }

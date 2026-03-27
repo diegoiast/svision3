@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/button_state.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
 #include <string>
@@ -32,10 +33,13 @@ class Checkbox : public Widget {
 
   private:
     void toggle();
+    void on_state_changed();
+    bool should_fire_click() const;
 
     std::string text_;
     CheckState state_ = CheckState::Unchecked;
     bool tri_state_ = false;
+    ButtonStateHandler state_handler_;
 };
 
 } // namespace toolkit
