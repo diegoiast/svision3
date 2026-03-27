@@ -369,20 +369,12 @@ void Window::handle_mouse(MouseEvent const &event) {
                 local_event.position.y -= popup.bounds.y;
                 if (popup.on_mouse(local_event)) {
                     auto size_after = popups_.size();
-                    // If a "parent" popup handled the event, close all "child" popups
-                    // But ONLY if we didn't just open a new child.
                     if (size_after < size_before) {
                         while (static_cast<int>(popups_.size()) - 1 > i) {
                             close_popup();
                         }
                     } else if (size_after > size_before) {
-                        // We opened a new child. Close any other children that were
-                        // already there (siblings of the new child).
                         while (static_cast<int>(popups_.size()) - 1 > (i + 1)) {
-                            // Close the one that WAS at i+1, but now is at i+1 after popping?
-                            // No, if we just pushed to 'size_after', then 'size_after-1'
-                            // is the NEW child. Everything between 'i' and 'size_after-1'
-                            // should be closed.
                             auto new_child = std::move(popups_.back());
                             popups_.pop_back();
                             while (static_cast<int>(popups_.size()) - 1 > i) {
@@ -391,17 +383,11 @@ void Window::handle_mouse(MouseEvent const &event) {
                             popups_.push_back(std::move(new_child));
                         }
                     } else {
-                        // size_after == size_before.
-                        // For Press events, we always want to close children of the clicked popup.
                         if (event.type == MouseEvent::Type::Press) {
                             while (static_cast<int>(popups_.size()) - 1 > i) {
                                 close_popup();
                             }
                         }
-                        // For Move events, we DON'T close children here.
-                        // The individual popups (like Menu) are responsible for
-                        // opening new submenus (which triggers the size_after > size_before case)
-                        // or closing them if they want to.
                     }
                     request_redraw("event");
                     return;
@@ -425,48 +411,62 @@ void Window::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press) {
-        auto new_focus = static_cast<Widget *>(nullptr);
+        auto under = static_cast<Widget *>(nullptr);
         if (root_) {
             auto p = event.position;
             p.x -= root_->rect().x;
             p.y -= root_->rect().y;
-            new_focus = root_->find_focusable_at(p);
+            under = root_->find_focusable_at(p);
         }
-        if (!new_focus) {
+        if (!under) {
             for (auto &w : widgets_) {
                 auto p = event.position;
                 p.x -= w->rect().x;
                 p.y -= w->rect().y;
-                new_focus = w->find_focusable_at(p);
-                if (new_focus) {
+                under = w->find_focusable_at(p);
+                if (under) {
                     break;
                 }
             }
         }
-        set_focused_widget(new_focus);
+        set_focused_widget(under);
+        captured_widget_ = under;
         needs_redraw = true;
     }
 
-    if (root_) {
-        if (Widget::dispatch_mouse_event(root_.get(), event)) {
+    if (captured_widget_) {
+        // Dispatch to captured widget
+        auto captured_pos = event.position;
+        Widget *w = captured_widget_;
+        while (w) {
+            captured_pos.x -= w->rect().x;
+            captured_pos.y -= w->rect().y;
+            w = w->parent();
+        }
+        auto captured_ev = event;
+        captured_ev.position = captured_pos;
+        if (captured_widget_->handle_mouse(captured_ev)) {
             needs_redraw = true;
-            if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
-                request_redraw("event");
-                return;
+        }
+
+        if (event.type == MouseEvent::Type::Release) {
+            captured_widget_ = nullptr;
+        }
+    } else {
+        // Normal dispatch
+        if (root_) {
+            if (Widget::dispatch_mouse_event(root_.get(), event)) {
+                needs_redraw = true;
             }
         }
-    }
-    for (auto &widget : widgets_) {
-        if (Widget::dispatch_mouse_event(widget.get(), event)) {
-            needs_redraw = true;
-            if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
-                request_redraw("event");
-                return;
+        for (auto &widget : widgets_) {
+            if (Widget::dispatch_mouse_event(widget.get(), event)) {
+                needs_redraw = true;
             }
         }
     }
 
-    if (event.type == MouseEvent::Type::Move) {
+    if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
         auto under = static_cast<Widget *>(nullptr);
         if (root_) {
             auto p = event.position;
@@ -485,14 +485,27 @@ void Window::handle_mouse(MouseEvent const &event) {
                 }
             }
         }
-        if (under != hovered_widget_) {
+
+        // Only update hovered_widget_ if not dragging, or if under is the captured widget
+        if (!captured_widget_ || under == captured_widget_) {
+            if (under != hovered_widget_) {
+                if (hovered_widget_) {
+                    auto leave_ev = event;
+                    leave_ev.type = MouseEvent::Type::Leave;
+                    Widget::dispatch_mouse_event(hovered_widget_, leave_ev);
+                }
+                hovered_widget_ = under;
+                needs_redraw = true;
+            }
+        } else {
+            // Dragging but over another widget - send leave to current hovered if any
             if (hovered_widget_) {
                 auto leave_ev = event;
                 leave_ev.type = MouseEvent::Type::Leave;
                 Widget::dispatch_mouse_event(hovered_widget_, leave_ev);
+                hovered_widget_ = nullptr;
+                needs_redraw = true;
             }
-            hovered_widget_ = under;
-            needs_redraw = true;
         }
         update_tooltip(under, event.position);
     }

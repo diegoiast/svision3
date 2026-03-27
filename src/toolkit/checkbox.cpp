@@ -62,9 +62,8 @@ void Checkbox::toggle() {
 
 void Checkbox::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    auto pressed = state_handler_.button_state == ButtonState::ClickedInside;
-    Theme::current().draw_checkbox(painter, rect, text_, state_, pressed, false, is_focused(),
-                                   is_enabled());
+    Theme::current().draw_checkbox(painter, rect, text_, state_, state_handler_.button_state,
+                                   is_focused(), is_enabled());
 }
 
 bool Checkbox::handle_mouse(MouseEvent const &event) {
@@ -72,6 +71,7 @@ bool Checkbox::handle_mouse(MouseEvent const &event) {
 
     switch (event.type) {
     case MouseEvent::Type::Move:
+    case MouseEvent::Type::Drag:
         if (inside) {
             state_handler_.on_mouse_enter();
         } else {

@@ -254,10 +254,10 @@ class Theme {
                              Icon const &icon, ButtonState state, bool focused, bool enabled,
                              bool flat, std::optional<Color> background = std::nullopt) const = 0;
     virtual void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
-                               CheckState state, bool hovered, bool pressed, bool focused,
+                               CheckState check_state, ButtonState button_state, bool focused,
                                bool enabled) const = 0;
     virtual void draw_radio_button(Painter &painter, Rect const &rect, std::string_view text,
-                                   bool checked, bool hovered, bool pressed, bool focused,
+                                   bool checked, ButtonState button_state, bool focused,
                                    bool enabled) const = 0;
     virtual void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
                                  std::string_view placeholder, int cursor_pos, int selection_start,

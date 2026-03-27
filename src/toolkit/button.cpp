@@ -4,10 +4,28 @@
 #include "toolkit/button.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
-#include <algorithm>
 #include <cctype>
 
 namespace toolkit {
+
+Button::Button(std::string text) {
+    auto pos = text.find('&');
+    auto const &style = Theme::current().button;
+    
+    state.focusable = true;
+    if (pos != std::string::npos && pos + 1 < text.size()) {
+        mnemonic_index_ = static_cast<int>(pos);
+        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
+        display_text_ = text.substr(0, pos) + text.substr(pos + 1);
+    } else {
+        display_text_ = std::move(text);
+    }
+    
+    auto_repeat_delay_ = style.auto_repeat_delay;
+    auto_repeat_interval_ = style.auto_repeat_interval;
+    
+    state_handler_.on_state_change_callback = [this] { on_state_changed(); };
+}
 
 void Button::on_state_changed() {
     if (window_) {
@@ -20,25 +38,6 @@ void Button::on_state_changed() {
 
 bool Button::should_fire_click() const {
     return state_handler_.button_state == ButtonState::ClickedInside;
-}
-
-Button::Button(std::string text) {
-    auto pos = text.find('&');
-    auto const &style = Theme::current().button;
-
-    state.focusable = true;
-    if (pos != std::string::npos && pos + 1 < text.size()) {
-        mnemonic_index_ = static_cast<int>(pos);
-        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-        display_text_ = text.substr(0, pos) + text.substr(pos + 1);
-    } else {
-        display_text_ = std::move(text);
-    }
-
-    auto_repeat_delay_ = style.auto_repeat_delay;
-    auto_repeat_interval_ = style.auto_repeat_interval;
-
-    state_handler_.on_state_change_callback = [this] { on_state_changed(); };
 }
 
 void Button::set_text(std::string text) {

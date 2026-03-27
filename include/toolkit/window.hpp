@@ -120,6 +120,7 @@ class Window {
     std::vector<Popup> popups_;
     CursorShape current_cursor_ = CursorShape::Arrow;
     Widget *hovered_widget_ = nullptr;
+    Widget *captured_widget_ = nullptr;
 
     Widget *tooltip_widget_ = nullptr;
     int tooltip_timer_id_ = 0;

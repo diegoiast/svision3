@@ -219,25 +219,38 @@ class BaseTheme : public Theme {
         painter.draw_text(text, text_pos, text_c, style.font_size);
     }
 
-    void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text, CheckState state,
-                       bool hovered, bool pressed, bool focused, bool enabled) const override {
+    void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text, CheckState check_state,
+                       ButtonState button_state, bool focused, bool enabled) const override {
         auto const &style = checkbox;
+        auto hovered =
+            button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
+        auto pressed = button_state == ButtonState::ClickedInside;
         auto fm = painter.font_metrics(style.font_size);
         auto box = style.box_size;
         auto box_y = (rect.height - box) / 2.0f;
         auto box_rect = Rect{rect.x, box_y, box, box};
         auto border = focused ? style.border_focused : style.border;
+        auto bg = style.background;
+        if (enabled) {
+            if (pressed) {
+                bg = bg.darken(0.08f);
+            } else if (button_state == ButtonState::ClickedOutside) {
+                bg = bg.darken(0.02f);
+            } else if (hovered) {
+                bg = bg.darken(0.04f);
+            }
+        }
 
-        painter.draw_frame(box_rect, style.background, border, style, true);
+        painter.draw_frame(box_rect, bg, border, style, pressed && enabled);
 
-        if (state == CheckState::Checked) {
+        if (check_state == CheckState::Checked) {
             auto cx = box_rect.x + box * 0.22f;
             auto cy = box_rect.y + box * 0.5f;
             auto lw = std::max(1.5f, box * 0.14f);
             painter.draw_line({cx, cy}, {cx + box * 0.18f, cy + box * 0.2f}, style.indicator, lw);
             painter.draw_line({cx + box * 0.18f, cy + box * 0.2f},
                               {cx + box * 0.55f, cy - box * 0.25f}, style.indicator, lw);
-        } else if (state == CheckState::Partial) {
+        } else if (check_state == CheckState::Partial) {
             auto gap = box * 0.25f;
             auto inner = box_rect.inset(gap);
             painter.fill_rect(inner, style.indicator);
@@ -250,16 +263,29 @@ class BaseTheme : public Theme {
     }
 
     void draw_radio_button(Painter &painter, Rect const &rect, std::string_view text, bool checked,
-                           bool hovered, bool pressed, bool focused, bool enabled) const override {
+                           ButtonState button_state, bool focused, bool enabled) const override {
         auto const &style = radio;
+        auto hovered =
+            button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
+        auto pressed = button_state == ButtonState::ClickedInside;
         auto fm = painter.font_metrics(style.font_size);
         auto r = style.box_size / 2.0f;
         auto center = Point{rect.x + r, rect.height / 2.0f};
         auto text_x = rect.x + style.box_size + style.spacing;
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
         auto border = focused ? style.border_focused : style.border;
+        auto bg = style.background;
+        if (enabled) {
+            if (pressed) {
+                bg = bg.darken(0.08f);
+            } else if (button_state == ButtonState::ClickedOutside) {
+                bg = bg.darken(0.02f);
+            } else if (hovered) {
+                bg = bg.darken(0.04f);
+            }
+        }
 
-        painter.fill_circle(center, r, style.background);
+        painter.fill_circle(center, r, bg);
         painter.draw_circle(center, r, border, style.border_width);
 
         if (style.beveled) {

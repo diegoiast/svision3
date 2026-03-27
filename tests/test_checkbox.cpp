@@ -102,10 +102,54 @@ TEST_CASE("Checkbox relative coordinates", "[checkbox]") {
     release.position = {10, 10};
     cb.handle_mouse(release);
     REQUIRE(cb.checked() == true);
+}
 
-    // Absolute position (110, 110) should fail
-    Checkbox cb2("Option 2");
-    cb2.set_rect({100, 150, 200, 30});
-    press.position = {110, 160};
-    REQUIRE(cb2.handle_mouse(press) == false);
+TEST_CASE("Checkbox drag outside", "[checkbox]") {
+    Checkbox cb("Option");
+    cb.set_rect({0, 0, 100, 30});
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = {10, 15};
+    REQUIRE(cb.handle_mouse(press) == true);
+    REQUIRE(cb.checked() == false);
+
+    MouseEvent drag_out{};
+    drag_out.type = MouseEvent::Type::Drag;
+    drag_out.position = {150, 15};
+    // Dragging outside should return false (not inside)
+    REQUIRE(cb.handle_mouse(drag_out) == false);
+
+    MouseEvent release_outside{};
+    release_outside.type = MouseEvent::Type::Release;
+    release_outside.position = {150, 15};
+    // Releasing outside should return false and NOT toggle
+    REQUIRE(cb.handle_mouse(release_outside) == false);
+    REQUIRE(cb.checked() == false);
+}
+
+TEST_CASE("Checkbox drag outside and in", "[checkbox]") {
+    Checkbox cb("Option");
+    cb.set_rect({0, 0, 100, 30});
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = {10, 15};
+    cb.handle_mouse(press);
+
+    MouseEvent drag_out{};
+    drag_out.type = MouseEvent::Type::Drag;
+    drag_out.position = {150, 15};
+    cb.handle_mouse(drag_out);
+
+    MouseEvent drag_in{};
+    drag_in.type = MouseEvent::Type::Drag;
+    drag_in.position = {10, 15};
+    REQUIRE(cb.handle_mouse(drag_in) == true);
+
+    MouseEvent release{};
+    release.type = MouseEvent::Type::Release;
+    release.position = {10, 15};
+    cb.handle_mouse(release);
+    REQUIRE(cb.checked() == true);
 }
