@@ -121,6 +121,8 @@ class WaylandPlatformApplication : public PlatformApplication {
     bool opengl_requested = false;
 };
 
+class RenderingBackend;
+
 class WaylandPlatformWindow : public PlatformWindow {
   public:
     WaylandPlatformWindow(WaylandPlatformApplication *app, std::string_view title, Size size,
@@ -143,8 +145,7 @@ class WaylandPlatformWindow : public PlatformWindow {
     float scale_factor() const override;
 
     void do_paint();
-    void create_buffer(int width, int height);
-    void paint_to_surface(wl_surface *target_surface, int pw, int ph, float scale);
+    void paint_tooltip();
 
     WaylandPlatformApplication *app_;
     Window *owner_;
@@ -158,19 +159,21 @@ class WaylandPlatformWindow : public PlatformWindow {
     wp_fractional_scale_v1 *fractional_scale = nullptr;
     wp_viewport *viewport = nullptr;
     zxdg_toplevel_decoration_v1 *toplevel_decoration = nullptr;
-    wl_buffer *buffer = nullptr;
-    void *shm_data = nullptr;
-    int shm_fd = -1;
-    size_t shm_size = 0;
-    int buf_width = 0, buf_height = 0;
     float scale = 1.0f;
     bool configured = false;
     bool needs_redraw = true;
     int pending_width = 0, pending_height = 0;
     CursorShape current_cursor = CursorShape::Arrow;
 
+    wl_buffer *buffer = nullptr;
+    void *shm_data = nullptr;
+    int shm_fd = -1;
+    size_t shm_size = 0;
+    int buf_width = 0, buf_height = 0;
     wl_egl_window *egl_window = nullptr;
     void *egl_surface = nullptr;
+
+    std::unique_ptr<RenderingBackend> backend;
 
     struct TooltipData {
         std::string text;

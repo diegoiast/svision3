@@ -81,17 +81,162 @@ struct X11PlatformApplication::Impl {
     bool opengl_requested = false;
 };
 
+class RenderingBackend {
+  public:
+    virtual ~RenderingBackend() = default;
+    virtual void paint(Window *owner, float scale) = 0;
+};
+
+class CairoBackend : public RenderingBackend {
+  public:
+    CairoBackend(X11PlatformApplication::Impl *app, ::Window xwindow)
+        : app_(app), xwindow_(xwindow) {}
+
+    ~CairoBackend() override {
+        if (cairo_surface_) {
+            cairo_surface_destroy(cairo_surface_);
+        }
+        if (x11_surface_) {
+            cairo_surface_destroy(x11_surface_);
+        }
+    }
+
+    void paint(Window *owner, float scale) override {
+        int lw = static_cast<int>(owner->size().width);
+        int lh = static_cast<int>(owner->size().height);
+        if (lw <= 0 || lh <= 0) {
+            return;
+        }
+        int pw = static_cast<int>(std::ceil(lw * scale));
+        int ph = static_cast<int>(std::ceil(lh * scale));
+
+        if (last_pw_ != pw || last_ph_ != ph) {
+            cairo_surface_t *old_surface = cairo_surface_;
+            cairo_surface_ = nullptr;
+
+            if (!x11_surface_) {
+                x11_surface_ =
+                    cairo_xlib_surface_create(app_->display, xwindow_, app_->visual, pw, ph);
+            } else {
+                cairo_xlib_surface_set_size(x11_surface_, pw, ph);
+            }
+
+            if (old_surface && last_pw_ > 0 && last_ph_ > 0) {
+                // Quick paint old image to window for immediate feedback
+                cairo_t *xcr = cairo_create(x11_surface_);
+                cairo_scale(xcr, static_cast<double>(pw) / last_pw_,
+                            static_cast<double>(ph) / last_ph_);
+                cairo_set_source_surface(xcr, old_surface, 0, 0);
+                cairo_paint(xcr);
+                cairo_destroy(xcr);
+                cairo_surface_flush(x11_surface_);
+                XFlush(app_->display);
+
+                // Also initialize the new backbuffer with the scaled old image
+                cairo_surface_ = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
+                cairo_t *bcr = cairo_create(cairo_surface_);
+                cairo_scale(bcr, static_cast<double>(pw) / last_pw_,
+                            static_cast<double>(ph) / last_ph_);
+                cairo_set_source_surface(bcr, old_surface, 0, 0);
+                cairo_paint(bcr);
+                cairo_destroy(bcr);
+                cairo_surface_destroy(old_surface);
+            } else {
+                if (old_surface) {
+                    cairo_surface_destroy(old_surface);
+                }
+                cairo_surface_ = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
+                cairo_t *bcr = cairo_create(cairo_surface_);
+                Color const &bgColor = Theme::current().window.background;
+                cairo_set_source_rgba(bcr, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
+                cairo_paint(bcr);
+                cairo_destroy(bcr);
+            }
+            last_pw_ = pw;
+            last_ph_ = ph;
+        }
+
+        if (!cairo_surface_ || !x11_surface_) {
+            return;
+        }
+
+        cairo_t *cr = cairo_create(cairo_surface_);
+        cairo_scale(cr, scale, scale);
+        CairoPainter painter(cr);
+        owner->handle_paint(painter);
+        cairo_surface_flush(cairo_surface_);
+        cairo_destroy(cr);
+
+        cairo_t *xcr = cairo_create(x11_surface_);
+        cairo_set_source_surface(xcr, cairo_surface_, 0, 0);
+        cairo_paint(xcr);
+        cairo_destroy(xcr);
+        cairo_surface_flush(x11_surface_);
+        XFlush(app_->display);
+    }
+
+  private:
+    X11PlatformApplication::Impl *app_;
+    ::Window xwindow_;
+    cairo_surface_t *cairo_surface_ = nullptr;
+    cairo_surface_t *x11_surface_ = nullptr;
+    int last_pw_ = 0, last_ph_ = 0;
+};
+
+class GLBackend : public RenderingBackend {
+  public:
+    GLBackend(X11PlatformApplication::Impl *app, ::Window xwindow, GLXContext glx_context)
+        : app_(app), xwindow_(xwindow), glx_context_(glx_context) {}
+
+    ~GLBackend() override {
+        if (glx_context_) {
+            glXDestroyContext(app_->display, glx_context_);
+        }
+    }
+
+    void paint(Window *owner, float scale) override {
+        int lw = static_cast<int>(owner->size().width);
+        int lh = static_cast<int>(owner->size().height);
+        if (lw <= 0 || lh <= 0) {
+            return;
+        }
+        int pw = static_cast<int>(std::ceil(lw * scale));
+        int ph = static_cast<int>(std::ceil(lh * scale));
+
+        glXMakeCurrent(app_->display, xwindow_, glx_context_);
+        glViewport(0, 0, pw, ph);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0, lw, lh, 0, -1, 1);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+
+        glClearColor(1, 1, 1, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        CairoTextRasterizer rasterizer;
+        GLPainter painter(static_cast<float>(lh), scale, rasterizer);
+        owner->handle_paint(painter);
+
+        glXSwapBuffers(app_->display, xwindow_);
+    }
+
+  private:
+    X11PlatformApplication::Impl *app_;
+    ::Window xwindow_;
+    GLXContext glx_context_;
+};
+
 struct X11PlatformWindow::Impl {
     ::Window xwindow = 0L;
     ::Window tooltip_xwindow = 0L;
     Cursor arrow_cursor = 0L, ibeam_cursor = 0L;
     Cursor hand_cursor = 0L, not_allowed_cursor = 0L;
-    GLXContext glx_context = nullptr;
+    std::unique_ptr<RenderingBackend> backend;
 
     bool needs_redraw = false;
-    cairo_surface_t *cairo_surface = nullptr;
-    cairo_surface_t *x11_surface = nullptr;
-    int last_pw = 0, last_ph = 0;
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -771,6 +916,7 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     Visual *visual = d->visual;
     int depth = d->depth;
     Colormap colormap = d->colormap;
+    GLXContext glx_context = nullptr;
 
     if (d->opengl_requested) {
         GLint att[] = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, 0};
@@ -779,7 +925,7 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
             visual = vi->visual;
             depth = vi->depth;
             colormap = XCreateColormap(d->display, d->root, visual, AllocNone);
-            w->glx_context = glXCreateContext(d->display, vi, nullptr, GL_TRUE);
+            glx_context = glXCreateContext(d->display, vi, nullptr, GL_TRUE);
             XFree(vi);
         } else {
             spdlog::warn("Failed to choose GLX visual, falling back to Cairo");
@@ -806,6 +952,12 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
         static_cast<unsigned>(size.height * scale), 0, depth, InputOutput, visual,
         CWEventMask | CWColormap | CWBackPixmap | CWBitGravity | CWBackingStore | CWBackPixel,
         &swa);
+
+    if (glx_context) {
+        w->backend = std::make_unique<GLBackend>(d, w->xwindow, glx_context);
+    } else {
+        w->backend = std::make_unique<CairoBackend>(d, w->xwindow);
+    }
     std::string t(title);
     XStoreName(d->display, w->xwindow, t.c_str());
     XChangeProperty(d->display, w->xwindow, d->net_wm_name, d->utf8_string, 8, PropModeReplace,
@@ -835,15 +987,8 @@ void X11PlatformWindow::cleanup_resources() {
         return;
     }
 
-    // Destroy surfaces BEFORE the window
-    if (w->cairo_surface) {
-        cairo_surface_destroy(w->cairo_surface);
-        w->cairo_surface = nullptr;
-    }
-    if (w->x11_surface) {
-        cairo_surface_destroy(w->x11_surface);
-        w->x11_surface = nullptr;
-    }
+    // Backend handles cairo surfaces and GLX context cleanup
+    w->backend.reset();
 
     auto it = d->window_map.find(w->xwindow);
     if (it != d->window_map.end()) {
@@ -868,10 +1013,6 @@ void X11PlatformWindow::cleanup_resources() {
     if (w->not_allowed_cursor) {
         XFreeCursor(d->display, w->not_allowed_cursor);
         w->not_allowed_cursor = 0L;
-    }
-    if (w->glx_context) {
-        glXDestroyContext(d->display, w->glx_context);
-        w->glx_context = nullptr;
     }
     if (w->tooltip_xwindow != 0L) {
         XDestroyWindow(d->display, w->tooltip_xwindow);
@@ -929,107 +1070,12 @@ void X11PlatformWindow::set_size(Size s) {
 void X11PlatformWindow::request_redraw() { impl_->needs_redraw = true; }
 
 void X11PlatformWindow::do_paint() {
-    if (!impl_->needs_redraw || impl_->xwindow == 0L) {
+    if (!impl_->needs_redraw || impl_->xwindow == 0L || !impl_->backend) {
         return;
     }
     impl_->needs_redraw = false;
 
-    auto *app = app_->impl_.get();
-    auto *w = impl_.get();
-
-    float scale = app->scale;
-    int lw = static_cast<int>(owner_->size().width);
-    int lh = static_cast<int>(owner_->size().height);
-    if (lw <= 0 || lh <= 0) {
-        return;
-    }
-    int pw = static_cast<int>(std::ceil(lw * scale));
-    int ph = static_cast<int>(std::ceil(lh * scale));
-
-    if (w->glx_context) {
-        glXMakeCurrent(app->display, w->xwindow, w->glx_context);
-        glViewport(0, 0, pw, ph);
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(0, lw, lh, 0, -1, 1);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        glClearColor(1, 1, 1, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        CairoTextRasterizer rasterizer;
-        GLPainter painter(static_cast<float>(lh), scale, rasterizer);
-        owner_->handle_paint(painter);
-
-        glXSwapBuffers(app->display, w->xwindow);
-    } else {
-        if (w->last_pw != pw || w->last_ph != ph) {
-            cairo_surface_t *old_surface = w->cairo_surface;
-            w->cairo_surface = nullptr;
-
-            if (!w->x11_surface) {
-                w->x11_surface =
-                    cairo_xlib_surface_create(app->display, w->xwindow, app->visual, pw, ph);
-            } else {
-                cairo_xlib_surface_set_size(w->x11_surface, pw, ph);
-            }
-
-            if (old_surface && w->last_pw > 0 && w->last_ph > 0) {
-                // Quick paint old image to window for immediate feedback
-                cairo_t *xcr = cairo_create(w->x11_surface);
-                cairo_scale(xcr, static_cast<double>(pw) / w->last_pw,
-                            static_cast<double>(ph) / w->last_ph);
-                cairo_set_source_surface(xcr, old_surface, 0, 0);
-                cairo_paint(xcr);
-                cairo_destroy(xcr);
-                cairo_surface_flush(w->x11_surface);
-                XFlush(app->display);
-
-                // Also initialize the new backbuffer with the scaled old image
-                w->cairo_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
-                cairo_t *bcr = cairo_create(w->cairo_surface);
-                cairo_scale(bcr, static_cast<double>(pw) / w->last_pw,
-                            static_cast<double>(ph) / w->last_ph);
-                cairo_set_source_surface(bcr, old_surface, 0, 0);
-                cairo_paint(bcr);
-                cairo_destroy(bcr);
-                cairo_surface_destroy(old_surface);
-            } else {
-                if (old_surface) {
-                    cairo_surface_destroy(old_surface);
-                }
-                w->cairo_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
-                cairo_t *bcr = cairo_create(w->cairo_surface);
-                Color const &bgColor = Theme::current().window.background;
-                cairo_set_source_rgba(bcr, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
-                cairo_paint(bcr);
-                cairo_destroy(bcr);
-            }
-            w->last_pw = pw;
-            w->last_ph = ph;
-        }
-
-        if (!w->cairo_surface || !w->x11_surface) {
-            return;
-        }
-
-        cairo_t *cr = cairo_create(w->cairo_surface);
-        cairo_scale(cr, scale, scale);
-        CairoPainter painter(cr);
-        owner_->handle_paint(painter);
-        cairo_surface_flush(w->cairo_surface);
-        cairo_destroy(cr);
-
-        cairo_t *xcr = cairo_create(w->x11_surface);
-        cairo_set_source_surface(xcr, w->cairo_surface, 0, 0);
-        cairo_paint(xcr);
-        cairo_destroy(xcr);
-        cairo_surface_flush(w->x11_surface);
-        XFlush(app->display);
-    }
+    impl_->backend->paint(owner_, app_->impl_->scale);
 }
 
 void X11PlatformWindow::set_min_size(Size s) {
