@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/types.hpp"
+#include "toolkit/xdg_icons.hpp"
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -48,8 +49,10 @@ struct IconTheme {
 class IconProvider {
   public:
     virtual ~IconProvider() = default;
+
+    // For names, use xdg_icons.hpp, XDG::IconContexts, XDG::IconActions or similar
     virtual auto load(std::string_view icon_name, int size,
-                      std::string_view context = "actions") -> Icon = 0;
+                      std::string_view context = XDG::IconContexts::actions) -> Icon = 0;
 };
 
 class XdgImageLoader : public IconProvider {
@@ -57,8 +60,8 @@ class XdgImageLoader : public IconProvider {
     explicit XdgImageLoader();
     explicit XdgImageLoader(std::string_view theme_name);
 
-    auto load(std::string_view icon_name, int size, std::string_view context = "actions")
-        -> Icon override;
+    auto load(std::string_view icon_name, int size,
+              std::string_view context = XDG::IconContexts::actions) -> Icon override;
     auto set_theme(std::string_view theme_name) -> void;
     auto theme_name() const -> std::string_view;
 

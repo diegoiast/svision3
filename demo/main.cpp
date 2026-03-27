@@ -351,7 +351,7 @@ int main(int argc, char *argv[]) {
 
     file_menu->add_separator();
     auto exit_cmd = toolkit::Command::create("Exit", [window] { window->close(); });
-    exit_cmd->set_icon("application-exit");
+    exit_cmd->set_icon(XDG::IconActions::applicationExit);
     file_menu->add_action(exit_cmd);
 
     auto edit_menu = menubar->add_menu("&Edit");
@@ -385,7 +385,7 @@ int main(int argc, char *argv[]) {
     auto ok_action = [] { spdlog::info("Toolbar: OK triggered"); };
     auto ok_cmd = toolkit::Command::create("OK", ok_action);
     ok_cmd->set_tooltip("Trigger the OK action");
-    ok_cmd->set_icon("dialog-apply");
+    ok_cmd->set_icon(XDG::IconActions::dialogApply);
     toolbar->add_command(ok_cmd);
 
     exit_cmd->set_tooltip("Close the application");
@@ -486,7 +486,7 @@ int main(int argc, char *argv[]) {
     repeat_btn->on_click = repeat_action;
 
     auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
-    auto icon = app.load_icon("document-open", 16, "actions");
+    auto icon = app.load_icon(XDG::IconActions::documentOpen, 16, XDG::IconContexts::actions);
     if (icon) {
         open_icon_btn->set_icon(icon);
     }
