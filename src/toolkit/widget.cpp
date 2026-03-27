@@ -75,7 +75,6 @@ void Widget::set_tooltip(std::string text) {
 
 auto Widget::dispatch_mouse_event(Widget *w, MouseEvent const &event) -> bool {
     auto local_ev = event;
-
     local_ev.position.x -= w->rect().x;
     local_ev.position.y -= w->rect().y;
     return w->handle_mouse(local_ev);
@@ -87,6 +86,14 @@ auto Widget::map_to_window(Point p) const -> Point {
         return parent_->map_to_window(r);
     }
     return r;
+}
+
+auto Widget::map_from_window(Point p) const -> Point {
+    auto r = p;
+    if (parent_) {
+        r = parent_->map_from_window(p);
+    }
+    return {r.x - rect_.x, r.y - rect_.y};
 }
 
 void Widget::draw(Painter &painter) {

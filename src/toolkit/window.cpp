@@ -436,15 +436,8 @@ void Window::handle_mouse(MouseEvent const &event) {
 
     if (captured_widget_) {
         // Dispatch to captured widget
-        auto captured_pos = event.position;
-        Widget *w = captured_widget_;
-        while (w) {
-            captured_pos.x -= w->rect().x;
-            captured_pos.y -= w->rect().y;
-            w = w->parent();
-        }
         auto captured_ev = event;
-        captured_ev.position = captured_pos;
+        captured_ev.position = captured_widget_->map_from_window(event.position);
         if (captured_widget_->handle_mouse(captured_ev)) {
             needs_redraw = true;
         }
@@ -452,6 +445,11 @@ void Window::handle_mouse(MouseEvent const &event) {
         if (event.type == MouseEvent::Type::Release) {
             captured_widget_ = nullptr;
         }
+
+        if (needs_redraw) {
+            request_redraw("event (captured)");
+        }
+        return;
     } else {
         // Normal dispatch
         if (root_) {

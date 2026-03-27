@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "toolkit/slider.hpp"
+#include "toolkit/layout.hpp"
 
 using namespace toolkit;
 
@@ -66,6 +67,50 @@ TEST_CASE("Slider mouse interaction", "[slider]") {
     // Programmatic change after release
     s.set_value(0.0f);
     REQUIRE(s.value() == 0.0f);
+}
+
+TEST_CASE("Slider interaction in layout", "[slider]") {
+    auto layout = std::make_unique<VBoxLayout>();
+    layout->set_rect({10, 10, 200, 200});
+    
+    auto s_ptr = std::make_unique<Slider>(SliderOrientation::Horizontal);
+    auto s = s_ptr.get();
+    s->set_range(0, 100);
+    layout->add_widget(std::move(s_ptr));
+    layout->set_rect({10, 10, 200, 200}); // This triggers apply_layout
+    REQUIRE(s->rect().width == 200.0f);
+    REQUIRE(s->rect().height > 0);
+    REQUIRE(s->rect().x == 0.0f);
+    REQUIRE(s->rect().y == 0.0f);
+    
+    // Simulate Window::handle_mouse capture logic
+    // Window receives Press at {20, 20} (local to Window)
+    // Layout is at {10, 10}, so local to Layout is {10, 10}
+    // Slider is at {0, 0} relative to Layout, so local to Slider is {10, 10}
+    
+    Point window_press = {110, 20};
+    Point local_press = s->map_from_window(window_press);
+    REQUIRE(local_press.x == 100.0f);
+    REQUIRE(local_press.y == 10.0f);
+    
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = local_press;
+    bool handled = s->handle_mouse(press);
+    REQUIRE(handled == true);
+    REQUIRE(s->value() > 40.0f); // Roughly 50%
+    REQUIRE(s->value() < 60.0f); 
+    
+    // Drag to window {210, 20} -> should be Slider {200, 10}
+    Point window_drag = {210, 20};
+    Point local_drag = s->map_from_window(window_drag);
+    REQUIRE(local_drag.x == 200.0f);
+    
+    MouseEvent drag{};
+    drag.type = MouseEvent::Type::Drag;
+    drag.position = local_drag;
+    s->handle_mouse(drag);
+    REQUIRE(s->value() == 100.0f); // Maxed out at x=200
 }
 
 TEST_CASE("Slider keyboard interaction", "[slider]") {

@@ -56,6 +56,32 @@ TEST_CASE("Widget min/max size", "[widget]") {
     REQUIRE(w.max_size().height == 300);
 }
 
+TEST_CASE("Widget coordinate mapping", "[widget]") {
+    Label parent("Parent");
+    parent.set_rect({10, 20, 100, 50});
+    
+    Label child("Child");
+    child.set_rect({5, 5, 20, 20});
+    child.set_parent(&parent);
+    
+    // map_to_window
+    // local child {0,0} -> window {15, 25} (10+5, 20+5)
+    Point p1 = child.map_to_window({0, 0});
+    REQUIRE(p1.x == 15.0f);
+    REQUIRE(p1.y == 25.0f);
+    
+    // map_from_window
+    // window {15, 25} -> local child {0,0}
+    Point p2 = child.map_from_window({15, 25});
+    REQUIRE(p2.x == 0.0f);
+    REQUIRE(p2.y == 0.0f);
+    
+    // window {20, 30} -> local child {5, 5}
+    Point p3 = child.map_from_window({20, 30});
+    REQUIRE(p3.x == 5.0f);
+    REQUIRE(p3.y == 5.0f);
+}
+
 TEST_CASE("Widget rect and hit_test", "[widget]") {
     Label w("test");
     w.set_rect({10, 20, 100, 50});

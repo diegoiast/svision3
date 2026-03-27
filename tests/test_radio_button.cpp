@@ -67,6 +67,9 @@ TEST_CASE("RadioButton relative coordinates", "[radio]") {
     // Relative position (10, 10) should succeed
     e.position = {10, 10};
     REQUIRE(rb.handle_mouse(e) == true);
+    
+    e.type = MouseEvent::Type::Release;
+    REQUIRE(rb.handle_mouse(e) == true);
     REQUIRE(rb.selected() == true);
 
     // Absolute position (110, 110) should fail

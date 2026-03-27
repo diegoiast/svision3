@@ -92,7 +92,7 @@ float Slider::pos_to_value(float p) const {
         offset = length - p - h_size / 2;
     }
 
-    float ratio = std::clamp(offset / track_len, 0.0f, 1.0f);
+    auto ratio = std::clamp(offset / track_len, 0.0f, 1.0f);
     return min_ + ratio * (max_ - min_);
 }
 
@@ -107,8 +107,11 @@ void Slider::update_value_from_pos(Point p) {
 void Slider::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto horizontal = orientation_ == SliderOrientation::Horizontal;
-    Theme::current().draw_slider(painter, rect, value_, horizontal, false, false, is_focused(),
-                                 is_enabled());
+    auto range = max_ - min_;
+    auto normalized_value = (range > 0) ? (value_ - min_) / range : 0.0f;
+    
+    Theme::current().draw_slider(painter, rect, normalized_value, horizontal, false, false,
+                                 is_focused(), is_enabled());
 }
 
 bool Slider::handle_mouse(MouseEvent const &event) {

@@ -486,18 +486,25 @@ class BaseTheme : public Theme {
 
         auto groove_rect = Rect{};
         auto handle_rect = Rect{};
+        auto v = std::clamp(value, 0.0f, 1.0f);
 
         if (horizontal) {
             auto groove_y = rect.y + (rect.height - style.groove_thickness) / 2.0f;
             groove_rect = {rect.x, groove_y, rect.width, style.groove_thickness};
-            auto handle_x = rect.x + rect.width * std::clamp(value, 0.0f, 1.0f);
+            auto track_len = rect.width - style.handle_size;
+            auto handle_x = rect.x + style.handle_size / 2.0f + track_len * v;
             handle_rect = {handle_x - style.handle_size / 2.0f,
                            rect.y + (rect.height - style.handle_size) / 2.0f, style.handle_size,
                            style.handle_size};
         } else {
             auto groove_x = rect.x + (rect.width - style.groove_thickness) / 2.0f;
             groove_rect = {groove_x, rect.y, style.groove_thickness, rect.height};
-            auto handle_y = rect.y + rect.height * std::clamp(value, 0.0f, 1.0f);
+            auto track_len = rect.height - style.handle_size;
+            // Vertical slider: 0 is at bottom (local height - offset)
+            // Slider::pos_to_value uses: offset = length - p - h_size / 2;
+            // So p = length - h_size / 2 - offset
+            // where offset = ratio * track_len
+            auto handle_y = rect.y + rect.height - style.handle_size / 2.0f - track_len * v;
             handle_rect = {rect.x + (rect.width - style.handle_size) / 2.0f,
                            handle_y - style.handle_size / 2.0f, style.handle_size,
                            style.handle_size};
