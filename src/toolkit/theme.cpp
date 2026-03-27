@@ -168,9 +168,11 @@ class BaseTheme : public Theme {
     }
 
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
-                     bool hovered, bool pressed, bool focused, bool enabled, bool flat,
+                     ButtonState state, bool focused, bool enabled, bool flat,
                      std::optional<Color> background) const override {
         auto const &style = button;
+        auto hovered = state == ButtonState::Hovered || state == ButtonState::ClickedInside;
+        auto pressed = state == ButtonState::ClickedInside;
         auto bg = background.value_or(style.background);
         auto border_c = focused ? style.border_focused : style.border;
         auto text_c = enabled ? style.text : style.text_disabled;
@@ -1298,11 +1300,12 @@ class Plasma6Theme : public BaseTheme {
     }
 
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
-                     bool hovered, bool pressed, bool focused, bool enabled, bool flat,
+                     ButtonState state, bool focused, bool enabled, bool flat,
                      std::optional<Color> background) const override {
-        BaseTheme::draw_button(painter, rect, text, icon, hovered, pressed, focused, enabled, flat,
+        BaseTheme::draw_button(painter, rect, text, icon, state, focused, enabled, flat,
                                background);
 
+        auto pressed = state == ButtonState::ClickedInside;
         if (enabled && !flat && !pressed) {
             auto line_c = palette_.border;
             line_c.a = 0.3f;

@@ -151,11 +151,7 @@ void Button::set_visible(bool v) {
 
 void Button::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    auto hovered = state_handler_.button_state == ButtonState::Hovered ||
-                   state_handler_.button_state == ButtonState::ClickedInside;
-    auto pressed = state_handler_.button_state == ButtonState::ClickedInside ||
-                   state_handler_.button_state == ButtonState::ClickedOutside;
-    Theme::current().draw_button(painter, rect, display_text_, icon_, hovered, pressed,
+    Theme::current().draw_button(painter, rect, display_text_, icon_, state_handler_.button_state,
                                  is_focused(), is_enabled(), flat_, background_color_);
 }
 

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/button_state.hpp"
 #include "toolkit/image_loader.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
@@ -250,9 +251,8 @@ class Theme {
 
     // Primitive Drawing Methods
     virtual void draw_button(Painter &painter, Rect const &rect, std::string_view text,
-                             Icon const &icon, bool hovered, bool pressed, bool focused,
-                             bool enabled, bool flat,
-                             std::optional<Color> background = std::nullopt) const = 0;
+                             Icon const &icon, ButtonState state, bool focused, bool enabled,
+                             bool flat, std::optional<Color> background = std::nullopt) const = 0;
     virtual void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
                                CheckState state, bool hovered, bool pressed, bool focused,
                                bool enabled) const = 0;
