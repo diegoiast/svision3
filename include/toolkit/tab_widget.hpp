@@ -11,12 +11,8 @@
 
 namespace toolkit {
 
-enum class TabOrientation {
-    North,
-    South,
-    East,
-    West
-};
+// FIXME: this needs to move to a new header, theme forwards it - and it looks weird.
+enum class TabOrientation { North, South, East, West };
 
 class TabWidget : public Widget {
   public:

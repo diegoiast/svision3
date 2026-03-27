@@ -28,6 +28,7 @@ class GLPainter : public Painter {
     void fill_rounded_rect(Rect const &rect, Color const &color, float radius) override;
     void draw_rounded_rect(Rect const &rect, Color const &color, float radius,
                            float line_width) override;
+    void fill_triangle(Point a, Point b, Point c, Color const &color) override;
     void draw_line(Point from, Point to, Color const &color, float line_width) override;
     void fill_circle(Point center, float radius, Color const &color) override;
     void draw_circle(Point center, float radius, Color const &color, float line_width) override;

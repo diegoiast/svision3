@@ -42,6 +42,7 @@ class Painter {
     virtual void fill_rounded_rect(Rect const &rect, Color const &color, float radius) = 0;
     virtual void draw_rounded_rect(Rect const &rect, Color const &color, float radius,
                                    float line_width = 1.0f) = 0;
+    virtual void fill_triangle(Point a, Point b, Point c, Color const &color) = 0;
     virtual void draw_line(Point from, Point to, Color const &color, float line_width = 1.0f) = 0;
     virtual void fill_circle(Point center, float radius, Color const &color) = 0;
     virtual void draw_circle(Point center, float radius, Color const &color,
@@ -83,6 +84,7 @@ class MockPainter : public Painter {
     void draw_rect(Rect const &, Color const &, float) override {}
     void fill_rounded_rect(Rect const &, Color const &, float) override {}
     void draw_rounded_rect(Rect const &, Color const &, float, float) override {}
+    void fill_triangle(Point, Point, Point, Color const &) override {}
     void draw_line(Point, Point, Color const &, float) override {}
     void fill_circle(Point, float, Color const &) override {}
     void draw_circle(Point, float, Color const &, float) override {}

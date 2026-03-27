@@ -80,6 +80,16 @@ void CairoPainter::draw_rounded_rect(Rect const &rect, Color const &color, float
     cairo_stroke(cr_);
 }
 
+void CairoPainter::fill_triangle(Point a, Point b, Point c, Color const &color) {
+    cairo_new_path(cr_);
+    cairo_move_to(cr_, a.x, a.y);
+    cairo_line_to(cr_, b.x, b.y);
+    cairo_line_to(cr_, c.x, c.y);
+    cairo_close_path(cr_);
+    cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
+    cairo_fill(cr_);
+}
+
 void CairoPainter::draw_line(Point from, Point to, Color const &color, float line_width) {
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);

@@ -4,6 +4,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/tab_widget.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/utf8.hpp"
 #include <algorithm>
@@ -56,6 +57,8 @@ class BaseTheme : public Theme {
         label.text = palette_.text;
         label.font_size = palette_.fonts.font_size;
 
+        // FIXME: all this should be removed. Custom colors are just a bad idea
+        //        themes will not use these anyway.
         auto apply_base = [](WidgetStyle &ws, Palette const &p) {
             ws.background = p.window;
             ws.border = p.border;
@@ -486,7 +489,8 @@ class BaseTheme : public Theme {
     }
 
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
-                  bool hovered, bool enabled, bool has_close, bool hovered_close) const override {
+                  bool hovered, bool enabled, TabOrientation orientation, bool has_close,
+                  bool hovered_close) const override {
         auto const &style = tab_widget;
         auto bg =
             active ? style.tab_active_bg : (hovered ? style.tab_hover_bg : style.tab_inactive_bg);
@@ -505,12 +509,11 @@ class BaseTheme : public Theme {
             text_x = rect.x + left_space;
         }
 
-        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
 
         if (has_close) {
             auto close_btn_size = 14.0f;
-            auto close_gap = 6.0f;
             auto close_x = rect.x + rect.width - style.tab_padding_h - close_btn_size;
             auto close_rect = Rect{close_x, rect.y + (rect.height - close_btn_size) / 2.0f,
                                    close_btn_size, close_btn_size};
@@ -1012,13 +1015,35 @@ class Win11Theme : public BaseTheme {
         }
 
         auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
-        Color text_c = style.text;
+        auto text_c = style.text;
         if (hovered || active) {
             if (luma(style.background_hovered.value_or(Color::rgb(0, 0, 0))) < 0.5f) {
                 text_c = Color::rgb(1, 1, 1);
             }
         }
         painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, style.font_size);
+    }
+
+    void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
+                  bool hovered, bool enabled, TabOrientation orientation, bool has_close,
+                  bool hovered_close) const override {
+        BaseTheme::draw_tab(painter, rect, text, active, hovered, enabled, orientation, has_close,
+                            hovered_close);
+
+        if (active) {
+            auto indicator = Rect{};
+            auto lw = 2.0f;
+            if (orientation == TabOrientation::North) {
+                indicator = {rect.x + 4.0f, rect.y + rect.height - lw, rect.width - 8.0f, lw};
+            } else if (orientation == TabOrientation::South) {
+                indicator = {rect.x + 4.0f, rect.y, rect.width - 8.0f, lw};
+            } else if (orientation == TabOrientation::West) {
+                indicator = {rect.x + rect.width - lw, rect.y + 4.0f, lw, rect.height - 8.0f};
+            } else if (orientation == TabOrientation::East) {
+                indicator = {rect.x, rect.y + 4.0f, lw, rect.height - 8.0f};
+            }
+            painter.fill_rounded_rect(indicator, palette_.accent, 1.0f);
+        }
     }
 };
 
@@ -1069,7 +1094,7 @@ class Win95Theme : public BaseTheme {
         };
 
         if (corner_radius > 0.0f) {
-            float cr = std::max(0.0f, corner_radius);
+            auto cr = std::max(0.0f, corner_radius);
             auto top_left = Point{x + cr, y + cr};
             auto top_right = Point{x + w - cr, y + cr};
             auto bottom_left = Point{x + cr, y + h - cr};
@@ -1105,14 +1130,73 @@ class MaterialTheme : public BaseTheme {
             is_dark ? palette_.window.lighten(0.15f) : palette_.window.darken(0.10f);
         button.padding = {10, 24, 10, 24};
         button.corner_radius = 4.0f;
-
         menu.padding = {4, 4, 4, 4};
         menubar.padding = {4, 12, 4, 12};
         slider.handle_size = 18.0f;
         slider.groove_thickness = 4.0f;
-
         focus_ring_margin = 3.0f;
         focus_ring_corner_radius = 3.0f;
+    }
+
+    void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
+                  bool hovered, bool enabled, TabOrientation orientation, bool has_close,
+                  bool hovered_close) const override {
+        auto const &style = tab_widget;
+        auto bg =
+            active ? style.tab_active_bg : (hovered ? style.tab_hover_bg : style.tab_inactive_bg);
+        auto text_c = active ? style.tab_active_text : style.tab_inactive_text;
+
+        painter.fill_rect(rect, bg);
+
+        auto fm = painter.font_metrics(style.font_size);
+        auto text_w = painter.text_size(text, style.font_size).width;
+
+        auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
+        auto left_space = style.tab_padding_h;
+        auto text_area_w = rect.width - left_space - right_space;
+        auto text_x = rect.x + left_space + (text_area_w - text_w) / 2.0f;
+        if (text_x < rect.x + left_space) {
+            text_x = rect.x + left_space;
+        }
+
+        auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+
+        if (has_close) {
+            auto close_btn_size = 14.0f;
+            auto close_x = rect.x + rect.width - style.tab_padding_h - close_btn_size;
+            auto close_rect = Rect{close_x, rect.y + (rect.height - close_btn_size) / 2.0f,
+                                   close_btn_size, close_btn_size};
+            auto close_cy = rect.y + rect.height / 2.0f;
+            auto close_cx = close_x + close_btn_size / 2.0f;
+
+            if (hovered_close) {
+                painter.fill_rounded_rect(close_rect, Color::rgb(0.9f, 0.2f, 0.2f), 4.0f);
+            }
+
+            auto cs = close_btn_size * 0.3f;
+            auto x_col = hovered_close ? Color::rgb(1.0f, 1.0f, 1.0f)
+                                       : Color::rgba(text_c.r, text_c.g, text_c.b, 0.6f);
+            painter.draw_line({close_cx - cs, close_cy - cs}, {close_cx + cs, close_cy + cs}, x_col,
+                              1.5f);
+            painter.draw_line({close_cx + cs, close_cy - cs}, {close_cx - cs, close_cy + cs}, x_col,
+                              1.5f);
+        }
+
+        if (active) {
+            auto indicator = Rect{};
+            float lw = 2.0f;
+            if (orientation == TabOrientation::North) {
+                indicator = {rect.x, rect.y + rect.height - lw, rect.width, lw};
+            } else if (orientation == TabOrientation::South) {
+                indicator = {rect.x, rect.y, rect.width, lw};
+            } else if (orientation == TabOrientation::West) {
+                indicator = {rect.x + rect.width - lw, rect.y, lw, rect.height};
+            } else if (orientation == TabOrientation::East) {
+                indicator = {rect.x, rect.y, lw, rect.height};
+            }
+            painter.fill_rect(indicator, palette_.accent);
+        }
     }
 };
 
@@ -1139,6 +1223,56 @@ class GnomeTheme : public BaseTheme {
 
         focus_ring_margin = 2.0f;
         focus_ring_corner_radius = 2.0f;
+    }
+
+    void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
+                  bool hovered, bool enabled, TabOrientation orientation, bool has_close,
+                  bool hovered_close) const override {
+        auto const &style = tab_widget;
+        auto bg =
+            active ? style.tab_active_bg : (hovered ? style.tab_hover_bg : style.tab_inactive_bg);
+        if (!active && !hovered) {
+            bg = bg.darken(0.05f);
+        }
+        auto text_c = active ? style.tab_active_text : style.tab_inactive_text;
+
+        auto tab_rect = rect.inset(2.0f);
+        painter.fill_rounded_rect(tab_rect, bg, 6.0f);
+
+        auto fm = painter.font_metrics(style.font_size);
+        auto text_w = painter.text_size(text, style.font_size).width;
+
+        auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
+        auto left_space = style.tab_padding_h;
+        auto text_area_w = rect.width - left_space - right_space;
+        auto text_x = rect.x + left_space + (text_area_w - text_w) / 2.0f;
+        if (text_x < rect.x + left_space) {
+            text_x = rect.x + left_space;
+        }
+
+        auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+
+        if (has_close) {
+            auto close_btn_size = 14.0f;
+            auto close_x = rect.x + rect.width - style.tab_padding_h - close_btn_size - 2.0f;
+            auto close_rect = Rect{close_x, rect.y + (rect.height - close_btn_size) / 2.0f,
+                                   close_btn_size, close_btn_size};
+            auto close_cy = rect.y + rect.height / 2.0f;
+            auto close_cx = close_x + close_btn_size / 2.0f;
+
+            if (hovered_close) {
+                painter.fill_circle({close_cx, close_cy}, close_btn_size / 2.0f + 2.0f,
+                                    Color::rgba(text_c.r, text_c.g, text_c.b, 0.15f));
+            }
+
+            auto cs = close_btn_size * 0.3f;
+            auto x_col = Color::rgba(text_c.r, text_c.g, text_c.b, 0.7f);
+            painter.draw_line({close_cx - cs, close_cy - cs}, {close_cx + cs, close_cy + cs}, x_col,
+                              1.5f);
+            painter.draw_line({close_cx + cs, close_cy - cs}, {close_cx - cs, close_cy + cs}, x_col,
+                              1.5f);
+        }
     }
 };
 
@@ -1176,6 +1310,28 @@ class Plasma6Theme : public BaseTheme {
                 {rect.x + button.corner_radius, rect.y + rect.height - 2.0f},
                 {rect.x + rect.width - button.corner_radius, rect.y + rect.height - 2.0f}, line_c,
                 1.0f);
+        }
+    }
+
+    void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
+                  bool hovered, bool enabled, TabOrientation orientation, bool has_close,
+                  bool hovered_close) const override {
+        BaseTheme::draw_tab(painter, rect, text, active, hovered, enabled, orientation, has_close,
+                            hovered_close);
+
+        if (active) {
+            auto indicator = Rect{};
+            float lw = 2.0f;
+            if (orientation == TabOrientation::North) {
+                indicator = {rect.x, rect.y + rect.height - lw, rect.width, lw};
+            } else if (orientation == TabOrientation::South) {
+                indicator = {rect.x, rect.y, rect.width, lw};
+            } else if (orientation == TabOrientation::West) {
+                indicator = {rect.x + rect.width - lw, rect.y, lw, rect.height};
+            } else if (orientation == TabOrientation::East) {
+                indicator = {rect.x, rect.y, lw, rect.height};
+            }
+            painter.fill_rect(indicator, palette_.accent);
         }
     }
 };
@@ -1278,8 +1434,9 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.text = gray(0.0f);
         p.border = gray(0.0f);
         p.accent = Color::rgb(0.0f, 0.0f, 0.5f);
-        p.highlight = Color::rgb(0.0f, 0.0f, 0.5f);
+        p.highlight = gray(1.0f);
         p.shadow = gray(0.50f);
+        p.dark_shadow = gray(0.0f);
         p.alternate = gray(0.90f);
         break;
     case ColorScheme::Dark:
@@ -1288,8 +1445,9 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.text = gray(0.90f);
         p.border = gray(0.10f);
         p.accent = Color::rgb(0.0f, 0.0f, 0.8f);
-        p.highlight = Color::rgb(0.0f, 0.0f, 0.8f);
+        p.highlight = gray(0.40f);
         p.shadow = gray(0.12f);
+        p.dark_shadow = gray(0.0f);
         p.alternate = gray(0.35f);
         break;
     }

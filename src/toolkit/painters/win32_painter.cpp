@@ -306,6 +306,12 @@ void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, flo
     impl_->graphics->DrawPath(&pen, &path);
 }
 
+void GDIPainter::fill_triangle(Point a, Point b, Point c, Color const &color) {
+    Gdiplus::PointF pts[3] = {{a.x, a.y}, {b.x, b.y}, {c.x, c.y}};
+    Gdiplus::SolidBrush brush(to_gdiplus_color(color));
+    impl_->graphics->FillPolygon(&brush, pts, 3);
+}
+
 void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     Gdiplus::Pen pen(to_gdiplus_color(c), lw);
     apply_line_style(pen, impl_->line_style, lw);

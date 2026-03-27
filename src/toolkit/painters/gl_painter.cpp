@@ -181,6 +181,16 @@ void GLPainter::draw_rounded_rect(Rect const &r, Color const &c, float radius, f
     glEnd();
 }
 
+void GLPainter::fill_triangle(Point a, Point b, Point c, Color const &color) {
+    glDisable(GL_LINE_STIPPLE);
+    set_color(color);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(a.x, a.y);
+    glVertex2f(b.x, b.y);
+    glVertex2f(c.x, c.y);
+    glEnd();
+}
+
 void GLPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     set_color(c);
     glLineWidth(lw * scale_);

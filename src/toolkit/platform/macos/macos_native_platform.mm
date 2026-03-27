@@ -70,6 +70,17 @@ class CoreGraphicsPainter : public Painter {
         CGPathRelease(path);
     }
 
+    void fill_triangle(Point a, Point b, Point c, Color const &color) override {
+        CGContextSetLineDash(ctx_, 0, nullptr, 0);
+        CGContextSetRGBFillColor(ctx_, color.r, color.g, color.b, color.a);
+        CGContextBeginPath(ctx_);
+        CGContextMoveToPoint(ctx_, a.x, a.y);
+        CGContextAddLineToPoint(ctx_, b.x, b.y);
+        CGContextAddLineToPoint(ctx_, c.x, c.y);
+        CGContextClosePath(ctx_);
+        CGContextFillPath(ctx_);
+    }
+
     void draw_line(Point a, Point b, Color const &c, float lw) override {
         CGContextSetRGBStrokeColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextSetLineWidth(ctx_, lw);

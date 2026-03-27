@@ -458,22 +458,8 @@ void TabWidget::paint(Painter &painter) {
         auto hovered = (i == hovered_tab_ && !active);
         auto hovered_close = (i == hovered_close_);
 
-        Theme::current().draw_tab(painter, tab_rect, tabs_[i].title, active, hovered, true, true,
-                                  hovered_close);
-
-        if (!vertical && active) {
-            auto indicator = Rect{};
-            if (orientation_ == TabOrientation::North) {
-                indicator = {tab_rect.x, tab_rect.y + thickness - 3, tab_rect.width, 2};
-            } else if (orientation_ == TabOrientation::South) {
-                indicator = {tab_rect.x, tab_rect.y + 1, tab_rect.width, 2};
-            } else if (orientation_ == TabOrientation::West) {
-                indicator = {tab_rect.x + thickness - 3, tab_rect.y, 2, tab_rect.height};
-            } else if (orientation_ == TabOrientation::East) {
-                indicator = {tab_rect.x + 1, tab_rect.y, 2, tab_rect.height};
-            }
-            painter.fill_rect(indicator, Theme::current().combobox.border_focused);
-        }
+        Theme::current().draw_tab(painter, tab_rect, tabs_[i].title, active, hovered, true,
+                                  orientation_, true, hovered_close);
     };
 
     auto start_pos = 0.0f;

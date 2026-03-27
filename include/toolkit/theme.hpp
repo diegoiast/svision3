@@ -28,6 +28,7 @@ struct WidgetStyle {
     bool beveled = false;
 };
 
+// FIXME: remove this style
 struct ButtonStyle : WidgetStyle {
     std::optional<Color> background_hovered;
     std::optional<Color> background_pressed;
@@ -37,11 +38,13 @@ struct ButtonStyle : WidgetStyle {
     float auto_repeat_interval = 0.4f;
 };
 
+// FIXME: remove this style
 struct LabelStyle {
     Color text;
     float font_size = 14.0f;
 };
 
+// FIXME: remove this style
 struct LineInputStyle : WidgetStyle {
     Color background_focused;
     Color border_focused;
@@ -50,12 +53,14 @@ struct LineInputStyle : WidgetStyle {
     Margins padding = {4, 8, 4, 8};
 };
 
+// FIXME: remove this style
 struct ToggleStyle : WidgetStyle {
     Color indicator;
     float box_size = 16.0f;
     float spacing = 6.0f;
 };
 
+// FIXME: remove this style
 struct ComboboxStyle : WidgetStyle {
     Color border_focused;
     Color arrow;
@@ -66,6 +71,7 @@ struct ComboboxStyle : WidgetStyle {
     Margins padding = {6, 8, 6, 8};
 };
 
+// FIXME: remove this style
 struct MenuStyle : WidgetStyle {
     std::optional<Color> background_hovered;
     std::optional<Color> background_pressed;
@@ -75,12 +81,14 @@ struct MenuStyle : WidgetStyle {
     Margins padding = {2, 2, 2, 2};
 };
 
+// FIXME: remove this style
 struct MenuBarStyle : WidgetStyle {
     std::optional<Color> background_hovered;
     std::optional<Color> background_pressed;
     Margins padding = {4, 8, 4, 8};
 };
 
+// FIXME: remove this style
 struct TabWidgetStyle : WidgetStyle {
     Color tab_active_bg;
     Color tab_inactive_bg;
@@ -91,6 +99,7 @@ struct TabWidgetStyle : WidgetStyle {
     float tab_padding_v = 6.0f;
 };
 
+// FIXME: remove this style
 struct ListViewStyle : WidgetStyle {
     Color selected_bg;
     Color selected_text;
@@ -100,6 +109,7 @@ struct ListViewStyle : WidgetStyle {
     float item_padding_h = 8.0f;
 };
 
+// FIXME: remove this style
 struct TableViewStyle : WidgetStyle {
     Color selected_bg;
     Color selected_text;
@@ -116,6 +126,7 @@ struct TableViewStyle : WidgetStyle {
     float min_column_width = 40.0f;
 };
 
+// FIXME: remove this style
 struct ProgressBarStyle : WidgetStyle {
     Color fill;
     float bar_height = 8.0f;
@@ -124,6 +135,7 @@ struct ProgressBarStyle : WidgetStyle {
     float chunk_gap = 2.0f;
 };
 
+// FIXME: remove this style
 struct SliderStyle : WidgetStyle {
     Color groove;
     Color handle;
@@ -132,6 +144,7 @@ struct SliderStyle : WidgetStyle {
     float handle_size = 16.0f;
 };
 
+// FIXME: remove this style
 struct TooltipStyle {
     Color background = Color::rgb(1.0f, 1.0f, 0.88f);
     Color border = Color::rgb(0.6f, 0.6f, 0.5f);
@@ -143,21 +156,37 @@ struct TooltipStyle {
     float delay_sec = 0.6f;
 };
 
+// FIXME: remove this style
 struct WindowStyle {
     Color background;
 };
 
 struct Palette {
-    Color window;           // Main background for windows
-    Color base;             // Background for input widgets/lists
-    Color alternate;        // Alternate background for lists
-    Color text;             // Normal text color
-    Color placeholder;      // Placeholder/de-emphasized text
-    Color highlight;        // Background for selected items
-    Color highlighted_text; // Text color for selected items
-    Color border;           // Border color for widgets
-    Color accent;           // Primary brand/action color
-    Color link;             // Color for links/actions
+    // Main background for windows
+    Color window;
+    // Background for input widgets/lists
+    Color base;
+    // Alternate background for lists
+    Color alternate;
+    // Normal text color
+    Color text;
+    // Placeholder/de-emphasized text
+    Color placeholder;
+    // Background for selected items
+    Color highlight;
+    // Text color for selected items
+    Color highlighted_text;
+    // Border color for widgets
+    Color border;
+    // Primary brand/action color
+    Color accent;
+    // Color for links/actions
+    Color link;
+
+    // If the palette supports shadows, a shadow, otherwise the same as border
+    Color shadow;
+    // If the palette supports shadows, a shadow, otherwise the same as border
+    Color dark_shadow;
 
     // Semantic colors
     Color success;
@@ -167,26 +196,32 @@ struct Palette {
     // Platform-specific defaults
     SystemFonts fonts;
 
-    // Backward compatibility fields
+    // FIXME - remove backward compatibility fields
     Color window_bg;
     Color widget_bg;
     Color input_bg;
-    float font_size = 14.0f;
-    std::string system_font = "sans-serif";
-    std::string monospace_font = "monospace";
+
     float corner_radius = 0.0f;
     float border_width = 1.0f;
     bool beveled = false;
-    Color shadow;
+
+    // FIXME: this should be platform dependent, read from desktop configuration
+    float font_size = 14.0f;
+    std::string system_font = "sans-serif";
+    std::string monospace_font = "monospace";
     float auto_repeat_delay = 0.5f;
     float auto_repeat_interval = 0.4f;
 };
 
 enum class ColorScheme { Light, Dark };
 
+// FIXME: now ideal.
+inline constexpr int theme_style_count = 6;
+
 enum class ThemeStyle { MacOS, Material, Win11, Win95, Plasma6, GNOME };
 
-inline constexpr int theme_style_count = 6;
+// FIXME: this is bad, should be in a shared include
+enum class TabOrientation;
 
 class Painter;
 
@@ -197,10 +232,20 @@ class Theme {
     // Factory methods
     static std::unique_ptr<Theme> create(ThemeStyle style, ColorScheme scheme = ColorScheme::Light);
     static std::unique_ptr<Theme> create(ThemeStyle style, Palette const &palette);
+
+    // FIXME this should be in the application, this method should be removed
     static const Theme &current();
+
+    // FIXME: remove this function. It should be in the application.
     static void set_current(std::unique_ptr<Theme> theme);
+
+    // FIXME: this should be in the platform code. Not here.
     static ThemeStyle detect_system_style();
+
+    // FIXME: how about move this to the enum? or something?
     static const char *style_name(ThemeStyle style);
+
+    // FIXME: how about move this to the enum? or something?
     static Palette default_palette(ThemeStyle style, ColorScheme scheme = ColorScheme::Light);
 
     // Primitive Drawing Methods
@@ -234,8 +279,8 @@ class Theme {
                              bool hovered, bool pressed, bool focused, bool enabled) const = 0;
     virtual void draw_tab_bar_background(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
-                          bool hovered, bool enabled, bool has_close = false,
-                          bool hovered_close = false) const = 0;
+                          bool hovered, bool enabled, TabOrientation orientation,
+                          bool has_close = false, bool hovered_close = false) const = 0;
     virtual void draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
                                 Icon const &icon, bool selected, bool hovered,
                                 bool alternate) const = 0;
