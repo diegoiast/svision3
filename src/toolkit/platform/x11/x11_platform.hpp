@@ -27,6 +27,10 @@ class X11PlatformApplication : public PlatformApplication {
     float scale_factor() const override;
     SystemFonts system_fonts() const override;
 
+    // Forward to get X11 handles, without X11 includes
+    void *get_display() const;
+    void *get_visual() const;
+
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };
