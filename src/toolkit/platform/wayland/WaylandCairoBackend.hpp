@@ -5,7 +5,8 @@
 
 #include "toolkit/platform.hpp"
 
-// Inline
+// Inline definition of the connector from wayland to cairo
+// No real need for a CPP file as we are includeing this once.
 
 namespace toolkit {
 
