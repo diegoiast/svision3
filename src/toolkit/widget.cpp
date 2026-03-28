@@ -21,6 +21,18 @@ void Widget::invalidate_layout() {
     }
 }
 
+Widget &Widget::set_layout_dirty(bool dirty)
+{
+    state.layout_dirty = dirty;
+    return  *this;
+}
+
+Widget &Widget::set_focusable(bool f)
+{
+    state.focusable = f;
+    return *this;
+}
+
 bool Widget::is_effectively_visible() const {
     if (!is_visible()) {
         return false;
@@ -33,34 +45,37 @@ bool Widget::is_effectively_visible() const {
 
 void Widget::on_theme_changed() { invalidate_layout(); }
 
-void Widget::set_enabled(bool e) {
+Widget &Widget::set_enabled(bool e) {
     if (state.enabled == e) {
-        return;
+        return *this;
     }
     state.enabled = e;
     if (window_) {
         window_->request_redraw("property change (enabled)");
     }
+    return *this;
 }
 
 void Widget::set_focused(bool focused) {
     if (focused == state.focused) {
-        return;
+        return *this;
     }
     state.focused = focused;
     if (window_) {
         window_->request_redraw("proper change (focused)");
     }
+    return *this;
 }
 
-void Widget::set_visible(bool v) {
+Widget &Widget::set_visible(bool v) {
     if (is_visible() == v) {
-        return;
+        return *this;
     }
     state.visible = v;
     if (window_) {
         window_->request_redraw("property change (visible)");
     }
+    return *this;
 }
 
 void Widget::set_tooltip(std::string text) {

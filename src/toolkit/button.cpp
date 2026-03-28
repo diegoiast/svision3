@@ -11,7 +11,7 @@ namespace toolkit {
 Button::Button(std::string text) {
     auto pos = text.find('&');
     auto const &style = Theme::current().button;
-    
+
     state.focusable = true;
     if (pos != std::string::npos && pos + 1 < text.size()) {
         mnemonic_index_ = static_cast<int>(pos);
@@ -20,10 +20,10 @@ Button::Button(std::string text) {
     } else {
         display_text_ = std::move(text);
     }
-    
+
     auto_repeat_delay_ = style.auto_repeat_delay;
     auto_repeat_interval_ = style.auto_repeat_interval;
-    
+
     state_handler_.on_state_change_callback = [this] { on_state_changed(); };
 }
 
@@ -132,11 +132,11 @@ void Button::start_auto_repeat_interval() {
     }
 }
 
-void Button::set_visible(bool v) {
+Widget &Button::set_visible(bool v) {
     auto changed = state_handler_.button_state != ButtonState::Normal;
 
     if (is_visible() == v) {
-        return;
+        return *this;
     }
     Widget::set_visible(v);
     if (!is_visible()) {
@@ -146,6 +146,7 @@ void Button::set_visible(bool v) {
             window_->request_redraw("button state");
         }
     }
+    return *this;
 }
 
 void Button::paint(Painter &painter) {

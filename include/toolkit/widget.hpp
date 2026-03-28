@@ -19,16 +19,6 @@ class Window;
 
 template <typename Derived> struct Fluent {
     Derived &self() { return static_cast<Derived &>(*this); }
-
-    Derived &set_enabled(bool e) {
-        self().Widget::set_enabled(e);
-        return self();
-    }
-
-    Derived &set_visible(bool v) {
-        self().Widget::set_visible(v);
-        return self();
-    }
 };
 
 class Widget {
@@ -70,16 +60,16 @@ class Widget {
     }
 
     void invalidate_layout();
-
-    virtual void set_layout_dirty(bool dirty) { state.layout_dirty = dirty; }
+    
+    virtual Widget &set_layout_dirty(bool dirty);
     virtual bool is_layout_dirty() const { return state.layout_dirty; }
-    virtual void set_focusable(bool f) { state.focusable = f; }
+    virtual Widget &set_focusable(bool f);
     virtual bool is_focusable() const { return state.focusable; }
-    virtual void set_focused(bool focused);
+    virtual Widget &set_focused(bool focused);
     virtual bool is_focused() const { return state.focused; }
-    virtual void set_enabled(bool e);
+    virtual Widget &set_enabled(bool e);
     virtual bool is_enabled() const { return state.enabled; }
-    virtual void set_visible(bool v);
+    virtual Widget &set_visible(bool v);
     virtual bool is_visible() const { return state.visible; }
 
     // FIXME: really? is this a good API?
@@ -90,8 +80,14 @@ class Widget {
     virtual void on_theme_changed();
 
     bool is_effectively_visible() const;
-    void show() { set_visible(true); }
-    void hide() { set_visible(false); }
+    Widget &show() {
+        set_visible(true);
+        return *this;
+    }
+    Widget &hide() {
+        set_visible(false);
+        return *this;
+    }
 
     void set_min_size(Size s) { min_size_ = s; }
     void set_max_size(Size s) { max_size_ = s; }

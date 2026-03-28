@@ -8,7 +8,7 @@
 
 namespace toolkit {
 
-Slider::Slider(SliderOrientation orientation) : orientation_(orientation) { set_focusable(true); }
+Slider::Slider(SliderOrientation orientation) : orientation_(orientation) { Widget::set_focusable(true); }
 
 Slider &Slider::set_value(float v) {
     v = std::clamp(v, min_, max_);

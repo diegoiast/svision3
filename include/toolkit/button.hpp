@@ -47,7 +47,7 @@ class Button : public Widget {
     }
 
     void stop_auto_repeat();
-    void set_visible(bool v) override;
+    Widget &set_visible(bool v) override;
     bool is_hovered() const {
         return state_handler_.button_state == ButtonState::Hovered ||
                state_handler_.button_state == ButtonState::ClickedInside;
