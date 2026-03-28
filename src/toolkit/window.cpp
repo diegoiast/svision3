@@ -122,6 +122,8 @@ auto Window::scale_factor() const -> float {
 
 auto Window::platform_window() const -> PlatformWindow * { return impl_->platform.get(); }
 
+auto Window::painter_name() const -> std::string_view { return impl_->platform->painter_name(); }
+
 void Window::show() {
     if (impl_->platform) {
         impl_->platform->show();

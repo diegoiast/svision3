@@ -1,10 +1,10 @@
 #include "wl_platform.hpp"
 #include "../linux_utils.hpp"
-#include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
 #include "fractional-scale-v1-client-protocol.h"
+#include "toolkit/painters/cairo_painter.hpp"
 #include "viewporter-client-protocol.h"
 #include "xdg-decoration-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
@@ -23,6 +23,8 @@
 #include <wayland-cursor.h>
 #include <wayland-egl.h>
 #include <xkbcommon/xkbcommon.h>
+
+#include "WaylandCairoBackend.hpp"
 
 #ifdef __linux__
 #include <sys/syscall.h>
@@ -51,86 +53,6 @@ static int create_shm_file(size_t size) {
     return fd;
 }
 
-class WlCairoBackend : public RenderingBackend {
-  public:
-    WlCairoBackend() = default;
-    ~WlCairoBackend() override = default;
-
-    void paint(Window *owner, PlatformWindow *pWindow, PlatformApplication *pApp, int lw,
-               int lh) override {
-        auto window = static_cast<WaylandPlatformWindow *>(pWindow);
-        auto app = static_cast<WaylandPlatformApplication *>(pApp);
-        auto pw = static_cast<int>(std::ceil(static_cast<float>(lw) * window->scale));
-        auto ph = static_cast<int>(std::ceil(static_cast<float>(lh) * window->scale));
-
-        if (pw != window->buf_width || ph != window->buf_height) {
-            if (window->buffer) {
-                wl_buffer_destroy(window->buffer);
-                window->buffer = nullptr;
-            }
-            if (window->shm_data && window->shm_size > 0) {
-                munmap(window->shm_data, window->shm_size);
-                window->shm_data = nullptr;
-            }
-            if (window->shm_fd >= 0) {
-                ::close(window->shm_fd);
-                window->shm_fd = -1;
-            }
-
-            int stride = pw * 4;
-            size_t total = static_cast<size_t>(stride) * static_cast<size_t>(ph);
-            window->shm_fd = create_shm_file(total);
-            if (window->shm_fd < 0) {
-                return;
-            }
-            window->shm_data =
-                mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, window->shm_fd, 0);
-            if (window->shm_data == MAP_FAILED) {
-                window->shm_data = nullptr;
-                ::close(window->shm_fd);
-                window->shm_fd = -1;
-                return;
-            }
-            window->shm_size = total;
-            wl_shm_pool *pool =
-                wl_shm_create_pool(app->shm, window->shm_fd, static_cast<int32_t>(total));
-            window->buffer =
-                wl_shm_pool_create_buffer(pool, 0, pw, ph, stride, WL_SHM_FORMAT_ARGB8888);
-            wl_shm_pool_destroy(pool);
-            window->buf_width = pw;
-            window->buf_height = ph;
-        }
-
-        if (window->viewport) {
-            wp_viewport_set_destination(window->viewport, lw, lh);
-            wl_surface_set_buffer_scale(window->surface, 1);
-        } else {
-            wl_surface_set_buffer_scale(window->surface,
-                                        static_cast<int32_t>(std::ceil(window->scale)));
-        }
-
-        if (window->shm_data) {
-            int stride = pw * 4;
-            cairo_surface_t *cs =
-                cairo_image_surface_create_for_data(static_cast<unsigned char *>(window->shm_data),
-                                                    CAIRO_FORMAT_ARGB32, pw, ph, stride);
-            cairo_t *cr = cairo_create(cs);
-            cairo_scale(cr, static_cast<double>(window->scale), static_cast<double>(window->scale));
-
-            CairoPainter painter(cr);
-            owner->handle_paint(painter);
-
-            cairo_surface_flush(cs);
-            cairo_destroy(cr);
-            cairo_surface_destroy(cs);
-
-            wl_surface_attach(window->surface, window->buffer, 0, 0);
-            wl_surface_damage(window->surface, 0, 0, pw, ph);
-            wl_surface_commit(window->surface);
-        }
-    }
-};
-
 class WlGLBackend : public RenderingBackend {
   public:
     WlGLBackend(wl_surface *surface, Size size, PlatformApplication *pApp) {
@@ -153,6 +75,8 @@ class WlGLBackend : public RenderingBackend {
             wl_egl_window_destroy(egl_window);
         }
     }
+
+    std::string_view name() const override { return "OpenGL"; };
 
     void paint(Window *owner, PlatformWindow *pWindow, PlatformApplication *pApp, int lw,
                int lh) override {
@@ -1108,7 +1032,7 @@ WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
     if (app_->opengl_requested) {
         backend = std::make_unique<WlGLBackend>(surface, size, app_);
     } else {
-        backend = std::make_unique<WlCairoBackend>();
+        backend = std::make_unique<WaylandCairoBackend>();
     }
 
     wl_surface_set_buffer_scale(surface, app_->output_scale);
@@ -1249,16 +1173,15 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
         return;
     }
     hide_tooltip_window();
-
     tooltip_data = std::make_unique<TooltipData>();
     tooltip_data->text = text;
 
     auto const &style = Theme::current().tooltip;
-    float fs = style.font_size;
+    auto fs = style.font_size;
     auto tsz = Painter::measure_text(text, fs);
     auto fm = Painter::measure_font_metrics(fs);
-    float tw = tsz.width + style.padding * 2;
-    float th = fm.height + style.padding * 2;
+    auto tw = tsz.width + style.padding * 2;
+    auto th = fm.height + style.padding * 2;
 
     tooltip_data->width = static_cast<int>(std::ceil(tw * scale));
     tooltip_data->height = static_cast<int>(std::ceil(th * scale));
@@ -1348,6 +1271,7 @@ void WaylandPlatformWindow::do_paint() {
     }
 }
 
+// FIXME: this function draws using cairo - need to use RenderingBackend for indirection
 void WaylandPlatformWindow::paint_tooltip() {
     if (!tooltip_data || !tooltip_data->surface) {
         return;
@@ -1426,10 +1350,6 @@ Size WaylandPlatformApplication::measure_text(std::string_view text, float font_
 Painter::FontMetrics WaylandPlatformApplication::measure_font_metrics(float font_size,
                                                                       FontFamily font) {
     return cairo_measure_font_metrics(font_size, font);
-}
-
-std::string_view WaylandPlatformApplication::painter_name() const {
-    return opengl_requested ? "OpenGL" : "Cairo";
 }
 
 float WaylandPlatformApplication::scale_factor() const { return output_scale; }

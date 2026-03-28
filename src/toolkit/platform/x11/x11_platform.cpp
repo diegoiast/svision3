@@ -85,6 +85,7 @@ class RenderingBackend2 {
   public:
     virtual ~RenderingBackend2() = default;
     virtual void paint(Window *owner, float scale) = 0;
+    virtual std::string_view name() const = 0;
 };
 
 class CairoBackend : public RenderingBackend2 {
@@ -100,6 +101,8 @@ class CairoBackend : public RenderingBackend2 {
             cairo_surface_destroy(x11_surface_);
         }
     }
+
+    std::string_view name() const { return "Cairo"; }
 
     void paint(Window *owner, float scale) override {
         int lw = static_cast<int>(owner->size().width);
@@ -193,6 +196,8 @@ class GLBackend : public RenderingBackend2 {
             glXDestroyContext(app_->display, glx_context_);
         }
     }
+
+    std::string_view name() const override { return "OpenGL"; }
 
     void paint(Window *owner, float scale) override {
         int lw = static_cast<int>(owner->size().width);
@@ -903,10 +908,6 @@ Painter::FontMetrics X11PlatformApplication::measure_font_metrics(float font_siz
     return cairo_measure_font_metrics(font_size, font);
 }
 
-std::string_view X11PlatformApplication::painter_name() const {
-    return impl_->opengl_requested ? "OpenGL" : "Cairo";
-}
-
 X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
                                      Window *owner)
     : impl_(std::make_unique<Impl>()), app_(app), owner_(owner) {
@@ -1261,6 +1262,8 @@ bool X11PlatformWindow::save_to_png(std::string const &path) {
 }
 
 float X11PlatformWindow::scale_factor() const { return app_->impl_->scale; }
+
+std::string_view X11PlatformWindow::painter_name() const { return impl_->backend->name(); }
 
 float X11PlatformApplication::scale_factor() const { return impl_->scale; }
 

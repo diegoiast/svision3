@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "toolkit/window.hpp"
 #include "toolkit/image_loader.hpp"
+#include "toolkit/window.hpp"
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -28,7 +28,6 @@ class Application {
     void quit();
 
     std::string_view platform_name() const;
-    std::string_view painter_name() const;
 
     void notify_theme_changed();
 

@@ -503,7 +503,7 @@ int main(int argc, char *argv[]) {
     tab_main->add_widget(std::move(repeat_row));
 
     tab_main->add_widget(std::make_unique<toolkit::Label>(
-        fmt::format("Platform: {} | Painter: {}", app.platform_name(), app.painter_name())));
+        fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name())));
 
     tabs->add_tab("Main", std::move(tab_main));
 

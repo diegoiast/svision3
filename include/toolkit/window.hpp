@@ -82,6 +82,7 @@ class Window {
     float scale_factor() const;
 
     PlatformWindow *platform_window() const;
+    std::string_view painter_name() const;
 
     void set_focused_widget(Widget *w);
     Widget *focused_widget() const { return focused_widget_; }

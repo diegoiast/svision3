@@ -8,8 +8,8 @@
 
 #include <cstdlib>
 #include <map>
-#include <spdlog/spdlog.h>
 #include <spdlog/fmt/fmt.h>
+#include <spdlog/spdlog.h>
 
 #if defined(__APPLE__)
 #ifdef TOOLKIT_HAS_CAIRO
@@ -32,9 +32,7 @@ namespace toolkit {
 
 class DummyIconProvider : public IconProvider {
   public:
-    auto load(std::string_view, int, std::string_view) -> Icon override {
-        return nullptr;
-    }
+    auto load(std::string_view, int, std::string_view) -> Icon override { return nullptr; }
 };
 
 static PlatformApplication *s_platform = nullptr;
@@ -144,8 +142,6 @@ int Application::run() { return impl_->platform->run(); }
 void Application::quit() { impl_->platform->quit(); }
 
 std::string_view Application::platform_name() const { return impl_->platform->name(); }
-
-std::string_view Application::painter_name() const { return impl_->platform->painter_name(); }
 
 void Application::notify_theme_changed() {
     for (auto &win : windows_) {

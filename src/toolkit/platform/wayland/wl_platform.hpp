@@ -56,7 +56,7 @@ class WaylandPlatformApplication : public PlatformApplication {
     Painter::FontMetrics measure_font_metrics(float font_size,
                                               FontFamily font = FontFamily::System) override;
     std::string_view name() const override { return "Wayland"; }
-    std::string_view painter_name() const override;
+
     float scale_factor() const override;
     SystemFonts system_fonts() const override;
 
@@ -143,6 +143,7 @@ class WaylandPlatformWindow : public PlatformWindow {
     void hide_tooltip_window() override;
     bool save_to_png(std::string const &path) override;
     float scale_factor() const override;
+    std::string_view painter_name() const override { return backend->name(); };
 
     void do_paint();
     void paint_tooltip();

@@ -22,6 +22,7 @@ class DummyPlatformWindow : public PlatformWindow {
     void hide_tooltip_window() override {}
     bool save_to_png(std::string const &) override { return true; }
     float scale_factor() const override { return 1.0f; }
+    std::string_view painter_name() const override { return "none"; }
 };
 
 class DummyPlatformApplication : public PlatformApplication {
@@ -38,7 +39,6 @@ class DummyPlatformApplication : public PlatformApplication {
     Painter::FontMetrics measure_font_metrics(float font_size,
                                               FontFamily font = FontFamily::System) override;
     std::string_view name() const override { return "dummy"; }
-    std::string_view painter_name() const override { return "none"; }
     float scale_factor() const override { return 1.0f; }
     SystemFonts system_fonts() const override { return {"sans", "mono", 14.0f}; }
 };

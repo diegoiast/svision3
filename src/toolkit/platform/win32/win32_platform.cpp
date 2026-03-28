@@ -2,19 +2,18 @@
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
-#include <spdlog/spdlog.h>
 #include <GL/gl.h>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <objidl.h>
 #include <gdiplus.h>
+#include <objidl.h>
+#include <spdlog/spdlog.h>
 
 #ifdef TOOLKIT_HAS_CAIRO
-#include <cairo.h>
 #include "toolkit/painters/cairo_painter.hpp"
+#include <cairo.h>
 #endif
-
 
 namespace toolkit {
 
@@ -519,14 +518,6 @@ Win32PlatformApplication::~Win32PlatformApplication() {
         Gdiplus::GdiplusShutdown(gdiplus_token);
     }
     s_win32_app = nullptr;
-}
-
-std::string_view Win32PlatformApplication::painter_name() const {
-#ifdef TOOLKIT_HAS_CAIRO
-    return "Cairo";
-#else
-    return "GDI+";
-#endif
 }
 
 float Win32PlatformApplication::scale_factor() const {
