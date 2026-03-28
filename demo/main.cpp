@@ -565,28 +565,23 @@ int main(int argc, char *argv[]) {
     auto slider_row = std::make_unique<toolkit::HBoxLayout>();
     slider_row->set_spacing(10);
 
-    auto slider = std::make_unique<toolkit::Slider>();
-    slider->set_range(0, 100);
-    slider->set_value(progress_ptr->value() * 100.0f);
-
-    auto slider_val = std::make_unique<toolkit::Label>(fmt::format("{:.0f}%", slider->value()));
-    auto *slider_val_ptr = slider_val.get();
-
-    // We need to capture the timer ID to stop it if the user interacts with the slider
     static int auto_progress_timer = 0;
 
-    slider->on_change = [progress_ptr, slider_val_ptr, window](float v) {
-        if (auto_progress_timer != 0) {
-            window->stop_timer(auto_progress_timer);
-            auto_progress_timer = 0;
-        }
-        progress_ptr->set_value(v / 100.0f);
-        progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
-        slider_val_ptr->set_text(fmt::format("{:.0f}%", v));
-    };
+    auto &slider = slider_row->add<toolkit::Slider>(1).set_range(0, 100);
+    auto &slider_val = slider_row->add<toolkit::Label>().set_text(fmt::format("{:.0f}%", slider.value()));
+    
+    slider.set_on_change([progress_ptr, &slider_val, window](toolkit::Slider &slider, float v) {
+            if (auto_progress_timer != 0) {
+                window->stop_timer(auto_progress_timer);
+                auto_progress_timer = 0;
+            }
+            progress_ptr->set_value(v / 100.0f);
+            progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
+            slider_val.set_text(fmt::format("{:.0f}%", v));
+        });
 
-    slider_row->add_widget(std::move(slider), 1);
-    slider_row->add_widget(std::move(slider_val));
+    // We need to capture the timer ID to stop it if the user interacts with the slider
+
     tab_inputs->add_widget(std::move(slider_row));
 
     auto inputs_spacer = std::make_unique<toolkit::Label>("");
@@ -618,10 +613,10 @@ int main(int argc, char *argv[]) {
     filter_row->add_widget(std::move(delay_label));
 
     auto delay_spin = std::make_unique<toolkit::SpinBox>(10, 0, 200, 5);
-    delay_spin->set_tooltip("Simulated delay per item (ms)");
     delay_spin->on_change = [filter_adapter](int val) {
         filter_adapter->set_simulated_delay_ms(val);
     };
+    delay_spin->set_tooltip("Simulated delay per item (ms)");
     filter_row->add_widget(std::move(delay_spin));
 
     tab3->add_widget(std::move(filter_row));

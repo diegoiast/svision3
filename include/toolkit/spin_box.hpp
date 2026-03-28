@@ -10,7 +10,7 @@
 
 namespace toolkit {
 
-class SpinBox : public Widget {
+class SpinBox : public Widget, public Fluent<SpinBox> {
   public:
     explicit SpinBox(int value = 0, int min_val = 0, int max_val = 100, int step = 1);
 
@@ -22,9 +22,12 @@ class SpinBox : public Widget {
     void set_focused(bool focused) override;
 
     int value() const { return value_; }
-    void set_value(int v);
-    void set_range(int min_val, int max_val);
-    void set_step(int step) { step_ = step; }
+    SpinBox &set_value(int v);
+    SpinBox &set_range(int min_val, int max_val);
+    SpinBox &set_step(int step) {
+        step_ = step;
+        return *this;
+    }
 
     std::function<void(int value)> on_change;
 

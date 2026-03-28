@@ -17,6 +17,20 @@ namespace toolkit {
 
 class Window;
 
+template <typename Derived> struct Fluent {
+    Derived &self() { return static_cast<Derived &>(*this); }
+
+    Derived &set_enabled(bool e) {
+        self().Widget::set_enabled(e);
+        return self();
+    }
+
+    Derived &set_visible(bool v) {
+        self().Widget::set_visible(v);
+        return self();
+    }
+};
+
 class Widget {
   public:
     virtual ~Widget() = default;
@@ -67,7 +81,7 @@ class Widget {
     virtual bool is_enabled() const { return state.enabled; }
     virtual void set_visible(bool v);
     virtual bool is_visible() const { return state.visible; }
-    
+
     // FIXME: really? is this a good API?
     bool can_get_non_focus_input() const { return state.non_focus_input; }
 

@@ -15,9 +15,9 @@ TEST_CASE("Widget defaults", "[widget]") {
 
 TEST_CASE("Widget enable/disable", "[widget]") {
     Label w("test");
-    w.set_enabled(false);
+    w.Widget::set_enabled(false);
     REQUIRE(w.is_enabled() == false);
-    w.set_enabled(true);
+    w.Widget::set_enabled(true);
     REQUIRE(w.is_enabled() == true);
 }
 
@@ -28,7 +28,7 @@ TEST_CASE("Widget show/hide", "[widget]") {
     REQUIRE(w.is_visible() == false);
     w.show();
     REQUIRE(w.is_visible() == true);
-    w.set_visible(false);
+    w.Widget::set_visible(false);
     REQUIRE(w.is_visible() == false);
 }
 
@@ -59,23 +59,23 @@ TEST_CASE("Widget min/max size", "[widget]") {
 TEST_CASE("Widget coordinate mapping", "[widget]") {
     Label parent("Parent");
     parent.set_rect({10, 20, 100, 50});
-    
+
     Label child("Child");
     child.set_rect({5, 5, 20, 20});
     child.set_parent(&parent);
-    
+
     // map_to_window
     // local child {0,0} -> window {15, 25} (10+5, 20+5)
     Point p1 = child.map_to_window({0, 0});
     REQUIRE(p1.x == 15.0f);
     REQUIRE(p1.y == 25.0f);
-    
+
     // map_from_window
     // window {15, 25} -> local child {0,0}
     Point p2 = child.map_from_window({15, 25});
     REQUIRE(p2.x == 0.0f);
     REQUIRE(p2.y == 0.0f);
-    
+
     // window {20, 30} -> local child {5, 5}
     Point p3 = child.map_from_window({20, 30});
     REQUIRE(p3.x == 5.0f);

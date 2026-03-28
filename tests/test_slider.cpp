@@ -37,7 +37,7 @@ TEST_CASE("Slider mouse interaction", "[slider]") {
     s.set_rect({0, 0, 100, 20});
     
     float last_val = -1.0f;
-    s.on_change = [&](float v) { last_val = v; };
+    s.on_change = [&](auto &s, float v) { last_val = v; };
     
     // Clicking at the middle (x=50) should set value to ~50
     // Note: handle_size affects the internal mapping, but with a 100px width

@@ -20,6 +20,12 @@ class VBoxLayout : public Widget {
 
     void add_widget(std::unique_ptr<Widget> widget, int stretch = 0,
                     Alignment h_align = Alignment::Fill);
+    template <class T> T &add(int stretch = 0, Alignment h_align = Alignment::Fill) {
+        auto ptr = std::make_unique<T>();
+        T &ref = *ptr;
+        add_widget(std::move(ptr), stretch, h_align);
+        return ref;
+    }
 
     void set_margins(Margins const &m) { margins_ = m; }
     void set_spacing(float s) { spacing_ = s; }
@@ -57,6 +63,12 @@ class HBoxLayout : public Widget {
 
     void add_widget(std::unique_ptr<Widget> widget, int stretch = 0,
                     Alignment v_align = Alignment::Center);
+    template <class T> T &add(int stretch = 0, Alignment h_align = Alignment::Fill) {
+        auto ptr = std::make_unique<T>();
+        T &ref = *ptr;
+        add_widget(std::move(ptr), stretch, h_align);
+        return ref;
+    }
 
     void set_margins(Margins const &m) { margins_ = m; }
     void set_spacing(float s) { spacing_ = s; }

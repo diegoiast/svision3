@@ -9,26 +9,42 @@
 
 namespace toolkit {
 
-class Label : public Widget {
+class Label : public Widget, public Fluent<Label> {
   public:
+    explicit Label();
     explicit Label(std::string text);
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
     Size size_hint() const override;
 
-    void set_text(std::string const &text);
+    Label &set_text(std::string const &text);
     std::string const &text() const { return text_; }
 
-    void set_color(Color const &color) { color_override_ = color; }
-    void set_font_size(float size) { font_size_override_ = size; }
-    void set_shrinkable(bool s) { shrinkable_ = s; }
+    Label &set_color(Color const &color) {
+        color_override_ = color;
+        return *this;
+    }
+    Label &set_font_size(float size) {
+        font_size_override_ = size;
+        return *this;
+    }
+    Label &set_shrinkable(bool s) {
+        shrinkable_ = s;
+        return *this;
+    }
     bool shrinkable() const { return shrinkable_; }
 
-    void set_alignment(Alignment a) { alignment_ = a; }
+    Label &set_alignment(Alignment a) {
+        alignment_ = a;
+        return *this;
+    }
     Alignment alignment() const { return alignment_; }
 
-    void set_elide(bool e) { elide_ = e; }
+    Label &set_elide(bool e) {
+        elide_ = e;
+        return *this;
+    }
     bool elide() const { return elide_; }
 
   private:

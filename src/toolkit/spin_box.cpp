@@ -16,19 +16,21 @@ SpinBox::SpinBox(int value, int min_val, int max_val, int step)
     sync_text();
 }
 
-void SpinBox::set_value(int v) {
+SpinBox &SpinBox::set_value(int v) {
     v = std::clamp(v, min_val_, max_val_);
     if (v == value_) {
-        return;
+        return *this;
     }
     value_ = v;
     sync_text();
+    return *this;
 }
 
-void SpinBox::set_range(int min_val, int max_val) {
+SpinBox &SpinBox::set_range(int min_val, int max_val) {
     min_val_ = min_val;
     max_val_ = max_val;
     set_value(value_);
+    return *this;
 }
 
 void SpinBox::set_focused(bool focused) {

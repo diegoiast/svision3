@@ -10,7 +10,7 @@ namespace toolkit {
 
 enum class SliderOrientation { Horizontal, Vertical };
 
-class Slider : public Widget {
+class Slider : public Widget, public Fluent<Slider> {
   public:
     explicit Slider(SliderOrientation orientation = SliderOrientation::Horizontal);
 
@@ -20,17 +20,21 @@ class Slider : public Widget {
     Size size_hint() const override;
 
     float value() const { return value_; }
-    void set_value(float v);
+    Slider &set_value(float v);
 
     float minimum() const { return min_; }
-    void set_minimum(float m);
+    Slider &set_minimum(float m);
 
     float maximum() const { return max_; }
-    void set_maximum(float m);
+    Slider &set_maximum(float m);
 
-    void set_range(float min, float max);
+    Slider &set_range(float min, float max);
 
-    std::function<void(float)> on_change;
+    std::function<void(Slider &, float)> on_change;
+    Slider &set_on_change(std::function<void(Slider &, float)> cb) {
+        on_change = std::move(cb);
+        return *this;
+    }
 
   private:
     float value_to_pos(float v) const;

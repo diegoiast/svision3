@@ -6,14 +6,17 @@
 
 namespace toolkit {
 
+Label::Label() {}
+
 Label::Label(std::string text) : text_(std::move(text)) {}
 
-void Label::set_text(std::string const &text) {
+Label &Label::set_text(std::string const &text) {
     if (text_ == text) {
-        return;
+        return *this;
     }
     text_ = text;
     invalidate_layout();
+    return *this;
 }
 
 void Label::paint(Painter &painter) {

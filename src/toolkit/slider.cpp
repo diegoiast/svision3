@@ -10,46 +10,50 @@ namespace toolkit {
 
 Slider::Slider(SliderOrientation orientation) : orientation_(orientation) { set_focusable(true); }
 
-void Slider::set_value(float v) {
+Slider &Slider::set_value(float v) {
     v = std::clamp(v, min_, max_);
     if (value_ == v) {
-        return;
+        return *this;
     }
     value_ = v;
     if (window_) {
         window_->request_redraw("slider change");
     }
+    return *this;
 }
 
-void Slider::set_minimum(float m) {
+Slider &Slider::set_minimum(float m) {
     if (min_ == m) {
-        return;
+        return *this;
     }
     min_ = m;
     set_value(value_);
     if (window_) {
         window_->request_redraw("slider change");
     }
+    return *this;
 }
 
-void Slider::set_maximum(float m) {
+Slider &Slider::set_maximum(float m) {
     if (max_ == m) {
-        return;
+        *this;
     }
     max_ = m;
     set_value(value_);
     if (window_) {
         window_->request_redraw("slider change");
     }
+    return *this;
 }
 
-void Slider::set_range(float min, float max) {
+Slider &Slider::set_range(float min, float max) {
     min_ = min;
     max_ = max;
     set_value(value_);
     if (window_) {
         window_->request_redraw("slider change");
     }
+    return *this;
 }
 
 float Slider::value_to_pos(float v) const {
@@ -100,7 +104,7 @@ void Slider::update_value_from_pos(Point p) {
     auto v = pos_to_value(orientation_ == SliderOrientation::Horizontal ? p.x : p.y);
     set_value(v);
     if (on_change) {
-        on_change(value_);
+        on_change(*this, value_);
     }
 }
 
@@ -109,7 +113,7 @@ void Slider::paint(Painter &painter) {
     auto horizontal = orientation_ == SliderOrientation::Horizontal;
     auto range = max_ - min_;
     auto normalized_value = (range > 0) ? (value_ - min_) / range : 0.0f;
-    
+
     Theme::current().draw_slider(painter, rect, normalized_value, horizontal, false, false,
                                  is_focused(), is_enabled());
 }
@@ -167,7 +171,7 @@ bool Slider::handle_key(KeyEvent const &event) {
     if (next_val != value_) {
         set_value(next_val);
         if (on_change) {
-            on_change(value_);
+            on_change(*this, value_);
         }
         return true;
     }
