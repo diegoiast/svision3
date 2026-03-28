@@ -12,7 +12,7 @@
 
 namespace toolkit {
 
-class Button : public Widget {
+class Button : public Widget, public Fluent<Button> {
   public:
     explicit Button(std::string text);
 
@@ -37,7 +37,7 @@ class Button : public Widget {
     }
 
     void set_padding(Margins const &padding) { padding_override_ = padding; }
-    void set_flat(bool f) { flat_ = f; }
+    Button& set_flat(bool f);
     bool is_flat() const { return flat_; }
 
     void set_auto_repeat(bool ar, float delay = 0.5f, float interval = 0.4f) {

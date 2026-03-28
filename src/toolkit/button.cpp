@@ -168,6 +168,11 @@ bool Button::trigger_mnemonic(char key) {
     return false;
 }
 
+Button &Button::set_flat(bool f) {
+    flat_ = f;
+    return *this;
+}
+
 bool Button::handle_key(KeyEvent const &event) {
     if (!is_enabled()) {
         return false;

@@ -86,6 +86,11 @@ void Widget::set_tooltip(std::string text) {
     }
 }
 
+Widget &Widget::set_background_color(std::optional<Color> c) {
+    background_color_ = c;
+    return *this;
+}
+
 auto Widget::dispatch_mouse_event(Widget *w, MouseEvent const &event) -> bool {
     auto local_ev = event;
     local_ev.position.x -= w->rect().x;

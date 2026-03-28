@@ -134,8 +134,8 @@ class Widget {
 
     void set_tooltip(std::string text);
     std::string const &tooltip() const { return state.tooltip; }
-
-    void set_background_color(std::optional<Color> c) { background_color_ = c; }
+    
+    Widget& set_background_color(std::optional<Color> c);
     std::optional<Color> background_color() const { return background_color_; }
 
   protected:

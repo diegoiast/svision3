@@ -22,27 +22,31 @@ class LineInput : public Widget, public Fluent<LineInput> {
     bool handle_key(KeyEvent const &event) override;
     void on_focus() override;
     void on_blur() override;
-    
+
     Size size_hint() const override;
     CursorShape cursor() const override {
         return (clear_hovered_ || peek_hovered_) ? CursorShape::Hand : CursorShape::IBeam;
     }
     LineInput &set_focused(bool focused) override;
-    
+
     LineInput &set_text(std::string const &text);
     std::string const &text() const { return text_; }
 
     LineInput &set_password_mode(bool enable);
     bool is_password_mode() const { return password_mode_; }
-    
+
     LineInput &set_read_only(bool enable);
     bool is_read_only() const { return read_only_; }
 
     enum class ValidationMode { None, Block, Notify };
-    void set_validator(std::function<bool(std::string const &)> validator) {
+    LineInput &set_validator(std::function<bool(std::string const &)> validator) {
         validator_ = std::move(validator);
+        return *this;
     }
-    void set_validation_mode(ValidationMode mode) { validation_mode_ = mode; }
+    LineInput &set_validation_mode(ValidationMode mode) {
+        validation_mode_ = mode;
+        return *this;
+    }
     ValidationMode validation_mode() const { return validation_mode_; }
     bool is_valid() const;
 

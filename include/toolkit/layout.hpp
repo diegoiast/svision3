@@ -9,7 +9,7 @@
 
 namespace toolkit {
 
-class VBoxLayout : public Widget {
+class VBoxLayout : public Widget, public Fluent<VBoxLayout> {
   public:
     VBoxLayout();
     struct Item {

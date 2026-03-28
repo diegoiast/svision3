@@ -41,19 +41,21 @@ auto Combobox::dropdown_item_height() const -> float {
 auto Combobox::dropdown_bounds() const -> Rect {
     auto item_h = dropdown_item_height();
     auto drop_h = item_h * static_cast<float>(drop_max_visible_);
-    auto drop_y = rect_.y + rect_.height;
+
+    // Convert local coordinates to window coordinates
+    auto pos = map_to_window({0.0f, rect_.height});
 
     // If it was flipped above, recalculate
     if (window()) {
         auto win_h = window()->size().height;
-        auto space_below = win_h - (rect_.y + rect_.height);
+        auto space_below = win_h - pos.y;
         auto full_h = item_h * static_cast<float>(items_.size());
-        if (full_h > space_below && rect_.y > space_below) {
-            drop_y = rect_.y - drop_h;
+        if (full_h > space_below && pos.y > space_below) {
+            pos.y = pos.y - drop_h;
         }
     }
 
-    return {rect_.x, drop_y, rect_.width, drop_h};
+    return {pos.x, pos.y, rect_.width, drop_h};
 }
 
 auto Combobox::item_index_at(Point p) const -> int {
