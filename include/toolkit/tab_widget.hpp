@@ -14,20 +14,20 @@ namespace toolkit {
 // FIXME: this needs to move to a new header, theme forwards it - and it looks weird.
 enum class TabOrientation { North, South, East, West };
 
-class TabWidget : public Widget {
+class TabWidget : public Widget, public Fluent<TabWidget> {
   public:
     TabWidget();
 
-    void add_tab(std::string title, std::unique_ptr<Widget> content);
+    TabWidget &add_tab(std::string title, std::unique_ptr<Widget> content);
 
     int current_index() const { return current_; }
-    void set_current(int index);
-
+    TabWidget &set_current(int index);
+    
+    TabWidget &set_orientation(TabOrientation o);
     TabOrientation orientation() const { return orientation_; }
-    void set_orientation(TabOrientation o);
-
-    void set_leading_widget(std::unique_ptr<Widget> widget);
-    void set_trailing_widget(std::unique_ptr<Widget> widget);
+    
+    TabWidget &set_leading_widget(std::unique_ptr<Widget> widget);
+    TabWidget &set_trailing_widget(std::unique_ptr<Widget> widget);
 
     std::function<void(int index, std::string const &title)> on_tab_close;
 

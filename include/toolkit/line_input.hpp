@@ -12,7 +12,7 @@
 
 namespace toolkit {
 
-class LineInput : public Widget {
+class LineInput : public Widget, public Fluent<LineInput> {
   public:
     explicit LineInput(std::string placeholder = "");
 
@@ -20,21 +20,22 @@ class LineInput : public Widget {
     void paint_buttons(Painter &painter);
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
+    void on_focus() override;
+    void on_blur() override;
+    
     Size size_hint() const override;
     CursorShape cursor() const override {
         return (clear_hovered_ || peek_hovered_) ? CursorShape::Hand : CursorShape::IBeam;
     }
-    void set_focused(bool focused) override;
-    void on_focus() override;
-    void on_blur() override;
-
+    LineInput &set_focused(bool focused) override;
+    
+    LineInput &set_text(std::string const &text);
     std::string const &text() const { return text_; }
-    void set_text(std::string const &text);
 
-    void set_password_mode(bool enable);
+    LineInput &set_password_mode(bool enable);
     bool is_password_mode() const { return password_mode_; }
-
-    void set_read_only(bool enable) { read_only_ = enable; }
+    
+    LineInput &set_read_only(bool enable);
     bool is_read_only() const { return read_only_; }
 
     enum class ValidationMode { None, Block, Notify };

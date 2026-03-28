@@ -79,12 +79,13 @@ void TextEdit::set_text(std::string const &text) {
     }
 }
 
-void TextEdit::set_focused(bool focused) {
-    set_focused(focused);
+TextEdit& TextEdit::set_focused(bool focused) {
+    Widget::set_focused(focused);
     if (!focused) {
         anchor_ = cursor_;
     }
     sync_commands();
+    return *this;
 }
 
 void TextEdit::on_focus() {

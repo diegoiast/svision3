@@ -33,7 +33,7 @@ SpinBox &SpinBox::set_range(int min_val, int max_val) {
     return *this;
 }
 
-void SpinBox::set_focused(bool focused) {
+SpinBox &SpinBox::set_focused(bool focused) {
     Widget::set_focused(focused);
     if (focused) {
         editing_ = true;
@@ -44,6 +44,7 @@ void SpinBox::set_focused(bool focused) {
         commit_text();
         editing_ = false;
     }
+    return *this;
 }
 
 void SpinBox::sync_text() {

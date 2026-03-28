@@ -25,7 +25,7 @@ TabWidget::TabWidget() {
     next_button_->set_parent(this);
 }
 
-void TabWidget::add_tab(std::string title, std::unique_ptr<Widget> content) {
+TabWidget &TabWidget::add_tab(std::string title, std::unique_ptr<Widget> content) {
     content->set_parent(this);
     if (window_) {
         content->set_window(window_);
@@ -34,14 +34,16 @@ void TabWidget::add_tab(std::string title, std::unique_ptr<Widget> content) {
     if (rect_.width > 0 || rect_.height > 0) {
         layout_content();
     }
+    return *this;
 }
 
-void TabWidget::set_current(int index) {
+TabWidget &TabWidget::set_current(int index) {
     if (index >= 0 && index < static_cast<int>(tabs_.size())) {
         current_ = index;
         scroll_to_tab(index);
         layout_content();
     }
+    return *this;
 }
 
 void TabWidget::scroll_by(float delta) {
@@ -158,9 +160,9 @@ void TabWidget::update_scroll_bounds() {
     }
 }
 
-void TabWidget::set_orientation(TabOrientation o) {
+TabWidget &TabWidget::set_orientation(TabOrientation o) {
     if (orientation_ == o) {
-        return;
+        return *this;
     }
     orientation_ = o;
     if (orientation_ == TabOrientation::North || orientation_ == TabOrientation::South) {
@@ -171,24 +173,27 @@ void TabWidget::set_orientation(TabOrientation o) {
         next_button_->set_text("v");
     }
     layout_content();
+    return *this;
 }
 
-void TabWidget::set_leading_widget(std::unique_ptr<Widget> widget) {
+TabWidget &TabWidget::set_leading_widget(std::unique_ptr<Widget> widget) {
     widget->set_parent(this);
     leading_widget_ = std::move(widget);
     if (leading_widget_ && window_) {
         leading_widget_->set_window(window_);
     }
     layout_content();
+    return *this;
 }
 
-void TabWidget::set_trailing_widget(std::unique_ptr<Widget> widget) {
+TabWidget &TabWidget::set_trailing_widget(std::unique_ptr<Widget> widget) {
     widget->set_parent(this);
     trailing_widget_ = std::move(widget);
     if (trailing_widget_ && window_) {
         trailing_widget_->set_window(window_);
     }
     layout_content();
+    return *this;
 }
 
 auto TabWidget::tab_bar_thickness() const -> float {

@@ -77,7 +77,7 @@ TableView::TableView(std::shared_ptr<TableModel> model) : model_(std::move(model
     }
 }
 
-void TableView::set_model(std::shared_ptr<TableModel> model) {
+TableView &TableView::set_model(std::shared_ptr<TableModel> model) {
     model_ = std::move(model);
     column_widths_.clear();
     sort_indices_.clear();
@@ -98,6 +98,7 @@ void TableView::set_model(std::shared_ptr<TableModel> model) {
         auto_fit_columns();
         rebuild_sort_index();
     }
+    return *this;
 }
 
 int TableView::model_row(int display_row) const {
@@ -186,12 +187,13 @@ CursorShape TableView::cursor() const {
     return CursorShape::Arrow;
 }
 
-void TableView::set_column_width(int column, float width) {
+TableView &TableView::set_column_width(int column, float width) {
     ensure_column_widths();
     auto const &style = Theme::current().table_view;
     if (column >= 0 && column < static_cast<int>(column_widths_.size())) {
         column_widths_[column] = std::max(width, style.min_column_width);
     }
+    return *this;
 }
 
 float TableView::column_width(int column) const {
@@ -203,22 +205,23 @@ float TableView::column_width(int column) const {
 
 // ── Selection ───────────────────────────────────────────────────────────────
 
-void TableView::set_selected_row(int row) {
+TableView &TableView::set_selected_row(int row) {
     if (!model_) {
-        return;
+        return *this;
     }
     if (row < 0 || row >= model_->row_count()) {
         clear_selection();
-        return;
+        return *this;
     }
     selection_.clear();
     selection_.insert(row);
     anchor_row_ = row;
     cursor_row_ = row;
     notify_selection();
+    return *this;
 }
 
-void TableView::set_selection(std::set<int> rows) {
+TableView &TableView::set_selection(std::set<int> rows) {
     selection_ = std::move(rows);
     if (!selection_.empty()) {
         anchor_row_ = *selection_.begin();
@@ -227,11 +230,12 @@ void TableView::set_selection(std::set<int> rows) {
         anchor_row_ = cursor_row_ = -1;
     }
     notify_selection();
+    return *this;
 }
 
-void TableView::select_all() {
+TableView &TableView::select_all() {
     if (!model_) {
-        return;
+        return *this;
     }
 
     auto n = model_->row_count();
@@ -243,12 +247,14 @@ void TableView::select_all() {
     anchor_row_ = 0;
     cursor_row_ = n - 1;
     notify_selection();
+    return *this;
 }
 
-void TableView::clear_selection() {
+TableView &TableView::clear_selection() {
     selection_.clear();
     anchor_row_ = cursor_row_ = -1;
     notify_selection();
+    return *this;
 }
 
 void TableView::select_range_from_anchor() {
@@ -258,6 +264,16 @@ void TableView::select_range_from_anchor() {
     for (int i = lo; i <= hi; i++) {
         selection_.insert(i);
     }
+}
+
+TableView &TableView::set_multi_select(bool enabled) {
+    multi_select_ = enabled;
+    return *this;
+}
+
+TableView &TableView::set_alternating_row_colors(bool enabled) {
+    alternating_ = enabled;
+    return *this;
 }
 
 void TableView::notify_selection() {

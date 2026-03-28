@@ -19,7 +19,7 @@ class SpinBox : public Widget, public Fluent<SpinBox> {
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
     CursorShape cursor() const override;
-    void set_focused(bool focused) override;
+    SpinBox &set_focused(bool focused) override;
 
     int value() const { return value_; }
     SpinBox &set_value(int v);

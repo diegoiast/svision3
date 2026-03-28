@@ -11,7 +11,7 @@
 
 namespace toolkit {
 
-class TextEdit : public Widget {
+class TextEdit : public Widget , public Fluent<TextEdit> {
   public:
     explicit TextEdit(std::string text = "");
 
@@ -20,7 +20,7 @@ class TextEdit : public Widget {
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
     CursorShape cursor() const override { return CursorShape::IBeam; }
-    void set_focused(bool focused) override;
+    TextEdit &set_focused(bool focused) override;
     void on_focus() override;
     void on_blur() override;
 

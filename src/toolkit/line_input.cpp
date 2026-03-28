@@ -48,20 +48,18 @@ LineInput::LineInput(std::string placeholder)
     sync_commands();
 }
 
-void LineInput::set_password_mode(bool enable) {
-    password_mode_ = enable;
-    if (enable) {
-        is_password_field_ = true;
+LineInput &LineInput::set_focused(bool focused) {
+    Widget::set_focused(focused);
+    if (!focused) {
+        sel_anchor_ = cursor_pos_;
     }
     sync_commands();
-    if (window_) {
-        window_->request_redraw("input state");
-    }
+    return *this;
 }
 
-void LineInput::set_text(std::string const &text) {
+LineInput & LineInput::set_text(std::string const &text) {
     if (text_ == text) {
-        return;
+        return *this;
     }
     text_ = text;
     cursor_pos_ = text_.size();
@@ -70,35 +68,25 @@ void LineInput::set_text(std::string const &text) {
     if (window_) {
         window_->request_redraw("input state");
     }
+    return *this;
+    
 }
 
-void LineInput::set_focused(bool focused) {
-    Widget::set_focused(focused);
-    if (!focused) {
-        sel_anchor_ = cursor_pos_;
+LineInput & LineInput::set_password_mode(bool enable) {
+    password_mode_ = enable;
+    if (enable) {
+        is_password_field_ = true;
     }
     sync_commands();
+    if (window_) {
+        window_->request_redraw("input state");
+    }
+    return *this;
 }
 
-void LineInput::on_focus() {
-    reset_cursor_blink();
-    if (window_ && blink_timer_id_ == 0) {
-        blink_timer_id_ = window_->start_timer(
-            0.5f,
-            [this] {
-                if (is_effectively_visible()) {
-                    window_->request_redraw("blink");
-                }
-            },
-            true);
-    }
-}
-
-void LineInput::on_blur() {
-    if (window_ && blink_timer_id_ != 0) {
-        window_->stop_timer(blink_timer_id_);
-        blink_timer_id_ = 0;
-    }
+LineInput &LineInput::set_read_only(bool enable) {
+    read_only_ = enable;
+    return *this;
 }
 
 void LineInput::reset_cursor_blink() { cursor_blink_time_ = std::chrono::steady_clock::now(); }
@@ -662,6 +650,28 @@ bool LineInput::handle_key(KeyEvent const &event) {
 
     return false;
 }
+
+void LineInput::on_focus() {
+    reset_cursor_blink();
+    if (window_ && blink_timer_id_ == 0) {
+        blink_timer_id_ = window_->start_timer(
+            0.5f,
+            [this] {
+                if (is_effectively_visible()) {
+                    window_->request_redraw("blink");
+                }
+            },
+            true);
+    }
+}
+
+void LineInput::on_blur() {
+    if (window_ && blink_timer_id_ != 0) {
+        window_->stop_timer(blink_timer_id_);
+        blink_timer_id_ = 0;
+    }
+}
+
 
 void LineInput::cut() {
     if (!has_selection() || password_mode_ || read_only_) {

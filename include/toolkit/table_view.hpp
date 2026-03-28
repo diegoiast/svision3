@@ -46,30 +46,30 @@ class StringTableModel : public TableModel {
 
 enum class SortOrder { None, Ascending, Descending };
 
-class TableView : public Widget {
+class TableView : public Widget, public Fluent<TableView> {
   public:
     explicit TableView(std::shared_ptr<TableModel> model);
 
-    void set_model(std::shared_ptr<TableModel> model);
+    TableView &set_model(std::shared_ptr<TableModel> model);
     std::shared_ptr<TableModel> model() const { return model_; }
 
     // Selection
     int selected_row() const { return cursor_row_; }
     std::set<int> const &selection() const { return selection_; }
-    void set_selected_row(int row);
-    void set_selection(std::set<int> rows);
-    void select_all();
-    void clear_selection();
+    TableView &set_selected_row(int row);
+    TableView &set_selection(std::set<int> rows);
+    TableView &select_all();
+    TableView &clear_selection();
     bool is_selected(int row) const { return selection_.count(row) > 0; }
 
     bool multi_select() const { return multi_select_; }
-    void set_multi_select(bool enabled) { multi_select_ = enabled; }
+    TableView &set_multi_select(bool enabled);
 
     bool alternating_row_colors() const { return alternating_; }
-    void set_alternating_row_colors(bool enabled) { alternating_ = enabled; }
+    TableView &set_alternating_row_colors(bool enabled);
 
     // Column sizing
-    void set_column_width(int column, float width);
+    TableView &set_column_width(int column, float width);
     float column_width(int column) const;
 
     // Sorting

@@ -21,14 +21,12 @@ void Widget::invalidate_layout() {
     }
 }
 
-Widget &Widget::set_layout_dirty(bool dirty)
-{
+Widget &Widget::set_layout_dirty(bool dirty) {
     state.layout_dirty = dirty;
-    return  *this;
+    return *this;
 }
 
-Widget &Widget::set_focusable(bool f)
-{
+Widget &Widget::set_focusable(bool f) {
     state.focusable = f;
     return *this;
 }
@@ -56,7 +54,7 @@ Widget &Widget::set_enabled(bool e) {
     return *this;
 }
 
-void Widget::set_focused(bool focused) {
+Widget &Widget::set_focused(bool focused) {
     if (focused == state.focused) {
         return *this;
     }
