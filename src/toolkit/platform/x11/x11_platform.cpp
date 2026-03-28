@@ -81,13 +81,13 @@ struct X11PlatformApplication::Impl {
     bool opengl_requested = false;
 };
 
-class RenderingBackend {
+class RenderingBackend2 {
   public:
-    virtual ~RenderingBackend() = default;
+    virtual ~RenderingBackend2() = default;
     virtual void paint(Window *owner, float scale) = 0;
 };
 
-class CairoBackend : public RenderingBackend {
+class CairoBackend : public RenderingBackend2 {
   public:
     CairoBackend(X11PlatformApplication::Impl *app, ::Window xwindow)
         : app_(app), xwindow_(xwindow) {}
@@ -183,7 +183,7 @@ class CairoBackend : public RenderingBackend {
     int last_pw_ = 0, last_ph_ = 0;
 };
 
-class GLBackend : public RenderingBackend {
+class GLBackend : public RenderingBackend2 {
   public:
     GLBackend(X11PlatformApplication::Impl *app, ::Window xwindow, GLXContext glx_context)
         : app_(app), xwindow_(xwindow), glx_context_(glx_context) {}
@@ -234,7 +234,7 @@ struct X11PlatformWindow::Impl {
     ::Window tooltip_xwindow = 0L;
     Cursor arrow_cursor = 0L, ibeam_cursor = 0L;
     Cursor hand_cursor = 0L, not_allowed_cursor = 0L;
-    std::unique_ptr<RenderingBackend> backend;
+    std::unique_ptr<RenderingBackend2> backend;
 
     bool needs_redraw = false;
 };

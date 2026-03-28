@@ -51,22 +51,17 @@ static int create_shm_file(size_t size) {
     return fd;
 }
 
-class RenderingBackend {
-  public:
-    virtual ~RenderingBackend() = default;
-    virtual void paint(Window *owner, wl_surface *surface, WaylandPlatformWindow *window,
-                       WaylandPlatformApplication *app, float scale, int lw, int lh) = 0;
-};
-
 class WlCairoBackend : public RenderingBackend {
   public:
     WlCairoBackend() = default;
     ~WlCairoBackend() override = default;
 
-    void paint(Window *owner, wl_surface *surface, WaylandPlatformWindow *window,
-               WaylandPlatformApplication *app, float current_scale, int lw, int lh) override {
-        int pw = static_cast<int>(std::ceil(static_cast<float>(lw) * current_scale));
-        int ph = static_cast<int>(std::ceil(static_cast<float>(lh) * current_scale));
+    void paint(Window *owner, PlatformWindow *pWindow, PlatformApplication *pApp, int lw,
+               int lh) override {
+        auto window = static_cast<WaylandPlatformWindow *>(pWindow);
+        auto app = static_cast<WaylandPlatformApplication *>(pApp);
+        auto pw = static_cast<int>(std::ceil(static_cast<float>(lw) * window->scale));
+        auto ph = static_cast<int>(std::ceil(static_cast<float>(lh) * window->scale));
 
         if (pw != window->buf_width || ph != window->buf_height) {
             if (window->buffer) {
@@ -108,9 +103,10 @@ class WlCairoBackend : public RenderingBackend {
 
         if (window->viewport) {
             wp_viewport_set_destination(window->viewport, lw, lh);
-            wl_surface_set_buffer_scale(surface, 1);
+            wl_surface_set_buffer_scale(window->surface, 1);
         } else {
-            wl_surface_set_buffer_scale(surface, static_cast<int32_t>(std::ceil(current_scale)));
+            wl_surface_set_buffer_scale(window->surface,
+                                        static_cast<int32_t>(std::ceil(window->scale)));
         }
 
         if (window->shm_data) {
@@ -119,7 +115,7 @@ class WlCairoBackend : public RenderingBackend {
                 cairo_image_surface_create_for_data(static_cast<unsigned char *>(window->shm_data),
                                                     CAIRO_FORMAT_ARGB32, pw, ph, stride);
             cairo_t *cr = cairo_create(cs);
-            cairo_scale(cr, static_cast<double>(current_scale), static_cast<double>(current_scale));
+            cairo_scale(cr, static_cast<double>(window->scale), static_cast<double>(window->scale));
 
             CairoPainter painter(cr);
             owner->handle_paint(painter);
@@ -128,18 +124,20 @@ class WlCairoBackend : public RenderingBackend {
             cairo_destroy(cr);
             cairo_surface_destroy(cs);
 
-            wl_surface_attach(surface, window->buffer, 0, 0);
-            wl_surface_damage(surface, 0, 0, pw, ph);
-            wl_surface_commit(surface);
+            wl_surface_attach(window->surface, window->buffer, 0, 0);
+            wl_surface_damage(window->surface, 0, 0, pw, ph);
+            wl_surface_commit(window->surface);
         }
     }
 };
 
 class WlGLBackend : public RenderingBackend {
   public:
-    WlGLBackend(wl_surface *surface, Size size, WaylandPlatformApplication *app) {
-        int pw = static_cast<int>(size.width) * app->output_scale;
-        int ph = static_cast<int>(size.height) * app->output_scale;
+    WlGLBackend(wl_surface *surface, Size size, PlatformApplication *pApp) {
+        // auto window = static_cast<WaylandPlatformWindow *>(pWindow);
+        auto app = static_cast<WaylandPlatformApplication *>(pApp);
+        auto pw = static_cast<int>(size.width) * app->output_scale;
+        auto ph = static_cast<int>(size.height) * app->output_scale;
         egl_window = wl_egl_window_create(surface, pw, ph);
         egl_surface = eglCreateWindowSurface(app->egl_display, app->egl_config,
                                              (EGLNativeWindowType)egl_window, nullptr);
@@ -156,10 +154,12 @@ class WlGLBackend : public RenderingBackend {
         }
     }
 
-    void paint(Window *owner, wl_surface *surface, WaylandPlatformWindow *window,
-               WaylandPlatformApplication *app, float current_scale, int lw, int lh) override {
-        int pw = static_cast<int>(std::ceil(static_cast<float>(lw) * current_scale));
-        int ph = static_cast<int>(std::ceil(static_cast<float>(lh) * current_scale));
+    void paint(Window *owner, PlatformWindow *pWindow, PlatformApplication *pApp, int lw,
+               int lh) override {
+        auto window = static_cast<WaylandPlatformWindow *>(pWindow);
+        auto app = static_cast<WaylandPlatformApplication *>(pApp);
+        auto pw = static_cast<int>(std::ceil(static_cast<float>(lw) * window->scale));
+        auto ph = static_cast<int>(std::ceil(static_cast<float>(lh) * window->scale));
 
         eglMakeCurrent(app->egl_display, egl_surface, egl_surface, app->egl_context);
         if (pw != buf_width || ph != buf_height) {
@@ -170,9 +170,10 @@ class WlGLBackend : public RenderingBackend {
 
         if (window->viewport) {
             wp_viewport_set_destination(window->viewport, lw, lh);
-            wl_surface_set_buffer_scale(surface, 1);
+            wl_surface_set_buffer_scale(window->surface, 1);
         } else {
-            wl_surface_set_buffer_scale(surface, static_cast<int32_t>(std::ceil(current_scale)));
+            wl_surface_set_buffer_scale(window->surface,
+                                        static_cast<int32_t>(std::ceil(window->scale)));
         }
 
         glViewport(0, 0, pw, ph);
@@ -188,7 +189,7 @@ class WlGLBackend : public RenderingBackend {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         CairoTextRasterizer rasterizer;
-        GLPainter painter(static_cast<float>(lh), current_scale, rasterizer);
+        GLPainter painter(static_cast<float>(lh), window->scale, rasterizer);
         owner->handle_paint(painter);
 
         eglSwapBuffers(app->egl_display, egl_surface);
@@ -1326,7 +1327,6 @@ void WaylandPlatformWindow::hide_tooltip_window() {
 
 void WaylandPlatformWindow::do_paint() {
     needs_redraw = false;
-    float current_scale = scale;
     int lw = static_cast<int>(owner_->size().width);
     int lh = static_cast<int>(owner_->size().height);
     if (lw <= 0 || lh <= 0) {
@@ -1340,7 +1340,7 @@ void WaylandPlatformWindow::do_paint() {
     wl_callback_add_listener(frame_cb, &frame_listener, this);
 
     if (backend) {
-        backend->paint(owner_, surface, this, app_, current_scale, lw, lh);
+        backend->paint(owner_, this, app_, lw, lh);
     }
 
     if (tooltip_data && tooltip_data->surface) {

@@ -13,6 +13,15 @@
 namespace toolkit {
 
 class Window;
+class PlatformApplication;
+class PlatformWindow;
+
+class RenderingBackend {
+  public:
+    virtual ~RenderingBackend() = default;
+    virtual void paint(Window *owner, PlatformWindow *window, PlatformApplication *app, int lw,
+                       int lh) = 0;
+};
 
 class PlatformWindow {
   public:
