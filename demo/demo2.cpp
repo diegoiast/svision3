@@ -23,6 +23,7 @@
 #include <vector>
 
 #include <spdlog/fmt/fmt.h>
+#include <spdlog/spdlog.h>
 
 namespace ui {
 
@@ -54,11 +55,20 @@ template <typename T> struct Widget {
         return std::move(*this);
     }
     Widget checked(bool c = true) {
-        w->set_checked(c);
+        if constexpr (std::is_same_v<T, toolkit::Checkbox> ||
+                      std::is_same_v<T, toolkit::RadioButton>) {
+            w->set_checked(c);
+        } else {
+            static_assert(sizeof(T) == 0, "checked only works on Checkbox or RadioButton");
+        }
         return std::move(*this);
     }
     Widget selected(int i) {
-        w->set_selected(i);
+        if constexpr (std::is_same_v<T, toolkit::Combobox>) {
+            w->set_selected(i);
+        } else {
+            static_assert(sizeof(T) == 0, "selected only works on Combobox");
+        }
         return std::move(*this);
     }
     Widget spacing(float s) {
@@ -96,9 +106,20 @@ template <typename T> struct Widget {
         return std::move(*this);
     }
 
-    template <typename W> Widget add(Widget<W> child, int stretch = 0) {
+    T *operator->() const { return w.get(); }
+    operator T *() const { return w.get(); }
+
+    template <typename W> Widget &add_child(Widget<W> &&child, int stretch = 0) {
         w->add_widget(std::move(child.w), stretch);
-        return std::move(*this);
+        return *this;
+    }
+
+    template <typename W> Widget add(Widget<W> &&child, int stretch = 0) {
+        return std::move(add_child(std::move(child), stretch));
+    }
+
+    template <typename W> Widget add(Widget<W> &child, int stretch = 0) {
+        return std::move(add_child(std::move(child), stretch));
     }
 
     template <typename W> Widget add(std::unique_ptr<W> child, int stretch = 0) {
@@ -107,13 +128,17 @@ template <typename T> struct Widget {
     }
 
     // Special handling for TabWidget
-    template <typename W> Widget add_tab(std::string_view title, Widget<W> child) {
+    template <typename W> Widget add_tab(std::string_view title, Widget<W> &&child) {
         if constexpr (std::is_same_v<T, toolkit::TabWidget>) {
             w->add_tab(std::string(title), std::move(child.w));
         } else {
             static_assert(sizeof(T) == 0, "add_tab only works on TabWidget");
         }
         return std::move(*this);
+    }
+
+    template <typename W> Widget add_tab(std::string_view title, Widget<W> &child) {
+        return add_tab(title, std::move(child));
     }
 
     Widget on_click(std::function<void()> f) {
@@ -124,20 +149,21 @@ template <typename T> struct Widget {
         w->on_toggle = std::move(f);
         return std::move(*this);
     }
-    Widget on_change(std::function<void(std::string const &)> f) {
-        w->on_change = std::move(f);
-        return std::move(*this);
-    }
-    Widget on_change(std::function<void(int)> f) {
-        w->on_change = std::move(f);
-        return std::move(*this);
-    }
-    Widget on_change(std::function<void(float)> f) {
-        w->set_on_change([f = std::move(f)](T &, float v) { f(v); });
+    template <typename F> Widget on_change(F &&f) {
+        if constexpr (std::is_same_v<T, toolkit::LineInput>) {
+            w->on_change = std::forward<F>(f);
+        } else if constexpr (std::is_same_v<T, toolkit::Slider>) {
+            w->set_on_change([f = std::forward<F>(f)](toolkit::Slider &, float v) { f(v); });
+        } else if constexpr (std::is_same_v<T, toolkit::SpinBox>) {
+            w->on_change = std::forward<F>(f);
+        } else if constexpr (std::is_same_v<T, toolkit::Combobox>) {
+            w->on_change = std::forward<F>(f);
+        }
         return std::move(*this);
     }
 
     operator std::unique_ptr<toolkit::Widget>() && { return std::move(w); }
+    operator std::unique_ptr<toolkit::Widget>() & { return std::move(w); }
     T *get() const { return w.get(); }
 };
 
@@ -190,6 +216,12 @@ inline std::shared_ptr<toolkit::RadioGroup> radio_group() {
 }
 
 inline Widget<toolkit::RadioButton> radio_button(std::string_view text,
+                                                 std::shared_ptr<toolkit::RadioGroup> group) {
+    return Widget<toolkit::RadioButton>(
+        std::make_unique<toolkit::RadioButton>(std::string(text), *group));
+}
+
+inline Widget<toolkit::RadioButton> radio_button(std::string_view text,
                                                  toolkit::RadioGroup &group) {
     return Widget<toolkit::RadioButton>(
         std::make_unique<toolkit::RadioButton>(std::string(text), group));
@@ -202,8 +234,12 @@ inline Widget<toolkit::TabWidget> tab_widget() {
 
 // Layouts
 inline toolkit::Margins default_margins() { return {10, 10, 10, 10}; }
+inline toolkit::Margins no_margins() { return {0, 0, 0, 0}; }
 
 inline int default_padding() { return 10; }
+
+constexpr int expand = 1;
+constexpr int no_stretch = 0;
 
 inline Widget<toolkit::VBoxLayout> vbox() {
     auto layout = std::make_unique<toolkit::VBoxLayout>();
@@ -224,80 +260,65 @@ inline Widget<toolkit::HBoxLayout> hbox() {
 
 int main(int argc, char *argv[]) {
     toolkit::Application app;
-    auto *window = app.create_window("Declarative Demo", {600, 500});
+    auto window = app.create_window("Declarative Demo", {600, 500});
 
-    auto volume_label = std::make_unique<toolkit::Label>("50%");
-    auto *volume_label_ptr = volume_label.get();
-
-    auto volume_slider = std::make_unique<toolkit::Slider>();
-    volume_slider->set_range(0, 100);
-    volume_slider->set_value(50);
-    volume_slider->set_on_change([volume_label_ptr](toolkit::Slider &, float v) {
-        volume_label_ptr->set_text(fmt::format("{:.0f}%", v));
-    });
-
+    auto volume_label = ui::label("50%");
     auto group = ui::radio_group();
-    ui::radio_button("Option A", *group);
-    ui::radio_button("Option B", *group);
-    group->select(nullptr);
-
-    auto name_input = std::make_unique<toolkit::LineInput>("Type here...");
-    auto password_input = std::make_unique<toolkit::LineInput>("Password");
-    password_input->set_password_mode(true);
-    auto email_input = std::make_unique<toolkit::LineInput>("email@example.com");
-
-    auto inputs_tab =
-        ui::vbox()
-            .add(ui::label("Form Inputs Demo").shrinkable(true))
-            .add(ui::checkbox("Enable feature").checked(true).tooltip("Toggle something"))
-            .add(ui::hbox().add(ui::label("Name:")).add(std::move(name_input)))
-            .add(ui::hbox().add(ui::label("Password:")).add(std::move(password_input)))
-            .add(ui::hbox().add(ui::label("Email:")).add(std::move(email_input)))
-            .add(ui::label(""))
-            .add(ui::hbox()
-                     .add(ui::spin_box(5, 0, 100, 5))
-                     .add(ui::combobox({"Option 1", "Option 2", "Option 3"}).selected(0)));
-
-    auto sliders_tab = ui::vbox()
-                           .add(ui::label("Sliders Demo").shrinkable(true))
-                           .add(ui::label("Volume:"))
-                           .add(std::move(volume_slider))
-                           .add(std::move(volume_label))
-                           .add(ui::progress_bar(0.5f))
-                           .add(ui::label(""))
-                           .add(ui::label("Radio Buttons:"))
-                           .add(ui::hbox()
-                                    .add(ui::radio_button("Option A", *group))
-                                    .add(ui::radio_button("Option B", *group)));
-
-    auto buttons_tab =
-        ui::vbox()
-            .add(ui::label("Buttons Demo").shrinkable(true))
-            .add(ui::button("Regular Button").on_click([window] { window->close(); }))
-            .add(ui::button("Disabled Button").enabled(false))
-            .add(ui::button("Tooltip Button").tooltip("This is a tooltip"))
-            .add(ui::checkbox("Checkbox in tab"))
-            .add(ui::checkbox("Another checkbox").checked(true));
-
-    auto actions_tab = ui::vbox()
-                           .add(ui::label("Actions Demo").shrinkable(true))
-                           .add(ui::label(""))
-                           .add(ui::hbox()
-                                    .add(ui::button("OK").on_click([window] { window->close(); }))
-                                    .add(ui::button("Cancel").enabled(false))
-                                    .add(ui::button("Apply")))
-                           .add(ui::label(""));
-
-    auto tw = ui::tab_widget();
-    tw.w->add_tab("Inputs", std::move(inputs_tab.w));
-    tw.w->add_tab("Sliders", std::move(sliders_tab.w));
-    tw.w->add_tab("Buttons", std::move(buttons_tab.w));
-    tw.w->add_tab("Actions", std::move(actions_tab.w));
+    auto rootWidget =
+        ui::tab_widget()
+            .add_tab(
+                "Inputs",
+                ui::vbox()
+                    .add(ui::label("Form Inputs Demo").shrinkable(true))
+                    .add(ui::checkbox("Enable feature").checked(true).tooltip("Toggle something"))
+                    .add(ui::hbox()
+                             .add(ui::label("Name:"))
+                             .add(ui::line_input("Type here..."), ui::expand))
+                    .add(ui::hbox()
+                             .add(ui::label("Password:"))
+                             .add(ui::line_input("Password").password_mode(true), ui::expand))
+                    .add(ui::hbox()
+                             .add(ui::label("Email:"))
+                             .add(ui::line_input("email@example.com"), ui::expand))
+                    .add(ui::label(""))
+                    .add(ui::hbox()
+                             .add(ui::spin_box(5, 0, 100, 5))
+                             .add(ui::combobox({"Option 1", "Option 2", "Option 3"}).selected(0))))
+            .add_tab("Sliders",
+                     ui::vbox()
+                         .add(ui::label("Sliders Demo").shrinkable(true))
+                         .add(ui::hbox()
+                                  .add(ui::label("Volume:"))
+                                  .add(ui::slider(50, 0, 100)
+                                           .on_change([label = volume_label.get()](auto v) {
+                                               label->set_text(fmt::format("{:.0f}%", v));
+                                           }),
+                                       ui::expand)
+                                  .add(volume_label))
+                         .add(ui::progress_bar(0.5f))
+                         .add(ui::label(""))
+                         .add(ui::label("Radio Buttons:")))
+            .add_tab(
+                "Buttons",
+                ui::vbox()
+                    .add(ui::label("Buttons Demo").shrinkable(true))
+                    .add(ui::button("Regular Button").on_click([] {
+                        spdlog::info("Regular button");
+                    }))
+                    .add(ui::button("Disabled Button").enabled(false))
+                    .add(ui::button("Tooltip Button").tooltip("This is a tooltip").on_click([] {
+                        spdlog::info("Tooltip button");
+                    }))
+                    .add(ui::checkbox("Checkbox in tab"))
+                    .add(ui::checkbox("Another checkbox").checked(true))
+                    .add(ui::hbox()
+                             .add(ui::radio_button("Option A", group))
+                             .add(ui::radio_button("Option B", group))));
 
     window->set_root(ui::vbox()
-                         .margins({0,0,0,0})
-                         .add(std::move(tw))
-                         .add(ui::spacer(), 1)
+                         .margins(ui::no_margins())
+                         .add(rootWidget)
+                         .add(ui::spacer(), ui::expand)
                          .add(ui::hbox()
                                   .add(ui::button("&Quit").on_click([window] { window->close(); }))
                                   .add(ui::button("About").enabled(false))));
