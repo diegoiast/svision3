@@ -2,11 +2,22 @@
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+
+// clang-format off
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <objidl.h>
+#include <gdiplus.h>
+// clang-format on
+
 #include <GL/gl.h>
 #include <algorithm>
 #include <cmath>
-#include <cstring>
-#include <gdiplus.h>
 #include <objidl.h>
 #include <spdlog/spdlog.h>
 
@@ -690,6 +701,17 @@ Win32PlatformWindow::~Win32PlatformWindow() {
         DestroyWindow(hwnd);
         hwnd = nullptr;
     }
+}
+
+std::string_view Win32PlatformWindow::painter_name() const {
+    if (hglrc) {
+        return "OpenGL";
+    }
+#ifdef TOOLKIT_HAS_CAIRO
+    return "Cairo";
+#else
+    return "GDI+";
+#endif
 }
 
 void Win32PlatformWindow::show() {
