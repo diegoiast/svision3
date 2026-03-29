@@ -1,0 +1,191 @@
+#include "declarative.hpp"
+#include "nfd.h"
+#include "toolkit/application.hpp"
+#include "toolkit/theme.hpp"
+#include <fmt/format.h>
+#include <fstream>
+#include <spdlog/spdlog.h>
+
+auto LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
+                   "incididunt ut labore et dolore magna aliqua.";
+
+auto EDITOR_DEFAULT_TEXT = R"(#include <stdio.h>
+
+int main() {
+    printf("Hello world\n");
+    return 0;
+}
+)";
+#include "BeatesSongs.hpp"
+
+static toolkit::ThemeStyle current_style = toolkit::ThemeStyle::MacOS;
+static toolkit::ColorScheme current_scheme = toolkit::ColorScheme::Light;
+static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
+    toolkit::Theme::set_current(toolkit::Theme::create(current_style, current_scheme));
+    app.notify_theme_changed();
+    window->request_redraw();
+}
+
+int main(int argc, char *argv[]) {
+
+    toolkit::Application app;
+
+    auto style_names = std::vector<std::string>{};
+    for (int i = 0; i < toolkit::theme_style_count; i++) {
+        style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
+    }
+
+    auto window = app.create_window("Declarative Kitchen sink", {800, 600});
+    auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
+    auto platformText =
+        fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name());
+    auto group = ui::radio_group();
+
+    // Progress bar needs to be accesed from the lambda, and inserted into the root widget
+    // If you move this to be bellow the root widget, code will crash
+    auto progressBar = ui::progress_bar();
+    auto auto_progress_timer = window->start_timer(0.25f, [progressBar = progressBar.get()] {
+        auto v = progressBar->value() + 0.01f;
+        if (v > 1.0f) {
+            v = 0.0f;
+        }
+        progressBar->set_value(v);
+        progressBar->set_tooltip(std::to_string(static_cast<int>(v * 100)) + "%");
+    });
+
+    auto editor = ui::text_edit(EDITOR_DEFAULT_TEXT);
+
+    auto table_model = std::make_shared<toolkit::StringTableModel>(
+        std::vector<std::string>{"Song", "Album", "Year", "Duration"}, beatlesSongsLength);
+
+    auto songs_adapter = std::make_shared<toolkit::StringListAdapter>(beatlesSongs);
+    auto filter_adapter = std::make_shared<toolkit::FilterAdapter>(songs_adapter);
+    auto filter_progress = ui::progress_bar();
+    filter_adapter->set_simulated_delay_ms(10);
+    filter_adapter->on_progress = [progress_view = filter_progress.get(), window](float progress) {
+        if (progress < 0.0f) {
+            progress_view->set_visible(false);
+        } else {
+            progress_view->set_visible(true);
+            progress_view->set_value(progress);
+        }
+        window->request_redraw();
+    };
+
+    auto rootWidget =
+        ui::tab_widget()
+            .add_tab("Main",
+                     ui::vbox()
+                         .add(ui::label(LOREM_IPSUM).tooltip(LOREM_IPSUM).shrinkable(true))
+                         .add(ui::checkbox("Enable notifications")
+                                  .tooltip("Toggle desktop notifications")
+                                  .checked(true))
+                         .add(ui::checkbox("Tri-state option")
+                                  // WIP - tri state not supported yet by this API.
+                                  // .tri_state(true)
+                                  .tooltip("This checkbox cycles trough 3 state")
+                                  .checked(true))
+                         .add(ui::combobox(style_names).on_change([&app, &window](int index) {
+                             current_style = static_cast<toolkit::ThemeStyle>(index);
+                             apply_theme(app, window);
+                         }))
+                         .add(ui::radio_button("Light", group))
+                         .add(ui::radio_button("Dark", group))
+                         .add(progressBar)
+                         .add(ui::hbox()
+                                  .margins(ui::no_margins())
+                                  .add(ui::button("Auto repeat"))
+                                  // WIP - icon is not supported yet.
+                                  .add(ui::button("Open") /*.icon(open_icon_btn) */)
+                                  .add(ui::label("Count: 0")))
+                         .add(ui::label(platformText)))
+            .add_tab("Inputs",
+                     ui::vbox()
+                         .add(ui::line_input("Regular input"))
+                         .add(ui::line_input("Password").password_mode(true))
+                         .add(ui::line_input().text("This text cannot be edited").read_only(true))
+                         .add(ui::line_input("Numbers only (blocking)"))
+#if 0
+                              // WIP - not supported - validator, validation_mode
+                                .validation_mode(toolkit::LineInput::ValidationMode::Block)
+                                .validator([](auto &text){
+                                      return std::regex_match(text, std::regex("[0-9]*")); 
+                                })
+                          )
+#endif
+                         .add(ui::hbox()
+                                  .margins(ui::no_margins())
+                                  .add(ui::line_input("Email address (visual)"), ui::expand)
+                                  .add(ui::label("Empty")))
+#if 0
+                                  // WIP - not supported - validator, validation_mode
+                                  .validation_mode(toolkit::LineInput::ValidationMode::Block)
+                                  .validator([](auto &text){
+                                      return std::regex_match(text, std::regex("[0-9]*"));
+                                  })
+#endif
+                         .add(ui::hbox().add(ui::slider(), ui::expand).add(ui::label("0"))))
+            .add_tab(
+                "Songs",
+                ui::vbox()
+                    .add(ui::hbox()
+                             .add(ui::line_input("Filter songs...")
+                                      .on_change([filter_adapter](auto &text) {
+                                          filter_adapter->set_filter(text);
+                                      }),
+                                  ui::expand)
+                             .add(ui::label("Delay (ms)").tooltip("Simulated delay per item (ms)"))
+                             .add(ui::spin_box(10)))
+                    .add(filter_progress)
+                    .add(ui::list_view(filter_adapter).alternate_row_colors(true), ui::expand))
+            .add_tab("Table", ui::vbox().add(ui::table_view(table_model), ui::expand))
+            .add_tab("Editor",
+                     ui::vbox()
+                         .add(ui::button("Open...").on_click([editor = editor.get()]() {
+                             NFD_Init();
+                             nfdu8char_t *out_path = nullptr;
+                             nfdresult_t result = NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
+                             if (result == NFD_OKAY && out_path) {
+                                 std::ifstream f(out_path);
+                                 if (f) {
+                                     std::string contents((std::istreambuf_iterator<char>(f)),
+                                                          std::istreambuf_iterator<char>());
+                                     editor->set_text(contents);
+                                 }
+                                 NFD_FreePathU8(out_path);
+                             }
+                             NFD_Quit();
+                         }))
+                         .add(editor, ui::expand))
+            .add_tab("Tree", ui::spacer())
+            .add_tab("Tabs", ui::spacer());
+
+    window->set_root(
+        ui::vbox()
+            .margins(ui::no_margins())
+            .spacing(0)
+            .add(rootWidget, ui::expand)
+            .add(ui::spacer())
+            .add(ui::vbox()
+                     .add(ui::checkbox("Show debug frames").on_toggle([&window](auto checked) {
+                         toolkit::Widget::debug_show_frames = checked;
+                         window->request_redraw();
+                     }))
+                     .add(ui::checkbox("Show performace stats").on_toggle([&window](auto checked) {
+                         if (checked) {
+                             window->reset_statistics();
+                             spdlog::set_level(spdlog::level::trace);
+                         } else {
+                             spdlog::set_level(spdlog::level::info);
+                         }
+                         window->set_statistics_logging_enabled(checked);
+                     })))
+
+            .add(ui::hbox()
+                     .add(ui::button("About").enabled(false))
+                     .add(ui::spacer(), ui::expand)
+                     .add(ui::button("&Quit").on_click([window] { window->close(); }))));
+
+    window->show();
+    return app.run();
+}
