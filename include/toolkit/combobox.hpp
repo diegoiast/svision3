@@ -10,7 +10,7 @@
 
 namespace toolkit {
 
-class Combobox : public Widget {
+class Combobox : public Widget, public Fluent<Combobox> {
   public:
     explicit Combobox(std::vector<std::string> items = {});
 
@@ -20,8 +20,8 @@ class Combobox : public Widget {
     Size size_hint() const override;
     CursorShape cursor() const override { return CursorShape::Hand; }
 
-    void set_items(std::vector<std::string> items);
-    void set_selected(int index);
+    Combobox &set_items(std::vector<std::string> items);
+    Combobox &set_selected(int index);
     int selected() const { return selected_index_; }
     std::string selected_text() const;
 
