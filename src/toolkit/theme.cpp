@@ -147,6 +147,15 @@ class BaseTheme : public Theme {
         table_view.grid_line =
             is_dark ? palette_.border.lighten(0.04f) : palette_.border.lighten(0.15f);
 
+        apply_base(tree_view, palette_);
+        tree_view.selected_bg = palette_.accent;
+        tree_view.selected_text = gray(1.0f);
+        tree_view.hovered_bg =
+            is_dark ? palette_.window.lighten(0.06f) : palette_.window.darken(0.04f);
+        tree_view.alternate_bg = palette_.alternate;
+        tree_view.indent = 20.0f;
+        tree_view.background = gray(1.0f);
+
         apply_base(progress_bar, palette_);
         progress_bar.fill = palette_.accent;
 
@@ -219,8 +228,9 @@ class BaseTheme : public Theme {
         painter.draw_text(text, text_pos, text_c, style.font_size);
     }
 
-    void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text, CheckState check_state,
-                       ButtonState button_state, bool focused, bool enabled) const override {
+    void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
+                       CheckState check_state, ButtonState button_state, bool focused,
+                       bool enabled) const override {
         auto const &style = checkbox;
         auto hovered =
             button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
@@ -533,19 +543,41 @@ class BaseTheme : public Theme {
 
         painter.fill_rect(rect, bg);
 
+        auto vertical =
+            (orientation == TabOrientation::West || orientation == TabOrientation::East);
+        auto text_orientation = Painter::TextOrientation::Horizontal;
+        if (orientation == TabOrientation::West) {
+            text_orientation = Painter::TextOrientation::VerticalCW;
+        } else if (orientation == TabOrientation::East) {
+            text_orientation = Painter::TextOrientation::VerticalCCW;
+        }
+
         auto fm = painter.font_metrics(style.font_size);
         auto text_w = painter.text_size(text, style.font_size).width;
 
-        auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
-        auto left_space = style.tab_padding_h;
-        auto text_area_w = rect.width - left_space - right_space;
-        auto text_x = rect.x + left_space + (text_area_w - text_w) / 2.0f;
-        if (text_x < rect.x + left_space) {
-            text_x = rect.x + left_space;
+        float text_x, baseline_y;
+        if (vertical) {
+            auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
+            auto left_space = style.tab_padding_h;
+            auto text_area_h = rect.height - left_space - right_space;
+            text_x = rect.x + (rect.width - fm.height) / 2.0f;
+            baseline_y = rect.y + left_space + (text_area_h - text_w) / 2.0f + fm.ascent;
+            if (baseline_y < rect.y + left_space + fm.ascent) {
+                baseline_y = rect.y + left_space + fm.ascent;
+            }
+        } else {
+            auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
+            auto left_space = style.tab_padding_h;
+            auto text_area_w = rect.width - left_space - right_space;
+            text_x = rect.x + left_space + (text_area_w - text_w) / 2.0f;
+            if (text_x < rect.x + left_space) {
+                text_x = rect.x + left_space;
+            }
+            baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         }
 
-        auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size, FontFamily::System,
+                          text_orientation);
 
         if (has_close) {
             auto close_btn_size = 14.0f;
@@ -614,6 +646,54 @@ class BaseTheme : public Theme {
 
     void draw_table_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = table_view;
+        if (style.beveled) {
+            painter.draw_frame(rect, style.background, style.border, style, true);
+        } else {
+            painter.fill_rounded_rect(rect, style.background, style.corner_radius);
+            if (style.border_width > 0) {
+                painter.draw_rounded_rect(rect, style.border, style.corner_radius,
+                                          style.border_width);
+            }
+        }
+        if (focused) {
+            painter.draw_focus_ring(rect, style.corner_radius);
+        }
+    }
+
+    void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
+                        bool has_children, bool expanded, bool selected, bool hovered,
+                        bool alternate) const override {
+        auto const &style = tree_view;
+        auto fm = painter.font_metrics(style.font_size);
+
+        auto x_offset = style.item_padding_h + depth * style.indent;
+
+        if (has_children) {
+            auto arrow_x = x_offset + 4;
+            auto arrow_y = rect.y + rect.height / 2;
+            auto arrow_size = 8.0f;
+
+            if (expanded) {
+                painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
+                                      {arrow_x + arrow_size, arrow_y - arrow_size / 2},
+                                      {arrow_x + arrow_size / 2, arrow_y + arrow_size / 2},
+                                      style.text);
+            } else {
+                painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
+                                      {arrow_x, arrow_y + arrow_size / 2},
+                                      {arrow_x + arrow_size, arrow_y}, style.text);
+            }
+        }
+
+        x_offset += style.indent + 4.0f;
+
+        auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto text_col = selected ? style.selected_text : style.text;
+        painter.draw_text(text, {x_offset, text_y}, text_col, style.font_size);
+    }
+
+    void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
+        auto const &style = tree_view;
         if (style.beveled) {
             painter.draw_frame(rect, style.background, style.border, style, true);
         } else {
@@ -1075,10 +1155,42 @@ class Win11Theme : public BaseTheme {
             } else if (orientation == TabOrientation::West) {
                 indicator = {rect.x + rect.width - lw, rect.y + 4.0f, lw, rect.height - 8.0f};
             } else if (orientation == TabOrientation::East) {
-                indicator = {rect.x, rect.y + 4.0f, lw, rect.height - 8.0f};
+                indicator = {rect.x, rect.y, lw, rect.height};
             }
-            painter.fill_rounded_rect(indicator, palette_.accent, 1.0f);
+            painter.fill_rect(indicator, palette_.accent);
         }
+    }
+
+    void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
+                        bool has_children, bool expanded, bool selected, bool hovered,
+                        bool alternate) const override {
+        auto const &style = tree_view;
+        auto fm = painter.font_metrics(style.font_size);
+        auto indent = style.indent;
+
+        auto x_offset = style.item_padding_h + depth * indent;
+
+        if (has_children) {
+            auto arrow_x = x_offset + 4;
+            auto arrow_y = rect.y + rect.height / 2;
+            auto arrow_size = 8.0f;
+
+            if (expanded) {
+                painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
+                                      {arrow_x + arrow_size, arrow_y},
+                                      {arrow_x, arrow_y + arrow_size / 2}, style.text);
+            } else {
+                painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
+                                      {arrow_x + arrow_size, arrow_y - arrow_size / 2},
+                                      {arrow_x + arrow_size / 2, arrow_y + arrow_size / 2},
+                                      style.text);
+            }
+            x_offset += indent;
+        }
+
+        auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto text_col = selected ? style.selected_text : style.text;
+        painter.draw_text(text, {x_offset, text_y}, text_col, style.font_size);
     }
 };
 
@@ -1150,6 +1262,55 @@ class Win95Theme : public BaseTheme {
             draw_dashed_line({x + w, y}, {x + w, y + h});
             draw_dashed_line({x + w, y + h}, {x, y + h});
             draw_dashed_line({x, y + h}, {x, y});
+        }
+    }
+
+    void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
+                        bool has_children, bool expanded, bool selected, bool hovered,
+                        bool alternate) const override {
+        auto const &style = tree_view;
+        auto const &cb_style = checkbox;
+        auto fm = painter.font_metrics(style.font_size);
+
+        auto x_offset = style.item_padding_h + depth * style.indent;
+
+        if (has_children) {
+            auto icon_x = x_offset;
+            auto box_size = cb_style.box_size;
+            auto box_rect =
+                Rect{icon_x, rect.y + (rect.height - box_size) / 2.0f, box_size, box_size};
+
+            painter.draw_frame(box_rect, cb_style.background, cb_style.border, cb_style, false);
+
+            auto expand_collapse_char = expanded ? "-" : "+";
+            auto char_w = painter.text_size(expand_collapse_char, style.font_size).width;
+            auto char_x = icon_x + (box_size - char_w) / 2.0f;
+            auto char_y = box_rect.y + (box_size - fm.height) / 2.0f + fm.ascent;
+
+            painter.draw_text(expand_collapse_char, Point{char_x, char_y}, style.text,
+                              style.font_size);
+        }
+
+        x_offset += style.indent + 4.0f;
+
+        auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto text_col = selected ? style.selected_text : style.text;
+        painter.draw_text(text, Point{x_offset, text_y}, text_col, style.font_size);
+    }
+
+    void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
+        auto const &style = tree_view;
+        if (style.beveled) {
+            painter.draw_frame(rect, style.background, style.border, style, true);
+        } else {
+            painter.fill_rounded_rect(rect, style.background, style.corner_radius);
+            if (style.border_width > 0) {
+                painter.draw_rounded_rect(rect, style.border, style.corner_radius,
+                                          style.border_width);
+            }
+        }
+        if (focused) {
+            painter.draw_focus_ring(rect, style.corner_radius);
         }
     }
 };
@@ -1369,6 +1530,42 @@ class Plasma6Theme : public BaseTheme {
             }
             painter.fill_rect(indicator, palette_.accent);
         }
+    }
+
+    void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
+                        bool has_children, bool expanded, bool selected, bool hovered,
+                        bool alternate) const override {
+        auto const &style = tree_view;
+        auto fm = painter.font_metrics(style.font_size);
+        auto indent = style.indent;
+
+        auto x_offset = style.item_padding_h + depth * indent;
+
+        if (has_children) {
+            auto center_x = x_offset + indent / 2;
+            auto arrow_y = rect.y + rect.height / 2;
+            auto arrow_size = 8.0f;
+            auto arrow_offset = arrow_size * 0.3f;
+
+            if (expanded) {
+                painter.draw_line({center_x - arrow_size / 2, arrow_y - arrow_offset},
+                                  {center_x, arrow_y + arrow_size / 2}, style.text, 1.5f);
+                painter.draw_line({center_x, arrow_y + arrow_size / 2},
+                                  {center_x + arrow_size / 2, arrow_y - arrow_offset}, style.text,
+                                  1.5f);
+            } else {
+                painter.draw_line({center_x - arrow_offset, arrow_y - arrow_size / 2},
+                                  {center_x + arrow_offset, arrow_y}, style.text, 1.5f);
+                painter.draw_line({center_x - arrow_offset, arrow_y + arrow_size / 2},
+                                  {center_x + arrow_offset, arrow_y}, style.text, 1.5f);
+            }
+        }
+
+        x_offset += indent + 4.0f;
+
+        auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto text_col = selected ? style.selected_text : style.text;
+        painter.draw_text(text, {x_offset, text_y}, text_col, style.font_size);
     }
 };
 

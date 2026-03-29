@@ -21,6 +21,7 @@
 #include "toolkit/text_edit.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/toolbar.hpp"
+#include "toolkit/tree_view.hpp"
 #include "toolkit/window.hpp"
 #include <fstream>
 #include <nfd.h>
@@ -33,243 +34,7 @@ static toolkit::RadioGroup scheme_group;
 static toolkit::ThemeStyle current_style = toolkit::ThemeStyle::MacOS; // Placeholder, set in main
 static toolkit::ColorScheme current_scheme = toolkit::ColorScheme::Light;
 
-auto beatlesSongs = std::vector<std::string>{
-    "A Day in the Life",
-    "A Hard Day's Night",
-    "A Taste of Honey",
-    "Across the Universe",
-    "Act Naturally",
-    "All I've Got to Do",
-    "All My Loving",
-    "All Together Now",
-    "All You Need Is Love",
-    "And I Love Her",
-    "And Your Bird Can Sing",
-    "Anna (Go to Him)",
-    "Another Girl",
-    "Any Time at All",
-    "Ask Me Why",
-    "Baby It's You",
-    "Baby You Can Drive My Car",
-    "Baby's in Black",
-    "Back in the U.S.S.R.",
-    "Bad Boy",
-    "Because",
-    "Being for the Benefit of Mr. Kite!",
-    "Birthday",
-    "Blackbird",
-    "Blue Jay Way",
-    "Boys",
-    "Can't Buy Me Love",
-    "Carry That Weight",
-    "Chains",
-    "Come Together",
-    "Continuing Story of Bungalow Bill",
-    "Cry Baby Cry",
-    "Day Tripper",
-    "Dear Prudence",
-    "Devil in Her Heart",
-    "Dig a Pony",
-    "Dig It",
-    "Dizzy Miss Lizzy",
-    "Do You Want to Know a Secret",
-    "Doctor Robert",
-    "Don't Bother Me",
-    "Don't Let Me Down",
-    "Don't Pass Me By",
-    "Drive My Car",
-    "Eight Days a Week",
-    "Eleanor Rigby",
-    "Every Little Thing",
-    "Everybody's Got Something to Hide Except Me and My Monkey",
-    "Everybody's Trying to Be My Baby",
-    "Fixing a Hole",
-    "Flying",
-    "For No One",
-    "For You Blue",
-    "From Me to You",
-    "Get Back",
-    "Getting Better",
-    "Girl",
-    "Glass Onion",
-    "Golden Slumbers",
-    "Good Day Sunshine",
-    "Good Morning Good Morning",
-    "Good Night",
-    "Got to Get You into My Life",
-    "Happiness Is a Warm Gun",
-    "Hello, Goodbye",
-    "Help!",
-    "Helter Skelter",
-    "Her Majesty",
-    "Here Comes The Sun",
-    "Here, There and Everywhere",
-    "Hey Bulldog",
-    "Hey Jude",
-    "Hold Me Tight",
-    "Honey Don't",
-    "Honey Pie",
-    "I Am The Walrus",
-    "I Call Your Name",
-    "I Don't Want to Spoil the Party",
-    "I Feel Fine",
-    "I Me Mine",
-    "I Need You",
-    "I Saw Her Standing There",
-    "I Should Have Known Better",
-    "I Wanna Be Your Man",
-    "I Want to Hold Your Hand",
-    "I Want to Tell You",
-    "I Want You (She's So Heavy)",
-    "I Will",
-    "I'll Be Back",
-    "I'll Cry Instead",
-    "I'll Follow the Sun",
-    "I'll Get You",
-    "I'm a Loser",
-    "I'm Down",
-    "I'm Happy Just to Dance with You",
-    "I'm Looking Through You",
-    "I'm Only Sleeping",
-    "I'm So Tired",
-    "I've Got a Feeling",
-    "I've Just Seen a Face",
-    "If I Fell",
-    "If I Needed Someone",
-    "In My Life",
-    "In Spite of All the Danger",
-    "It Won't Be Long",
-    "It's All Too Much",
-    "It's Only Love",
-    "Julia",
-    "Kansas City/Hey-Hey-Hey-Hey!",
-    "Lady Madonna",
-    "Let It Be",
-    "Little Child",
-    "Long Tall Sally",
-    "Long, Long, Long",
-    "Love Me Do",
-    "Love You To",
-    "Lovely Rita",
-    "Lucy In The Sky With Diamonds",
-    "Maggie Mae",
-    "Magic Mystery Tour",
-    "Martha My Dear",
-    "Matchbox",
-    "Maxwell's Silver Hammer",
-    "Mean Mr. Mustard",
-    "Michelle",
-    "Misery",
-    "Money (That's What I Want)",
-    "Mother Nature's Son",
-    "Mr. Moonlight",
-    "No Reply",
-    "Norwegian Wood",
-    "Not a Second Time",
-    "Nowhere Man",
-    "Ob-La-Di, Ob-La-Da",
-    "Octopus's Garden",
-    "Oh! Darling",
-    "Old Brown Shoe",
-    "One After 909",
-    "Only a Northern Song",
-    "P.S. I Love You",
-    "Paperback Writer",
-    "Penny Lane",
-    "Piggies",
-    "Please Mister Postman",
-    "Please Please Me",
-    "Polythene Pam",
-    "Rain",
-    "Revolution",
-    "Revolution 1",
-    "Revolution 9",
-    "Rock and Roll Music",
-    "Rocky Raccoon",
-    "Roll Over Beethoven",
-    "Run for Your Life",
-    "Savoy Truffle",
-    "Sexy Sadie",
-    "Sgt. Pepper's Lonely Hearts Club Band",
-    "Sgt. Pepper's Lonely Hearts Club Band (Reprise)",
-    "She Came in Through the Bathroom Window",
-    "She Loves You",
-    "She Said She Said",
-    "She's a Woman",
-    "She's Leaving Home",
-    "Slow Down",
-    "Something",
-    "Strawberry Fields Forever",
-    "Sun King",
-    "Taxman",
-    "Tell Me What You See",
-    "Tell Me Why",
-    "Thank You Girl",
-    "The Ballad of John and Yoko",
-    "The End",
-    "The Fool on the Hill",
-    "The Inner Light",
-    "The Long and Winding Road",
-    "The Night Before",
-    "The Word",
-    "There's a Place",
-    "Things We Said Today",
-    "Think for Yourself",
-    "This Boy",
-    "Ticket To Ride",
-    "Till There Was You",
-    "Tomorrow Never Knows",
-    "Twist And Shout",
-    "Two of Us",
-    "Wait",
-    "We Can Work It Out",
-    "What Goes On",
-    "What You're Doing",
-    "When I Get Home",
-    "When I'm Sixty-Four",
-    "While My Guitar Gently Weeps",
-    "Why Don't We Do It in the Road?",
-    "Wild Honey Pie",
-    "With A Little Help From My Friends",
-    "Within You Without You",
-    "Words of Love",
-    "Yellow Submarine",
-    "Yer Blues",
-    "Yes It Is",
-    "YesterdaybeatlesSongsLength",
-    "You Can't Do That",
-    "You Know My Name (Look Up the Number)",
-    "You Like Me Too Much",
-    "You Never Give Me Your Money",
-    "You Really Got a Hold on Me",
-    "You Won't See Me",
-    "You're Going to Lose That Girl",
-    "You've Got to Hide Your Love Away",
-    "Your Mother Should Know",
-};
-
-auto beatlesSongsLength = std::vector<std::vector<std::string>>{
-    {"Come Together", "Abbey Road", "1969", "4:19"},
-    {"Something", "Abbey Road", "1969", "3:02"},
-    {"Here Comes The Sun", "Abbey Road", "1969", "3:05"},
-    {"Let It Be", "Let It Be", "1970", "4:03"},
-    {"Hey Jude", "Single", "1968", "7:11"},
-    {"Yesterday", "Help!", "1965", "2:05"},
-    {"A Day in the Life", "Sgt. Pepper's", "1967", "5:33"},
-    {"Strawberry Fields Forever", "Single", "1967", "4:07"},
-    {"Eleanor Rigby", "Revolver", "1966", "2:08"},
-    {"Norwegian Wood", "Rubber Soul", "1965", "2:05"},
-    {"In My Life", "Rubber Soul", "1965", "2:27"},
-    {"Blackbird", "White Album", "1968", "2:18"},
-    {"While My Guitar Gently Weeps", "White Album", "1968", "4:45"},
-    {"Across the Universe", "Let It Be", "1970", "3:48"},
-    {"Twist And Shout", "Please Please Me", "1963", "2:33"},
-    {"I Want to Hold Your Hand", "Single", "1963", "2:26"},
-    {"Penny Lane", "Single", "1967", "3:03"},
-    {"Lucy In The Sky With Diamonds", "Sgt. Pepper's", "1967", "3:28"},
-    {"Helter Skelter", "White Album", "1968", "4:30"},
-    {"Golden Slumbers", "Abbey Road", "1969", "1:31"},
-};
+#include "BeatesSongs.hpp"
 
 static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
     toolkit::Theme::set_current(toolkit::Theme::create(current_style, current_scheme));
@@ -568,17 +333,18 @@ int main(int argc, char *argv[]) {
     static int auto_progress_timer = 0;
 
     auto &slider = slider_row->add<toolkit::Slider>(1).set_range(0, 100);
-    auto &slider_val = slider_row->add<toolkit::Label>().set_text(fmt::format("{:.0f}%", slider.value()));
-    
+    auto &slider_val =
+        slider_row->add<toolkit::Label>().set_text(fmt::format("{:.0f}%", slider.value()));
+
     slider.set_on_change([progress_ptr, &slider_val, window](toolkit::Slider &slider, float v) {
-            if (auto_progress_timer != 0) {
-                window->stop_timer(auto_progress_timer);
-                auto_progress_timer = 0;
-            }
-            progress_ptr->set_value(v / 100.0f);
-            progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
-            slider_val.set_text(fmt::format("{:.0f}%", v));
-        });
+        if (auto_progress_timer != 0) {
+            window->stop_timer(auto_progress_timer);
+            auto_progress_timer = 0;
+        }
+        progress_ptr->set_value(v / 100.0f);
+        progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
+        slider_val.set_text(fmt::format("{:.0f}%", v));
+    });
 
     // We need to capture the timer ID to stop it if the user interacts with the slider
 
@@ -695,7 +461,87 @@ int main(int argc, char *argv[]) {
 
     tabs->add_tab("Editor", std::move(tab5));
 
-    // ── Tab 6: Tabs (Orientations) ────────────────────────────────────────
+    // ── Tab 6: Tree ───────────────────────────────────────────────────────
+    auto tab_tree = std::make_unique<toolkit::VBoxLayout>();
+    tab_tree->set_margins({20, 20, 20, 20});
+    tab_tree->set_spacing(12);
+
+    auto tree_data = std::vector<toolkit::TreeNode>{
+        toolkit::TreeNode{
+            .text = "Documents",
+            .children =
+                {
+                    toolkit::TreeNode{.text = "resume.pdf"},
+                    toolkit::TreeNode{.text = "cover_letter.pdf"},
+                    toolkit::TreeNode{
+                        .text = "Projects",
+                        .children =
+                            {
+                                toolkit::TreeNode{.text = "svision"},
+                                toolkit::TreeNode{.text = "toolkit"},
+                                toolkit::TreeNode{.text = "web"},
+                            },
+                        .expanded = true,
+                    },
+                },
+            .expanded = true,
+        },
+        toolkit::TreeNode{
+            .text = "Music",
+            .children =
+                {
+                    toolkit::TreeNode{
+                        .text = "Beatles",
+                        .children =
+                            {
+                                toolkit::TreeNode{.text = "Abbey Road"},
+                                toolkit::TreeNode{.text = "Revolver"},
+                                toolkit::TreeNode{.text = "Sgt. Pepper's"},
+                            },
+                    },
+                    toolkit::TreeNode{.text = "Pink Floyd"},
+                    toolkit::TreeNode{.text = "Queen"},
+                },
+        },
+        toolkit::TreeNode{
+            .text = "Pictures",
+            .children =
+                {
+                    toolkit::TreeNode{
+                        .text = "2024",
+                        .children =
+                            {
+                                toolkit::TreeNode{.text = "vacation.jpg"},
+                                toolkit::TreeNode{.text = "family.png"},
+                            },
+                    },
+                    toolkit::TreeNode{.text = "2025"},
+                },
+        },
+        toolkit::TreeNode{
+            .text = "Downloads",
+            .children =
+                {
+                    toolkit::TreeNode{.text = "archive.tar.gz"},
+                    toolkit::TreeNode{.text = "installer.dmg"},
+                },
+        },
+    };
+
+    auto tree_model = std::make_shared<toolkit::SimpleTreeModel>(tree_data);
+    auto tree = std::make_unique<toolkit::TreeView>(tree_model);
+    tree->set_alternating_row_colors(true);
+    tree->set_multi_select(true);
+    tree->on_selection_changed = [tree_model](int idx) {
+        if (idx >= 0 && idx < tree_model->root_count()) {
+            spdlog::info("Tree selected: {}", tree_model->root_at(idx).text);
+        }
+    };
+    tab_tree->add_widget(std::move(tree), 1);
+
+    tabs->add_tab("Tree", std::move(tab_tree));
+
+    // ── Tab 7: Tabs (Orientations) ────────────────────────────────────────
     auto tab6 = std::make_unique<toolkit::VBoxLayout>();
     tab6->set_margins({0, 0, 0, 0});
     tab6->set_spacing(0);

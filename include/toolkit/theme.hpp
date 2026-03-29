@@ -128,6 +128,17 @@ struct TableViewStyle : WidgetStyle {
 };
 
 // FIXME: remove this style
+struct TreeViewStyle : WidgetStyle {
+    Color selected_bg;
+    Color selected_text;
+    Color hovered_bg;
+    Color alternate_bg;
+    float item_padding = 4.0f;
+    float item_padding_h = 8.0f;
+    float indent = 20.0f;
+};
+
+// FIXME: remove this style
 struct ProgressBarStyle : WidgetStyle {
     Color fill;
     float bar_height = 8.0f;
@@ -286,6 +297,10 @@ class Theme {
                                 bool alternate) const = 0;
     virtual void draw_list_background(Painter &painter, Rect const &rect, bool focused) const = 0;
     virtual void draw_table_background(Painter &painter, Rect const &rect, bool focused) const = 0;
+    virtual void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text,
+                                int depth, bool has_children, bool expanded, bool selected,
+                                bool hovered, bool alternate) const = 0;
+    virtual void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const = 0;
     virtual void draw_combobox(Painter &painter, Rect const &rect, std::string_view text,
                                bool focused, bool open) const = 0;
     virtual void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
@@ -345,6 +360,7 @@ class Theme {
     TabWidgetStyle tab_widget;
     ListViewStyle list_view;
     TableViewStyle table_view;
+    TreeViewStyle tree_view;
     ProgressBarStyle progress_bar;
     SliderStyle slider;
     TooltipStyle tooltip;

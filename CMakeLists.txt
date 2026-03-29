@@ -56,6 +56,8 @@ set(TOOLKIT_SOURCES
     src/toolkit/line_input.cpp
     src/toolkit/text_edit.cpp
     src/toolkit/table_view.cpp
+    src/toolkit/tree_view.cpp
+    src/toolkit/file_tree_model.cpp
     src/toolkit/context_menu.cpp
     src/toolkit/menu.cpp
     src/toolkit/menubar.cpp
@@ -161,7 +163,6 @@ elseif(UNIX)
                     ${VIEWPORTER_XML} ${WL_GEN_DIR}/viewporter-protocol.c
             DEPENDS ${VIEWPORTER_XML}
         )
-
         add_custom_command(
             OUTPUT ${WL_GEN_DIR}/xdg-decoration-client-protocol.h
             COMMAND ${WAYLAND_SCANNER} client-header
