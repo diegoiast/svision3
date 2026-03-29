@@ -747,7 +747,7 @@ Size LineInput::size_hint() const {
     auto const &style = Theme::current().line_input;
     // FIXME: what is this constant?
     auto h = style.font_size + style.padding.top + style.padding.bottom + 8.0f;
-    return {0.0f, h};
+    return {150.0f, h};
 }
 
 } // namespace toolkit
