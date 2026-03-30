@@ -311,7 +311,7 @@ class Theme {
     virtual void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text,
                               int cursor_pos, int selection_start, int selection_end, bool focused,
                               bool enabled, bool hovered_up, bool pressed_up, bool hovered_down,
-                              bool pressed_down) const = 0;
+                              bool pressed_down, bool cursor_visible = true) const = 0;
     virtual void draw_text_edit(Painter &painter, Rect const &rect,
                                 std::span<std::string const> lines, int cursor_line, int cursor_col,
                                 int selection_start_line, int selection_start_col,

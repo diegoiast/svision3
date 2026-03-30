@@ -3,6 +3,7 @@
 
 #include "toolkit/spin_box.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/window.hpp"
 #include <algorithm>
 #include <charconv>
 #include <cmath>
@@ -63,7 +64,7 @@ void SpinBox::commit_text() {
         if (parsed_value != value_) {
             value_ = parsed_value;
             if (on_change) {
-                on_change(value_);
+                on_change(value_, *this);
             }
         }
     }
@@ -75,7 +76,7 @@ void SpinBox::step_up() {
     value_ = std::clamp(value_ + step_, min_val_, max_val_);
     sync_text();
     if (value_ != old && on_change) {
-        on_change(value_);
+        on_change(value_, *this);
     }
 }
 
@@ -84,7 +85,7 @@ void SpinBox::step_down() {
     value_ = std::clamp(value_ - step_, min_val_, max_val_);
     sync_text();
     if (value_ != old && on_change) {
-        on_change(value_);
+        on_change(value_, *this);
     }
 }
 
@@ -137,19 +138,24 @@ Size SpinBox::size_hint() const {
 
 void SpinBox::paint(Painter &painter) {
     auto const &theme = Theme::current();
-
     auto sel_start_pos =
         (is_focused() && editing_) ? static_cast<int>(std::min(sel_anchor_, cursor_pos_)) : -1;
     auto sel_end_pos =
         (is_focused() && editing_) ? static_cast<int>(std::max(sel_anchor_, cursor_pos_)) : -1;
-
     auto cursor_pos = (is_focused() && editing_) ? static_cast<int>(cursor_pos_) : -1;
-
     auto rect = Rect{0.0f, 0.0f, rect_.width, rect_.height};
+
+    auto cursor_visible = true;
+    if (is_focused() && editing_) {
+        auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
+        cursor_visible =
+            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() % 1000 < 500;
+    }
 
     theme.draw_spinbox(painter, rect, text_, cursor_pos, sel_start_pos, sel_end_pos, is_focused(),
                        is_enabled(), hovered_zone_ == HitZone::Up, pressed_zone_ == HitZone::Up,
-                       hovered_zone_ == HitZone::Down, pressed_zone_ == HitZone::Down);
+                       hovered_zone_ == HitZone::Down, pressed_zone_ == HitZone::Down,
+                       cursor_visible);
 }
 
 bool SpinBox::handle_mouse(MouseEvent const &event) {
@@ -212,11 +218,20 @@ bool SpinBox::handle_key(KeyEvent const &event) {
     switch (event.key) {
     case Key::Up:
         step_up();
+        if (this->window_) {
+            window_->request_redraw("blink");
+        }
         return true;
     case Key::Down:
         step_down();
+        if (this->window_) {
+            window_->request_redraw("blink");
+        }
         return true;
     case Key::Enter:
+        if (this->window_) {
+            window_->request_redraw("blink");
+        }
         commit_text();
         return true;
     case Key::Home:
@@ -224,11 +239,17 @@ bool SpinBox::handle_key(KeyEvent const &event) {
         if (!event.shift) {
             sel_anchor_ = cursor_pos_;
         }
+        if (this->window_) {
+            window_->request_redraw("blink");
+        }
         return true;
     case Key::End:
         cursor_pos_ = text_.size();
         if (!event.shift) {
             sel_anchor_ = cursor_pos_;
+        }
+        if (this->window_) {
+            window_->request_redraw("blink");
         }
         return true;
     case Key::Left:
@@ -238,6 +259,9 @@ bool SpinBox::handle_key(KeyEvent const &event) {
         if (!event.shift) {
             sel_anchor_ = cursor_pos_;
         }
+        if (this->window_) {
+            window_->request_redraw("blink");
+        }
         return true;
     case Key::Right:
         if (cursor_pos_ < text_.size()) {
@@ -246,6 +270,10 @@ bool SpinBox::handle_key(KeyEvent const &event) {
         if (!event.shift) {
             sel_anchor_ = cursor_pos_;
         }
+        if (this->window_) {
+            window_->request_redraw("blink");
+        }
+
         return true;
     case Key::Backspace: {
         size_t s = std::min(sel_anchor_, cursor_pos_);
@@ -259,6 +287,9 @@ bool SpinBox::handle_key(KeyEvent const &event) {
             cursor_pos_--;
             sel_anchor_ = cursor_pos_;
         }
+        if (this->window_) {
+            window_->request_redraw("blink");
+        }
         return true;
     }
     case Key::Delete: {
@@ -270,6 +301,9 @@ bool SpinBox::handle_key(KeyEvent const &event) {
             sel_anchor_ = s;
         } else if (cursor_pos_ < text_.size()) {
             text_.erase(cursor_pos_, 1);
+        }
+        if (this->window_) {
+            window_->request_redraw("blink");
         }
         return true;
     }
@@ -296,6 +330,9 @@ bool SpinBox::handle_key(KeyEvent const &event) {
             text_.insert(cursor_pos_, 1, ch);
             cursor_pos_++;
             sel_anchor_ = cursor_pos_;
+            if (this->window_) {
+                window_->request_redraw("blink");
+            }
             return true;
         }
         if (ch == '-' && cursor_pos_ == 0 && min_val_ < 0) {
@@ -309,6 +346,9 @@ bool SpinBox::handle_key(KeyEvent const &event) {
             text_.insert(cursor_pos_, 1, ch);
             cursor_pos_++;
             sel_anchor_ = cursor_pos_;
+            if (this->window_) {
+                window_->request_redraw("blink");
+            }
             return true;
         }
     }

@@ -782,8 +782,8 @@ class BaseTheme : public Theme {
 
     void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text, int cursor_pos,
                       int selection_start, int selection_end, bool focused, bool enabled,
-                      bool hovered_up, bool pressed_up, bool hovered_down,
-                      bool pressed_down) const override {
+                      bool hovered_up, bool pressed_up, bool hovered_down, bool pressed_down,
+                      bool cursor_visible) const override {
         auto const &style = line_input;
         auto const &btn_style = button;
         auto bw = rect.height;
@@ -814,7 +814,7 @@ class BaseTheme : public Theme {
         auto text_c = enabled ? style.text : mid(style.text, style.background);
         painter.draw_text(text, {content_x, baseline_y}, text_c, style.font_size);
 
-        if (focused && cursor_pos >= 0) {
+        if (focused && cursor_pos >= 0 && cursor_visible) {
             auto before = text.substr(0, cursor_pos);
             auto cx = content_x;
             if (!before.empty()) {

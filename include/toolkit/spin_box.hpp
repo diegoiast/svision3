@@ -29,7 +29,7 @@ class SpinBox : public Widget, public Fluent<SpinBox> {
         return *this;
     }
 
-    std::function<void(int value)> on_change;
+    std::function<void(int value, SpinBox &)> on_change;
 
   private:
     enum class HitZone { None, Field, Up, Down };

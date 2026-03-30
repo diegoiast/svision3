@@ -380,7 +380,7 @@ int main(int argc, char *argv[]) {
     filter_row->add_widget(std::move(delay_label));
 
     auto delay_spin = std::make_unique<toolkit::SpinBox>(10, 0, 200, 5);
-    delay_spin->on_change = [filter_adapter](int val) {
+    delay_spin->on_change = [filter_adapter](int val, toolkit::SpinBox &) {
         filter_adapter->set_simulated_delay_ms(val);
     };
     delay_spin->set_tooltip("Simulated delay per item (ms)");

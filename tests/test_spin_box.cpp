@@ -57,7 +57,7 @@ TEST_CASE("SpinBox Up/Down clamps", "[spinbox]") {
 TEST_CASE("SpinBox on_change fires on step", "[spinbox]") {
     SpinBox sb(5, 0, 10, 1);
     int received = -1;
-    sb.on_change = [&](int v) { received = v; };
+    sb.on_change = [&](int v, SpinBox &) { received = v; };
 
     KeyEvent up{KeyEvent::Type::Press, Key::Up};
     sb.handle_key(up);
@@ -67,7 +67,7 @@ TEST_CASE("SpinBox on_change fires on step", "[spinbox]") {
 TEST_CASE("SpinBox on_change does not fire when clamped at limit", "[spinbox]") {
     SpinBox sb(10, 0, 10, 1);
     int count = 0;
-    sb.on_change = [&](int) { count++; };
+    sb.on_change = [&](int, SpinBox &) { count++; };
 
     KeyEvent up{KeyEvent::Type::Press, Key::Up};
     sb.handle_key(up);
@@ -78,7 +78,7 @@ TEST_CASE("SpinBox on_change does not fire when clamped at limit", "[spinbox]") 
 TEST_CASE("SpinBox set_value does not fire on_change", "[spinbox]") {
     SpinBox sb(0, 0, 100);
     int count = 0;
-    sb.on_change = [&](int) { count++; };
+    sb.on_change = [&](int, SpinBox &) { count++; };
     sb.set_value(50);
     REQUIRE(count == 0);
     REQUIRE(sb.value() == 50);
