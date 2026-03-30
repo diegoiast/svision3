@@ -66,6 +66,19 @@ struct Color {
         auto clamp = [](float v) { return v > 1 ? 1.0f : v; };
         return {clamp(r + amount), clamp(g + amount), clamp(b + amount), a};
     }
+
+    constexpr float luma() const { return 0.299f * r + 0.587f * g + 0.114f * b; }
+
+    // Linear interpulation between 2 colors, with ratio = t;
+    static constexpr Color lerp(Color a, Color b, float t) {
+        return Color::rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t,
+                           a.a + (b.a - a.a) * t);
+    };
+
+    static constexpr Color mid(Color a, Color b) { return Color::lerp(a, b, 0.5); }
+
+    static constexpr Color with_gray(float v) { return Color::rgb(v, v, v); }
+
     constexpr Color with_alpha(float new_alpha) const { return {r, g, b, new_alpha}; }
 };
 

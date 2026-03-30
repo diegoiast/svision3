@@ -112,14 +112,6 @@ struct ListViewStyle : WidgetStyle {
 
 // FIXME: remove this style
 struct TableViewStyle : WidgetStyle {
-    Color selected_bg;
-    Color selected_text;
-    Color hovered_bg;
-    Color alternate_bg;
-    Color header_bg;
-    Color header_text;
-    Color header_border;
-    Color grid_line;
     float item_padding = 4.0f;
     float item_padding_h = 8.0f;
     float header_padding_v = 6.0f;
@@ -343,6 +335,8 @@ class Theme {
     // Members for backward compatibility during migration
     std::string name;
     ThemeStyle style;
+    Palette palette;
+
     std::string system_font;
     std::string monospace_font;
     float focus_ring_margin = 5.0f;

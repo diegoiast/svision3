@@ -394,96 +394,100 @@ void TableView::paint(Painter &painter) {
     }
     ensure_column_widths();
 
-    auto const &style = Theme::current().table_view;
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
+    auto const &style = theme.table_view;
+
     auto rh = row_height();
     auto hh = header_height();
     auto fm = painter.font_metrics(style.font_size);
     auto nrows = model_->row_count();
     auto ncols = model_->column_count();
+    auto is_dark = palette.window.luma() < 0.5f;
 
     Theme::current().draw_table_background(painter, {0, 0, rect_.width, rect_.height},
                                            is_focused());
-
     painter.push_clip({0, 0, rect_.width, rect_.height});
 
-    // ── Header ──────────────────────────────────────────────────────────────
     auto bw = style.border_width;
     auto header_rect = Rect{bw, 0, rect_.width - bw * 2, hh};
     auto hx = bw - scroll_x_;
+    auto header_bg = is_dark ? palette.base : palette.alternate;
+    painter.fill_rect(header_rect, header_bg);
 
-    painter.fill_rect(header_rect, style.header_bg);
     for (auto c = 0; c < ncols; c++) {
         auto cw = column_widths_[c];
         auto sep_x = hx + cw;
 
         if (sep_x > bw && hx < rect_.width - bw) {
             auto text_y = (hh - fm.height) / 2.0f + fm.ascent;
-            auto text = std::string{model_->header_text(c)};
+            auto text = std::string(model_->header_text(c));
+
+            if (c == sort_column_ && sort_order_ != SortOrder::None) {
+                text += (sort_order_ == SortOrder::Ascending) ? " \xe2\x96\xb2" : " \xe2\x96\xbc";
+            }
 
             painter.push_clip(
                 {std::max(hx, bw), 0, std::min(cw, rect_.width - bw - std::max(hx, bw)), hh});
-            if (c == sort_column_ && sort_order_ != SortOrder::None) {
-                text += sort_order_ == SortOrder::Ascending ? " \xe2\x96\xb2" : " \xe2\x96\xbc";
-            }
-            painter.draw_text(text, {hx + style.item_padding_h, text_y}, style.header_text,
+
+            painter.draw_text(text, {hx + style.item_padding_h, text_y}, palette.text,
                               style.font_size);
             painter.pop_clip();
         }
-
         if (sep_x > bw && sep_x < rect_.width - bw) {
-            painter.draw_line({sep_x, 0}, {sep_x, hh}, style.header_border);
+            auto border = is_dark ? palette.border.lighten(0.2f) : palette.border;
+            painter.draw_line({sep_x, 0}, {sep_x, hh}, border, 0.5f);
         }
         hx += cw;
     }
-
-    painter.draw_line({bw, hh}, {rect_.width - bw, hh}, style.header_border);
+    painter.draw_line({bw, hh}, {rect_.width - bw, hh}, palette.border);
 
     auto body_clip = Rect{0, hh, rect_.width, rect_.height - hh};
-    auto first_visible = std::max(0, static_cast<int>(scroll_y_ / rh));
-    auto last_visible = std::min(nrows - 1, static_cast<int>((scroll_y_ + rect_.height - hh) / rh));
+    auto first_visible = std::max(0, (int)(scroll_y_ / rh));
+    auto last_visible = std::min(nrows - 1, (int)((scroll_y_ + rect_.height - hh) / rh));
     auto inner_w = rect_.width - bw * 2;
+    auto row_sel = palette.highlight;
 
     painter.push_clip(body_clip);
+    painter.fill_rect(body_clip, palette.base);
     for (int r = first_visible; r <= last_visible; r++) {
         auto mr = model_row(r);
-        auto ry = hh + rh * static_cast<float>(r) - scroll_y_;
+        auto ry = hh + rh * r - scroll_y_;
         auto selected = is_selected(r);
         auto hovered = (r == hovered_row_) && !selected;
         auto alt_row = alternating_ && (r % 2 == 1);
         auto row_rect = Rect{bw, ry, inner_w, rh};
+        auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
 
-        if (selected) {
-            painter.fill_rect(row_rect,
-                              alt_row ? style.selected_bg.darken(0.06f) : style.selected_bg);
-        } else if (hovered) {
-            auto hover = style.selected_bg;
-            hover.a = 0.45f;
+        if (alt_row) {
+            painter.fill_rect(row_rect, alt_color);
+        }
+        if (hovered) {
+            auto hover = Color::lerp(alt_color, row_sel, 0.5);
             painter.fill_rect(row_rect, hover);
-        } else if (alt_row) {
-            painter.fill_rect(row_rect, style.alternate_bg);
+        }
+        if (selected) {
+            painter.fill_rect(row_rect, row_sel);
         }
 
-        auto text_col = selected ? style.selected_text : style.text;
+        auto text_col = selected ? palette.highlighted_text : palette.text;
+        auto fm = painter.font_metrics(style.font_size);
         auto text_y = ry + (rh - fm.height) / 2.0f + fm.ascent;
         auto cx = -scroll_x_;
-
         for (auto c = 0; c < ncols; c++) {
             auto cw = column_widths_[c];
             if (cx + cw > 0 && cx < rect_.width) {
                 painter.push_clip(
                     {std::max(cx, 0.0f), ry, std::min(cw, rect_.width - std::max(cx, 0.0f)), rh});
+
                 painter.draw_text(model_->cell_text(mr, c), {cx + style.item_padding_h, text_y},
                                   text_col, style.font_size);
                 painter.pop_clip();
             }
-
-            auto sep_x = cx + cw;
-            if (sep_x > 0 && sep_x < rect_.width) {
-                painter.draw_line({sep_x, ry}, {sep_x, ry + rh}, style.grid_line, 0.5f);
-            }
             cx += cw;
         }
     }
+    painter.pop_clip();
 
     // ── Scrollbars ──────────────────────────────────────────────────────────
     auto content_h = total_content_height();
@@ -491,18 +495,18 @@ void TableView::paint(Painter &painter) {
     if (content_h > visible_h) {
         auto bar_h = std::max(20.0f, visible_h * (visible_h / content_h));
         auto bar_y = hh + (scroll_y_ / content_h) * visible_h;
-        Rect sb{rect_.width - 6.0f, bar_y, 4.0f, bar_h};
-        painter.fill_rounded_rect(sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.25f),
-                                  2.0f);
+        auto sb_color = is_dark ? Color::rgba(1, 1, 1, 0.25f) : Color::rgba(0, 0, 0, 0.25f);
+        auto sb = Rect{rect_.width - 6.0f, bar_y, 4.0f, bar_h};
+        painter.fill_rounded_rect(sb, sb_color, 2.0f);
     }
 
     auto content_w = total_content_width();
     if (content_w > rect_.width) {
         auto bar_w = std::max(20.0f, rect_.width * (rect_.width / content_w));
         auto bar_x = (scroll_x_ / content_w) * rect_.width;
-        Rect sb{bar_x, rect_.height - 6.0f, bar_w, 4.0f};
-        painter.fill_rounded_rect(sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.25f),
-                                  2.0f);
+        auto sb_color = is_dark ? Color::rgba(1, 1, 1, 0.25f) : Color::rgba(0, 0, 0, 0.25f);
+        auto sb = Rect{bar_x, rect_.height - 6.0f, bar_w, 4.0f};
+        painter.fill_rounded_rect(sb, sb_color, 2.0f);
     }
 
     painter.pop_clip(); // body
@@ -515,7 +519,6 @@ bool TableView::handle_mouse(MouseEvent const &event) {
     }
 
     auto const local_rect = Rect{0, 0, rect_.width, rect_.height};
-
     if (event.type == MouseEvent::Type::Scroll) {
         if (!local_rect.contains(event.position)) {
             return false;
@@ -526,13 +529,12 @@ bool TableView::handle_mouse(MouseEvent const &event) {
         return true;
     }
 
-    // Column resize drag
     if (event.type == MouseEvent::Type::Press) {
         if (!local_rect.contains(event.position)) {
             return false;
         }
 
-        int col = header_resize_hit(event.position.x, event.position.y);
+        auto col = header_resize_hit(event.position.x, event.position.y);
         if (col >= 0) {
             if (event.click_count >= 2) {
                 auto_fit_column(col);
@@ -581,7 +583,6 @@ bool TableView::handle_mouse(MouseEvent const &event) {
             return true;
         }
 
-        // Row click -> select
         auto row = row_at_y(event.position.y);
         if (row < 0) {
             return false;
@@ -611,7 +612,6 @@ bool TableView::handle_mouse(MouseEvent const &event) {
         return true;
     }
 
-    // Header click -> sort (on release, not during resize)
     if (event.type == MouseEvent::Type::Release) {
         if (!local_rect.contains(event.position)) {
             return false;
@@ -638,11 +638,8 @@ bool TableView::handle_mouse(MouseEvent const &event) {
             return true;
         }
     }
-
     return false;
 }
-
-// ── Keyboard ────────────────────────────────────────────────────────────────
 
 bool TableView::handle_key(KeyEvent const &event) {
     if (!is_focused() || !model_ || event.type != KeyEvent::Type::Press) {
@@ -711,6 +708,7 @@ bool TableView::handle_key(KeyEvent const &event) {
         return true;
     }
 
+    // FIXME select all should be an action
     if (multi_select_ && event.text == "a" && (event.super || event.ctrl)) {
         select_all();
         return true;
