@@ -20,15 +20,15 @@ Label &Label::set_text(std::string const &text) {
 }
 
 void Label::paint(Painter &painter) {
-    auto const &style = Theme::current().label;
-    auto fs = font_size_override_.value_or(style.font_size);
-    auto col = color_override_.value_or(style.text);
+    auto pallete = Theme::current().palette;
+    auto fs = font_size_override_.value_or(pallete.font_size);
+    auto col = color_override_.value_or(pallete.text);
     auto fm = painter.font_metrics(fs);
     auto display_text = text_;
     auto text_w = painter.text_size(display_text, fs).width;
 
     if (elide_ && text_w > rect_.width && rect_.width > 0) {
-        std::string suffix = "...";
+        auto suffix = std::string_view{"..."};
         float sw = painter.text_size(suffix, fs).width;
         if (sw < rect_.width) {
             while (!display_text.empty() && text_w + sw > rect_.width) {
@@ -56,8 +56,8 @@ void Label::paint(Painter &painter) {
 bool Label::handle_mouse(MouseEvent const &) { return false; }
 
 Size Label::size_hint() const {
-    auto const &style = Theme::current().label;
-    auto font_size = font_size_override_.value_or(style.font_size);
+    auto pallete = Theme::current().palette;
+    auto font_size = font_size_override_.value_or(pallete.font_size);
     if (shrinkable_ || text_.empty()) {
         return {0, Painter::measure_font_metrics(font_size).height + 4.0f};
     }

@@ -40,9 +40,6 @@ class BaseTheme : public Theme {
 
         window.background = palette.window;
 
-        label.text = palette.text;
-        label.font_size = palette.fonts.font_size;
-
         // FIXME: all this should be removed. Custom colors are just a bad idea
         //        themes will not use these anyway.
         auto apply_base = [](WidgetStyle &ws, Palette const &p) {

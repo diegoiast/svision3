@@ -27,7 +27,6 @@ TEST_CASE("Theme::create with all styles and schemes", "[theme]") {
             REQUIRE_FALSE(t->name.empty());
             REQUIRE(t->window.background.a == 1.0f);
             REQUIRE(t->button.font_size > 0);
-            REQUIRE(t->label.font_size > 0);
         }
     }
 }
@@ -61,19 +60,15 @@ TEST_CASE("Theme::set_current / current round-trip", "[theme]") {
 
 TEST_CASE("Dark theme has lighter text than background", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Dark);
-    float text_luma =
-        0.299f * t->label.text.r + 0.587f * t->label.text.g + 0.114f * t->label.text.b;
-    float bg_luma = 0.299f * t->window.background.r + 0.587f * t->window.background.g +
-                    0.114f * t->window.background.b;
+    auto text_luma = t->palette.text.luma();
+    auto bg_luma = t->window.background.luma();
     REQUIRE(text_luma > bg_luma);
 }
 
 TEST_CASE("Light theme has darker text than background", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Light);
-    float text_luma =
-        0.299f * t->label.text.r + 0.587f * t->label.text.g + 0.114f * t->label.text.b;
-    float bg_luma = 0.299f * t->window.background.r + 0.587f * t->window.background.g +
-                    0.114f * t->window.background.b;
+    float text_luma = t->palette.text.luma();
+    float bg_luma = t->palette.window.luma();
     REQUIRE(text_luma < bg_luma);
 }
 
@@ -89,7 +84,7 @@ TEST_CASE("Theme from custom palette", "[theme]") {
 
     auto t = Theme::create(ThemeStyle::MacOS, p);
     REQUIRE(t->window.background.r == 0.1f);
-    REQUIRE(t->label.font_size == 16.0f);
+    REQUIRE(t->palette.font_size == 16.0f);
     // REQUIRE(t->list_view.alternate_qbg.r == 0.25f);
 }
 

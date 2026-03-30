@@ -40,12 +40,6 @@ struct ButtonStyle : WidgetStyle {
 };
 
 // FIXME: remove this style
-struct LabelStyle {
-    Color text;
-    float font_size = 14.0f;
-};
-
-// FIXME: remove this style
 struct LineInputStyle : WidgetStyle {
     Color background_focused;
     Color border_focused;
@@ -345,7 +339,6 @@ class Theme {
     Painter::LineStyle focus_ring_line_style = Painter::LineStyle::Dashed;
     WindowStyle window;
     ButtonStyle button;
-    LabelStyle label;
     LineInputStyle line_input;
     LineInputStyle text_edit;
     ToggleStyle checkbox;
