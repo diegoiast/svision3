@@ -12,9 +12,6 @@
 #endif
 #include <assert.h>
 #include <windows.h>
-// #include <objidl.h>
-// #include <gdiplus.h>
-// #include <objidl.h>
 // clang-format on
 
 // Needed for painting text

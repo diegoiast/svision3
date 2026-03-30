@@ -5,6 +5,7 @@
 
 #include "toolkit/tree_view.hpp"
 #include <filesystem>
+#include <mutex>
 #include <thread>
 
 namespace toolkit {

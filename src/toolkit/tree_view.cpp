@@ -259,9 +259,7 @@ void TreeView::paint(Painter &painter) {
 
     for (auto i = first_visible; i <= last_visible; i++) {
         auto const &flat = flat_nodes_[i];
-        auto iy = rh * static_cast<float>(i) - scroll_offset_;
-        auto iy_int = static_cast<int>(iy);
-        auto rh_int = static_cast<int>(rh);
+        auto iy = rh * i - scroll_offset_;
         auto item_rect = Rect{0, iy, rect_.width, rh};
         auto selected = is_selected(i);
         auto hovered = (i == hovered_) && !selected;
@@ -283,7 +281,6 @@ void TreeView::paint(Painter &painter) {
         if (flat.depth > 0) {
             for (int d = 0; d < flat.depth; d++) {
                 auto connector_x = item_padding_h + d * indent + indent / 2;
-                auto connector_x_int = static_cast<int>(connector_x);
                 auto should_draw_line = false;
                 for (auto j = i - 1; j >= 0; j--) {
                     if (flat_nodes_[j].depth == d) {
@@ -295,8 +292,8 @@ void TreeView::paint(Painter &painter) {
                     }
                 }
                 if (should_draw_line) {
-                    painter.draw_line({connector_x_int, iy_int}, {connector_x_int, iy_int + rh_int},
-                                      style.border, 1.0f);
+                    painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, style.border,
+                                      1.0f);
                 }
             }
 
@@ -311,33 +308,23 @@ void TreeView::paint(Painter &painter) {
             }
             if (has_next_sibling) {
                 auto connector_x = item_padding_h + flat.depth * indent + indent / 2;
-                auto connector_x_int = static_cast<int>(connector_x);
-                painter.draw_line({connector_x_int, iy_int}, {connector_x_int, iy_int + rh_int},
-                                  style.border, 1.0f);
+                painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, style.border, 1.0f);
             }
 
             auto handle_x = item_padding_h + flat.depth * indent + indent / 2;
             auto handle_end_x = item_padding_h + flat.depth * indent + indent;
-            auto handle_x_int = static_cast<int>(handle_x);
-            auto handle_end_x_int = static_cast<int>(handle_end_x);
-            auto handle_y = iy_int + rh_int / 2;
-            painter.draw_line({handle_x_int, handle_y}, {handle_end_x_int, handle_y}, style.border,
-                              1.0f);
+            auto handle_y = iy + rh / 2;
+            painter.draw_line({handle_x, handle_y}, {handle_end_x, handle_y}, style.border, 1.0f);
         } else {
             if (i < n - 1 && flat_nodes_[i + 1].depth == 0) {
                 auto connector_x = item_padding_h + indent / 2;
-                auto connector_x_int = static_cast<int>(connector_x);
-                painter.draw_line({connector_x_int, iy_int}, {connector_x_int, iy_int + rh_int},
-                                  style.border, 1.0f);
+                painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, style.border, 1.0f);
             }
 
             auto handle_x = item_padding_h + indent / 2;
             auto handle_end_x = item_padding_h + indent;
-            auto handle_x_int = static_cast<int>(handle_x);
-            auto handle_end_x_int = static_cast<int>(handle_end_x);
-            auto handle_y = iy_int + rh_int / 2;
-            painter.draw_line({handle_x_int, handle_y}, {handle_end_x_int, handle_y}, style.border,
-                              1.0f);
+            auto handle_y = iy + rh / 2;
+            painter.draw_line({handle_x, handle_y}, {handle_end_x, handle_y}, style.border, 1.0f);
         }
 
         if (is_win95) {
