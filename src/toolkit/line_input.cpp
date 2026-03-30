@@ -7,7 +7,6 @@
 #include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
 
-#include <algorithm>
 #include <cctype>
 
 namespace toolkit {
@@ -29,6 +28,7 @@ LineInput::LineInput(std::string placeholder)
     state.focused = false;
     read_only_ = false;
 
+    // FIXME: control+a is not working.
     select_all_cmd = Command::create("Select All", [this] { select_all(); });
     select_all_cmd->set_shortcut("Std+A");
     add_command(select_all_cmd);
@@ -69,7 +69,6 @@ LineInput & LineInput::set_text(std::string const &text) {
         window_->request_redraw("input state");
     }
     return *this;
-    
 }
 
 LineInput & LineInput::set_password_mode(bool enable) {
@@ -553,6 +552,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
                 on_change(text_);
             }
         }
+        if (window()) {
+            window()->request_redraw("input state");
+        }
         return true;
     case Key::Delete:
         if (read_only_) {
@@ -582,6 +584,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
                 on_change(text_);
             }
         }
+        if (window()) {
+            window()->request_redraw("input state");
+        }
         return true;
     case Key::Left:
         if (event.alt) {
@@ -590,6 +595,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
             move_cursor(sel_start(), false);
         } else if (cursor_pos_ > 0) {
             move_cursor(Utf8Iterator::prev(text_, cursor_pos_), event.shift);
+        }
+        if (window()) {
+            window()->request_redraw("input state");
         }
         return true;
     case Key::Right:
@@ -600,12 +608,21 @@ bool LineInput::handle_key(KeyEvent const &event) {
         } else if (cursor_pos_ < text_.size()) {
             move_cursor(Utf8Iterator::next(text_, cursor_pos_), event.shift);
         }
+        if (window()) {
+            window()->request_redraw("input state");
+        }
         return true;
     case Key::Home:
         move_cursor(0, event.shift);
+        if (window()) {
+            window()->request_redraw("input state");
+        }
         return true;
     case Key::End:
         move_cursor(text_.size(), event.shift);
+        if (window()) {
+            window()->request_redraw("input state");
+        }
         return true;
     case Key::Enter:
         if (read_only_) {
@@ -644,6 +661,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
         sync_commands();
         if (on_change) {
             on_change(text_);
+        }
+        if (window()) {
+            window()->request_redraw("input state");
         }
         return true;
     }
