@@ -447,18 +447,19 @@ void TableView::paint(Painter &painter) {
     auto last_visible = std::min(nrows - 1, (int)((scroll_y_ + rect_.height - hh) / rh));
     auto inner_w = rect_.width - bw * 2;
     auto row_sel = palette.highlight;
+    auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
 
     painter.push_clip(body_clip);
     painter.fill_rect(body_clip, palette.base);
-    for (int r = first_visible; r <= last_visible; r++) {
-        auto mr = model_row(r);
-        auto ry = hh + rh * r - scroll_y_;
-        auto selected = is_selected(r);
-        auto hovered = (r == hovered_row_) && !selected;
-        auto alt_row = alternating_ && (r % 2 == 1);
+    for (int i = first_visible; i <= last_visible; i++) {
+        auto mr = model_row(i);
+        auto ry = hh + rh * i - scroll_y_;
+        auto selected = is_selected(i);
+        auto hovered = (i == hovered_row_) && !selected;
+        auto alt_row = alternating_ && (i % 2 == 1);
         auto row_rect = Rect{bw, ry, inner_w, rh};
-        auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
 
+        // FIXME: can we re-use list drawing primitives here?
         if (alt_row) {
             painter.fill_rect(row_rect, alt_color);
         }
