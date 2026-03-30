@@ -274,7 +274,8 @@ class Theme {
                                  std::string_view placeholder, int cursor_pos, int selection_start,
                                  int selection_end, bool focused, bool enabled,
                                  bool password_mode = false, float scroll_offset = 0.0f,
-                                 std::optional<Color> background = std::nullopt) const = 0;
+                                 std::optional<Color> background = std::nullopt,
+                                 bool cursor_visible = true) const = 0;
     virtual void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
                                    bool hovered, bool active, bool show_mnemonics,
                                    int mnemonic_index) const = 0;

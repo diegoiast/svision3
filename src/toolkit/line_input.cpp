@@ -57,7 +57,7 @@ LineInput &LineInput::set_focused(bool focused) {
     return *this;
 }
 
-LineInput & LineInput::set_text(std::string const &text) {
+LineInput &LineInput::set_text(std::string const &text) {
     if (text_ == text) {
         return *this;
     }
@@ -71,7 +71,7 @@ LineInput & LineInput::set_text(std::string const &text) {
     return *this;
 }
 
-LineInput & LineInput::set_password_mode(bool enable) {
+LineInput &LineInput::set_password_mode(bool enable) {
     password_mode_ = enable;
     if (enable) {
         is_password_field_ = true;
@@ -284,9 +284,16 @@ void LineInput::paint(Painter &painter) {
 
     auto d_text = password_mode_ ? get_masked_text(text_) : text_;
 
+    auto cursor_visible = true;
+    if (is_focused()) {
+        auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
+        cursor_visible =
+            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() % 1000 < 500;
+    }
+
     theme.draw_line_input(painter, rect, d_text, placeholder_, static_cast<int>(cursor_pos_),
                           sel_start_pos, sel_end_pos, is_focused(), !read_only_, password_mode_,
-                          scroll_offset_, bg);
+                          scroll_offset_, bg, cursor_visible);
 
     paint_buttons(painter);
 }
@@ -691,7 +698,6 @@ void LineInput::on_blur() {
         blink_timer_id_ = 0;
     }
 }
-
 
 void LineInput::cut() {
     if (!has_selection() || password_mode_ || read_only_) {

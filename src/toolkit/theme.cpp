@@ -311,7 +311,8 @@ class BaseTheme : public Theme {
     void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
                          std::string_view placeholder, int cursor_pos, int selection_start,
                          int selection_end, bool focused, bool enabled, bool password_mode,
-                         float scroll_offset, std::optional<Color> background) const override {
+                         float scroll_offset, std::optional<Color> background,
+                         bool cursor_visible) const override {
         auto const &style = line_input;
         auto bg = background.value_or(focused ? style.background_focused : style.background);
         auto border = focused ? style.border_focused : style.border;
@@ -360,7 +361,7 @@ class BaseTheme : public Theme {
             }
         }
 
-        if (focused && cursor_pos >= 0) {
+        if (focused && cursor_pos >= 0 && cursor_visible) {
             auto before = text.substr(0, cursor_pos);
             auto cx = tx;
             if (!before.empty()) {
