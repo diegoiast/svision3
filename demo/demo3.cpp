@@ -154,7 +154,8 @@ int main(int argc, char *argv[]) {
                              })))
                     .add(filter_progress)
                     .add(ui::list_view(filter_adapter).alternate_row_colors(true), ui::expand))
-            .add_tab("Table", ui::vbox().add(ui::table_view(table_model), ui::expand))
+            .add_tab("Table", ui::vbox().add(ui::table_view(table_model).alternate_row_colors(true),
+                                             ui::expand))
             .add_tab("Editor",
                      ui::vbox()
                          .add(ui::button("Open...").on_click([editor = editor.get()]() {
@@ -184,24 +185,23 @@ int main(int argc, char *argv[]) {
             .add(ui::spacer())
             .add(ui::vbox()
                      .add(ui::checkbox("Show debug frames").on_toggle([&window](auto checked) {
-        toolkit::Widget::debug_show_frames = checked;
-        window->request_redraw();
+                         toolkit::Widget::debug_show_frames = checked;
+                         window->request_redraw();
                      }))
                      .add(ui::checkbox("Show performace stats").on_toggle([&window](auto checked) {
-        if (checked) {
-            window->reset_statistics();
-            spdlog::set_level(spdlog::level::trace);
-        } else {
-            spdlog::set_level(spdlog::level::info);
-        }
-        window->set_statistics_logging_enabled(checked);
+                         if (checked) {
+                             window->reset_statistics();
+                             spdlog::set_level(spdlog::level::trace);
+                         } else {
+                             spdlog::set_level(spdlog::level::info);
+                         }
+                         window->set_statistics_logging_enabled(checked);
                      })))
 
             .add(ui::hbox()
                      .add(ui::button("About").enabled(false))
                      .add(ui::spacer(), ui::expand)
-                     .add(ui::button("&Quit").on_click([window] {
-        window->close(); }))));
+                     .add(ui::button("&Quit").on_click([window] { window->close(); }))));
 
     window->show();
     return app.run();
