@@ -57,16 +57,23 @@ struct Color {
             static_cast<float>((argb >> 24) & 0xff) / 255.0f,
         };
     }
+    static constexpr Color mid(Color a, Color b) { return Color::lerp(a, b, 0.5); }
+    static constexpr Color with_gray(float v) { return Color::rgb(v, v, v); }
+
+    constexpr Color with_alpha(float new_alpha) const { return {r, g, b, new_alpha}; }
 
     constexpr Color darken(float amount) const {
         auto clamp = [](float v) { return v < 0 ? 0.0f : v; };
         return {clamp(r - amount), clamp(g - amount), clamp(b - amount), a};
     }
+
     constexpr Color lighten(float amount) const {
         auto clamp = [](float v) { return v > 1 ? 1.0f : v; };
         return {clamp(r + amount), clamp(g + amount), clamp(b + amount), a};
     }
 
+    // Brightness of an color, Rec. 601
+    // https://en.wikipedia.org/wiki/Luma_(video)
     constexpr float luma() const { return 0.299f * r + 0.587f * g + 0.114f * b; }
 
     // Linear interpulation between 2 colors, with ratio = t;
@@ -74,12 +81,6 @@ struct Color {
         return Color::rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t,
                            a.a + (b.a - a.a) * t);
     };
-
-    static constexpr Color mid(Color a, Color b) { return Color::lerp(a, b, 0.5); }
-
-    static constexpr Color with_gray(float v) { return Color::rgb(v, v, v); }
-
-    constexpr Color with_alpha(float new_alpha) const { return {r, g, b, new_alpha}; }
 };
 
 struct Margins {
