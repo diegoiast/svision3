@@ -102,7 +102,7 @@ void LineInput::delete_selection() {
     sel_anchor_ = s;
     sync_commands();
     if (on_change) {
-        on_change(text_);
+        on_change(text_, *this);
     }
 }
 
@@ -261,7 +261,7 @@ size_t LineInput::pos_from_x(float x) const {
 
 bool LineInput::is_valid() const {
     if (validator_) {
-        return validator_(text_);
+        return validator_(text_, *this);
     }
     return true;
 }
@@ -442,7 +442,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
                 scroll_offset_ = 0;
                 sync_commands();
                 if (on_change) {
-                    on_change(text_);
+                    on_change(text_, *this);
                 }
             }
             if (window()) {
@@ -478,7 +478,7 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
 void LineInput::ensure_cursor_visible(Painter &painter) {
     auto const &style = Theme::current().line_input;
     auto content_w = content_available_width();
-    std::string before_str =
+    auto before_str =
         password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
     auto cursor_x =
         before_str.empty() ? 0.0f : painter.text_size(before_str, style.font_size).width;
@@ -512,7 +512,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
             if (validation_mode_ == ValidationMode::Block && validator_) {
                 std::string next_text = text_;
                 next_text.erase(sel_start(), sel_end() - sel_start());
-                if (!validator_(next_text)) {
+                if (!validator_(next_text, *this)) {
                     return true;
                 }
             }
@@ -530,24 +530,25 @@ bool LineInput::handle_key(KeyEvent const &event) {
                 }
                 std::string next_text = text_;
                 next_text.erase(p, old - p);
-                if (!validator_(next_text)) {
+                if (!validator_(next_text, *this)) {
                     return true;
                 }
             }
-            size_t old = cursor_pos_;
+            auto old = cursor_pos_;
+
             move_word_left(false);
             text_.erase(cursor_pos_, old - cursor_pos_);
             sel_anchor_ = cursor_pos_;
             sync_commands();
             if (on_change) {
-                on_change(text_);
+                on_change(text_, *this);
             }
         } else if (cursor_pos_ > 0) {
             size_t prev = Utf8Iterator::prev(text_, cursor_pos_);
             if (validation_mode_ == ValidationMode::Block && validator_) {
                 std::string next_text = text_;
                 next_text.erase(prev, cursor_pos_ - prev);
-                if (!validator_(next_text)) {
+                if (!validator_(next_text, *this)) {
                     return true;
                 }
             }
@@ -556,7 +557,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
             sel_anchor_ = cursor_pos_;
             sync_commands();
             if (on_change) {
-                on_change(text_);
+                on_change(text_, *this);
             }
         }
         if (window()) {
@@ -571,24 +572,25 @@ bool LineInput::handle_key(KeyEvent const &event) {
             if (validation_mode_ == ValidationMode::Block && validator_) {
                 std::string next_text = text_;
                 next_text.erase(sel_start(), sel_end() - sel_start());
-                if (!validator_(next_text)) {
+                if (!validator_(next_text, *this)) {
                     return true;
                 }
             }
             delete_selection();
         } else if (cursor_pos_ < text_.size()) {
-            size_t next = Utf8Iterator::next(text_, cursor_pos_);
+            auto next = Utf8Iterator::next(text_, cursor_pos_);
+
             if (validation_mode_ == ValidationMode::Block && validator_) {
                 std::string next_text = text_;
                 next_text.erase(cursor_pos_, next - cursor_pos_);
-                if (!validator_(next_text)) {
+                if (!validator_(next_text, *this)) {
                     return true;
                 }
             }
             text_.erase(cursor_pos_, next - cursor_pos_);
             sync_commands();
             if (on_change) {
-                on_change(text_);
+                on_change(text_, *this);
             }
         }
         if (window()) {
@@ -636,7 +638,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
             return true;
         }
         if (on_submit) {
-            on_submit(text_);
+            on_submit(text_, *this);
         }
         return true;
     default:
@@ -655,7 +657,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
             // Use local pos since cursor_pos_ might be updated if we had selection
             auto insert_pos = has_selection() ? sel_start() : cursor_pos_;
             next_text.insert(insert_pos, event.text);
-            if (!validator_(next_text)) {
+            if (!validator_(next_text, *this)) {
                 return true;
             }
         }
@@ -667,7 +669,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         sel_anchor_ = cursor_pos_;
         sync_commands();
         if (on_change) {
-            on_change(text_);
+            on_change(text_, *this);
         }
         if (window()) {
             window()->request_redraw("input state");
@@ -719,17 +721,19 @@ void LineInput::paste() {
         return;
     }
     auto clip = Clipboard::get_text();
+
     if (clip.empty()) {
         return;
     }
     if (validation_mode_ == ValidationMode::Block && validator_) {
-        std::string next_text = text_;
+        auto next_text = text_;
         if (has_selection()) {
             next_text.erase(sel_start(), sel_end() - sel_start());
         }
-        size_t insert_pos = has_selection() ? sel_start() : cursor_pos_;
+        auto insert_pos = has_selection() ? sel_start() : cursor_pos_;
+
         next_text.insert(insert_pos, clip);
-        if (!validator_(next_text)) {
+        if (!validator_(next_text, *this)) {
             return;
         }
     }
@@ -741,7 +745,7 @@ void LineInput::paste() {
     sel_anchor_ = cursor_pos_;
     sync_commands();
     if (on_change) {
-        on_change(text_);
+        on_change(text_, *this);
     }
 }
 
@@ -750,9 +754,9 @@ void LineInput::show_context_menu(Point pos) {
         return;
     }
 
-    bool has_sel = has_selection();
-    bool not_empty = !text_.empty();
-    bool can_paste = !Clipboard::get_text().empty();
+    auto has_sel = has_selection();
+    auto not_empty = !text_.empty();
+    auto can_paste = !Clipboard::get_text().empty();
 
     // FIXME: use i18n for menu text
     std::vector<MenuItem> items;
@@ -771,8 +775,9 @@ void LineInput::show_context_menu(Point pos) {
 
 Size LineInput::size_hint() const {
     auto const &style = Theme::current().line_input;
-    // FIXME: what is this constant?
+    // FIXME: what is 8.0f this constant?
     auto h = style.font_size + style.padding.top + style.padding.bottom + 8.0f;
+
     return {150.0f, h};
 }
 

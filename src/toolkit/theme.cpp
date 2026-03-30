@@ -1698,6 +1698,7 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.accent = Color::from_argb(0xFF3daee9);
         p.highlight = Color::from_argb(0xFFd6ecf8);
         p.alternate = gray(0.90f);
+        p.error = Color::rgb(0.9, 0.3, 0.3);
         break;
     case ColorScheme::Dark:
         p.window = Color::rgb(0.137f, 0.149f, 0.161f);

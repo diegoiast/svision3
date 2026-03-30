@@ -58,6 +58,14 @@ template <typename T> struct Widget {
         }
         return std::move(*this);
     }
+    Widget tri_state(bool b) {
+        if constexpr (std::is_same_v<T, toolkit::Checkbox>) {
+            w->set_tri_state(b);
+        } else {
+            static_assert(sizeof(T) == 0, "checked only works on Checkbox");
+        }
+        return std::move(*this);
+    }
     Widget selected(int i) {
         if constexpr (std::is_same_v<T, toolkit::Combobox>) {
             w->set_selected(i);
@@ -121,21 +129,7 @@ template <typename T> struct Widget {
         w->add_widget(std::move(child), stretch);
         return std::move(*this);
     }
-    
-           // Special handling for TabWidget
-    template <typename W> Widget add_tab(std::string_view title, Widget<W> &&child) {
-        if constexpr (std::is_same_v<T, toolkit::TabWidget>) {
-            w->add_tab(std::string(title), std::move(child.w));
-        } else {
-            static_assert(sizeof(T) == 0, "add_tab only works on TabWidget");
-        }
-        return std::move(*this);
-    }
-    
-    template <typename W> Widget add_tab(std::string_view title, Widget<W> &child) {
-        return add_tab(title, std::move(child));
-    }
-    
+
     Widget on_click(std::function<void()> f) {
         w->on_click = std::move(f);
         return std::move(*this);
@@ -144,6 +138,33 @@ template <typename T> struct Widget {
         w->on_toggle = std::move(f);
         return std::move(*this);
     }
+
+    // TabWidget special functions
+    template <typename W> Widget add_tab(std::string_view title, Widget<W> &&child) {
+        if constexpr (std::is_same_v<T, toolkit::TabWidget>) {
+            w->add_tab(std::string(title), std::move(child.w));
+        } else {
+            static_assert(sizeof(T) == 0, "add_tab only works on TabWidget");
+        }
+        return std::move(*this);
+    }
+
+    template <typename W> Widget add_tab(std::string_view title, Widget<W> &child) {
+        return add_tab(title, std::move(child));
+    }
+
+    // Line edit special functions
+    Widget validation_mode(toolkit::LineInput::ValidationMode mode) {
+        w->set_validation_mode(mode);
+        return std::move(*this);
+    }
+
+    Widget
+    validator(std::function<bool(std::string const &, toolkit::LineInput const &input)> validator) {
+        w->set_validator(validator);
+        return std::move(*this);
+    }
+
     template <typename F> Widget on_change(F &&f) {
         if constexpr (std::is_same_v<T, toolkit::LineInput>) {
             w->on_change = std::forward<F>(f);

@@ -236,9 +236,7 @@ int main(int argc, char *argv[]) {
                             std::to_string(vs.table_model->column_count()) + " column(s)");
     };
 
-    vs.query_input->on_submit = [execute_query](std::string const &) {
-        execute_query();
-    };
+    vs.query_input->on_submit = [execute_query](std::string const &, auto &) { execute_query(); };
 
     // Wire up combos
     auto update_tables = [&vs]() {

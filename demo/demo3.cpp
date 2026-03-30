@@ -1,9 +1,11 @@
 #include "declarative.hpp"
 #include "nfd.h"
 #include "toolkit/application.hpp"
+#include "toolkit/line_input.hpp"
 #include "toolkit/theme.hpp"
 #include <fmt/format.h>
 #include <fstream>
+#include <regex>
 #include <spdlog/spdlog.h>
 
 auto LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
@@ -60,6 +62,7 @@ int main(int argc, char *argv[]) {
 
     auto songs_adapter = std::make_shared<toolkit::StringListAdapter>(beatlesSongs);
     auto filter_adapter = std::make_shared<toolkit::FilterAdapter>(songs_adapter);
+    auto email_stats_label = ui::label("Empty");
     auto filter_progress = ui::progress_bar();
     filter_adapter->set_simulated_delay_ms(10);
     filter_adapter->on_progress = [progress_view = filter_progress.get(), window](float progress) {
@@ -81,8 +84,7 @@ int main(int argc, char *argv[]) {
                                   .tooltip("Toggle desktop notifications")
                                   .checked(true))
                          .add(ui::checkbox("Tri-state option")
-                                  // WIP - tri state not supported yet by this API.
-                                  // .tri_state(true)
+                                  .tri_state(true)
                                   .tooltip("This checkbox cycles trough 3 state")
                                   .checked(true))
                          .add(ui::combobox(style_names).on_change([&app, &window](int index) {
@@ -99,38 +101,49 @@ int main(int argc, char *argv[]) {
                                   .add(ui::button("Open") /*.icon(open_icon_btn) */)
                                   .add(ui::label("Count: 0")))
                          .add(ui::label(platformText)))
-            .add_tab("Inputs",
-                     ui::vbox()
-                         .add(ui::line_input("Regular input"))
-                         .add(ui::line_input("Password").password_mode(true))
-                         .add(ui::line_input().text("This text cannot be edited").read_only(true))
-                         .add(ui::line_input("Numbers only (blocking)"))
-#if 0
-                              // WIP - not supported - validator, validation_mode
-                                .validation_mode(toolkit::LineInput::ValidationMode::Block)
-                                .validator([](auto &text){
-                                      return std::regex_match(text, std::regex("[0-9]*")); 
-                                })
-                          )
-#endif
-                         .add(ui::hbox()
-                                  .margins(ui::no_margins())
-                                  .add(ui::line_input("Email address (visual)"), ui::expand)
-                                  .add(ui::label("Empty")))
-#if 0
-                                  // WIP - not supported - validator, validation_mode
-                                  .validation_mode(toolkit::LineInput::ValidationMode::Block)
-                                  .validator([](auto &text){
-                                      return std::regex_match(text, std::regex("[0-9]*"));
-                                  })
-#endif
-                         .add(ui::hbox().add(ui::slider(), ui::expand).add(ui::label("0"))))
+            .add_tab(
+                "Inputs",
+                ui::vbox()
+                    .add(ui::line_input("Regular input"))
+                    .add(ui::line_input("Password").password_mode(true))
+                    .add(ui::line_input().text("This text cannot be edited").read_only(true))
+                    .add(ui::line_input("Numbers only (blocking)")
+                             .validation_mode(toolkit::LineInput::ValidationMode::Block)
+                             .validator([](auto &text, auto &) {
+                                 return std::regex_match(text, std::regex("[0-9]*"));
+                             }))
+                    .add(ui::hbox()
+                             .margins(ui::no_margins())
+                             .add(ui::line_input("Email address (visual)")
+                                      .validation_mode(toolkit::LineInput::ValidationMode::Notify)
+                                      .validator([](auto &text, auto &) {
+                                          auto static email_regex = std::regex(
+                                              R"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})");
+                                          if (text.empty()) {
+                                              return true;
+                                          }
+                                          return std::regex_match(text, email_regex);
+                                      })
+                                      .on_change([l = email_stats_label.get()](auto &s, auto &w) {
+                                          if (s.empty()) {
+                                              l->set_text("Empty");
+                                          } else {
+                                              if (w.is_valid()) {
+                                                  l->set_text("Valid");
+                                              } else {
+                                                  l->set_text("Invalid");
+                                              }
+                                          }
+                                      }),
+                                  ui::expand)
+                             .add(email_stats_label))
+                    .add(ui::hbox().add(ui::slider(), ui::expand).add(ui::label("0"))))
             .add_tab(
                 "Songs",
                 ui::vbox()
                     .add(ui::hbox()
                              .add(ui::line_input("Filter songs...")
-                                      .on_change([filter_adapter](auto &text) {
+                                      .on_change([filter_adapter](auto &text, auto &) {
                                           filter_adapter->set_filter(text);
                                       }),
                                   ui::expand)
@@ -168,23 +181,24 @@ int main(int argc, char *argv[]) {
             .add(ui::spacer())
             .add(ui::vbox()
                      .add(ui::checkbox("Show debug frames").on_toggle([&window](auto checked) {
-                         toolkit::Widget::debug_show_frames = checked;
-                         window->request_redraw();
+        toolkit::Widget::debug_show_frames = checked;
+        window->request_redraw();
                      }))
                      .add(ui::checkbox("Show performace stats").on_toggle([&window](auto checked) {
-                         if (checked) {
-                             window->reset_statistics();
-                             spdlog::set_level(spdlog::level::trace);
-                         } else {
-                             spdlog::set_level(spdlog::level::info);
-                         }
-                         window->set_statistics_logging_enabled(checked);
+        if (checked) {
+            window->reset_statistics();
+            spdlog::set_level(spdlog::level::trace);
+        } else {
+            spdlog::set_level(spdlog::level::info);
+        }
+        window->set_statistics_logging_enabled(checked);
                      })))
 
             .add(ui::hbox()
                      .add(ui::button("About").enabled(false))
                      .add(ui::spacer(), ui::expand)
-                     .add(ui::button("&Quit").on_click([window] { window->close(); }))));
+                     .add(ui::button("&Quit").on_click([window] {
+        window->close(); }))));
 
     window->show();
     return app.run();

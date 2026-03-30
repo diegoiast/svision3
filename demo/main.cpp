@@ -290,8 +290,9 @@ int main(int argc, char *argv[]) {
     tab_inputs->add_widget(std::move(input3));
 
     auto input4 = std::make_unique<toolkit::LineInput>("Numbers only (Blocking)");
-    input4->set_validator(
-        [](std::string const &text) { return std::regex_match(text, std::regex("[0-9]*")); });
+    input4->set_validator([](std::string const &text, auto &) {
+        return std::regex_match(text, std::regex("[0-9]*"));
+    });
     input4->set_validation_mode(toolkit::LineInput::ValidationMode::Block);
     tab_inputs->add_widget(std::move(input4));
 
@@ -300,7 +301,7 @@ int main(int argc, char *argv[]) {
 
     auto input5 = std::make_unique<toolkit::LineInput>("Email address (Visual)");
     auto *input5_ptr = input5.get();
-    input5->set_validator([](std::string const &text) {
+    input5->set_validator([](std::string const &text, auto &) {
         if (text.empty()) {
             return true;
         }
@@ -313,8 +314,8 @@ int main(int argc, char *argv[]) {
     auto *status_ptr = status_label.get();
     status_ptr->set_background_color(toolkit::Color::rgb(0.8f, 1.0f, 0.8f));
 
-    input5->on_change = [input5_ptr, status_ptr](std::string const &) {
-        if (input5_ptr->is_valid()) {
+    input5->on_change = [input5_ptr, status_ptr](std::string const &, auto &input) {
+        if (input.is_valid()) {
             status_ptr->set_text("Valid");
             status_ptr->set_background_color(toolkit::Color::rgb(0.8f, 1.0f, 0.8f));
         } else {
@@ -370,7 +371,7 @@ int main(int argc, char *argv[]) {
 
     auto filter_input = std::make_unique<toolkit::LineInput>("Filter songs...");
     filter_input->set_tooltip("Type to filter the song list");
-    filter_input->on_change = [filter_adapter](std::string const &text) {
+    filter_input->on_change = [filter_adapter](std::string const &text, auto &) {
         filter_adapter->set_filter(text);
     };
     filter_row->add_widget(std::move(filter_input), 1);

@@ -39,7 +39,8 @@ class LineInput : public Widget, public Fluent<LineInput> {
     bool is_read_only() const { return read_only_; }
 
     enum class ValidationMode { None, Block, Notify };
-    LineInput &set_validator(std::function<bool(std::string const &)> validator) {
+    LineInput &
+    set_validator(std::function<bool(std::string const &, LineInput const &widget)> validator) {
         validator_ = std::move(validator);
         return *this;
     }
@@ -55,8 +56,8 @@ class LineInput : public Widget, public Fluent<LineInput> {
     Command::Ptr copy_cmd;
     Command::Ptr paste_cmd;
 
-    std::function<void(std::string const &)> on_change;
-    std::function<void(std::string const &)> on_submit;
+    std::function<void(std::string const &, LineInput &widget)> on_change;
+    std::function<void(std::string const &, LineInput &widget)> on_submit;
 
   private:
     void reset_cursor_blink();
@@ -98,7 +99,7 @@ class LineInput : public Widget, public Fluent<LineInput> {
     bool is_password_field_ = false;
     bool read_only_ = false;
     ValidationMode validation_mode_ = ValidationMode::None;
-    std::function<bool(std::string const &)> validator_;
+    std::function<bool(std::string const &, LineInput const &)> validator_;
     std::chrono::steady_clock::time_point cursor_blink_time_;
     int blink_timer_id_ = 0;
     std::unique_ptr<ContextMenu> context_menu_;
