@@ -28,7 +28,6 @@ LineInput::LineInput(std::string placeholder)
     state.focused = false;
     read_only_ = false;
 
-    // FIXME: control+a is not working.
     select_all_cmd = Command::create("Select All", [this] { select_all(); });
     select_all_cmd->set_shortcut("Std+A");
     add_command(select_all_cmd);
