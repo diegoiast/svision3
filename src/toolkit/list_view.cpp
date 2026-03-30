@@ -12,8 +12,6 @@
 
 namespace toolkit {
 
-// ── StringListAdapter ────────────────────────────────────────────────────────
-
 StringListAdapter::StringListAdapter(std::vector<std::string> items) : items_(std::move(items)) {}
 
 // FIXME: this should be size_t right? Do we support negative indexes?
@@ -126,17 +124,17 @@ void FilterAdapter::rebuild_async() {
     auto source = source_;
     auto filter = filter_;
     auto generation = generation_;
-    // FIXME: this should move to the application, not part of the toolkit
     auto delay_ms = delay_per_item_ms_;
     auto self = shared_from_this();
 
+    // FIXME: port to jthread.
     std::thread([self, source, filter, generation, gen, delay_ms]() {
         Stopwatch sw;
         std::vector<int> result;
 
         if (source) {
             auto n = source->count();
-            auto last_pct = -1;
+            auto last_percentage = -1;
             // FIXME: this filter method is built in, we need to provide API to modify it
             for (auto i = 0; i < n; i++) {
                 if (generation->load() != gen) {
@@ -147,11 +145,10 @@ void FilterAdapter::rebuild_async() {
                     result.push_back(i);
                 }
 
-                // FIXME: undescriptive variable names
-                auto pct = (n > 0) ? ((i + 1) * 100 / n) : 100;
-                if (pct != last_pct) {
-                    last_pct = pct;
-                    float progress = static_cast<float>(i + 1) / static_cast<float>(n);
+                auto percentage = (n > 0) ? ((i + 1) * 100 / n) : 100;
+                if (percentage != last_percentage) {
+                    auto progress = static_cast<float>(i + 1) / static_cast<float>(n);
+                    last_percentage = percentage;
                     Application::post_to_main_thread([self, generation, gen, progress]() {
                         if (generation->load() != gen) {
                             return;
@@ -190,9 +187,8 @@ void FilterAdapter::rebuild_async() {
     }).detach();
 }
 
-// ── ListView ─────────────────────────────────────────────────────────────────
-
-ListView::ListView(std::shared_ptr<ListAdapter> adapter) : adapter_(std::move(adapter)) {
+ListView::ListView(std::shared_ptr<ListAdapter> adapter) {
+    adapter_ = std::move(adapter);
     state.focusable = true;
     if (adapter_) {
         adapter_->on_data_changed = [this] {
@@ -204,7 +200,7 @@ ListView::ListView(std::shared_ptr<ListAdapter> adapter) : adapter_(std::move(ad
     }
 }
 
-void ListView::set_adapter(std::shared_ptr<ListAdapter> adapter) {
+ListView &ListView::set_adapter(std::shared_ptr<ListAdapter> adapter) {
     adapter_ = std::move(adapter);
     selection_.clear();
     anchor_ = -1;
@@ -218,26 +214,28 @@ void ListView::set_adapter(std::shared_ptr<ListAdapter> adapter) {
             }
         };
     }
+    return *this;
 }
 
-void ListView::set_selected(int index) {
+ListView &ListView::set_selected(int index) {
     if (!adapter_) {
-        return;
+        return *this;
     }
     auto n = adapter_->count();
 
     if (index < 0 || index >= n) {
         clear_selection();
-        return;
+        return *this;
     }
     selection_.clear();
     selection_.insert(index);
     anchor_ = index;
     cursor_ = index;
     notify_selection();
+    return *this;
 }
 
-void ListView::set_selection(std::set<int> indices) {
+ListView &ListView::set_selection(std::set<int> indices) {
     selection_ = std::move(indices);
     if (!selection_.empty()) {
         anchor_ = *selection_.begin();
@@ -246,11 +244,12 @@ void ListView::set_selection(std::set<int> indices) {
         anchor_ = cursor_ = -1;
     }
     notify_selection();
+    return *this;
 }
 
-void ListView::select_all() {
+ListView &ListView::select_all() {
     if (!adapter_) {
-        return;
+        return *this;
     }
     auto n = adapter_->count();
     selection_.clear();
@@ -260,19 +259,21 @@ void ListView::select_all() {
     anchor_ = 0;
     cursor_ = n - 1;
     notify_selection();
+    return *this;
 }
 
-void ListView::clear_selection() {
+ListView &ListView::clear_selection() {
     selection_.clear();
     anchor_ = cursor_ = -1;
     notify_selection();
+    return *this;
 }
 
 void ListView::select_range_from_anchor() {
     selection_.clear();
     auto lo = std::min(anchor_, cursor_);
     auto hi = std::max(anchor_, cursor_);
-    for (int i = lo; i <= hi; i++) {
+    for (auto i = lo; i <= hi; i++) {
         selection_.insert(i);
     }
 }
@@ -286,9 +287,9 @@ void ListView::notify_selection() {
 void ListView::scroll_to(int index) {
     auto ih = item_height();
     auto top = ih * static_cast<float>(index);
-    auto bot = top + ih;
-    if (bot > scroll_offset_ + rect_.height) {
-        scroll_offset_ = bot - rect_.height;
+    auto bottom = top + ih;
+    if (bottom > scroll_offset_ + rect_.height) {
+        scroll_offset_ = bottom - rect_.height;
     }
     if (top < scroll_offset_) {
         scroll_offset_ = top;
@@ -337,19 +338,24 @@ void ListView::paint(Painter &painter) {
         return;
     }
 
-    auto const &style = Theme::current().list_view;
+    auto const &theme = Theme::current();
+    auto const &style = theme.list_view;
+    auto const &palette = theme.palette;
+
     auto ih = item_height();
     auto fm = painter.font_metrics(style.font_size);
     auto n = adapter_->count();
 
     Theme::current().draw_list_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
-
     painter.push_clip({0, 0, rect_.width, rect_.height});
 
+    auto is_dark = palette.window.luma() < 0.5f;
     auto first_visible = std::max(0, static_cast<int>(scroll_offset_ / ih));
     auto last_visible = std::min(n - 1, static_cast<int>((scroll_offset_ + rect_.height) / ih));
     auto bw = style.border_width;
     auto inner_w = rect_.width - bw * 2;
+    auto row_sel = palette.highlight;
+    auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
 
     for (auto i = first_visible; i <= last_visible; i++) {
         auto iy = ih * static_cast<float>(i) - scroll_offset_;
@@ -358,21 +364,8 @@ void ListView::paint(Painter &painter) {
         auto hovered = (i == hovered_) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
 
-        if (selected) {
-            Color bg = alt_row ? style.selected_bg.darken(0.06f) : style.selected_bg;
-            painter.fill_rect(item_rect, bg);
-        } else if (hovered) {
-            Color hover = alt_row ? style.selected_bg.darken(0.06f) : style.selected_bg;
-            hover.a = 0.45f;
-            painter.fill_rect(item_rect, hover);
-        } else if (alt_row) {
-            painter.fill_rect(item_rect, style.alternate_bg);
-        }
-
-        auto text_col = selected ? style.selected_text : style.text;
-        auto text_y = iy + (ih - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(adapter_->text_at(i), {style.item_padding_h, text_y}, text_col,
-                          style.font_size);
+        theme.draw_list_item(painter, item_rect, adapter_->text_at(i), {}, selected, hovered,
+                             alt_row);
     }
 
     auto content_h = total_content_height();

@@ -15,32 +15,33 @@ namespace toolkit {
 
 class BaseTheme : public Theme {
   public:
-    explicit BaseTheme(Palette p) : palette_(std::move(p)) {
+    explicit BaseTheme(Palette p) {
+        this->palette = std::move(p);
         // Backward compatibility: use old field names if new ones not set
-        if (palette_.window.r == 0 && palette_.window.g == 0 && palette_.window.b == 0) {
-            if (palette_.window_bg.r > 0 || palette_.window_bg.g > 0 || palette_.window_bg.b > 0) {
-                palette_.window = palette_.window_bg;
+        if (palette.window.r == 0 && palette.window.g == 0 && palette.window.b == 0) {
+            if (palette.window_bg.r > 0 || palette.window_bg.g > 0 || palette.window_bg.b > 0) {
+                palette.window = palette.window_bg;
             }
         }
-        if (palette_.base.r == 0 && palette_.base.g == 0 && palette_.base.b == 0) {
-            if (palette_.widget_bg.r > 0 || palette_.widget_bg.g > 0 || palette_.widget_bg.b > 0) {
-                palette_.base = palette_.widget_bg;
+        if (palette.base.r == 0 && palette.base.g == 0 && palette.base.b == 0) {
+            if (palette.widget_bg.r > 0 || palette.widget_bg.g > 0 || palette.widget_bg.b > 0) {
+                palette.base = palette.widget_bg;
             }
         }
-        if (palette_.fonts.font_size == 0 && palette_.font_size > 0) {
-            palette_.fonts.font_size = palette_.font_size;
+        if (palette.fonts.font_size == 0 && palette.font_size > 0) {
+            palette.fonts.font_size = palette.font_size;
         }
 
         // Initialize backward compatibility members
         name = "Base";
         style = ThemeStyle::Material;
-        system_font = palette_.fonts.system;
-        monospace_font = palette_.fonts.monospace;
+        system_font = palette.fonts.system;
+        monospace_font = palette.fonts.monospace;
 
-        window.background = palette_.window;
+        window.background = palette.window;
 
-        label.text = palette_.text;
-        label.font_size = palette_.fonts.font_size;
+        label.text = palette.text;
+        label.font_size = palette.fonts.font_size;
 
         // FIXME: all this should be removed. Custom colors are just a bad idea
         //        themes will not use these anyway.
@@ -55,87 +56,84 @@ class BaseTheme : public Theme {
             ws.font_size = p.fonts.font_size;
         };
 
-        apply_base(button, palette_);
-        button.auto_repeat_delay = palette_.fonts.auto_repeat_delay;
-        button.auto_repeat_interval = palette_.fonts.auto_repeat_interval;
-        button.text_disabled = Color::mid(palette_.text, palette_.window);
+        apply_base(button, palette);
+        button.auto_repeat_delay = palette.fonts.auto_repeat_delay;
+        button.auto_repeat_interval = palette.fonts.auto_repeat_interval;
+        button.text_disabled = Color::mid(palette.text, palette.window);
 
-        apply_base(line_input, palette_);
-        line_input.background = palette_.base;
-        line_input.background_focused = palette_.base;
-        line_input.border_focused = palette_.accent;
-        line_input.placeholder = Color::mid(palette_.text, palette_.base);
-        line_input.cursor = palette_.text;
+        apply_base(line_input, palette);
+        line_input.background = palette.base;
+        line_input.background_focused = palette.base;
+        line_input.border_focused = palette.accent;
+        line_input.placeholder = Color::mid(palette.text, palette.base);
+        line_input.cursor = palette.text;
 
-        apply_base(text_edit, palette_);
-        text_edit.background = palette_.base;
-        text_edit.background_focused = palette_.base;
-        text_edit.border_focused = palette_.accent;
-        text_edit.placeholder = Color::mid(palette_.text, palette_.base);
-        text_edit.cursor = palette_.text;
+        apply_base(text_edit, palette);
+        text_edit.background = palette.base;
+        text_edit.background_focused = palette.base;
+        text_edit.border_focused = palette.accent;
+        text_edit.placeholder = Color::mid(palette.text, palette.base);
+        text_edit.cursor = palette.text;
 
-        apply_base(checkbox, palette_);
-        checkbox.background = palette_.base;
-        checkbox.indicator = palette_.accent;
+        apply_base(checkbox, palette);
+        checkbox.background = palette.base;
+        checkbox.indicator = palette.accent;
 
-        apply_base(radio, palette_);
-        radio.background = palette_.base;
-        radio.indicator = palette_.accent;
+        apply_base(radio, palette);
+        radio.background = palette.base;
+        radio.indicator = palette.accent;
 
-        apply_base(combobox, palette_);
-        combobox.background = palette_.base;
-        combobox.border_focused = palette_.accent;
-        combobox.arrow = palette_.text.luma() < 0.5f ? palette_.text.darken(0.25f)
-                                                     : palette_.text.lighten(0.25f);
-        combobox.dropdown_bg = palette_.base;
-        combobox.item_hovered = palette_.highlight;
+        apply_base(combobox, palette);
+        combobox.background = palette.base;
+        combobox.border_focused = palette.accent;
+        combobox.arrow =
+            palette.text.luma() < 0.5f ? palette.text.darken(0.25f) : palette.text.lighten(0.25f);
+        combobox.dropdown_bg = palette.base;
+        combobox.item_hovered = palette.highlight;
         combobox.item_text_hovered = Color::with_gray(1.0f);
 
-        apply_base(menu, palette_);
-        menu.background = palette_.base;
-        menu.background_hovered = palette_.highlight;
-        menu.item_hovered = palette_.highlight;
+        apply_base(menu, palette);
+        menu.background = palette.base;
+        menu.background_hovered = palette.highlight;
+        menu.item_hovered = palette.highlight;
         menu.item_text_hovered = Color::with_gray(1.0f);
 
-        apply_base(menubar, palette_);
-        menubar.background = palette_.window;
-        menubar.background_hovered = palette_.highlight;
+        apply_base(menubar, palette);
+        menubar.background = palette.window;
+        menubar.background_hovered = palette.highlight;
 
-        apply_base(tab_widget, palette_);
-        bool is_dark = palette_.window.luma() < 0.5f;
-        tab_widget.tab_active_bg = palette_.window;
+        apply_base(tab_widget, palette);
+        bool is_dark = palette.window.luma() < 0.5f;
+        tab_widget.tab_active_bg = palette.window;
         tab_widget.tab_inactive_bg =
-            is_dark ? palette_.window.lighten(0.04f) : palette_.window.darken(0.04f);
+            is_dark ? palette.window.lighten(0.04f) : palette.window.darken(0.04f);
         tab_widget.tab_hover_bg =
-            is_dark ? palette_.window.lighten(0.08f) : palette_.window.darken(0.02f);
-        tab_widget.tab_active_text = palette_.text;
-        tab_widget.tab_inactive_text =
-            Color::mid(palette_.text,
-                       is_dark ? palette_.window.lighten(0.20f) : palette_.window.darken(0.20f));
+            is_dark ? palette.window.lighten(0.08f) : palette.window.darken(0.02f);
+        tab_widget.tab_active_text = palette.text;
+        tab_widget.tab_inactive_text = Color::mid(
+            palette.text, is_dark ? palette.window.lighten(0.20f) : palette.window.darken(0.20f));
 
-        apply_base(list_view, palette_);
-        list_view.selected_bg = palette_.highlight;
-        list_view.selected_text = Color::with_gray(1.0f);
-        list_view.hovered_bg =
-            is_dark ? palette_.window.lighten(0.06f) : palette_.window.darken(0.04f);
-        list_view.alternate_bg = palette_.alternate;
+        apply_base(list_view, palette);
 
-        apply_base(tree_view, palette_);
-        tree_view.selected_bg = palette_.accent;
+        apply_base(tree_view, palette);
+        tree_view.selected_bg = palette.accent;
         tree_view.selected_text = Color::with_gray(1.0f);
         tree_view.hovered_bg =
-            is_dark ? palette_.window.lighten(0.06f) : palette_.window.darken(0.04f);
-        tree_view.alternate_bg = palette_.alternate;
+            is_dark ? palette.window.lighten(0.06f) : palette.window.darken(0.04f);
+        tree_view.alternate_bg = palette.alternate;
         tree_view.indent = 20.0f;
         tree_view.background = Color::with_gray(1.0f);
 
-        apply_base(progress_bar, palette_);
-        progress_bar.fill = palette_.accent;
+        apply_base(progress_bar, palette);
+        progress_bar.fill = palette.accent;
 
-        apply_base(slider, palette_);
-        slider.groove = palette_.border;
-        slider.handle = palette_.window;
-        slider.handle_border = palette_.border;
+        apply_base(slider, palette);
+        slider.groove = palette.border;
+        slider.handle = palette.window;
+        slider.handle_border = palette.border;
+
+        layout.margins = {8, 8, 8, 8};
+        layout.spacing = 8.0f;
 
         if (is_dark) {
             tooltip.background = Color::rgb(0.25f, 0.25f, 0.22f);
@@ -146,7 +144,7 @@ class BaseTheme : public Theme {
             tooltip.border = Color::rgb(0.6f, 0.6f, 0.5f);
             tooltip.text = Color::rgb(0.1f, 0.1f, 0.1f);
         }
-        tooltip.font_size = palette_.fonts.font_size - 1.0f;
+        tooltip.font_size = palette.fonts.font_size - 1.0f;
     }
 
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
@@ -580,14 +578,17 @@ class BaseTheme : public Theme {
         auto const &style = list_view;
         Color bg;
 
+        auto is_dark = palette.window.luma() < 0.5f;
+        auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
+
         if (selected) {
-            bg = style.selected_bg;
+            bg = palette.highlight;
         } else if (hovered) {
-            bg = style.hovered_bg;
+            bg = Color::lerp(alt_color, palette.highlight, 0.5);
         } else if (alternate) {
-            bg = style.alternate_bg;
+            bg = alt_color;
         } else {
-            bg = style.background;
+            bg = palette.base;
         }
 
         painter.fill_rect(rect, bg);
@@ -595,10 +596,12 @@ class BaseTheme : public Theme {
         auto fm = painter.font_metrics(style.font_size);
         auto text_x = rect.x + style.item_padding_h;
         if (icon) {
+            auto icon_y = rect.y + (rect.height - static_cast<float>(icon->height)) / 2.0f;
+            painter.draw_image(*icon, {text_x, icon_y});
             text_x += static_cast<float>(icon->width) + style.item_padding;
         }
-        auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto text_c = selected ? style.selected_text : style.text;
+        auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        auto text_c = selected ? palette.highlighted_text : palette.text;
         painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
     }
 
@@ -747,7 +750,7 @@ class BaseTheme : public Theme {
                               {rect.x + rect.width, rect.y + rect.height - 1.0f}, style.shadow,
                               1.0f);
         } else {
-            auto border_c = palette_.window.darken(0.15f);
+            auto border_c = palette.window.darken(0.15f);
             painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
                               {rect.x + rect.width, rect.y + rect.height - 1.0f}, border_c, 1.0f);
         }
@@ -974,11 +977,6 @@ class BaseTheme : public Theme {
 
         float cr = std::max(0.0f, corner_radius - inset);
         if (cr > 0.0f) {
-            auto top_left = Point{r.x + cr, r.y + cr};
-            auto top_right = Point{r.x + r.width - cr, r.y + cr};
-            auto bottom_left = Point{r.x + cr, r.y + r.height - cr};
-            auto bottom_right = Point{r.x + r.width - cr, r.y + r.height - cr};
-
             draw_dashed_line({r.x + cr, r.y}, {r.x + r.width - cr, r.y});
             draw_dashed_line({r.x + r.width, r.y + cr}, {r.x + r.width, r.y + r.height - cr});
             draw_dashed_line({r.x + r.width - cr, r.y + r.height}, {r.x + cr, r.y + r.height});
@@ -1004,7 +1002,7 @@ class BaseTheme : public Theme {
         return {w, fm.height + 4.0f};
     }
 
-    Color error_color() const override { return palette_.error.lighten(0.3f); }
+    Color error_color() const override { return palette.error.lighten(0.3f); }
 
     Size measure_button(std::string_view text, Icon const &icon) const override {
         auto text_w = Painter::measure_text(text, button.font_size).width;
@@ -1068,9 +1066,6 @@ class BaseTheme : public Theme {
 
     Margins button_padding() const override { return button.padding; }
     Margins line_input_padding() const override { return line_input.padding; }
-
-  protected:
-    Palette palette_;
 };
 
 // ── Specific Themes ──────────────────────────────────────────────────────────
@@ -1131,7 +1126,7 @@ class Win11Theme : public BaseTheme {
             } else if (orientation == TabOrientation::East) {
                 indicator = {rect.x, rect.y, lw, rect.height};
             }
-            painter.fill_rect(indicator, palette_.accent);
+            painter.fill_rect(indicator, palette.accent);
         }
     }
 
@@ -1216,11 +1211,6 @@ class Win95Theme : public BaseTheme {
 
         if (corner_radius > 0.0f) {
             auto cr = std::max(0.0f, corner_radius);
-            auto top_left = Point{x + cr, y + cr};
-            auto top_right = Point{x + w - cr, y + cr};
-            auto bottom_left = Point{x + cr, y + h - cr};
-            auto bottom_right = Point{x + w - cr, y + h - cr};
-
             draw_dashed_line({x + cr, y}, {x + w - cr, y});
             draw_dashed_line({x + w, y + cr}, {x + w, y + h - cr});
             draw_dashed_line({x + w - cr, y + h}, {x + cr, y + h});
@@ -1291,12 +1281,12 @@ class Win95Theme : public BaseTheme {
 class MaterialTheme : public BaseTheme {
   public:
     explicit MaterialTheme(Palette p) : BaseTheme(std::move(p)) {
-        auto is_dark = palette_.window.luma() < 0.5f;
+        auto is_dark = palette.window.luma() < 0.5f;
         name = "Material";
         button.background_hovered =
-            is_dark ? palette_.window.lighten(0.08f) : palette_.window.darken(0.04f);
+            is_dark ? palette.window.lighten(0.08f) : palette.window.darken(0.04f);
         button.background_pressed =
-            is_dark ? palette_.window.lighten(0.15f) : palette_.window.darken(0.10f);
+            is_dark ? palette.window.lighten(0.15f) : palette.window.darken(0.10f);
         button.padding = {10, 24, 10, 24};
         button.corner_radius = 4.0f;
         menu.padding = {4, 4, 4, 4};
@@ -1364,7 +1354,7 @@ class MaterialTheme : public BaseTheme {
             } else if (orientation == TabOrientation::East) {
                 indicator = {rect.x, rect.y, lw, rect.height};
             }
-            painter.fill_rect(indicator, palette_.accent);
+            painter.fill_rect(indicator, palette.accent);
         }
     }
 };
@@ -1373,20 +1363,20 @@ class GnomeTheme : public BaseTheme {
   public:
     explicit GnomeTheme(Palette p) : BaseTheme(std::move(p)) {
         name = "GNOME";
-        bool dark = palette_.window.luma() < 0.5f;
-        Color btn_bg = dark ? palette_.window.lighten(0.04f) : palette_.window.darken(0.03f);
+        bool dark = palette.window.luma() < 0.5f;
+        Color btn_bg = dark ? palette.window.lighten(0.04f) : palette.window.darken(0.03f);
         button.background = btn_bg;
         button.background_hovered = dark ? btn_bg.lighten(0.04f) : btn_bg.darken(0.04f);
         button.background_pressed = dark ? btn_bg.darken(0.06f) : btn_bg.darken(0.10f);
-        button.border = dark ? palette_.border.lighten(0.04f) : palette_.border.darken(0.06f);
+        button.border = dark ? palette.border.lighten(0.04f) : palette.border.darken(0.06f);
         button.padding = {8, 20, 8, 20};
         button.corner_radius = 8.0f;
 
         checkbox.corner_radius = 5.0f;
         checkbox.border_width = 2.0f;
         radio.border_width = 2.0f;
-        line_input.corner_radius = palette_.corner_radius;
-        combobox.corner_radius = palette_.corner_radius;
+        line_input.corner_radius = palette.corner_radius;
+        combobox.corner_radius = palette.corner_radius;
         slider.handle_size = 22.0f;
         slider.groove_thickness = 6.0f;
 
@@ -1451,8 +1441,8 @@ class Plasma6Theme : public BaseTheme {
         name = "Plasma 6";
         button.padding = {6, 18, 6, 18};
         button.corner_radius = 5.0f;
-        button.background_hovered = palette_.highlight;
-        button.background_pressed = palette_.highlight.darken(0.1f);
+        button.background_hovered = palette.highlight;
+        button.background_pressed = palette.highlight.darken(0.1f);
         checkbox.corner_radius = 5.0f;
         checkbox.indicator = Color::with_gray(0.0f);
         radio.indicator = Color::with_gray(0.0f);
@@ -1470,7 +1460,7 @@ class Plasma6Theme : public BaseTheme {
 
         auto pressed = state == ButtonState::ClickedInside;
         if (enabled && !flat && !pressed) {
-            auto line_c = palette_.border;
+            auto line_c = palette.border;
             line_c.a = 0.3f;
             painter.draw_line(
                 {rect.x + button.corner_radius, rect.y + rect.height - 2.0f},
@@ -1497,7 +1487,7 @@ class Plasma6Theme : public BaseTheme {
             } else if (orientation == TabOrientation::East) {
                 indicator = {rect.x, rect.y, lw, rect.height};
             }
-            painter.fill_rect(indicator, palette_.accent);
+            painter.fill_rect(indicator, palette.accent);
         }
     }
 
@@ -1658,10 +1648,15 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.text = Color::with_gray(0.0f);
         p.border = Color::with_gray(0.0f);
         p.accent = Color::rgb(0.0f, 0.0f, 0.5f);
-        p.highlight = Color::with_gray(1.0f);
+        p.highlight = Color::rgb(0.0f, 0.0f, 0.5f);
+        p.highlighted_text = Color::rgb(1.0f, 1.0f, 1.5f);
         p.shadow = Color::with_gray(0.50f);
         p.dark_shadow = Color::with_gray(0.0f);
         p.alternate = Color::with_gray(0.90f);
+
+        p.error = Color::rgb(0.8, 0.2, 0.2);
+        p.warning = Color::rgb(0.8, 0.7, 0.0);
+        p.success = Color::rgb(0.0, 0.2, 0.8);
         break;
     case ColorScheme::Dark:
         p.window = Color::with_gray(0.25f);
@@ -1673,6 +1668,10 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.shadow = Color::with_gray(0.12f);
         p.dark_shadow = Color::with_gray(0.0f);
         p.alternate = Color::with_gray(0.35f);
+
+        p.error = Color::rgb(0.8, 0.0, 0.0);
+        p.warning = Color::rgb(0.8, 0.7, 0.0);
+        p.success = Color::rgb(0.0, 0.2, 0.8);
         break;
     }
 }

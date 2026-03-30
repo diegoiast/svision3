@@ -14,10 +14,10 @@ static std::shared_ptr<StringListAdapter> make_adapter(int n = 5) {
 TEST_CASE("ListView default state", "[listview]") {
     auto adapter = make_adapter();
     ListView lv(adapter);
-    REQUIRE(lv.selected_index() == -1);
-    REQUIRE(lv.selection().empty());
+    REQUIRE(lv.get_selected_index() == -1);
+    REQUIRE(lv.get_selection().empty());
     REQUIRE(lv.is_focusable() == true);
-    REQUIRE(lv.multi_select() == false);
+    REQUIRE(lv.get_multi_select() == false);
     REQUIRE(lv.alternating_row_colors() == false);
 }
 
@@ -25,10 +25,10 @@ TEST_CASE("ListView set_selected", "[listview]") {
     auto adapter = make_adapter();
     ListView lv(adapter);
     lv.set_selected(2);
-    REQUIRE(lv.selected_index() == 2);
+    REQUIRE(lv.get_selected_index() == 2);
     REQUIRE(lv.is_selected(2) == true);
     REQUIRE(lv.is_selected(0) == false);
-    REQUIRE(lv.selection().size() == 1);
+    REQUIRE(lv.get_selection().size() == 1);
 }
 
 TEST_CASE("ListView set_selected clears previous", "[listview]") {
@@ -36,7 +36,7 @@ TEST_CASE("ListView set_selected clears previous", "[listview]") {
     ListView lv(adapter);
     lv.set_selected(0);
     lv.set_selected(3);
-    REQUIRE(lv.selection().size() == 1);
+    REQUIRE(lv.get_selection().size() == 1);
     REQUIRE(lv.is_selected(0) == false);
     REQUIRE(lv.is_selected(3) == true);
 }
@@ -46,8 +46,8 @@ TEST_CASE("ListView set_selected out of range clears", "[listview]") {
     ListView lv(adapter);
     lv.set_selected(2);
     lv.set_selected(-1);
-    REQUIRE(lv.selection().empty());
-    REQUIRE(lv.selected_index() == -1);
+    REQUIRE(lv.get_selection().empty());
+    REQUIRE(lv.get_selected_index() == -1);
 }
 
 TEST_CASE("ListView clear_selection", "[listview]") {
@@ -55,15 +55,15 @@ TEST_CASE("ListView clear_selection", "[listview]") {
     ListView lv(adapter);
     lv.set_selected(1);
     lv.clear_selection();
-    REQUIRE(lv.selection().empty());
-    REQUIRE(lv.selected_index() == -1);
+    REQUIRE(lv.get_selection().empty());
+    REQUIRE(lv.get_selected_index() == -1);
 }
 
 TEST_CASE("ListView select_all", "[listview]") {
     auto adapter = make_adapter(3);
     ListView lv(adapter);
     lv.select_all();
-    REQUIRE(lv.selection().size() == 3);
+    REQUIRE(lv.get_selection().size() == 3);
     REQUIRE(lv.is_selected(0));
     REQUIRE(lv.is_selected(1));
     REQUIRE(lv.is_selected(2));
@@ -73,7 +73,7 @@ TEST_CASE("ListView set_selection with explicit set", "[listview]") {
     auto adapter = make_adapter();
     ListView lv(adapter);
     lv.set_selection({1, 3});
-    REQUIRE(lv.selection().size() == 2);
+    REQUIRE(lv.get_selection().size() == 2);
     REQUIRE(lv.is_selected(1));
     REQUIRE(lv.is_selected(3));
     REQUIRE_FALSE(lv.is_selected(0));
@@ -82,9 +82,9 @@ TEST_CASE("ListView set_selection with explicit set", "[listview]") {
 TEST_CASE("ListView multi_select toggle", "[listview]") {
     auto adapter = make_adapter();
     ListView lv(adapter);
-    REQUIRE(lv.multi_select() == false);
+    REQUIRE(lv.get_multi_select() == false);
     lv.set_multi_select(true);
-    REQUIRE(lv.multi_select() == true);
+    REQUIRE(lv.get_multi_select() == true);
 }
 
 TEST_CASE("ListView alternating_row_colors toggle", "[listview]") {
@@ -110,17 +110,17 @@ TEST_CASE("ListView set_adapter resets state", "[listview]") {
     ListView lv(adapter1);
     lv.set_selected(2);
     lv.set_adapter(adapter2);
-    REQUIRE(lv.selected_index() == -1);
-    REQUIRE(lv.selection().empty());
+    REQUIRE(lv.get_selected_index() == -1);
+    REQUIRE(lv.get_selection().empty());
 }
 
 TEST_CASE("ListView with null adapter", "[listview]") {
     ListView lv(nullptr);
-    REQUIRE(lv.selected_index() == -1);
+    REQUIRE(lv.get_selected_index() == -1);
     lv.set_selected(0);
-    REQUIRE(lv.selected_index() == -1);
+    REQUIRE(lv.get_selected_index() == -1);
     lv.select_all();
-    REQUIRE(lv.selection().empty());
+    REQUIRE(lv.get_selection().empty());
 }
 
 TEST_CASE("ListView relative coordinates", "[listview]") {

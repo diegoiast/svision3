@@ -102,10 +102,6 @@ struct TabWidgetStyle : WidgetStyle {
 
 // FIXME: remove this style
 struct ListViewStyle : WidgetStyle {
-    Color selected_bg;
-    Color selected_text;
-    Color hovered_bg;
-    Color alternate_bg;
     float item_padding = 4.0f;
     float item_padding_h = 8.0f;
 };
@@ -163,6 +159,11 @@ struct TooltipStyle {
 // FIXME: remove this style
 struct WindowStyle {
     Color background;
+};
+
+struct LayoutStyle {
+    Margins margins = {8, 8, 8, 8};
+    float spacing = 8.0f;
 };
 
 struct Palette {
@@ -359,6 +360,7 @@ class Theme {
     ProgressBarStyle progress_bar;
     SliderStyle slider;
     TooltipStyle tooltip;
+    LayoutStyle layout;
 };
 
 } // namespace toolkit

@@ -1,5 +1,5 @@
-#include <catch2/catch_test_macros.hpp>
 #include "toolkit/theme.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
@@ -12,9 +12,7 @@ TEST_CASE("Theme::style_name returns correct names", "[theme]") {
     REQUIRE(std::string(Theme::style_name(ThemeStyle::GNOME)) == "GNOME");
 }
 
-TEST_CASE("theme_style_count matches enum", "[theme]") {
-    REQUIRE(theme_style_count == 6);
-}
+TEST_CASE("theme_style_count matches enum", "[theme]") { REQUIRE(theme_style_count == 6); }
 
 TEST_CASE("Theme::create produces named theme", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Light);
@@ -48,8 +46,8 @@ TEST_CASE("Win95 palette has beveled flag", "[theme]") {
 }
 
 TEST_CASE("Non-Win95 palettes are not beveled", "[theme]") {
-    for (auto s : {ThemeStyle::MacOS, ThemeStyle::Material, ThemeStyle::Win11,
-                   ThemeStyle::Plasma6, ThemeStyle::GNOME}) {
+    for (auto s : {ThemeStyle::MacOS, ThemeStyle::Material, ThemeStyle::Win11, ThemeStyle::Plasma6,
+                   ThemeStyle::GNOME}) {
         auto p = Theme::default_palette(s, ColorScheme::Light);
         REQUIRE(p.beveled == false);
     }
@@ -63,15 +61,19 @@ TEST_CASE("Theme::set_current / current round-trip", "[theme]") {
 
 TEST_CASE("Dark theme has lighter text than background", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Dark);
-    float text_luma = 0.299f * t->label.text.r + 0.587f * t->label.text.g + 0.114f * t->label.text.b;
-    float bg_luma = 0.299f * t->window.background.r + 0.587f * t->window.background.g + 0.114f * t->window.background.b;
+    float text_luma =
+        0.299f * t->label.text.r + 0.587f * t->label.text.g + 0.114f * t->label.text.b;
+    float bg_luma = 0.299f * t->window.background.r + 0.587f * t->window.background.g +
+                    0.114f * t->window.background.b;
     REQUIRE(text_luma > bg_luma);
 }
 
 TEST_CASE("Light theme has darker text than background", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Light);
-    float text_luma = 0.299f * t->label.text.r + 0.587f * t->label.text.g + 0.114f * t->label.text.b;
-    float bg_luma = 0.299f * t->window.background.r + 0.587f * t->window.background.g + 0.114f * t->window.background.b;
+    float text_luma =
+        0.299f * t->label.text.r + 0.587f * t->label.text.g + 0.114f * t->label.text.b;
+    float bg_luma = 0.299f * t->window.background.r + 0.587f * t->window.background.g +
+                    0.114f * t->window.background.b;
     REQUIRE(text_luma < bg_luma);
 }
 
@@ -88,7 +90,7 @@ TEST_CASE("Theme from custom palette", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, p);
     REQUIRE(t->window.background.r == 0.1f);
     REQUIRE(t->label.font_size == 16.0f);
-    REQUIRE(t->list_view.alternate_bg.r == 0.25f);
+    // REQUIRE(t->list_view.alternate_qbg.r == 0.25f);
 }
 
 TEST_CASE("ProgressBar style has Win95 chunked", "[theme]") {
