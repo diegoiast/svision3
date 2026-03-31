@@ -113,6 +113,7 @@ class Window {
     Size size_;
     Size min_size_;
     Size max_size_;
+    // FIXME: do we really need a "root" widget?
     std::unique_ptr<Widget> root_;
     std::vector<std::unique_ptr<Widget>> widgets_;
     std::vector<Command::Ptr> global_commands_;

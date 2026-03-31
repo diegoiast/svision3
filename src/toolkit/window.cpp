@@ -8,7 +8,6 @@
 #include "toolkit/theme.hpp"
 #include <cctype>
 #include <chrono>
-#include <iomanip>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
@@ -17,9 +16,12 @@ struct Window::Impl {
     std::unique_ptr<PlatformWindow> platform;
     Window::Statistics stats;
     std::chrono::steady_clock::time_point last_log_time = std::chrono::steady_clock::now();
+
+    // FIXME: review these parts.
     uint64_t draws_since_last_log = 0;
     double draw_time_sum_ms = 0;
     double repaint_time_sum_ms = 0;
+
     bool logging_enabled = false;
     int stats_timer_id = 0;
 };
@@ -272,7 +274,8 @@ void Window::handle_paint(Painter &painter) {
     impl_->draws_since_last_log++;
 
     auto const &style = Theme::current();
-    painter.fill_rect({0, 0, size_.width, size_.height}, style.window.background);
+    auto const &palette = style.palette;
+    painter.fill_rect({0, 0, size_.width, size_.height}, palette.window);
 
     auto repaint_start = std::chrono::steady_clock::now();
 

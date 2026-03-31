@@ -17,17 +17,6 @@ class BaseTheme : public Theme {
   public:
     explicit BaseTheme(Palette p) {
         this->palette = std::move(p);
-        // Backward compatibility: use old field names if new ones not set
-        if (palette.window.r == 0 && palette.window.g == 0 && palette.window.b == 0) {
-            if (palette.window_bg.r > 0 || palette.window_bg.g > 0 || palette.window_bg.b > 0) {
-                palette.window = palette.window_bg;
-            }
-        }
-        if (palette.base.r == 0 && palette.base.g == 0 && palette.base.b == 0) {
-            if (palette.widget_bg.r > 0 || palette.widget_bg.g > 0 || palette.widget_bg.b > 0) {
-                palette.base = palette.widget_bg;
-            }
-        }
         if (palette.fonts.font_size == 0 && palette.font_size > 0) {
             palette.fonts.font_size = palette.font_size;
         }
@@ -37,8 +26,6 @@ class BaseTheme : public Theme {
         style = ThemeStyle::Material;
         system_font = palette.fonts.system;
         monospace_font = palette.fonts.monospace;
-
-        window.background = palette.window;
 
         // FIXME: all this should be removed. Custom colors are just a bad idea
         //        themes will not use these anyway.
@@ -370,7 +357,7 @@ class BaseTheme : public Theme {
 
     void draw_menubar_background(Painter &painter, Rect const &rect) const override {
         painter.fill_rect(rect, menubar.background);
-        auto border_c = window.background.darken(0.15f);
+        auto border_c = palette.window;
         painter.draw_line({rect.x, rect.height - 1.0f}, {rect.x + rect.width, rect.height - 1.0f},
                           border_c, 1.0f);
     }
@@ -1780,10 +1767,6 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
         break;
     }
 
-    // Sync backward compatibility fields
-    p.window_bg = p.window;
-    p.widget_bg = p.window;
-    p.input_bg = p.base;
     p.font_size = p.fonts.font_size;
     p.system_font = p.fonts.system;
     p.monospace_font = p.fonts.monospace;

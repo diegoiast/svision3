@@ -150,11 +150,6 @@ struct TooltipStyle {
     float delay_sec = 0.6f;
 };
 
-// FIXME: remove this style
-struct WindowStyle {
-    Color background;
-};
-
 struct LayoutStyle {
     Margins margins = {8, 8, 8, 8};
     float spacing = 8.0f;
@@ -191,11 +186,6 @@ struct Palette {
     Color success;
     Color warning;
     Color error;
-
-    // FIXME - remove backward compatibility fields
-    Color window_bg;
-    Color widget_bg;
-    Color input_bg;
 
     float progress_bar_height = 5.0f;
     float corner_radius = 0.0f;
@@ -337,7 +327,6 @@ class Theme {
     float focus_ring_margin = 5.0f;
     float focus_ring_corner_radius = 5.0f;
     Painter::LineStyle focus_ring_line_style = Painter::LineStyle::Dashed;
-    WindowStyle window;
     ButtonStyle button;
     LineInputStyle line_input;
     LineInputStyle text_edit;

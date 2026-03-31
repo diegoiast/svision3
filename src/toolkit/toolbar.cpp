@@ -43,14 +43,17 @@ class ToolButton : public Button {
 class ToolbarSeparator : public Widget {
   public:
     void paint(Painter &painter) override {
-        auto const &style = Theme::current().button;
+        auto const &theme = Theme::current();
+        auto const &style = theme.button;
+        auto const &palette = theme.palette;
+
         if (style.beveled) {
-            float x = rect_.width / 2.0f;
+            auto x = rect_.width / 2.0f;
             painter.draw_line({x - 1.0f, 4.0f}, {x - 1.0f, rect_.height - 4.0f}, style.shadow,
                               1.0f);
             painter.draw_line({x, 4.0f}, {x, rect_.height - 4.0f}, style.highlight, 1.0f);
         } else {
-            auto color = Theme::current().window.background.darken(0.15f);
+            auto color = palette.window.darken(0.15f);
             painter.draw_line({rect_.width / 2.0f, 4.0f}, {rect_.width / 2.0f, rect_.height - 4.0f},
                               color, 1.0f);
         }
