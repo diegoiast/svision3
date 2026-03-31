@@ -121,9 +121,6 @@ class BaseTheme : public Theme {
         tree_view.indent = 20.0f;
         tree_view.background = Color::with_gray(1.0f);
 
-        apply_base(progress_bar, palette);
-        progress_bar.fill = palette.accent;
-
         apply_base(slider, palette);
         slider.groove = palette.border;
         slider.handle = palette.window;
@@ -180,7 +177,7 @@ class BaseTheme : public Theme {
 
         bool show_full_frame = !flat || hovered || pressed;
         if (show_full_frame) {
-            painter.draw_frame(rect, bg, border_c, style, pressed && enabled);
+            painter.draw_frame(rect, bg, border_c, palette, pressed && enabled);
         } else if (style.corner_radius > 0.0f) {
             painter.fill_rounded_rect(rect, bg, style.corner_radius);
         } else {
@@ -219,7 +216,7 @@ class BaseTheme : public Theme {
             }
         }
 
-        painter.draw_frame(box_rect, bg, border, style, pressed && enabled);
+        painter.draw_frame(box_rect, bg, border, palette, pressed && enabled);
 
         if (check_state == CheckState::Checked) {
             auto cx = box_rect.x + box * 0.22f;
@@ -290,7 +287,7 @@ class BaseTheme : public Theme {
         auto content_w = rect.width - style.padding.left - style.padding.right;
         auto tx = rect.x + content_x - scroll_offset;
 
-        painter.draw_frame(rect, bg, border, style, true);
+        painter.draw_frame(rect, bg, border, palette, true);
 
         auto clip_rect = Rect{rect.x + content_x, rect.y, content_w, rect.height};
         painter.push_clip(clip_rect);
@@ -434,29 +431,17 @@ class BaseTheme : public Theme {
 
     void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                            bool enabled) const override {
-        auto const &style = progress_bar;
-        auto bg = enabled ? style.background : style.background.darken(0.1f);
-        auto fill_c = enabled ? style.fill : style.fill.darken(0.2f);
+        // auto const &style = progress_bar;
+        // auto fill_c = enabled ? style.fill : style.fill.darken(0.2f);
+        auto bg = palette.window;
+        auto fill = palette.accent;
 
-        painter.draw_frame(rect, bg, style.border, style, true);
-
-        auto inner = rect.inset(style.border_width);
+        auto inner = rect.inset(palette.border_width);
         auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
         auto fill_rect = Rect{inner.x, inner.y, fill_w, inner.height};
 
-        if (style.chunked) {
-            auto chunk_count =
-                static_cast<int>(inner.width / (style.chunk_width + style.chunk_gap));
-            for (int i = 0; i < chunk_count; ++i) {
-                auto cx = inner.x + i * (style.chunk_width + style.chunk_gap);
-                if (cx + style.chunk_width > inner.x + fill_w) {
-                    break;
-                }
-                painter.fill_rect({cx, inner.y, style.chunk_width, inner.height}, fill_c);
-            }
-        } else {
-            painter.fill_rect(fill_rect, fill_c);
-        }
+        painter.draw_frame(rect, bg, palette.border, palette, true);
+        painter.fill_rect(fill_rect, fill);
     }
 
     void draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal, bool hovered,
@@ -604,8 +589,9 @@ class BaseTheme : public Theme {
 
     void draw_list_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = list_view;
+
         if (style.beveled) {
-            painter.draw_frame(rect, style.background, style.border, style, true);
+            painter.draw_frame(rect, style.background, style.border, palette, true);
         } else {
             painter.fill_rounded_rect(rect, style.background, style.corner_radius);
             if (style.border_width > 0) {
@@ -621,7 +607,7 @@ class BaseTheme : public Theme {
     void draw_table_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = table_view;
         if (style.beveled) {
-            painter.draw_frame(rect, style.background, style.border, style, true);
+            painter.draw_frame(rect, style.background, style.border, palette, true);
         } else {
             painter.fill_rounded_rect(rect, style.background, style.corner_radius);
             if (style.border_width > 0) {
@@ -669,7 +655,7 @@ class BaseTheme : public Theme {
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = tree_view;
         if (style.beveled) {
-            painter.draw_frame(rect, style.background, style.border, style, true);
+            painter.draw_frame(rect, style.background, style.border, palette, true);
         } else {
             painter.fill_rounded_rect(rect, style.background, style.corner_radius);
             if (style.border_width > 0) {
@@ -689,7 +675,7 @@ class BaseTheme : public Theme {
         auto fm = painter.font_metrics(style.font_size);
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
 
-        painter.draw_frame(rect, style.background, border, style, true);
+        painter.draw_frame(rect, style.background, border, palette, true);
 
         if (!text.empty()) {
             auto clip_w = rect.width - style.padding.left - style.padding.right - 16.0f;
@@ -764,7 +750,7 @@ class BaseTheme : public Theme {
         auto bg = focused ? style.background_focused : style.background;
         auto border = focused ? style.border_focused : style.border;
 
-        painter.draw_frame(field_rect, bg, border, style, true);
+        painter.draw_frame(field_rect, bg, border, palette, true);
 
         auto content_x = field_rect.x + style.padding.left;
         auto content_w = field_rect.width - style.padding.left - style.padding.right;
@@ -812,7 +798,7 @@ class BaseTheme : public Theme {
             } else if (hovered && btn_style.background_hovered) {
                 b_bg = *btn_style.background_hovered;
             }
-            painter.draw_frame(r, b_bg, border, btn_style, false);
+            painter.draw_frame(r, b_bg, border, palette, false);
 
             auto cx = r.x + r.width / 2.0f;
             auto cy = r.y + r.height / 2.0f;
@@ -848,7 +834,7 @@ class BaseTheme : public Theme {
         auto border = focused ? style.border_focused : style.border;
         auto text_c = enabled ? style.text : Color::mid(style.text, style.background);
 
-        painter.draw_frame(rect, bg, border, style, true);
+        painter.draw_frame(rect, bg, border, palette, true);
         painter.push_clip(rect);
 
         auto last = std::min(static_cast<int>(lines.size()) - 1,
@@ -1164,8 +1150,6 @@ class Win95Theme : public BaseTheme {
   public:
     explicit Win95Theme(Palette p) : BaseTheme(std::move(p)) {
         name = "Windows 95";
-        progress_bar.chunked = true;
-        progress_bar.bar_height = 20.0f;
         focus_ring_margin = 0.0f;
         focus_ring_corner_radius = 0.0f;
         focus_ring_line_style = Painter::LineStyle::Dotted;
@@ -1240,7 +1224,7 @@ class Win95Theme : public BaseTheme {
             auto box_rect =
                 Rect{icon_x, rect.y + (rect.height - box_size) / 2.0f, box_size, box_size};
 
-            painter.draw_frame(box_rect, cb_style.background, cb_style.border, cb_style, false);
+            painter.draw_frame(box_rect, cb_style.background, cb_style.border, palette, false);
 
             auto expand_collapse_char = expanded ? "-" : "+";
             auto char_w = painter.text_size(expand_collapse_char, style.font_size).width;
@@ -1261,7 +1245,7 @@ class Win95Theme : public BaseTheme {
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = tree_view;
         if (style.beveled) {
-            painter.draw_frame(rect, style.background, style.border, style, true);
+            painter.draw_frame(rect, style.background, style.border, palette, true);
         } else {
             painter.fill_rounded_rect(rect, style.background, style.corner_radius);
             if (style.border_width > 0) {
@@ -1269,8 +1253,28 @@ class Win95Theme : public BaseTheme {
                                           style.border_width);
             }
         }
-        if (focused) {
-            painter.draw_focus_ring(rect, style.corner_radius);
+    }
+
+    void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
+                           bool enabled) const override {
+        auto bg = enabled ? palette.window : palette.window.darken(0.1f);
+        auto fill_c = enabled ? palette.accent : palette.accent.darken(0.2f);
+        const auto chunk_width = 8.0f;
+        const auto chunk_gap = 2.0f;
+
+        painter.draw_frame(rect, bg, palette.border, palette, true);
+
+        auto inner = rect.inset(palette.border_width);
+        auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
+        auto fill_rect = Rect{inner.x, inner.y, fill_w, inner.height};
+
+        auto chunk_count = static_cast<int>(inner.width / (chunk_width + chunk_gap));
+        for (int i = 0; i < chunk_count; ++i) {
+            auto cx = inner.x + i * (chunk_width + chunk_gap);
+            if (cx + chunk_width > inner.x + fill_w) {
+                break;
+            }
+            painter.fill_rect({cx, inner.y, chunk_width, inner.height}, fill_c);
         }
     }
 };
@@ -1412,8 +1416,9 @@ class GnomeTheme : public BaseTheme {
         if (has_close) {
             auto close_btn_size = 14.0f;
             auto close_x = rect.x + rect.width - style.tab_padding_h - close_btn_size - 2.0f;
-            auto close_rect = Rect{close_x, rect.y + (rect.height - close_btn_size) / 2.0f,
-                                   close_btn_size, close_btn_size};
+            // FIXME: no close button?
+            // auto close_rect = Rect{close_x, rect.y + (rect.height - close_btn_size) / 2.0f,
+            //                        close_btn_size, close_btn_size};
             auto close_cy = rect.y + rect.height / 2.0f;
             auto close_cx = close_x + close_btn_size / 2.0f;
 
@@ -1638,6 +1643,8 @@ static void palette_material(Palette &p, ColorScheme scheme) {
 
 static void palette_win95(Palette &p, ColorScheme scheme) {
     p.beveled = true;
+    p.progress_bar_height = 20;
+
     switch (scheme) {
     case ColorScheme::Light:
         p.window = Color::with_gray(0.75f);

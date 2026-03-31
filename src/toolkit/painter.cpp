@@ -8,23 +8,23 @@
 
 namespace toolkit {
 
-void Painter::draw_frame(Rect const &rect, Color bg, Color border, WidgetStyle const &style,
+void Painter::draw_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
                          bool sunken) {
     // Fill background first at full size
-    if (style.corner_radius > 0.0f) {
-        fill_rounded_rect(rect, bg, style.corner_radius);
+    if (palette.corner_radius > 0.0f) {
+        fill_rounded_rect(rect, bg, palette.corner_radius);
     } else {
         fill_rect(rect, bg);
     }
 
-    if (style.border_width <= 0) {
+    if (palette.border_width <= 0) {
         return;
     }
 
-    if (style.beveled) {
+    if (palette.beveled) {
         // Simple 3D bevel using highlight and shadow from style
-        Color top_left = sunken ? style.shadow : style.highlight;
-        Color bottom_right = sunken ? style.highlight : style.shadow;
+        auto top_left = sunken ? palette.shadow : palette.highlight;
+        auto bottom_right = sunken ? palette.highlight : palette.shadow;
 
         // Outer lines
         draw_line({rect.x, rect.y}, {rect.x + rect.width - 1, rect.y}, top_left, 1.0f);
@@ -36,26 +36,26 @@ void Painter::draw_frame(Rect const &rect, Color bg, Color border, WidgetStyle c
     } else {
         // Draw flat border just inside the rectangle to avoid clipping issues.
         // Stroke is centered on the path, so we inset by half the width.
-        auto inset = style.border_width / 2.0f;
+        auto inset = palette.border_width / 2.0f;
         auto border_rect = rect.inset(inset);
-        auto border_c = sunken ? border.darken(0.2f) : border;
+        auto border_c = sunken ? palette.border.darken(0.2f) : border;
 
-        if (style.corner_radius > 0.0f) {
-            draw_rounded_rect(border_rect, border_c, std::max(0.0f, style.corner_radius - inset),
-                              style.border_width);
+        if (palette.corner_radius > 0.0f) {
+            draw_rounded_rect(border_rect, border_c, std::max(0.0f, palette.corner_radius - inset),
+                              palette.border_width);
         } else {
-            draw_rect(border_rect, border_c, style.border_width);
+            draw_rect(border_rect, border_c, palette.border_width);
         }
     }
 }
 
 void Painter::draw_focus_ring(Rect const &rect, float corner_radius) {
-    Color ring = Theme::current().line_input.border_focused;
-    ring.a = 0.5f;
-    float lw = 2.0f;
+    auto lw = 2.0f;
     // Draw 1 pixel inside the rectangle to ensure it's fully visible and not clipped
-    float inset = lw / 2.0f + 0.5f;
-    Rect r = rect.inset(inset);
+    auto inset = lw / 2.0f + 0.5f;
+    auto ring = Theme::current().line_input.border_focused;
+    auto r = rect.inset(inset);
+    ring.a = 0.5f;
     if (corner_radius > 0.0f) {
         draw_rounded_rect(r, ring, std::max(0.0f, corner_radius - inset), lw);
     } else {

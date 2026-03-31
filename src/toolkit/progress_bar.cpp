@@ -24,8 +24,8 @@ void ProgressBar::paint(Painter &painter) {
 }
 
 Size ProgressBar::size_hint() const {
-    auto const &style = Theme::current().progress_bar;
-    return {0, style.bar_height + 8.0f};
+    auto const h = Theme::current().palette.progress_bar_height;
+    return {0, h};
 }
 
 } // namespace toolkit

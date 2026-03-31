@@ -192,18 +192,18 @@ struct Palette {
     Color warning;
     Color error;
 
-    // Platform-specific defaults
-    SystemFonts fonts;
-
     // FIXME - remove backward compatibility fields
     Color window_bg;
     Color widget_bg;
     Color input_bg;
 
+    float progress_bar_height = 5.0f;
     float corner_radius = 0.0f;
     float border_width = 1.0f;
     bool beveled = false;
 
+    // Platform-specific defaults
+    SystemFonts fonts;
     // FIXME: this should be platform dependent, read from desktop configuration
     float font_size = 14.0f;
     std::string system_font = "sans-serif";
@@ -331,9 +331,9 @@ class Theme {
     std::string name;
     ThemeStyle style;
     Palette palette;
-
     std::string system_font;
     std::string monospace_font;
+
     float focus_ring_margin = 5.0f;
     float focus_ring_corner_radius = 5.0f;
     Painter::LineStyle focus_ring_line_style = Painter::LineStyle::Dashed;
@@ -350,7 +350,6 @@ class Theme {
     ListViewStyle list_view;
     TableViewStyle table_view;
     TreeViewStyle tree_view;
-    ProgressBarStyle progress_bar;
     SliderStyle slider;
     TooltipStyle tooltip;
     LayoutStyle layout;

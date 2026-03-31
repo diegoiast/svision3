@@ -9,7 +9,7 @@
 
 namespace toolkit {
 
-struct WidgetStyle;
+struct Palette;
 
 class Painter {
   public:
@@ -60,7 +60,7 @@ class Painter {
     virtual std::string_view name() const = 0;
 
     // Non-virtual convenience methods implemented in terms of the above
-    void draw_frame(Rect const &rect, Color bg, Color border, WidgetStyle const &style,
+    void draw_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
                     bool sunken = false);
     void draw_focus_ring(Rect const &rect, float corner_radius);
 

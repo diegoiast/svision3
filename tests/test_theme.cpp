@@ -85,16 +85,9 @@ TEST_CASE("Theme from custom palette", "[theme]") {
     auto t = Theme::create(ThemeStyle::MacOS, p);
     REQUIRE(t->window.background.r == 0.1f);
     REQUIRE(t->palette.font_size == 16.0f);
-    // REQUIRE(t->list_view.alternate_qbg.r == 0.25f);
 }
 
 TEST_CASE("ProgressBar style has Win95 chunked", "[theme]") {
     auto t = Theme::create(ThemeStyle::Win95, ColorScheme::Light);
-    REQUIRE(t->progress_bar.chunked == true);
-    REQUIRE(t->progress_bar.bar_height == 20.0f);
-}
-
-TEST_CASE("Non-Win95 ProgressBar is not chunked", "[theme]") {
-    auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Light);
-    REQUIRE(t->progress_bar.chunked == false);
+    REQUIRE(t->palette.progress_bar_height == 20.0f);
 }
