@@ -53,7 +53,7 @@ void Painter::draw_focus_ring(Rect const &rect, float corner_radius) {
     auto lw = 2.0f;
     // Draw 1 pixel inside the rectangle to ensure it's fully visible and not clipped
     auto inset = lw / 2.0f + 0.5f;
-    auto ring = Theme::current().line_input.border_focused;
+    auto ring = Theme::current().palette.accent;
     auto r = rect.inset(inset);
     ring.a = 0.5f;
     if (corner_radius > 0.0f) {

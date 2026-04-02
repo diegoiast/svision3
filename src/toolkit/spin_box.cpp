@@ -129,9 +129,11 @@ CursorShape SpinBox::cursor() const {
 
 Size SpinBox::size_hint() const {
     auto const &style = Theme::current().line_input;
-    auto h = style.font_size + style.padding.top + style.padding.bottom + 8.0f;
+    auto const &palette = Theme::current().palette;
+
+    auto h = palette.font_size + style.padding.top + style.padding.bottom + 8.0f;
     auto max_text = std::to_string(max_val_);
-    auto sz = Painter::measure_text(max_text, style.font_size);
+    auto sz = Painter::measure_text(max_text, palette.font_size);
     auto w = sz.width + style.padding.left + style.padding.right + btn_width() + 16.0f;
     return {w, h};
 }

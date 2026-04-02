@@ -15,6 +15,7 @@
 
 namespace toolkit {
 
+// FIXME: remove this style
 struct WidgetStyle {
     Color background;
     Color border;
@@ -31,16 +32,12 @@ struct WidgetStyle {
 };
 
 // FIXME: remove this style
-struct ButtonStyle : WidgetStyle {
+struct ButtonStyle {
     Margins padding = {8, 16, 8, 16};
 };
 
 // FIXME: remove this style
-struct LineInputStyle : WidgetStyle {
-    Color background_focused;
-    Color border_focused;
-    Color placeholder;
-    Color cursor;
+struct LineInputStyle {
     Margins padding = {4, 8, 4, 8};
 };
 
@@ -91,13 +88,13 @@ struct TabWidgetStyle : WidgetStyle {
 };
 
 // FIXME: remove this style
-struct ListViewStyle : WidgetStyle {
+struct ListViewStyle {
     float item_padding = 4.0f;
     float item_padding_h = 8.0f;
 };
 
 // FIXME: remove this style
-struct TableViewStyle : WidgetStyle {
+struct TableViewStyle {
     float item_padding = 4.0f;
     float item_padding_h = 8.0f;
     float header_padding_v = 6.0f;
@@ -171,10 +168,10 @@ struct Palette {
     // If the palette supports shadows, a shadow, otherwise the same as border
     Color dark_shadow;
 
-	// Backgrond color used by buttons, may be ommited.
-	std::optional<Color> background_pressed;
-	// Backgrond color used by buttons, may be ommited.
-	std::optional<Color> background_hovered;
+    // Backgrond color used by buttons, may be ommited.
+    std::optional<Color> background_pressed;
+    // Backgrond color used by buttons, may be ommited.
+    std::optional<Color> background_hovered;
 
     // Semantic colors
     Color success;

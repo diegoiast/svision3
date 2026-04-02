@@ -41,21 +41,6 @@ class BaseTheme : public Theme {
             ws.font_size = p.fonts.font_size;
         };
 
-        apply_base(button, palette);
-
-        apply_base(line_input, palette);
-        line_input.background = palette.base;
-        line_input.background_focused = palette.base;
-        line_input.border_focused = palette.accent;
-        line_input.placeholder = Color::mid(palette.text, palette.base);
-        line_input.cursor = palette.text;
-
-        apply_base(text_edit, palette);
-        text_edit.background = palette.base;
-        text_edit.background_focused = palette.base;
-        text_edit.border_focused = palette.accent;
-        text_edit.placeholder = Color::mid(palette.text, palette.base);
-        text_edit.cursor = palette.text;
 
         apply_base(checkbox, palette);
         checkbox.background = palette.base;
@@ -95,8 +80,6 @@ class BaseTheme : public Theme {
         tab_widget.tab_inactive_text = Color::mid(
             palette.text, is_dark ? palette.window.lighten(0.20f) : palette.window.darken(0.20f));
 
-        apply_base(list_view, palette);
-
         apply_base(tree_view, palette);
         tree_view.selected_bg = palette.accent;
         tree_view.selected_text = Color::with_gray(1.0f);
@@ -129,7 +112,6 @@ class BaseTheme : public Theme {
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                      ButtonState state, bool focused, bool enabled, bool flat,
                      std::optional<Color> background) const override {
-        auto const &palette = Theme::current().palette;
 
         auto hovered = state == ButtonState::Hovered || state == ButtonState::ClickedInside;
         auto pressed = state == ButtonState::ClickedInside;
@@ -159,9 +141,9 @@ class BaseTheme : public Theme {
         if (enabled && !background) {
             if (pressed && palette.background_pressed) {
                 bg = *palette.background_pressed;
+            } else if (focused) {
                 // FIXME: do we need a focused color for Buttons?
-                //} else if (focused) {
-                //    bg = palette.background_selected;
+                bg = palette.base;
             } else if (hovered && palette.background_hovered) {
                 bg = *palette.background_hovered;
             }
@@ -239,6 +221,7 @@ class BaseTheme : public Theme {
         auto border = focused ? style.border_focused : style.border;
         auto bg = style.background;
         if (enabled) {
+            // FIXME: should be use this here? or do this in other themes
             if (pressed) {
                 bg = bg.darken(0.08f);
             } else if (button_state == ButtonState::ClickedOutside) {
@@ -250,7 +233,6 @@ class BaseTheme : public Theme {
 
         painter.fill_circle(center, r, bg);
         painter.draw_circle(center, r, border, style.border_width);
-
         if (style.beveled) {
             painter.draw_circle(center, r - 1.0f, style.shadow, 1.0f);
         }
@@ -267,37 +249,36 @@ class BaseTheme : public Theme {
                          float scroll_offset, std::optional<Color> background,
                          bool cursor_visible) const override {
         auto const &style = line_input;
-        auto bg = background.value_or(focused ? style.background_focused : style.background);
-        auto border = focused ? style.border_focused : style.border;
-        auto fm = painter.font_metrics(style.font_size);
+        auto border = focused ? palette.accent : palette.border;
+        auto fm = painter.font_metrics(palette.font_size);
         auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto content_x = style.padding.left;
         auto content_w = rect.width - style.padding.left - style.padding.right;
         auto tx = rect.x + content_x - scroll_offset;
 
-        painter.draw_frame(rect, bg, border, palette, true);
+        painter.draw_frame(rect, palette.base, border, palette, true);
 
         auto clip_rect = Rect{rect.x + content_x, rect.y, content_w, rect.height};
         painter.push_clip(clip_rect);
 
-        auto text_c = enabled ? style.text : Color::mid(style.text, style.background);
-
+        auto text_c = enabled ? palette.text : palette.text_disabled;
         if (selection_start >= 0 && selection_end > selection_start) {
             auto before_s = text.substr(0, selection_start);
             auto before_e = text.substr(0, selection_end);
-            auto sx = tx + painter.text_size(before_s, style.font_size).width;
-            auto ex = tx + painter.text_size(before_e, style.font_size).width;
+            auto sx = tx + painter.text_size(before_s, palette.font_size).width;
+            auto ex = tx + painter.text_size(before_e, palette.font_size).width;
             auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
             auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
             painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
         }
 
         if (text.empty() && !focused) {
-            painter.draw_text(placeholder, {tx, baseline_y}, style.placeholder, style.font_size);
+            painter.draw_text(placeholder, {tx, baseline_y}, palette.placeholder,
+                              palette.font_size);
         } else if (!text.empty()) {
             if (password_mode) {
-                auto dot_radius = style.font_size * 0.25f;
-                auto char_w = painter.text_size("8", style.font_size).width;
+                auto dot_radius = palette.font_size * 0.25f;
+                auto char_w = painter.text_size("8", palette.font_size).width;
                 auto center_off_y = (fm.ascent - fm.descent) / 2.0f;
                 auto char_count = 0;
                 auto i = 0;
@@ -310,7 +291,7 @@ class BaseTheme : public Theme {
                     i = Utf8Iterator::next(text, i);
                 }
             } else {
-                painter.draw_text(text, {tx, baseline_y}, text_c, style.font_size);
+                painter.draw_text(text, {tx, baseline_y}, text_c, palette.font_size);
             }
         }
 
@@ -318,13 +299,12 @@ class BaseTheme : public Theme {
             auto before = text.substr(0, cursor_pos);
             auto cx = tx;
             if (!before.empty()) {
-                cx += painter.text_size(before, style.font_size).width;
+                cx += painter.text_size(before, palette.font_size).width;
             }
             auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
             auto cy_bot = cy_top + fm.height + 2.0f;
-            painter.draw_line({cx, cy_top}, {cx, cy_bot}, style.cursor, 1.5f);
+            painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);
         }
-
         painter.pop_clip();
     }
 
@@ -335,12 +315,12 @@ class BaseTheme : public Theme {
         auto fm = painter.font_metrics(style.font_size);
 
         if (hovered || active) {
-            Color bg = style.background_hovered.value_or(style.background.darken(0.1f));
+            auto bg = style.background_hovered.value_or(style.background.darken(0.1f));
             painter.fill_rect(rect, bg);
         }
 
         auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
-        Color text_c = style.text;
+        auto text_c = style.text;
         painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, style.font_size);
 
         if (show_mnemonics && mnemonic_index >= 0) {
@@ -419,8 +399,6 @@ class BaseTheme : public Theme {
 
     void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                            bool enabled) const override {
-        // auto const &style = progress_bar;
-        // auto fill_c = enabled ? style.fill : style.fill.darken(0.2f);
         auto bg = palette.window;
         auto fill = palette.accent;
 
@@ -563,7 +541,7 @@ class BaseTheme : public Theme {
 
         painter.fill_rect(rect, bg);
 
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.font_size);
         auto text_x = rect.x + style.item_padding_h;
         if (icon) {
             auto icon_y = rect.y + (rect.height - static_cast<float>(icon->height)) / 2.0f;
@@ -572,39 +550,38 @@ class BaseTheme : public Theme {
         }
         auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_c = selected ? palette.highlighted_text : palette.text;
-        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.font_size);
     }
 
     void draw_list_background(Painter &painter, Rect const &rect, bool focused) const override {
-        auto const &style = list_view;
 
-        if (style.beveled) {
-            painter.draw_frame(rect, style.background, style.border, palette, true);
+        if (palette.beveled) {
+            painter.draw_frame(rect, palette.base, palette.border, palette, true);
         } else {
-            painter.fill_rounded_rect(rect, style.background, style.corner_radius);
-            if (style.border_width > 0) {
-                painter.draw_rounded_rect(rect, style.border, style.corner_radius,
-                                          style.border_width);
+            painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
+            if (palette.border_width > 0) {
+                painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
+                                          palette.border_width);
             }
         }
         if (focused) {
-            painter.draw_focus_ring(rect, style.corner_radius);
+            painter.draw_focus_ring(rect, palette.corner_radius);
         }
     }
 
     void draw_table_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = table_view;
-        if (style.beveled) {
-            painter.draw_frame(rect, style.background, style.border, palette, true);
+        if (palette.beveled) {
+            painter.draw_frame(rect, palette.base, palette.border, palette, true);
         } else {
-            painter.fill_rounded_rect(rect, style.background, style.corner_radius);
-            if (style.border_width > 0) {
-                painter.draw_rounded_rect(rect, style.border, style.corner_radius,
-                                          style.border_width);
+            painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
+            if (palette.border_width > 0) {
+                painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
+                                          palette.border_width);
             }
         }
         if (focused) {
-            painter.draw_focus_ring(rect, style.corner_radius);
+            painter.draw_focus_ring(rect, palette.corner_radius);
         }
     }
 
@@ -713,12 +690,11 @@ class BaseTheme : public Theme {
     }
 
     void draw_toolbar(Painter &painter, Rect const &rect) const override {
-        auto const &style = button;
-        if (style.beveled) {
-            painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, style.highlight,
+        if (palette.beveled) {
+            painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, palette.highlight,
                               1.0f);
             painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
-                              {rect.x + rect.width, rect.y + rect.height - 1.0f}, style.shadow,
+                              {rect.x + rect.width, rect.y + rect.height - 1.0f}, palette.shadow,
                               1.0f);
         } else {
             auto border_c = palette.window.darken(0.15f);
@@ -735,41 +711,39 @@ class BaseTheme : public Theme {
         auto const &btn_style = button;
         auto bw = rect.height;
         auto field_rect = Rect{rect.x, rect.y, rect.width - bw, rect.height};
-        auto bg = focused ? style.background_focused : style.background;
-        auto border = focused ? style.border_focused : style.border;
+        auto border = focused ? palette.accent : palette.border;
 
-        painter.draw_frame(field_rect, bg, border, palette, true);
+        painter.draw_frame(field_rect, palette.base, border, palette, true);
 
         auto content_x = field_rect.x + style.padding.left;
         auto content_w = field_rect.width - style.padding.left - style.padding.right;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.font_size);
         auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-
         auto clip_rect = Rect{content_x, rect.y, content_w, rect.height};
         painter.push_clip(clip_rect);
 
         if (selection_start >= 0 && selection_end > selection_start) {
             auto before_s = text.substr(0, selection_start);
             auto before_e = text.substr(0, selection_end);
-            auto sx = content_x + painter.text_size(before_s, style.font_size).width;
-            auto ex = content_x + painter.text_size(before_e, style.font_size).width;
+            auto sx = content_x + painter.text_size(before_s, palette.font_size).width;
+            auto ex = content_x + painter.text_size(before_e, palette.font_size).width;
             auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
             auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
             painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
         }
 
-        auto text_c = enabled ? style.text : Color::mid(style.text, style.background);
-        painter.draw_text(text, {content_x, baseline_y}, text_c, style.font_size);
+        auto text_c = enabled ? palette.text : palette.text_disabled;
+        painter.draw_text(text, {content_x, baseline_y}, text_c, palette.font_size);
 
         if (focused && cursor_pos >= 0 && cursor_visible) {
             auto before = text.substr(0, cursor_pos);
             auto cx = content_x;
             if (!before.empty()) {
-                cx += painter.text_size(before, style.font_size).width;
+                cx += painter.text_size(before, palette.font_size).width;
             }
             auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
             auto cy_bot = cy_top + fm.height + 2.0f;
-            painter.draw_line({cx, cy_top}, {cx, cy_bot}, style.cursor, 1.5f);
+            painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);
         }
 
         painter.pop_clip();
@@ -791,7 +765,7 @@ class BaseTheme : public Theme {
             auto cx = r.x + r.width / 2.0f;
             auto cy = r.y + r.height / 2.0f;
             auto arrow_sz = 3.5f;
-            auto tc = style.text;
+            auto tc = palette.text;
 
             if (r.y < rect.y + rect.height / 2.0f) {
                 painter.draw_line({cx - arrow_sz, cy + arrow_sz * 0.4f}, {cx, cy - arrow_sz * 0.4f},
@@ -817,10 +791,10 @@ class BaseTheme : public Theme {
                         float scroll_x, float scroll_y, bool focused, bool enabled,
                         std::chrono::steady_clock::time_point cursor_blink_time) const override {
         auto const &style = text_edit;
-        auto fm = painter.font_metrics(style.font_size, FontFamily::Monospace);
-        auto bg = focused ? style.background_focused : style.background;
-        auto border = focused ? style.border_focused : style.border;
-        auto text_c = enabled ? style.text : Color::mid(style.text, style.background);
+        auto fm = painter.font_metrics(palette.font_size, FontFamily::Monospace);
+        auto bg = palette.base;
+        auto border = focused ? palette.accent : palette.border;
+        auto text_c = enabled ? palette.text : palette.text_disabled;
 
         painter.draw_frame(rect, bg, border, palette, true);
         painter.push_clip(rect);
@@ -829,16 +803,16 @@ class BaseTheme : public Theme {
                              first_visible_line + static_cast<int>(rect.height / line_height));
 
         auto gutter_rect = Rect{rect.x, rect.y, gutter_width, rect.height};
-        auto gutter_bg = style.background.darken(0.03f);
+        auto gutter_bg = palette.base;
         painter.fill_rect(gutter_rect, gutter_bg);
 
         for (auto i = first_visible_line; i <= last; i++) {
             auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
             auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
             auto num = std::to_string(i + 1);
-            auto nw = Painter::measure_text(num, style.font_size, FontFamily::Monospace).width;
-            painter.draw_text(num, {rect.x + gutter_width - nw - 8.0f, baseline}, style.placeholder,
-                              style.font_size, FontFamily::Monospace);
+            auto nw = Painter::measure_text(num, palette.font_size, FontFamily::Monospace).width;
+            painter.draw_text(num, {rect.x + gutter_width - nw - 8.0f, baseline},
+                              palette.placeholder, palette.font_size, FontFamily::Monospace);
         }
 
         auto area = Rect{rect.x + gutter_width, rect.y, rect.width - gutter_width, rect.height};
@@ -865,20 +839,20 @@ class BaseTheme : public Theme {
                     auto sx =
                         tx0 + (sel_start > 0
                                    ? Painter::measure_text(lines[i].substr(0, sel_start),
-                                                           style.font_size, FontFamily::Monospace)
+                                                           palette.font_size, FontFamily::Monospace)
                                          .width
                                    : 0.0f);
                     auto ex = tx0 + Painter::measure_text(lines[i].substr(0, sel_end),
-                                                          style.font_size, FontFamily::Monospace)
+                                                          palette.font_size, FontFamily::Monospace)
                                         .width;
                     if (i != selection_end_line) {
-                        ex += style.font_size * 0.4f;
+                        ex += palette.font_size * 0.4f;
                     }
                     painter.fill_rect({sx, y, ex - sx, line_height}, sel_bg);
                 }
             }
 
-            painter.draw_text(lines[i], {tx0, baseline}, text_c, style.font_size,
+            painter.draw_text(lines[i], {tx0, baseline}, text_c, palette.font_size,
                               FontFamily::Monospace);
         }
 
@@ -892,10 +866,10 @@ class BaseTheme : public Theme {
                 auto cx = tx0;
                 if (cursor_col > 0 && cursor_line < static_cast<int>(lines.size())) {
                     cx += Painter::measure_text(lines[cursor_line].substr(0, cursor_col),
-                                                style.font_size, FontFamily::Monospace)
+                                                palette.font_size, FontFamily::Monospace)
                               .width;
                 }
-                painter.draw_line({cx, cy}, {cx, cy + line_height}, style.cursor, 1.5f);
+                painter.draw_line({cx, cy}, {cx, cy + line_height}, palette.text, 1.5f);
             }
         }
 
@@ -906,15 +880,15 @@ class BaseTheme : public Theme {
             auto bar_h = std::max(20.0f, rect.height * (rect.height / content_h));
             auto bar_y = (scroll_y / content_h) * rect.height;
             auto sb = Rect{rect.x + rect.width - 6.0f, rect.y + bar_y, 4.0f, bar_h};
-            painter.fill_rounded_rect(
-                sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.25f), 2.0f);
+            // FIXME: whats is this 2.0f?
+            painter.fill_rounded_rect(sb, palette.text, 2.0f);
         }
 
         painter.pop_clip();
     }
 
     void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const override {
-        Color ring = line_input.border_focused;
+        Color ring = palette.border;
         ring.a = 0.5f;
         float lw = 2.0f;
         float inset = lw / 2.0f + 0.5f;
@@ -976,14 +950,14 @@ class BaseTheme : public Theme {
     Color error_color() const override { return palette.error.lighten(0.3f); }
 
     Size measure_button(std::string_view text, Icon const &icon) const override {
-        auto text_w = Painter::measure_text(text, button.font_size).width;
+        auto text_w = Painter::measure_text(text, palette.font_size).width;
         auto icon_w = 0.0f;
         if (icon) {
             icon_w = static_cast<float>(icon->width);
         }
         auto total_w = text_w + (icon ? icon_w + 4.0f : 0.0f);
         auto w = total_w + button.padding.left + button.padding.right;
-        auto h = button.font_size + button.padding.top + button.padding.bottom;
+        auto h = palette.font_size + button.padding.top + button.padding.bottom;
         return {w, h};
     }
 
@@ -1151,7 +1125,7 @@ class Win95Theme : public BaseTheme {
         auto y = rect.y;
         auto w = rect.width;
         auto h = rect.height;
-        auto ring = line_input.border_focused;
+        auto ring = palette.border;
         ring.a = 0.5f;
 
         painter.draw_rect(rect, ring, lw);
@@ -1277,7 +1251,6 @@ class MaterialTheme : public BaseTheme {
         //button.background_pressed =
         //    is_dark ? palette.window.lighten(0.15f) : palette.window.darken(0.10f);
         button.padding = {10, 24, 10, 24};
-        button.corner_radius = 4.0f;
         menu.padding = {4, 4, 4, 4};
         menubar.padding = {4, 12, 4, 12};
         slider.handle_size = 18.0f;
@@ -1354,17 +1327,11 @@ class GnomeTheme : public BaseTheme {
         name = "GNOME";
         bool dark = palette.window.luma() < 0.5f;
         Color btn_bg = dark ? palette.window.lighten(0.04f) : palette.window.darken(0.03f);
-        button.background = btn_bg;
-        //button.background_hovered = dark ? btn_bg.lighten(0.04f) : btn_bg.darken(0.04f);
-        //button.background_pressed = dark ? btn_bg.darken(0.06f) : btn_bg.darken(0.10f);
-        button.border = dark ? palette.border.lighten(0.04f) : palette.border.darken(0.06f);
         button.padding = {8, 20, 8, 20};
-        button.corner_radius = 8.0f;
 
         checkbox.corner_radius = 5.0f;
         checkbox.border_width = 2.0f;
         radio.border_width = 2.0f;
-        line_input.corner_radius = palette.corner_radius;
         combobox.corner_radius = palette.corner_radius;
         slider.handle_size = 22.0f;
         slider.groove_thickness = 6.0f;
@@ -1430,9 +1397,6 @@ class Plasma6Theme : public BaseTheme {
     explicit Plasma6Theme(Palette p) : BaseTheme(std::move(p)) {
         name = "Plasma 6";
         button.padding = {6, 18, 6, 18};
-        button.corner_radius = 5.0f;
-        //button.background_hovered = palette.highlight;
-        //button.background_pressed = palette.highlight.darken(0.1f);
         checkbox.corner_radius = 5.0f;
         checkbox.indicator = Color::with_gray(0.0f);
         radio.indicator = Color::with_gray(0.0f);
@@ -1453,8 +1417,8 @@ class Plasma6Theme : public BaseTheme {
             auto line_c = palette.border;
             line_c.a = 0.3f;
             painter.draw_line(
-                {rect.x + button.corner_radius, rect.y + rect.height - 2.0f},
-                {rect.x + rect.width - button.corner_radius, rect.y + rect.height - 2.0f}, line_c,
+                {rect.x + palette.corner_radius, rect.y + rect.height - 2.0f},
+                {rect.x + rect.width - palette.corner_radius, rect.y + rect.height - 2.0f}, line_c,
                 1.0f);
         }
     }
@@ -1689,6 +1653,9 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.highlight = Color::from_argb(0xFFd6ecf8);
         p.alternate = Color::with_gray(0.90f);
         p.error = Color::rgb(0.9, 0.3, 0.3);
+
+        p.background_hovered = Color::with_gray(0.90f).lighten(0.10);
+        p.background_pressed = Color::with_gray(0.90f).lighten(0.05);
         break;
     case ColorScheme::Dark:
         p.window = Color::rgb(0.137f, 0.149f, 0.161f);
@@ -1699,6 +1666,10 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.accent = Color::rgb(0.239f, 0.682f, 0.914f);
         p.highlight = p.accent;
         p.alternate = Color::rgb(0.23f, 0.25f, 0.27f);
+        p.error = Color::rgb(0.9, 0.3, 0.3);
+
+        p.background_hovered = Color::with_gray(0.8f);
+        p.background_pressed = Color::with_gray(0.9f);
         break;
     }
 }
@@ -1806,7 +1777,7 @@ void Theme::draw_focus_ring_for_widget(Painter &painter, Widget const *widget) c
     auto margin = focus_ring_margin;
     auto r = Rect{global_x - margin, global_y - margin, widget->rect().width + margin * 2,
                   widget->rect().height + margin * 2};
-    auto corner_radius = line_input.corner_radius + focus_ring_corner_radius;
+    auto corner_radius = palette.corner_radius + focus_ring_corner_radius;
 
     painter.set_line_style(focus_ring_line_style);
     draw_focus_ring(painter, r, corner_radius);

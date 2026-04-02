@@ -47,11 +47,11 @@ class ToolbarSeparator : public Widget {
         auto const &style = theme.button;
         auto const &palette = theme.palette;
 
-        if (style.beveled) {
+        if (palette.beveled) {
             auto x = rect_.width / 2.0f;
-            painter.draw_line({x - 1.0f, 4.0f}, {x - 1.0f, rect_.height - 4.0f}, style.shadow,
+            painter.draw_line({x - 1.0f, 4.0f}, {x - 1.0f, rect_.height - 4.0f}, palette.shadow,
                               1.0f);
-            painter.draw_line({x, 4.0f}, {x, rect_.height - 4.0f}, style.highlight, 1.0f);
+            painter.draw_line({x, 4.0f}, {x, rect_.height - 4.0f}, palette.highlight, 1.0f);
         } else {
             auto color = palette.window.darken(0.15f);
             painter.draw_line({rect_.width / 2.0f, 4.0f}, {rect_.width / 2.0f, rect_.height - 4.0f},

@@ -25,7 +25,6 @@ TEST_CASE("Theme::create with all styles and schemes", "[theme]") {
         for (auto scheme : {ColorScheme::Light, ColorScheme::Dark}) {
             auto t = Theme::create(style, scheme);
             REQUIRE_FALSE(t->name.empty());
-            REQUIRE(t->button.font_size > 0);
         }
     }
 }

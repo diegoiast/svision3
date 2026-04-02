@@ -299,7 +299,8 @@ void ListView::scroll_to(int index) {
 
 float ListView::item_height() const {
     auto const &style = Theme::current().list_view;
-    auto fm = Painter::measure_font_metrics(style.font_size);
+    auto const &palette = Theme::current().palette;
+    auto fm = Painter::measure_font_metrics(palette.font_size);
     return fm.height + style.item_padding * 2;
 }
 
@@ -343,7 +344,7 @@ void ListView::paint(Painter &painter) {
     auto const &palette = theme.palette;
 
     auto ih = item_height();
-    auto fm = painter.font_metrics(style.font_size);
+    auto fm = painter.font_metrics(palette.font_size);
     auto n = adapter_->count();
 
     Theme::current().draw_list_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
@@ -352,7 +353,7 @@ void ListView::paint(Painter &painter) {
     auto is_dark = palette.window.luma() < 0.5f;
     auto first_visible = std::max(0, static_cast<int>(scroll_offset_ / ih));
     auto last_visible = std::min(n - 1, static_cast<int>((scroll_offset_ + rect_.height) / ih));
-    auto bw = style.border_width;
+    auto bw = palette.border_width;
     auto inner_w = rect_.width - bw * 2;
     auto row_sel = palette.highlight;
     auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
@@ -375,8 +376,8 @@ void ListView::paint(Painter &painter) {
         auto bar_x = rect_.width - 6.0f;
         auto sb = Rect{bar_x, bar_y, 4.0f, bar_h};
 
-        painter.fill_rounded_rect(sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.25f),
-                                  2.0f);
+        // FIXME: what is this 2.0f?
+        painter.fill_rounded_rect(sb, palette.text, 2.0f);
     }
 
     painter.pop_clip();

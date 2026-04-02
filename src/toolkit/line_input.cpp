@@ -173,13 +173,13 @@ void LineInput::sync_commands() {
 }
 
 float LineInput::clear_btn_size() const {
-    auto const &style = Theme::current().line_input;
-    return style.font_size + 2.0f;
+    auto const &palette = Theme::current().palette;
+    return palette.font_size + 2.0f;
 }
 
 float LineInput::peek_btn_size() const {
-    auto const &style = Theme::current().line_input;
-    return style.font_size + 2.0f;
+    auto const &palette = Theme::current().palette;
+    return palette.font_size + 2.0f;
 }
 
 float LineInput::content_right_inset() const {
@@ -230,6 +230,7 @@ bool LineInput::hit_peek_btn(Point pos) const {
 
 size_t LineInput::pos_from_x(float x) const {
     auto const &style = Theme::current().line_input;
+    auto const &palette = Theme::current().palette;
     auto click_x = x - style.padding.left + scroll_offset_;
     size_t current_pos = 0;
 
@@ -241,12 +242,12 @@ size_t LineInput::pos_from_x(float x) const {
         size_t next_pos = Utf8Iterator::next(text_, current_pos);
         std::string before =
             password_mode_ ? get_masked_text(text_, next_pos) : text_.substr(0, next_pos);
-        auto sz = Painter::measure_text(before, style.font_size);
+        auto sz = Painter::measure_text(before, palette.font_size);
         if (sz.width > click_x) {
             // Check if we are closer to the previous or next character
             std::string before_prev =
                 password_mode_ ? get_masked_text(text_, current_pos) : text_.substr(0, current_pos);
-            auto prev_sz = Painter::measure_text(before_prev, style.font_size);
+            auto prev_sz = Painter::measure_text(before_prev, palette.font_size);
             if (click_x - prev_sz.width < sz.width - click_x) {
                 return current_pos;
             } else {
@@ -297,7 +298,9 @@ void LineInput::paint(Painter &painter) {
     paint_buttons(painter);
 }
 
+// FIXME: move this to use the theme paint buttons primitives
 void LineInput::paint_buttons(Painter &painter) {
+    auto const &palette = Theme::current().palette;
     bool clear_visible = !text_.empty() && !read_only_;
     if (clear_visible || is_password_field_) {
         auto const &style = Theme::current().line_input;
@@ -311,12 +314,12 @@ void LineInput::paint_buttons(Painter &painter) {
             auto r = sz / 2.0f;
 
             if (clear_hovered_ || clear_pressed_) {
-                Color circle_bg = style.text;
+                Color circle_bg = palette.text;
                 circle_bg.a = clear_pressed_ ? 0.22f : 0.12f;
                 painter.fill_rounded_rect({bx, by, sz, sz}, circle_bg, r);
             }
 
-            auto x_col = style.text;
+            auto x_col = palette.text;
             auto half = sz * 0.22f;
             x_col.a = clear_hovered_ ? 0.8f : 0.45f;
             painter.draw_line({cx - half, cy - half}, {cx + half, cy + half}, x_col, 1.5f);
@@ -335,12 +338,12 @@ void LineInput::paint_buttons(Painter &painter) {
             auto r = sz / 2.0f;
 
             if (peek_hovered_ || peek_pressed_) {
-                Color circle_bg = style.text;
+                Color circle_bg = palette.text;
                 circle_bg.a = peek_pressed_ ? 0.22f : 0.12f;
                 painter.fill_rounded_rect({bx, by, sz, sz}, circle_bg, r);
             }
 
-            auto eye_col = style.text;
+            auto eye_col = palette.text;
             eye_col.a = peek_hovered_ ? 0.8f : 0.45f;
 
             float eye_radius = sz * 0.35f;
@@ -475,12 +478,13 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
 }
 
 void LineInput::ensure_cursor_visible(Painter &painter) {
-    auto const &style = Theme::current().line_input;
+    // auto const &style = Theme::current().line_input;
+    auto const &palette = Theme::current().palette;
     auto content_w = content_available_width();
     auto before_str =
         password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
     auto cursor_x =
-        before_str.empty() ? 0.0f : painter.text_size(before_str, style.font_size).width;
+        before_str.empty() ? 0.0f : painter.text_size(before_str, palette.font_size).width;
 
     if (cursor_x - scroll_offset_ > content_w) {
         scroll_offset_ = cursor_x - content_w;
@@ -774,9 +778,10 @@ void LineInput::show_context_menu(Point pos) {
 
 Size LineInput::size_hint() const {
     auto const &style = Theme::current().line_input;
-    // FIXME: what is 8.0f this constant?
-    auto h = style.font_size + style.padding.top + style.padding.bottom + 8.0f;
+    auto const &palette = Theme::current().palette;
 
+    // FIXME: what is 8.0f this constant?
+    auto h = palette.font_size + style.padding.top + style.padding.bottom + 8.0f;
     return {150.0f, h};
 }
 

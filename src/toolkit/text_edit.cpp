@@ -116,12 +116,14 @@ static constexpr FontFamily kFont = FontFamily::Monospace;
 
 float TextEdit::line_height() const {
     auto const &style = Theme::current().text_edit;
-    auto fm = Painter::measure_font_metrics(style.font_size, kFont);
-    return std::max(fm.height, style.font_size) + 2.0f;
+    auto const &palette = Theme::current().palette;
+    auto fm = Painter::measure_font_metrics(palette.font_size, kFont);
+    return std::max(fm.height, palette.font_size) + 2.0f;
 }
 
 float TextEdit::gutter_width() const {
     auto const &style = Theme::current().text_edit;
+    auto const &palette = Theme::current().palette;
     auto digits = 1;
     auto n = static_cast<int>(lines_.size());
     while (n >= 10) {
@@ -129,11 +131,12 @@ float TextEdit::gutter_width() const {
         n /= 10;
     }
     digits = std::max(digits, 2);
-    return Painter::measure_text(std::string(digits, '9'), style.font_size, kFont).width + 16.0f;
+    return Painter::measure_text(std::string(digits, '9'), palette.font_size, kFont).width + 16.0f;
 }
 
 TextEdit::Pos TextEdit::pos_from_point(Point p) const {
     auto const &style = Theme::current().text_edit;
+    auto const &palette = Theme::current().palette;
     auto lh = line_height();
     auto gw = gutter_width();
 
@@ -142,8 +145,8 @@ TextEdit::Pos TextEdit::pos_from_point(Point p) const {
     }
 
     auto line = static_cast<int>((p.y + scroll_y_) / lh);
-    line = std::clamp(line, 0, static_cast<int>(lines_.size()) - 1);
     auto click_x = p.x - gw + scroll_x_;
+    line = std::clamp(line, 0, static_cast<int>(lines_.size()) - 1);
 
     if (click_x <= 0) {
         return {line, 0};
@@ -153,11 +156,10 @@ TextEdit::Pos TextEdit::pos_from_point(Point p) const {
     auto col = 0;
     while (col < (int)ln.size()) {
         auto next_col = Utf8Iterator::next(ln, col);
-        auto w = Painter::measure_text(ln.substr(0, next_col), style.font_size, kFont).width;
+        auto w = Painter::measure_text(ln.substr(0, next_col), palette.font_size, kFont).width;
 
         if (w > click_x) {
-            // Check if closer to current or next character
-            auto prev_w = Painter::measure_text(ln.substr(0, col), style.font_size, kFont).width;
+            auto prev_w = Painter::measure_text(ln.substr(0, col), palette.font_size, kFont).width;
             if (click_x - prev_w < w - click_x) {
                 return {line, static_cast<int>(col)};
             } else {
@@ -171,14 +173,14 @@ TextEdit::Pos TextEdit::pos_from_point(Point p) const {
 
 void TextEdit::clamp_scroll() {
     auto lh = line_height();
+    auto const &palette = Theme::current().palette;
     auto content_h = lh * static_cast<float>(lines_.size());
     auto visible_h = rect_.height;
     auto max_line_w = 0.0f;
-    auto const &style = Theme::current().text_edit;
 
     scroll_y_ = std::clamp(scroll_y_, 0.0f, std::max(0.0f, content_h - visible_h));
     for (auto const &ln : lines_) {
-        float w = Painter::measure_text(ln, style.font_size, kFont).width;
+        float w = Painter::measure_text(ln, palette.font_size, kFont).width;
         if (w > max_line_w) {
             max_line_w = w;
         }
@@ -192,6 +194,8 @@ void TextEdit::clamp_scroll() {
 
 void TextEdit::ensure_cursor_visible() {
     auto const &style = Theme::current().text_edit;
+    auto const &palette = Theme::current().palette;
+
     auto lh = line_height();
     auto gw = gutter_width();
     auto cy = lh * cursor_.line;
@@ -208,7 +212,7 @@ void TextEdit::ensure_cursor_visible() {
     auto visible_w = rect_.width - gw;
 
     if (cursor_.col > 0) {
-        cx = Painter::measure_text(lines_[cursor_.line].substr(0, cursor_.col), style.font_size,
+        cx = Painter::measure_text(lines_[cursor_.line].substr(0, cursor_.col), palette.font_size,
                                    kFont)
                  .width;
     }
