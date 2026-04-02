@@ -793,7 +793,7 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     swa.backing_store = WhenMapped;
 
     // Use theme background color for initial window background to avoid black blink
-    Color const &bg = Theme::current().window.background;
+    Color const &bg = Theme::current().palette.window;
     swa.background_pixel = (static_cast<unsigned long>(bg.r * 255) << 16) |
                            (static_cast<unsigned long>(bg.g * 255) << 8) |
                            (static_cast<unsigned long>(bg.b * 255));

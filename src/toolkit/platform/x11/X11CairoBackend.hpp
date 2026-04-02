@@ -74,7 +74,7 @@ class X11CairoBackend : public RenderingBackend {
                 }
                 cairo_surface_ = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
                 cairo_t *bcr = cairo_create(cairo_surface_);
-                Color const &bgColor = Theme::current().window.background;
+                Color const &bgColor = Theme::current().palette.window;
                 cairo_set_source_rgba(bcr, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
                 cairo_paint(bcr);
                 cairo_destroy(bcr);

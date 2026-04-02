@@ -30,6 +30,7 @@
 
 namespace toolkit {
 
+// FIXME: dummy icon provider should not be on the main code
 class DummyIconProvider : public IconProvider {
   public:
     auto load(std::string_view, int, std::string_view) -> Icon override { return nullptr; }
@@ -38,6 +39,7 @@ class DummyIconProvider : public IconProvider {
 static PlatformApplication *s_platform = nullptr;
 static Application *s_application = nullptr;
 
+// FIXME: remove the detail namespace
 namespace detail {
 PlatformApplication *current_platform() { return s_platform; }
 void set_current_platform(PlatformApplication *p) { s_platform = p; }
