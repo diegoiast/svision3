@@ -4,3 +4,5 @@ cbuild/
 CMakeLists.txt.user
 CMakeUserPresets.json
 .vs/
+themes/
+.qtcreator/

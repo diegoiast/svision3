@@ -21,8 +21,9 @@ Button::Button(std::string text) {
         display_text_ = std::move(text);
     }
 
-    auto_repeat_delay_ = style.auto_repeat_delay;
-    auto_repeat_interval_ = style.auto_repeat_interval;
+    // FIXME: read values from system
+    auto_repeat_delay_ = 1.0f;
+    auto_repeat_interval_ = 0.5f;
 
     state_handler_.on_state_change_callback = [this] { on_state_changed(); };
 }

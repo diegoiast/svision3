@@ -41,9 +41,6 @@ class BaseTheme : public Theme {
         };
 
         apply_base(button, palette);
-        button.auto_repeat_delay = palette.fonts.auto_repeat_delay;
-        button.auto_repeat_interval = palette.fonts.auto_repeat_interval;
-        button.text_disabled = Color::mid(palette.text, palette.window);
 
         apply_base(line_input, palette);
         line_input.background = palette.base;
@@ -131,15 +128,18 @@ class BaseTheme : public Theme {
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                      ButtonState state, bool focused, bool enabled, bool flat,
                      std::optional<Color> background) const override {
-        auto const &style = button;
+        // auto const &style = button;
+        auto const &palette = Theme::current().palette;
+
         auto hovered = state == ButtonState::Hovered || state == ButtonState::ClickedInside;
         auto pressed = state == ButtonState::ClickedInside;
-        auto bg = background.value_or(style.background);
-        auto border_c = focused ? style.border_focused : style.border;
-        auto text_c = enabled ? style.text : style.text_disabled;
-        auto text_offset = (style.beveled && pressed && enabled) ? 1.0f : 0.0f;
-        auto fm = painter.font_metrics(style.font_size);
-        auto text_w = painter.text_size(text, style.font_size).width;
+        auto bg = background.value_or(palette.base);
+        auto border_c = focused ? palette.border : palette.accent;
+        // auto text_c = enabled ? style.text : style.text_disabled;
+        auto text_c = enabled ? palette.text : palette.text_disabled;
+        auto text_offset = (palette.beveled && pressed && enabled) ? 1.0f : 0.0f;
+        auto fm = painter.font_metrics(palette.font_size);
+        auto text_w = painter.text_size(text, palette.font_size).width;
         auto icon_w = 0.0f;
         auto icon_h = 0.0f;
 
@@ -153,20 +153,20 @@ class BaseTheme : public Theme {
         auto text_pos = Point{text_x, baseline_y + text_offset};
 
         if (enabled && !background) {
-            if (pressed && style.background_pressed) {
-                bg = *style.background_pressed;
-            } else if (focused) {
-                bg = style.background_selected;
-            } else if (hovered && style.background_hovered) {
-                bg = *style.background_hovered;
+            if (pressed && palette.background_pressed) {
+                bg = *palette.background_pressed;
+            //} else if (focused) {
+            //    bg = palette.background_selected;
+            } else if (hovered && palette.background_hovered) {
+                bg = *palette.background_hovered;
             }
         }
 
         bool show_full_frame = !flat || hovered || pressed;
         if (show_full_frame) {
             painter.draw_frame(rect, bg, border_c, palette, pressed && enabled);
-        } else if (style.corner_radius > 0.0f) {
-            painter.fill_rounded_rect(rect, bg, style.corner_radius);
+        } else if (palette.corner_radius > 0.0f) {
+            painter.fill_rounded_rect(rect, bg, palette.corner_radius);
         } else {
             painter.fill_rect(rect, bg);
         }
@@ -177,7 +177,7 @@ class BaseTheme : public Theme {
             painter.draw_image(*icon, Point{icon_x, icon_y});
         }
 
-        painter.draw_text(text, text_pos, text_c, style.font_size);
+        painter.draw_text(text, text_pos, text_c, palette.font_size);
     }
 
     void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
@@ -779,11 +779,11 @@ class BaseTheme : public Theme {
                               rect.height / 2.0f};
 
         auto draw_spinbox_button = [&](Rect const &r, bool hovered, bool pressed) {
-            auto b_bg = btn_style.background;
-            if (pressed && btn_style.background_pressed) {
-                b_bg = *btn_style.background_pressed;
-            } else if (hovered && btn_style.background_hovered) {
-                b_bg = *btn_style.background_hovered;
+            auto b_bg = palette.window;
+            if (pressed && palette.background_pressed) {
+                b_bg = *palette.background_pressed;
+            } else if (hovered && palette.background_hovered) {
+                b_bg = *palette.background_hovered;
             }
             painter.draw_frame(r, b_bg, border, palette, false);
 
@@ -1271,10 +1271,10 @@ class MaterialTheme : public BaseTheme {
     explicit MaterialTheme(Palette p) : BaseTheme(std::move(p)) {
         auto is_dark = palette.window.luma() < 0.5f;
         name = "Material";
-        button.background_hovered =
-            is_dark ? palette.window.lighten(0.08f) : palette.window.darken(0.04f);
-        button.background_pressed =
-            is_dark ? palette.window.lighten(0.15f) : palette.window.darken(0.10f);
+        //button.background_hovered =
+        //    is_dark ? palette.window.lighten(0.08f) : palette.window.darken(0.04f);
+        //button.background_pressed =
+        //    is_dark ? palette.window.lighten(0.15f) : palette.window.darken(0.10f);
         button.padding = {10, 24, 10, 24};
         button.corner_radius = 4.0f;
         menu.padding = {4, 4, 4, 4};
@@ -1354,8 +1354,8 @@ class GnomeTheme : public BaseTheme {
         bool dark = palette.window.luma() < 0.5f;
         Color btn_bg = dark ? palette.window.lighten(0.04f) : palette.window.darken(0.03f);
         button.background = btn_bg;
-        button.background_hovered = dark ? btn_bg.lighten(0.04f) : btn_bg.darken(0.04f);
-        button.background_pressed = dark ? btn_bg.darken(0.06f) : btn_bg.darken(0.10f);
+        //button.background_hovered = dark ? btn_bg.lighten(0.04f) : btn_bg.darken(0.04f);
+        //button.background_pressed = dark ? btn_bg.darken(0.06f) : btn_bg.darken(0.10f);
         button.border = dark ? palette.border.lighten(0.04f) : palette.border.darken(0.06f);
         button.padding = {8, 20, 8, 20};
         button.corner_radius = 8.0f;
@@ -1430,8 +1430,8 @@ class Plasma6Theme : public BaseTheme {
         name = "Plasma 6";
         button.padding = {6, 18, 6, 18};
         button.corner_radius = 5.0f;
-        button.background_hovered = palette.highlight;
-        button.background_pressed = palette.highlight.darken(0.1f);
+        //button.background_hovered = palette.highlight;
+        //button.background_pressed = palette.highlight.darken(0.1f);
         checkbox.corner_radius = 5.0f;
         checkbox.indicator = Color::with_gray(0.0f);
         radio.indicator = Color::with_gray(0.0f);
@@ -1544,6 +1544,7 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
         p.window = Color::with_gray(0.93f);
         p.base = Color::with_gray(1.0f);
         p.text = Color::with_gray(0.20f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.border = Color::with_gray(0.75f);
         p.alternate = Color::with_gray(0.90f);
         break;
@@ -1551,6 +1552,7 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
         p.window = Color::with_gray(0.18f);
         p.base = Color::with_gray(0.24f);
         p.text = Color::with_gray(0.92f);
+        p.text_disabled = Color::with_gray(0.20f);
         p.border = Color::with_gray(0.38f);
         p.alternate = Color::with_gray(0.28f);
         break;
@@ -1564,10 +1566,11 @@ static void palette_win11(Palette &p, ColorScheme scheme) {
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::rgb(0.95f, 0.95f, 0.95f);      // #F2F2F2
-        p.base = Color::rgb(1.0f, 1.0f, 1.0f);           // #FFFFFF
-        p.alternate = Color::rgb(0.97f, 0.97f, 0.97f);   // subtle alt row
-        p.text = Color::rgb(0.10f, 0.10f, 0.10f);        // near-black
+        p.window = Color::rgb(0.95f, 0.95f, 0.95f);    // #F2F2F2
+        p.base = Color::rgb(1.0f, 1.0f, 1.0f);         // #FFFFFF
+        p.alternate = Color::rgb(0.97f, 0.97f, 0.97f); // subtle alt row
+        p.text = Color::rgb(0.10f, 0.10f, 0.10f);      // near-black
+        p.text_disabled = Color::with_gray(0.40f);
         p.placeholder = Color::rgb(0.55f, 0.55f, 0.55f); // muted gray
         p.highlight = winBlue;
         p.highlighted_text = Color::rgb(1.0f, 1.0f, 1.0f); // white on accent
@@ -1586,6 +1589,7 @@ static void palette_win11(Palette &p, ColorScheme scheme) {
         p.base = Color::rgb(0.16f, 0.16f, 0.16f);   // surfaces
         p.alternate = Color::rgb(0.20f, 0.20f, 0.20f);
         p.text = Color::rgb(0.95f, 0.95f, 0.95f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.placeholder = Color::rgb(0.65f, 0.65f, 0.65f);
         p.highlight = winBlue;
         p.highlighted_text = Color::rgb(1.0f, 1.0f, 1.0f);
@@ -1611,6 +1615,7 @@ static void palette_material(Palette &p, ColorScheme scheme) {
         p.window = Color::with_gray(0.98f);
         p.base = Color::with_gray(1.0f);
         p.text = Color::with_gray(0.13f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.border = Color::with_gray(0.74f);
         p.alternate = Color::with_gray(0.90f);
         p.highlighted_text = Color::rgb(1.0f, 1.0f, 1.0f); // white on accent
@@ -1619,6 +1624,7 @@ static void palette_material(Palette &p, ColorScheme scheme) {
         p.window = Color::rgb(0.07f, 0.07f, 0.07f);
         p.base = Color::rgb(0.12f, 0.12f, 0.12f);
         p.text = Color::with_gray(0.93f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.border = Color::with_gray(0.33f);
         p.accent = Color::rgb(0.55f, 0.33f, 0.97f);
         p.highlight = p.accent;
@@ -1637,6 +1643,7 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.window = Color::with_gray(0.75f);
         p.base = Color::with_gray(1.0f);
         p.text = Color::with_gray(0.0f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.border = Color::with_gray(0.0f);
         p.accent = Color::rgb(0.0f, 0.0f, 0.5f);
         p.highlight = Color::rgb(0.0f, 0.0f, 0.5f);
@@ -1653,6 +1660,7 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.window = Color::with_gray(0.25f);
         p.base = Color::with_gray(0.10f);
         p.text = Color::with_gray(0.90f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.border = Color::with_gray(0.10f);
         p.accent = Color::rgb(0.0f, 0.0f, 0.8f);
         p.highlight = Color::with_gray(0.40f);
@@ -1674,6 +1682,7 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.window = Color::from_argb(0xFFeff0f1);
         p.base = Color::with_gray(1.0f);
         p.text = Color::rgb(0.137f, 0.149f, 0.161f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.border = Color::rgb(0.737f, 0.753f, 0.773f);
         p.accent = Color::from_argb(0xFF3daee9);
         p.highlight = Color::from_argb(0xFFd6ecf8);
@@ -1684,6 +1693,7 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.window = Color::rgb(0.137f, 0.149f, 0.161f);
         p.base = Color::rgb(0.192f, 0.212f, 0.231f);
         p.text = Color::rgb(0.937f, 0.941f, 0.945f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.border = Color::with_gray(0.30f);
         p.accent = Color::rgb(0.239f, 0.682f, 0.914f);
         p.highlight = p.accent;
@@ -1703,6 +1713,7 @@ static void palette_gnome(Palette &p, ColorScheme scheme) {
         p.window = Color::rgb(0.98f, 0.98f, 0.98f);
         p.base = Color::with_gray(1.0f);
         p.text = Color::rgb(0.18f, 0.20f, 0.21f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.border = Color::rgb(0.86f, 0.84f, 0.83f);
         p.alternate = Color::with_gray(0.90f);
         break;
@@ -1710,6 +1721,7 @@ static void palette_gnome(Palette &p, ColorScheme scheme) {
         p.window = Color::rgb(0.14f, 0.14f, 0.14f);
         p.base = Color::rgb(0.22f, 0.22f, 0.22f);
         p.text = Color::with_gray(0.95f);
+        p.text_disabled = Color::with_gray(0.40f);
         p.border = Color::with_gray(0.30f);
         p.alternate = Color::rgb(0.26f, 0.26f, 0.26f);
         break;

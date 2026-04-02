@@ -20,9 +20,10 @@ struct WidgetStyle {
     Color border;
     Color border_focused;
     Color text;
-    Color background_selected = Color::rgba(0, 0, 0, 0);
-    Color highlight = Color::rgba(0, 0, 0, 0);
-    Color shadow = Color::rgba(0, 0, 0, 0);
+    Color text_disabled;
+    Color background_selected;
+    Color highlight;
+    Color shadow;
     float border_width = 1.0f;
     float corner_radius = 0.0f;
     float font_size = 14.0f;
@@ -31,12 +32,7 @@ struct WidgetStyle {
 
 // FIXME: remove this style
 struct ButtonStyle : WidgetStyle {
-    std::optional<Color> background_hovered;
-    std::optional<Color> background_pressed;
-    Color text_disabled;
     Margins padding = {8, 16, 8, 16};
-    float auto_repeat_delay = 0.5f;
-    float auto_repeat_interval = 0.4f;
 };
 
 // FIXME: remove this style
@@ -121,15 +117,6 @@ struct TreeViewStyle : WidgetStyle {
 };
 
 // FIXME: remove this style
-struct ProgressBarStyle : WidgetStyle {
-    Color fill;
-    float bar_height = 8.0f;
-    bool chunked = false;
-    float chunk_width = 8.0f;
-    float chunk_gap = 2.0f;
-};
-
-// FIXME: remove this style
 struct SliderStyle : WidgetStyle {
     Color groove;
     Color handle;
@@ -164,6 +151,8 @@ struct Palette {
     Color alternate;
     // Normal text color
     Color text;
+    // Disabled text color
+    Color text_disabled;
     // Placeholder/de-emphasized text
     Color placeholder;
     // Background for selected items
@@ -181,6 +170,11 @@ struct Palette {
     Color shadow;
     // If the palette supports shadows, a shadow, otherwise the same as border
     Color dark_shadow;
+
+	// Backgrond color used by buttons, may be ommited.
+	std::optional<Color> background_pressed;
+	// Backgrond color used by buttons, may be ommited.
+	std::optional<Color> background_hovered;
 
     // Semantic colors
     Color success;
