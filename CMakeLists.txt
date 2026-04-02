@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(toolkit_demo LANGUAGES C CXX)
+project(svision3 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -323,7 +323,7 @@ if(UNIX)
     target_link_libraries(db PRIVATE pthread dl)
 endif()
 
-add_executable(demo demo/main.cpp)
+add_executable(demo demo/demo1.cpp)
 set_target_properties(demo PROPERTIES WIN32_EXECUTABLE ON)
 if(WIN32)
     set_target_properties(demo PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")

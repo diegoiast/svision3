@@ -22,6 +22,14 @@
         },
         {
             "executables": {
+                "linux": "build/Debug/demo2",
+                "windows": "build\\Debug\\demo.exe2"
+            },
+            "name": "Demo2 (declarative)",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "executables": {
                 "linux": "SVISION_PAINT=cairo SVISION_BACKEND=wayland build/Debug/demo",
                 "windows": "Debug\\demo.exe"
             },
