@@ -457,32 +457,17 @@ void TableView::paint(Painter &painter) {
         auto selected = is_selected(i);
         auto hovered = (i == hovered_row_) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
-        auto row_rect = Rect{bw, ry, inner_w, rh};
 
-        // FIXME: can we re-use list drawing primitives here?
-        if (alt_row) {
-            painter.fill_rect(row_rect, alt_color);
-        }
-        if (hovered) {
-            auto hover = Color::lerp(alt_color, row_sel, 0.5);
-            painter.fill_rect(row_rect, hover);
-        }
-        if (selected) {
-            painter.fill_rect(row_rect, row_sel);
-        }
-
-        auto text_col = selected ? palette.highlighted_text : palette.text;
-        auto fm = painter.font_metrics(style.font_size);
-        auto text_y = ry + (rh - fm.height) / 2.0f + fm.ascent;
-        auto cx = -scroll_x_;
+        auto cx = bw - scroll_x_;
         for (auto c = 0; c < ncols; c++) {
             auto cw = column_widths_[c];
-            if (cx + cw > 0 && cx < rect_.width) {
+            if (cx + cw > bw && cx < rect_.width - bw) {
+                auto cell_rect = Rect{cx, ry, cw, rh};
                 painter.push_clip(
-                    {std::max(cx, 0.0f), ry, std::min(cw, rect_.width - std::max(cx, 0.0f)), rh});
+                    {std::max(cx, bw), ry, std::min(cw, rect_.width - bw - std::max(cx, bw)), rh});
 
-                painter.draw_text(model_->cell_text(mr, c), {cx + style.item_padding_h, text_y},
-                                  text_col, style.font_size);
+                theme.draw_list_item(painter, cell_rect, model_->cell_text(mr, c), {}, selected,
+                                     hovered, alt_row);
                 painter.pop_clip();
             }
             cx += cw;
