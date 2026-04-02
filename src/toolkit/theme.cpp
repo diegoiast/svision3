@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/theme.hpp"
+#include "toolkit/button_state.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/tab_widget.hpp"
@@ -128,14 +129,11 @@ class BaseTheme : public Theme {
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                      ButtonState state, bool focused, bool enabled, bool flat,
                      std::optional<Color> background) const override {
-        // auto const &style = button;
         auto const &palette = Theme::current().palette;
 
         auto hovered = state == ButtonState::Hovered || state == ButtonState::ClickedInside;
         auto pressed = state == ButtonState::ClickedInside;
-        auto bg = background.value_or(palette.base);
         auto border_c = focused ? palette.border : palette.accent;
-        // auto text_c = enabled ? style.text : style.text_disabled;
         auto text_c = enabled ? palette.text : palette.text_disabled;
         auto text_offset = (palette.beveled && pressed && enabled) ? 1.0f : 0.0f;
         auto fm = painter.font_metrics(palette.font_size);
@@ -151,18 +149,23 @@ class BaseTheme : public Theme {
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_x = (rect.width - total_w) / 2.0f + text_offset + (icon ? icon_w + 4.0f : 0.0f);
         auto text_pos = Point{text_x, baseline_y + text_offset};
+        auto show_full_frame = !flat || hovered || pressed;
 
+        auto defaultBg = palette.base;
+        if (flat && state != ButtonState::Hovered) {
+            defaultBg = palette.window;
+        }
+        auto bg = background.value_or(defaultBg);
         if (enabled && !background) {
             if (pressed && palette.background_pressed) {
                 bg = *palette.background_pressed;
-            //} else if (focused) {
-            //    bg = palette.background_selected;
+                // FIXME: do we need a focused color for Buttons?
+                //} else if (focused) {
+                //    bg = palette.background_selected;
             } else if (hovered && palette.background_hovered) {
                 bg = *palette.background_hovered;
             }
         }
-
-        bool show_full_frame = !flat || hovered || pressed;
         if (show_full_frame) {
             painter.draw_frame(rect, bg, border_c, palette, pressed && enabled);
         } else if (palette.corner_radius > 0.0f) {
@@ -170,13 +173,11 @@ class BaseTheme : public Theme {
         } else {
             painter.fill_rect(rect, bg);
         }
-
         if (icon) {
             auto icon_x = (rect.width - total_w) / 2.0f + text_offset;
             auto icon_y = (rect.height - icon_h) / 2.0f;
             painter.draw_image(*icon, Point{icon_x, icon_y});
         }
-
         painter.draw_text(text, text_pos, text_c, palette.font_size);
     }
 
@@ -840,17 +841,16 @@ class BaseTheme : public Theme {
                               style.font_size, FontFamily::Monospace);
         }
 
-        auto text_area =
-            Rect{rect.x + gutter_width, rect.y, rect.width - gutter_width, rect.height};
+        auto area = Rect{rect.x + gutter_width, rect.y, rect.width - gutter_width, rect.height};
         auto tx0 = rect.x + gutter_width - scroll_x;
+        // FIXME - hardcoded color
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
-
         auto has_sel = selection_start_line >= 0 && selection_end_line >= 0 &&
                        (selection_start_line < selection_end_line ||
                         (selection_start_line == selection_end_line &&
                          selection_start_col < selection_end_col));
 
-        painter.push_clip(text_area);
+        painter.push_clip(area);
         for (auto i = first_visible_line; i <= last; i++) {
             auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
             auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
@@ -883,6 +883,7 @@ class BaseTheme : public Theme {
         }
 
         if (focused) {
+            // FIXME: cursor should not be handled here. Just pass "cursor_blink".
             auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time;
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
             if ((ms / 500) % 2 == 0) {

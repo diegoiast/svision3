@@ -235,7 +235,6 @@ bool Button::handle_mouse(MouseEvent const &event) {
             }
         }
         return inside;
-
     case MouseEvent::Type::Leave:
         state_handler_.on_mouse_leave();
         return true;
