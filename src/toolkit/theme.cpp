@@ -115,7 +115,7 @@ class BaseTheme : public Theme {
 
         auto hovered = state == ButtonState::Hovered || state == ButtonState::ClickedInside;
         auto pressed = state == ButtonState::ClickedInside;
-        auto border_c = focused ? palette.border : palette.accent;
+        auto border_c = (focused || hovered || pressed) ? palette.accent : palette.border;
         auto text_c = enabled ? palette.text : palette.text_disabled;
         auto text_offset = (palette.beveled && pressed && enabled) ? 1.0f : 0.0f;
         auto fm = painter.font_metrics(palette.font_size);
@@ -149,7 +149,7 @@ class BaseTheme : public Theme {
             }
         }
         if (show_full_frame) {
-            painter.draw_frame(rect, bg, border_c, palette, pressed && enabled);
+            painter.draw_filled_frame(rect, bg, border_c, palette, pressed && enabled);
         } else if (palette.corner_radius > 0.0f) {
             painter.fill_rounded_rect(rect, bg, palette.corner_radius);
         } else {
@@ -186,7 +186,7 @@ class BaseTheme : public Theme {
             }
         }
 
-        painter.draw_frame(box_rect, bg, border, palette, pressed && enabled);
+        painter.draw_filled_frame(box_rect, bg, border, palette, pressed && enabled);
 
         if (check_state == CheckState::Checked) {
             auto cx = box_rect.x + box * 0.22f;
@@ -256,7 +256,7 @@ class BaseTheme : public Theme {
         auto content_w = rect.width - style.padding.left - style.padding.right;
         auto tx = rect.x + content_x - scroll_offset;
 
-        painter.draw_frame(rect, palette.base, border, palette, true);
+        painter.draw_filled_frame(rect, palette.base, border, palette, true);
 
         auto clip_rect = Rect{rect.x + content_x, rect.y, content_w, rect.height};
         painter.push_clip(clip_rect);
@@ -406,7 +406,7 @@ class BaseTheme : public Theme {
         auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
         auto fill_rect = Rect{inner.x, inner.y, fill_w, inner.height};
 
-        painter.draw_frame(rect, bg, palette.border, palette, true);
+        painter.draw_filled_frame(rect, bg, palette.border, palette, true);
         painter.fill_rect(fill_rect, fill);
     }
 
@@ -556,7 +556,7 @@ class BaseTheme : public Theme {
     void draw_list_background(Painter &painter, Rect const &rect, bool focused) const override {
 
         if (palette.beveled) {
-            painter.draw_frame(rect, palette.base, palette.border, palette, true);
+            painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
         } else {
             painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
             if (palette.border_width > 0) {
@@ -572,7 +572,7 @@ class BaseTheme : public Theme {
     void draw_table_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = table_view;
         if (palette.beveled) {
-            painter.draw_frame(rect, palette.base, palette.border, palette, true);
+            painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
         } else {
             painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
             if (palette.border_width > 0) {
@@ -620,7 +620,7 @@ class BaseTheme : public Theme {
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = tree_view;
         if (style.beveled) {
-            painter.draw_frame(rect, style.background, style.border, palette, true);
+            painter.draw_filled_frame(rect, style.background, style.border, palette, true);
         } else {
             painter.fill_rounded_rect(rect, style.background, style.corner_radius);
             if (style.border_width > 0) {
@@ -640,7 +640,7 @@ class BaseTheme : public Theme {
         auto fm = painter.font_metrics(style.font_size);
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
 
-        painter.draw_frame(rect, style.background, border, palette, true);
+        painter.draw_filled_frame(rect, style.background, border, palette, true);
 
         if (!text.empty()) {
             auto clip_w = rect.width - style.padding.left - style.padding.right - 16.0f;
@@ -713,7 +713,7 @@ class BaseTheme : public Theme {
         auto field_rect = Rect{rect.x, rect.y, rect.width - bw, rect.height};
         auto border = focused ? palette.accent : palette.border;
 
-        painter.draw_frame(field_rect, palette.base, border, palette, true);
+        painter.draw_filled_frame(field_rect, palette.base, border, palette, true);
 
         auto content_x = field_rect.x + style.padding.left;
         auto content_w = field_rect.width - style.padding.left - style.padding.right;
@@ -760,7 +760,7 @@ class BaseTheme : public Theme {
             } else if (hovered && palette.background_hovered) {
                 b_bg = *palette.background_hovered;
             }
-            painter.draw_frame(r, b_bg, border, palette, false);
+            painter.draw_filled_frame(r, b_bg, border, palette, false);
 
             auto cx = r.x + r.width / 2.0f;
             auto cy = r.y + r.height / 2.0f;
@@ -796,7 +796,7 @@ class BaseTheme : public Theme {
         auto border = focused ? palette.accent : palette.border;
         auto text_c = enabled ? palette.text : palette.text_disabled;
 
-        painter.draw_frame(rect, bg, border, palette, true);
+        painter.draw_filled_frame(rect, bg, border, palette, true);
         painter.push_clip(rect);
 
         auto last = std::min(static_cast<int>(lines.size()) - 1,
@@ -1186,7 +1186,8 @@ class Win95Theme : public BaseTheme {
             auto box_rect =
                 Rect{icon_x, rect.y + (rect.height - box_size) / 2.0f, box_size, box_size};
 
-            painter.draw_frame(box_rect, cb_style.background, cb_style.border, palette, false);
+            painter.draw_filled_frame(box_rect, cb_style.background, cb_style.border, palette,
+                                      false);
 
             auto expand_collapse_char = expanded ? "-" : "+";
             auto char_w = painter.text_size(expand_collapse_char, style.font_size).width;
@@ -1207,7 +1208,7 @@ class Win95Theme : public BaseTheme {
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = tree_view;
         if (style.beveled) {
-            painter.draw_frame(rect, style.background, style.border, palette, true);
+            painter.draw_filled_frame(rect, style.background, style.border, palette, true);
         } else {
             painter.fill_rounded_rect(rect, style.background, style.corner_radius);
             if (style.border_width > 0) {
@@ -1224,7 +1225,7 @@ class Win95Theme : public BaseTheme {
         const auto chunk_width = 8.0f;
         const auto chunk_gap = 2.0f;
 
-        painter.draw_frame(rect, bg, palette.border, palette, true);
+        painter.draw_filled_frame(rect, bg, palette.border, palette, true);
 
         auto inner = rect.inset(palette.border_width);
         auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
@@ -1396,7 +1397,7 @@ class Plasma6Theme : public BaseTheme {
   public:
     explicit Plasma6Theme(Palette p) : BaseTheme(std::move(p)) {
         name = "Plasma 6";
-        button.padding = {6, 18, 6, 18};
+        button.padding = {9, 18, 9, 18};
         checkbox.corner_radius = 5.0f;
         checkbox.indicator = Color::with_gray(0.0f);
         radio.indicator = Color::with_gray(0.0f);
@@ -1499,203 +1500,294 @@ void Theme::set_current(std::unique_ptr<Theme> theme) { mutable_current_ptr() = 
 // ── Palette Initialization ───────────────────────────────────────────────────
 
 static void palette_macos(Palette &p, ColorScheme scheme) {
+    auto macBlue = Color::from_argb(0xFF0A84FF);
     p.border_width = 0.5f;
-    Color macBlue = Color::rgb(0.0f, 0.48f, 1.0f);
-    p.accent = macBlue;
-    p.highlight = macBlue;
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::with_gray(0.93f);
-        p.base = Color::with_gray(1.0f);
-        p.text = Color::with_gray(0.20f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.border = Color::with_gray(0.75f);
-        p.alternate = Color::with_gray(0.90f);
+        p.window = Color::from_argb(0xFFF2F2F7);
+        p.base = Color::from_argb(0xFFFFFFFF);
+        p.alternate = Color::from_argb(0xFFF9F9FB);
+        p.text = Color::from_argb(0xFF000000);
+        p.text_disabled = Color::from_argb(0xFF8E8E93);
+        p.placeholder = Color::from_argb(0xFFAEAEB2);
+        p.highlight = macBlue;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFFD1D1D6);
+        p.accent = macBlue;
+        p.link = macBlue;
+        p.shadow = Color::from_argb(0x33000000);
+        p.dark_shadow = Color::from_argb(0x55000000);
+        p.background_pressed = Color::from_argb(0xFFE5E5EA);
+        p.background_hovered = Color::from_argb(0xFFEDEDF0);
+        p.success = Color::from_argb(0xFF34C759);
+        p.warning = Color::from_argb(0xFFFF9F0A);
+        p.error = Color::from_argb(0xFFFF3B30);
         break;
     case ColorScheme::Dark:
-        p.window = Color::with_gray(0.18f);
-        p.base = Color::with_gray(0.24f);
-        p.text = Color::with_gray(0.92f);
-        p.text_disabled = Color::with_gray(0.20f);
-        p.border = Color::with_gray(0.38f);
-        p.alternate = Color::with_gray(0.28f);
+        p.window = Color::from_argb(0xFF1E1E1E);
+        p.base = Color::from_argb(0xFF2C2C2E);
+        p.alternate = Color::from_argb(0xFF3A3A3C);
+        p.text = Color::from_argb(0xFFFFFFFF);
+        p.text_disabled = Color::from_argb(0xFF8E8E93);
+        p.placeholder = Color::from_argb(0xFF636366);
+        p.highlight = macBlue;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFF3A3A3C);
+        p.accent = macBlue;
+        p.link = macBlue;
+        p.shadow = Color::from_argb(0x66000000);
+        p.dark_shadow = Color::from_argb(0x99000000);
+        p.background_pressed = Color::from_argb(0xFF3A3A3C);
+        p.background_hovered = Color::from_argb(0xFF48484A);
+        p.success = Color::from_argb(0xFF30D158);
+        p.warning = Color::from_argb(0xFFFF9F0A);
+        p.error = Color::from_argb(0xFFFF453A);
         break;
     }
 }
 
 static void palette_win11(Palette &p, ColorScheme scheme) {
-    // Default Windows 11 accent (approx system blue)
-    Color winBlue = Color::rgb(0.0f, 0.47f, 0.84f);
-    p.accent = winBlue;
+    auto windows_blue = Color::from_argb(0xFF0078D4);
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::rgb(0.95f, 0.95f, 0.95f);    // #F2F2F2
-        p.base = Color::rgb(1.0f, 1.0f, 1.0f);         // #FFFFFF
-        p.alternate = Color::rgb(0.97f, 0.97f, 0.97f); // subtle alt row
-        p.text = Color::rgb(0.10f, 0.10f, 0.10f);      // near-black
-        p.text_disabled = Color::with_gray(0.40f);
-        p.placeholder = Color::rgb(0.55f, 0.55f, 0.55f); // muted gray
-        p.highlight = winBlue;
-        p.highlighted_text = Color::rgb(1.0f, 1.0f, 1.0f); // white on accent
-        p.border = Color::rgb(0.85f, 0.85f, 0.85f);        // light divider
-        p.shadow = Color::rgb(0.0f, 0.0f, 0.15f);          // soft shadow
-        p.dark_shadow = Color::rgb(0.0f, 0.0f, 0.30f);
-        p.link = Color::rgb(0.0f, 0.40f, 0.85f);     // Win-style link blue
-        p.success = Color::rgb(0.06f, 0.53f, 0.26f); // green 600-ish
-        p.warning = Color::rgb(0.96f, 0.64f, 0.0f);  // amber
-        p.error = Color::rgb(0.75f, 0.16f, 0.18f);   // red toned (not pure)
-
+        p.window = Color::from_argb(0xFFF3F3F3);
+        p.base = Color::from_argb(0xFFFFFFFF);
+        p.alternate = Color::from_argb(0xFFF9F9F9);
+        p.text = Color::from_argb(0xFF000000);
+        p.text_disabled = Color::from_argb(0xFF6D6D6D);
+        p.placeholder = Color::from_argb(0xFF8A8A8A);
+        p.highlight = windows_blue;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFFDCDCDC);
+        p.accent = windows_blue;
+        p.link = Color::from_argb(0xFF0067C0);
+        p.shadow = Color::from_argb(0x20000000);
+        p.dark_shadow = Color::from_argb(0x40000000);
+        p.background_pressed = Color::from_argb(0xFFE5E5E5);
+        p.background_hovered = Color::from_argb(0xFFEDEDED);
+        p.success = Color::from_argb(0xFF107C10);
+        p.warning = Color::from_argb(0xFFFFB900);
+        p.error = Color::from_argb(0xFFD13438);
         break;
 
     case ColorScheme::Dark:
-        p.window = Color::rgb(0.12f, 0.12f, 0.12f); // #1F1F1F-ish
-        p.base = Color::rgb(0.16f, 0.16f, 0.16f);   // surfaces
-        p.alternate = Color::rgb(0.20f, 0.20f, 0.20f);
-        p.text = Color::rgb(0.95f, 0.95f, 0.95f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.placeholder = Color::rgb(0.65f, 0.65f, 0.65f);
-        p.highlight = winBlue;
-        p.highlighted_text = Color::rgb(1.0f, 1.0f, 1.0f);
-        p.border = Color::rgb(0.30f, 0.30f, 0.30f); // subtle edge
-        p.shadow = Color::rgb(0.0f, 0.0f, 0.50f);
-        p.dark_shadow = Color::rgb(0.0f, 0.0f, 0.80f);
-        p.link = Color::rgb(0.25f, 0.62f, 1.0f); // brighter for dark
-        p.success = Color::rgb(0.30f, 0.75f, 0.40f);
-        p.warning = Color::rgb(1.0f, 0.78f, 0.30f);
-        p.error = Color::rgb(1.0f, 0.45f, 0.45f);
+        p.window = Color::from_argb(0xFF202020);
+        p.base = Color::from_argb(0xFF2B2B2B);
+        p.alternate = Color::from_argb(0xFF333333);
+        p.text = Color::from_argb(0xFFFFFFFF);
+        p.text_disabled = Color::from_argb(0xFF8A8A8A);
+        p.placeholder = Color::from_argb(0xFF6D6D6D);
+        p.highlight = windows_blue;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFF3C3C3C);
+        p.accent = windows_blue;
+        p.link = Color::from_argb(0xFF4CC2FF);
+        p.shadow = Color::from_argb(0x66000000);
+        p.dark_shadow = Color::from_argb(0x99000000);
+        p.background_pressed = Color::from_argb(0xFF3A3A3A);
+        p.background_hovered = Color::from_argb(0xFF444444);
+        p.success = Color::from_argb(0xFF6CCB5F);
+        p.warning = Color::from_argb(0xFFFFC83D);
+        p.error = Color::from_argb(0xFFFF5F5F);
         break;
     }
 }
 
 static void palette_material(Palette &p, ColorScheme scheme) {
-    auto matPurple = Color::rgb(0.384f, 0.0f, 0.933f);
+    // default Material 3 primary (Deep Purple)
+    Color material_purple = Color::from_argb(0xFF6750A4);
     p.corner_radius = 4.0f;
-    p.accent = matPurple;
-    p.highlight = matPurple;
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::with_gray(0.98f);
-        p.base = Color::with_gray(1.0f);
-        p.text = Color::with_gray(0.13f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.border = Color::with_gray(0.74f);
-        p.alternate = Color::with_gray(0.90f);
-        p.highlighted_text = Color::rgb(1.0f, 1.0f, 1.0f); // white on accent
+        p.window = Color::from_argb(0xFFFFFBFE);
+        p.base = Color::from_argb(0xFFFFFFFF);
+        p.alternate = Color::from_argb(0xFFF7F2FA);
+        p.text = Color::from_argb(0xFF1C1B1F);
+        p.text_disabled = Color::from_argb(0xFF9E9E9E);
+        p.placeholder = Color::from_argb(0xFF79747E);
+        p.highlight = material_purple;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFFE7E0EC);
+        p.accent = material_purple;
+        p.link = Color::from_argb(0xFF2962FF);
+        p.shadow = Color::from_argb(0x1F000000);
+        p.dark_shadow = Color::from_argb(0x33000000);
+        p.background_pressed = Color::from_argb(0xFFE8DEF8);
+        p.background_hovered = Color::from_argb(0xFFF3EDF7);
+        p.success = Color::from_argb(0xFF2E7D32);
+        p.warning = Color::from_argb(0xFFF9A825);
+        p.error = Color::from_argb(0xFFB3261E);
         break;
     case ColorScheme::Dark:
-        p.window = Color::rgb(0.07f, 0.07f, 0.07f);
-        p.base = Color::rgb(0.12f, 0.12f, 0.12f);
-        p.text = Color::with_gray(0.93f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.border = Color::with_gray(0.33f);
-        p.accent = Color::rgb(0.55f, 0.33f, 0.97f);
-        p.highlight = p.accent;
-        p.alternate = Color::rgb(0.16f, 0.16f, 0.16f);
-        p.highlighted_text = Color::rgb(1.0f, 1.0f, 1.0f); // white on accent
+        p.window = Color::from_argb(0xFF1C1B1F);
+        p.base = Color::from_argb(0xFF1C1B1F);
+        p.alternate = Color::from_argb(0xFF292529);
+        p.text = Color::from_argb(0xFFE6E1E5);
+        p.text_disabled = Color::from_argb(0xFF9E9E9E);
+        p.placeholder = Color::from_argb(0xFF79747E);
+        p.highlight = material_purple;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFF49454F);
+        p.accent = material_purple;
+        p.link = Color::from_argb(0xFF82B1FF);
+        p.shadow = Color::from_argb(0x33000000);
+        p.dark_shadow = Color::from_argb(0x66000000);
+        p.background_pressed = Color::from_argb(0xFF3E3748);
+        p.background_hovered = Color::from_argb(0xFF4A4256);
+        p.success = Color::from_argb(0xFF2E7D32);
+        p.warning = Color::from_argb(0xFFF9A825);
+        p.error = Color::from_argb(0xFFB3261E);
         break;
     }
 }
 
 static void palette_win95(Palette &p, ColorScheme scheme) {
+    Color windows95_color = Color::from_argb(0xFF000080);
     p.beveled = true;
     p.progress_bar_height = 20;
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::with_gray(0.75f);
-        p.base = Color::with_gray(1.0f);
-        p.text = Color::with_gray(0.0f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.border = Color::with_gray(0.0f);
-        p.accent = Color::rgb(0.0f, 0.0f, 0.5f);
-        p.highlight = Color::rgb(0.0f, 0.0f, 0.5f);
-        p.highlighted_text = Color::rgb(1.0f, 1.0f, 1.5f);
-        p.shadow = Color::with_gray(0.50f);
-        p.dark_shadow = Color::with_gray(0.0f);
-        p.alternate = Color::with_gray(0.90f);
-
-        p.error = Color::rgb(0.8, 0.2, 0.2);
-        p.warning = Color::rgb(0.8, 0.7, 0.0);
-        p.success = Color::rgb(0.0, 0.2, 0.8);
+        p.window = Color::from_argb(0xFFC0C0C0);
+        p.base = Color::from_argb(0xFFFFFFFF);
+        p.alternate = Color::from_argb(0xFFC0C0C0);
+        p.text = Color::from_argb(0xFF000000);
+        p.text_disabled = Color::from_argb(0xFF808080);
+        p.placeholder = Color::from_argb(0xFF808080);
+        p.highlight = windows95_color;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFF808080);
+        p.accent = windows95_color;
+        p.link = windows95_color;
+        p.shadow = Color::from_argb(0xFF404040);
+        p.dark_shadow = Color::from_argb(0xFF000000);
+        p.background_pressed = Color::from_argb(0xFFB0B0B0);
+        p.background_hovered = Color::from_argb(0xFFB8B8B8);
+        p.success = Color::from_argb(0xFF008000);
+        p.warning = Color::from_argb(0xFFFF8000);
+        p.error = Color::from_argb(0xFF800000);
         break;
     case ColorScheme::Dark:
-        p.window = Color::with_gray(0.25f);
-        p.base = Color::with_gray(0.10f);
-        p.text = Color::with_gray(0.90f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.border = Color::with_gray(0.10f);
-        p.accent = Color::rgb(0.0f, 0.0f, 0.8f);
-        p.highlight = Color::with_gray(0.40f);
-        p.shadow = Color::with_gray(0.12f);
-        p.dark_shadow = Color::with_gray(0.0f);
-        p.alternate = Color::with_gray(0.35f);
-
-        p.error = Color::rgb(0.8, 0.0, 0.0);
-        p.warning = Color::rgb(0.8, 0.7, 0.0);
-        p.success = Color::rgb(0.0, 0.2, 0.8);
+        p.window = Color::from_argb(0xFF000000);
+        p.base = Color::from_argb(0xFF202020);
+        p.alternate = Color::from_argb(0xFF303030);
+        p.text = Color::from_argb(0xFFFFFFFF);
+        p.text_disabled = Color::from_argb(0xFF808080);
+        p.placeholder = Color::from_argb(0xFF808080);
+        p.highlight = windows95_color;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFF404040);
+        p.accent = windows95_color;
+        p.link = windows95_color;
+        p.shadow = Color::from_argb(0xFF000000);
+        p.dark_shadow = Color::from_argb(0xFF000000);
+        p.background_pressed = windows95_color;
+        p.background_hovered = Color::from_argb(0xFF303030);
+        p.success = Color::from_argb(0xFF008000);
+        p.warning = Color::from_argb(0xFFFF8000);
+        p.error = Color::from_argb(0xFF800000);
         break;
     }
 }
 
 static void palette_plasma6(Palette &p, ColorScheme scheme) {
     p.corner_radius = 5.0f;
+    Color plasma6_color = Color::from_argb(0xFF3DAEE9); // default Breeze accent blue
+
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::from_argb(0xFFeff0f1);
-        p.base = Color::with_gray(1.0f);
-        p.text = Color::rgb(0.137f, 0.149f, 0.161f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.border = Color::rgb(0.737f, 0.753f, 0.773f);
-        p.accent = Color::from_argb(0xFF3daee9);
-        p.highlight = Color::from_argb(0xFFd6ecf8);
-        p.alternate = Color::with_gray(0.90f);
-        p.error = Color::rgb(0.9, 0.3, 0.3);
-
-        p.background_hovered = Color::with_gray(0.90f).lighten(0.10);
-        p.background_pressed = Color::with_gray(0.90f).lighten(0.05);
+        p.window = Color::from_argb(0xFFF0F0F0);    // active window background stays gray
+        p.base = Color::from_argb(0xFFFFFFFF);      // main content area
+        p.alternate = Color::from_argb(0xFFF7F7F7); // alternate background in active window
+        p.text = Color::from_argb(0xFF2E3436);
+        p.text_disabled = Color::from_argb(0xFF7F8C8D);
+        p.placeholder = Color::from_argb(0xFFAAAAAA);
+        p.highlight = plasma6_color; // selection highlight inside window
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFFE0E0E0);
+        p.accent = plasma6_color;
+        p.link = plasma6_color;
+        p.shadow = Color::from_argb(0x22000000);
+        p.dark_shadow = Color::from_argb(0x44000000);
+        p.background_pressed = Color::from_argb(0xFFE0E0E0); // pressed button in active window
+        // p.background_hovered = Color::from_argb(0xFFECECEC); // hovered button in active window
+        p.success = Color::from_argb(0xFF27AE60);
+        p.warning = Color::from_argb(0xFFF39C12);
+        p.error = Color::from_argb(0xFFE74C3C);
         break;
     case ColorScheme::Dark:
-        p.window = Color::rgb(0.137f, 0.149f, 0.161f);
-        p.base = Color::rgb(0.192f, 0.212f, 0.231f);
-        p.text = Color::rgb(0.937f, 0.941f, 0.945f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.border = Color::with_gray(0.30f);
-        p.accent = Color::rgb(0.239f, 0.682f, 0.914f);
-        p.highlight = p.accent;
-        p.alternate = Color::rgb(0.23f, 0.25f, 0.27f);
-        p.error = Color::rgb(0.9, 0.3, 0.3);
-
-        p.background_hovered = Color::with_gray(0.8f);
-        p.background_pressed = Color::with_gray(0.9f);
+        p.window = Color::from_argb(0xFF232629);
+        p.base = Color::from_argb(0xFF1B1E20);
+        p.alternate = Color::from_argb(0xFF31363B);
+        p.text = Color::from_argb(0xFFEFF0F1);
+        p.text_disabled = Color::from_argb(0xFF7F8C8D);
+        p.placeholder = Color::from_argb(0xFFBDC3C7);
+        p.highlight = plasma6_color;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFF3B4045);
+        p.accent = plasma6_color;
+        p.link = plasma6_color;
+        p.shadow = Color::from_argb(0x33000000);
+        p.dark_shadow = Color::from_argb(0x55000000);
+        p.background_pressed = Color::from_argb(0xFF2C3034);
+        p.background_hovered = Color::from_argb(0xFF3B4045);
+        p.success = Color::from_argb(0xFF27AE60);
+        p.warning = Color::from_argb(0xFFF39C12);
+        p.error = Color::from_argb(0xFFE74C3C);
         break;
     }
 }
 
 static void palette_gnome(Palette &p, ColorScheme scheme) {
     p.corner_radius = 8.0f;
-    Color gnomeBlue = Color::rgb(0.21f, 0.52f, 0.89f);
-    p.accent = gnomeBlue;
-    p.highlight = gnomeBlue;
+
+    auto adwaita_color = Color::from_argb(0xFF3465A4);
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::rgb(0.98f, 0.98f, 0.98f);
-        p.base = Color::with_gray(1.0f);
-        p.text = Color::rgb(0.18f, 0.20f, 0.21f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.border = Color::rgb(0.86f, 0.84f, 0.83f);
-        p.alternate = Color::with_gray(0.90f);
+        // default Adwaita blue accent
+
+        p.window = Color::from_argb(0xFFFAFAFA);
+        p.base = Color::from_argb(0xFFFFFFFF);
+        p.alternate = Color::from_argb(0xFFF0F0F0);
+        p.text = Color::from_argb(0xFF2E3436);
+        p.text_disabled = Color::from_argb(0xFF888A85);
+        p.placeholder = Color::from_argb(0xFFAAAAAA);
+        p.highlight = adwaita_color;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFFE0E0E0);
+        p.accent = adwaita_color;
+        p.link = adwaita_color;
+        p.shadow = Color::from_argb(0x22000000);
+        p.dark_shadow = Color::from_argb(0x44000000);
+        p.background_pressed = Color::from_argb(0xFFECECEC);
+        p.background_hovered = Color::from_argb(0xFFF5F5F5);
+        p.success = Color::from_argb(0xFF2E7D32);
+        p.warning = Color::from_argb(0xFFFBC02D);
+        p.error = Color::from_argb(0xFFC62828);
         break;
     case ColorScheme::Dark:
-        p.window = Color::rgb(0.14f, 0.14f, 0.14f);
-        p.base = Color::rgb(0.22f, 0.22f, 0.22f);
-        p.text = Color::with_gray(0.95f);
-        p.text_disabled = Color::with_gray(0.40f);
-        p.border = Color::with_gray(0.30f);
-        p.alternate = Color::rgb(0.26f, 0.26f, 0.26f);
+        p.window = Color::from_argb(0xFF2E3436);
+        p.base = Color::from_argb(0xFF3B3B3B);
+        p.alternate = Color::from_argb(0xFF4A4A4A);
+        p.text = Color::from_argb(0xFFECECEC);
+        p.text_disabled = Color::from_argb(0xFF888A85);
+        p.placeholder = Color::from_argb(0xFFAAAAAA);
+        p.highlight = adwaita_color;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFF555555);
+        p.accent = adwaita_color;
+        p.link = adwaita_color;
+        p.shadow = Color::from_argb(0x66000000);
+        p.dark_shadow = Color::from_argb(0x99000000);
+        p.background_pressed = Color::from_argb(0xFF484848);
+        p.background_hovered = Color::from_argb(0xFF565656);
+        p.success = Color::from_argb(0xFF2E7D32);
+        p.warning = Color::from_argb(0xFFFBC02D);
+        p.error = Color::from_argb(0xFFC62828);
         break;
     }
 }

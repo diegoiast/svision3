@@ -59,8 +59,8 @@ class Painter {
 
     virtual std::string_view name() const = 0;
 
-    // FIXME: draw_frame - this should be removed and use the version from the theme
-    void draw_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
+    // FIXME: draw_filled_frame - this should be removed and use the version from the theme
+    void draw_filled_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
                     bool sunken = false);
 
     // FIXME: draw_focus_ring - this should be removed and use the version from the theme

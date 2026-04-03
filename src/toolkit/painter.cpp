@@ -8,8 +8,8 @@
 
 namespace toolkit {
 
-void Painter::draw_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
-                         bool sunken) {
+void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
+                                bool sunken) {
     // Fill background first at full size
     if (palette.corner_radius > 0.0f) {
         fill_rounded_rect(rect, bg, palette.corner_radius);
