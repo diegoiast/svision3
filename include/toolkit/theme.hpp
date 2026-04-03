@@ -42,8 +42,7 @@ struct LineInputStyle {
 };
 
 // FIXME: remove this style
-struct ToggleStyle : WidgetStyle {
-    Color indicator;
+struct ToggleStyle {
     float box_size = 16.0f;
     float spacing = 6.0f;
 };

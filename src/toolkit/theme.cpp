@@ -41,15 +41,6 @@ class BaseTheme : public Theme {
             ws.font_size = p.fonts.font_size;
         };
 
-
-        apply_base(checkbox, palette);
-        checkbox.background = palette.base;
-        checkbox.indicator = palette.accent;
-
-        apply_base(radio, palette);
-        radio.background = palette.base;
-        radio.indicator = palette.accent;
-
         apply_base(combobox, palette);
         combobox.background = palette.base;
         combobox.border_focused = palette.accent;
@@ -170,19 +161,19 @@ class BaseTheme : public Theme {
         auto hovered =
             button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
         auto pressed = button_state == ButtonState::ClickedInside;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.font_size);
         auto box = style.box_size;
         auto box_y = (rect.height - box) / 2.0f;
         auto box_rect = Rect{rect.x, box_y, box, box};
-        auto border = focused ? style.border_focused : style.border;
-        auto bg = style.background;
+        auto border = focused ? palette.accent : palette.border;
+        auto bg = palette.base;
         if (enabled) {
             if (pressed) {
-                bg = bg.darken(0.08f);
+                bg = palette.alternate;
             } else if (button_state == ButtonState::ClickedOutside) {
-                bg = bg.darken(0.02f);
+                bg = palette.base;
             } else if (hovered) {
-                bg = bg.darken(0.04f);
+                bg = palette.alternate;
             }
         }
 
@@ -192,19 +183,19 @@ class BaseTheme : public Theme {
             auto cx = box_rect.x + box * 0.22f;
             auto cy = box_rect.y + box * 0.5f;
             auto lw = std::max(1.5f, box * 0.14f);
-            painter.draw_line({cx, cy}, {cx + box * 0.18f, cy + box * 0.2f}, style.indicator, lw);
+            painter.draw_line({cx, cy}, {cx + box * 0.18f, cy + box * 0.2f}, palette.text, lw);
             painter.draw_line({cx + box * 0.18f, cy + box * 0.2f},
-                              {cx + box * 0.55f, cy - box * 0.25f}, style.indicator, lw);
+                              {cx + box * 0.55f, cy - box * 0.25f}, palette.text, lw);
         } else if (check_state == CheckState::Partial) {
             auto gap = box * 0.25f;
             auto inner = box_rect.inset(gap);
-            painter.fill_rect(inner, style.indicator);
+            painter.fill_rect(inner, palette.text_disabled);
         }
 
         auto text_x = rect.x + box + style.spacing;
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto text_c = enabled ? style.text : Color::mid(style.text, style.background);
-        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+        auto text_c = enabled ? palette.text : palette.text_disabled;
+        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.font_size);
     }
 
     void draw_radio_button(Painter &painter, Rect const &rect, std::string_view text, bool checked,
@@ -213,34 +204,33 @@ class BaseTheme : public Theme {
         auto hovered =
             button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
         auto pressed = button_state == ButtonState::ClickedInside;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.font_size);
         auto r = style.box_size / 2.0f;
         auto center = Point{rect.x + r, rect.height / 2.0f};
         auto text_x = rect.x + style.box_size + style.spacing;
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto border = focused ? style.border_focused : style.border;
-        auto bg = style.background;
+        auto border = focused ? palette.accent : palette.border;
+        auto bg = palette.base;
         if (enabled) {
-            // FIXME: should be use this here? or do this in other themes
             if (pressed) {
-                bg = bg.darken(0.08f);
+                bg = palette.alternate;
             } else if (button_state == ButtonState::ClickedOutside) {
-                bg = bg.darken(0.02f);
+                bg = palette.base;
             } else if (hovered) {
-                bg = bg.darken(0.04f);
+                bg = palette.alternate;
             }
         }
 
         painter.fill_circle(center, r, bg);
-        painter.draw_circle(center, r, border, style.border_width);
-        if (style.beveled) {
-            painter.draw_circle(center, r - 1.0f, style.shadow, 1.0f);
+        painter.draw_circle(center, r, border, palette.border_width);
+        if (palette.beveled) {
+            painter.draw_circle(center, r - 1.0f, palette.shadow, 1.0f);
         }
         if (checked) {
-            painter.fill_circle(center, r * 0.45f, style.indicator);
+            painter.fill_circle(center, r * 0.45f, palette.text);
         }
-        auto text_c = enabled ? style.text : Color::mid(style.text, style.background);
-        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+        auto text_c = enabled ? palette.text : palette.text_disabled;
+        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.font_size);
     }
 
     void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
@@ -962,16 +952,16 @@ class BaseTheme : public Theme {
     }
 
     Size measure_checkbox(std::string_view text) const override {
-        auto text_w = Painter::measure_text(text, checkbox.font_size).width;
+        auto text_w = Painter::measure_text(text, palette.font_size).width;
         auto w = checkbox.box_size + checkbox.spacing + text_w;
-        auto h = std::max(checkbox.box_size, checkbox.font_size);
+        auto h = std::max(checkbox.box_size, palette.font_size);
         return Size{w, h};
     }
 
     Size measure_radio_button(std::string_view text) const override {
-        auto text_w = Painter::measure_text(text, radio.font_size).width;
+        auto text_w = Painter::measure_text(text, palette.font_size).width;
         auto w = radio.box_size + radio.spacing + text_w;
-        auto h = std::max(radio.box_size, radio.font_size);
+        auto h = std::max(radio.box_size, palette.font_size);
         return Size{w, h};
     }
 
@@ -1186,8 +1176,7 @@ class Win95Theme : public BaseTheme {
             auto box_rect =
                 Rect{icon_x, rect.y + (rect.height - box_size) / 2.0f, box_size, box_size};
 
-            painter.draw_filled_frame(box_rect, cb_style.background, cb_style.border, palette,
-                                      false);
+            painter.draw_filled_frame(box_rect, palette.base, palette.border, palette, false);
 
             auto expand_collapse_char = expanded ? "-" : "+";
             auto char_w = painter.text_size(expand_collapse_char, style.font_size).width;
@@ -1330,10 +1319,6 @@ class GnomeTheme : public BaseTheme {
         Color btn_bg = dark ? palette.window.lighten(0.04f) : palette.window.darken(0.03f);
         button.padding = {8, 20, 8, 20};
 
-        checkbox.corner_radius = 5.0f;
-        checkbox.border_width = 2.0f;
-        radio.border_width = 2.0f;
-        combobox.corner_radius = palette.corner_radius;
         slider.handle_size = 22.0f;
         slider.groove_thickness = 6.0f;
 
@@ -1398,9 +1383,6 @@ class Plasma6Theme : public BaseTheme {
     explicit Plasma6Theme(Palette p) : BaseTheme(std::move(p)) {
         name = "Plasma 6";
         button.padding = {9, 18, 9, 18};
-        checkbox.corner_radius = 5.0f;
-        checkbox.indicator = Color::with_gray(0.0f);
-        radio.indicator = Color::with_gray(0.0f);
         slider.handle_size = 20.0f;
         slider.groove_thickness = 6.0f;
         focus_ring_margin = 2.0f;
