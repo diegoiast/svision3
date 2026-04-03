@@ -114,7 +114,10 @@ void Slider::paint(Painter &painter) {
     auto range = max_ - min_;
     auto normalized_value = (range > 0) ? (value_ - min_) / range : 0.0f;
 
-    Theme::current().draw_slider(painter, rect, normalized_value, horizontal, false, false,
+    // FIXME: add support for these states
+    auto hovered = false;
+    auto pressed = false;
+    Theme::current().draw_slider(painter, rect, normalized_value, horizontal, hovered, pressed,
                                  is_focused(), is_enabled());
 }
 

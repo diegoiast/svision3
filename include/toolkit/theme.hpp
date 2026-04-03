@@ -112,10 +112,7 @@ struct TreeViewStyle : WidgetStyle {
 };
 
 // FIXME: remove this style
-struct SliderStyle : WidgetStyle {
-    Color groove;
-    Color handle;
-    Color handle_border;
+struct SliderStyle {
     float groove_thickness = 4.0f;
     float handle_size = 16.0f;
 };

@@ -77,11 +77,6 @@ class BaseTheme : public Theme {
         tree_view.indent = 20.0f;
         tree_view.background = Color::with_gray(1.0f);
 
-        apply_base(slider, palette);
-        slider.groove = palette.border;
-        slider.handle = palette.window;
-        slider.handle_border = palette.border;
-
         layout.margins = {8, 8, 8, 8};
         layout.spacing = 8.0f;
 
@@ -427,12 +422,22 @@ class BaseTheme : public Theme {
                            style.handle_size};
         }
 
-        painter.fill_rounded_rect(groove_rect, style.groove, style.groove_thickness / 2.0f);
+        painter.fill_rounded_rect(groove_rect, palette.border, style.groove_thickness / 2.0f);
 
-        auto bg = pressed ? style.handle.darken(0.1f)
-                          : (hovered ? style.handle.lighten(0.1f) : style.handle);
+        // FIXME: we need hover color?
+        auto bg = pressed ? palette.window : palette.base;
+        auto border = palette.border;
+        if (hovered && palette.background_hovered) {
+            bg = *palette.background_hovered;
+        }
+        if (pressed && palette.background_pressed) {
+            bg = *palette.background_pressed;
+        }
+        if (hovered || pressed) {
+            border = palette.accent;
+        }
         painter.fill_rounded_rect(handle_rect, bg, style.handle_size / 4.0f);
-        painter.draw_rounded_rect(handle_rect, style.handle_border, style.handle_size / 4.0f, 1.0f);
+        painter.draw_rounded_rect(handle_rect, palette.border, style.handle_size / 4.0f, 1.0f);
     }
 
     void draw_tab_bar_background(Painter &painter, Rect const &rect) const override {
