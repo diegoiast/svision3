@@ -27,7 +27,6 @@ struct WidgetStyle {
     Color shadow;
     float border_width = 1.0f;
     float corner_radius = 0.0f;
-    float font_size = 14.0f;
     bool beveled = false;
 };
 
@@ -182,19 +181,16 @@ struct Palette {
     float border_width = 1.0f;
     bool beveled = false;
 
-    // Platform-specific defaults
-    SystemFonts fonts;
     // FIXME: this should be platform dependent, read from desktop configuration
-    float font_size = 14.0f;
-    std::string system_font = "sans-serif";
-    std::string monospace_font = "monospace";
+    SystemFonts fonts;
+
     float auto_repeat_delay = 0.5f;
     float auto_repeat_interval = 0.4f;
 };
 
 enum class ColorScheme { Light, Dark };
 
-// FIXME: now ideal.
+// FIXME: not ideal.
 inline constexpr int theme_style_count = 6;
 
 enum class ThemeStyle { MacOS, Material, Win11, Win95, Plasma6, GNOME };
@@ -290,8 +286,6 @@ class Theme {
     virtual void draw_focus_ring_for_widget(Painter &painter, Widget const *widget) const;
     virtual Size measure_label(std::string_view text, float font_size) const = 0;
 
-    virtual Color error_color() const { return Color::rgb(1.0f, 0.85f, 0.85f); }
-
     // Metrics and Styles
     virtual Size measure_button(std::string_view text, Icon const &icon) const = 0;
     virtual Size measure_checkbox(std::string_view text) const = 0;
@@ -311,8 +305,6 @@ class Theme {
     std::string name;
     ThemeStyle style;
     Palette palette;
-    std::string system_font;
-    std::string monospace_font;
 
     float focus_ring_margin = 5.0f;
     float focus_ring_corner_radius = 5.0f;

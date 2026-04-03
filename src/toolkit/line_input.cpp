@@ -174,12 +174,12 @@ void LineInput::sync_commands() {
 
 float LineInput::clear_btn_size() const {
     auto const &palette = Theme::current().palette;
-    return palette.font_size + 2.0f;
+    return palette.fonts.size + 2.0f;
 }
 
 float LineInput::peek_btn_size() const {
     auto const &palette = Theme::current().palette;
-    return palette.font_size + 2.0f;
+    return palette.fonts.size + 2.0f;
 }
 
 float LineInput::content_right_inset() const {
@@ -242,12 +242,12 @@ size_t LineInput::pos_from_x(float x) const {
         size_t next_pos = Utf8Iterator::next(text_, current_pos);
         std::string before =
             password_mode_ ? get_masked_text(text_, next_pos) : text_.substr(0, next_pos);
-        auto sz = Painter::measure_text(before, palette.font_size);
+        auto sz = Painter::measure_text(before, palette.fonts.size);
         if (sz.width > click_x) {
             // Check if we are closer to the previous or next character
             std::string before_prev =
                 password_mode_ ? get_masked_text(text_, current_pos) : text_.substr(0, current_pos);
-            auto prev_sz = Painter::measure_text(before_prev, palette.font_size);
+            auto prev_sz = Painter::measure_text(before_prev, palette.fonts.size);
             if (click_x - prev_sz.width < sz.width - click_x) {
                 return current_pos;
             } else {
@@ -272,7 +272,7 @@ void LineInput::paint(Painter &painter) {
 
     std::optional<Color> bg;
     if (validation_mode_ == ValidationMode::Notify && !is_valid()) {
-        bg = theme.error_color();
+        bg = theme.palette.error;
     }
 
     auto rect = Rect{0, 0, rect_.width, rect_.height};
@@ -478,13 +478,12 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
 }
 
 void LineInput::ensure_cursor_visible(Painter &painter) {
-    // auto const &style = Theme::current().line_input;
     auto const &palette = Theme::current().palette;
     auto content_w = content_available_width();
     auto before_str =
         password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
     auto cursor_x =
-        before_str.empty() ? 0.0f : painter.text_size(before_str, palette.font_size).width;
+        before_str.empty() ? 0.0f : painter.text_size(before_str, palette.fonts.size).width;
 
     if (cursor_x - scroll_offset_ > content_w) {
         scroll_offset_ = cursor_x - content_w;
@@ -781,7 +780,7 @@ Size LineInput::size_hint() const {
     auto const &palette = Theme::current().palette;
 
     // FIXME: what is 8.0f this constant?
-    auto h = palette.font_size + style.padding.top + style.padding.bottom + 8.0f;
+    auto h = palette.fonts.size + style.padding.top + style.padding.bottom + 8.0f;
     return {150.0f, h};
 }
 

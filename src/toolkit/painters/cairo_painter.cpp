@@ -114,7 +114,7 @@ void CairoPainter::draw_circle(Point center, float radius, Color const &color, f
 
 static std::string cairo_font_face(FontFamily f) {
     auto const &t = Theme::current();
-    return f == FontFamily::Monospace ? t.monospace_font : t.system_font;
+    return f == FontFamily::Monospace ? t.palette.fonts.monospace : t.palette.fonts.system;
 }
 
 void CairoPainter::draw_text(std::string_view text, Point position, Color const &color,

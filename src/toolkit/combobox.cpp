@@ -36,8 +36,9 @@ auto Combobox::selected_text() const -> std::string {
 }
 
 auto Combobox::dropdown_item_height() const -> float {
+    auto const &theme = Theme::current();
     auto const &style = Theme::current().combobox;
-    return style.font_size + style.item_padding * 2.0f;
+    return theme.palette.fonts.size + style.item_padding * 2.0f;
 }
 
 auto Combobox::dropdown_bounds() const -> Rect {
@@ -305,12 +306,14 @@ bool Combobox::handle_key(KeyEvent const &event) {
 }
 
 auto Combobox::size_hint() const -> Size {
-    auto const &style = Theme::current().combobox;
-    auto fm = Painter::measure_font_metrics(style.font_size);
+    auto const &theme = Theme::current();
+    auto const &style = theme.combobox;
+    auto const &palette = theme.palette;
+    auto fm = Painter::measure_font_metrics(palette.fonts.size);
     auto max_w = 0.0f;
 
     for (auto const &item : items_) {
-        max_w = std::max(max_w, Painter::measure_text(item, style.font_size).width);
+        max_w = std::max(max_w, Painter::measure_text(item, palette.fonts.size).width);
     }
 
     return {max_w + style.padding.left + style.padding.right + 20.0f,

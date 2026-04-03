@@ -18,15 +18,13 @@ class BaseTheme : public Theme {
   public:
     explicit BaseTheme(Palette p) {
         this->palette = std::move(p);
-        if (palette.fonts.font_size == 0 && palette.font_size > 0) {
-            palette.fonts.font_size = palette.font_size;
+        if (palette.fonts.size == 0 && palette.fonts.size > 0) {
+            palette.fonts.size = palette.fonts.size;
         }
 
         // Initialize backward compatibility members
         name = "Base";
         style = ThemeStyle::Material;
-        system_font = palette.fonts.system;
-        monospace_font = palette.fonts.monospace;
 
         // FIXME: all this should be removed. Custom colors are just a bad idea
         //        themes will not use these anyway.
@@ -38,7 +36,6 @@ class BaseTheme : public Theme {
             ws.background_selected = p.highlight;
             ws.highlight = p.highlight;
             ws.shadow = p.shadow;
-            ws.font_size = p.fonts.font_size;
         };
 
         apply_base(combobox, palette);
@@ -97,7 +94,7 @@ class BaseTheme : public Theme {
             tooltip.border = Color::rgb(0.6f, 0.6f, 0.5f);
             tooltip.text = Color::rgb(0.1f, 0.1f, 0.1f);
         }
-        tooltip.font_size = palette.fonts.font_size - 1.0f;
+        tooltip.font_size = palette.fonts.size - 1.0f;
     }
 
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
@@ -109,8 +106,8 @@ class BaseTheme : public Theme {
         auto border_c = (focused || hovered || pressed) ? palette.accent : palette.border;
         auto text_c = enabled ? palette.text : palette.text_disabled;
         auto text_offset = (palette.beveled && pressed && enabled) ? 1.0f : 0.0f;
-        auto fm = painter.font_metrics(palette.font_size);
-        auto text_w = painter.text_size(text, palette.font_size).width;
+        auto fm = painter.font_metrics(palette.fonts.size);
+        auto text_w = painter.text_size(text, palette.fonts.size).width;
         auto icon_w = 0.0f;
         auto icon_h = 0.0f;
 
@@ -151,7 +148,7 @@ class BaseTheme : public Theme {
             auto icon_y = (rect.height - icon_h) / 2.0f;
             painter.draw_image(*icon, Point{icon_x, icon_y});
         }
-        painter.draw_text(text, text_pos, text_c, palette.font_size);
+        painter.draw_text(text, text_pos, text_c, palette.fonts.size);
     }
 
     void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
@@ -161,7 +158,7 @@ class BaseTheme : public Theme {
         auto hovered =
             button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
         auto pressed = button_state == ButtonState::ClickedInside;
-        auto fm = painter.font_metrics(palette.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto box = style.box_size;
         auto box_y = (rect.height - box) / 2.0f;
         auto box_rect = Rect{rect.x, box_y, box, box};
@@ -195,7 +192,7 @@ class BaseTheme : public Theme {
         auto text_x = rect.x + box + style.spacing;
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_c = enabled ? palette.text : palette.text_disabled;
-        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.font_size);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
     }
 
     void draw_radio_button(Painter &painter, Rect const &rect, std::string_view text, bool checked,
@@ -204,7 +201,7 @@ class BaseTheme : public Theme {
         auto hovered =
             button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
         auto pressed = button_state == ButtonState::ClickedInside;
-        auto fm = painter.font_metrics(palette.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto r = style.box_size / 2.0f;
         auto center = Point{rect.x + r, rect.height / 2.0f};
         auto text_x = rect.x + style.box_size + style.spacing;
@@ -230,7 +227,7 @@ class BaseTheme : public Theme {
             painter.fill_circle(center, r * 0.45f, palette.text);
         }
         auto text_c = enabled ? palette.text : palette.text_disabled;
-        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.font_size);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
     }
 
     void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
@@ -240,7 +237,7 @@ class BaseTheme : public Theme {
                          bool cursor_visible) const override {
         auto const &style = line_input;
         auto border = focused ? palette.accent : palette.border;
-        auto fm = painter.font_metrics(palette.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto content_x = style.padding.left;
         auto content_w = rect.width - style.padding.left - style.padding.right;
@@ -255,8 +252,8 @@ class BaseTheme : public Theme {
         if (selection_start >= 0 && selection_end > selection_start) {
             auto before_s = text.substr(0, selection_start);
             auto before_e = text.substr(0, selection_end);
-            auto sx = tx + painter.text_size(before_s, palette.font_size).width;
-            auto ex = tx + painter.text_size(before_e, palette.font_size).width;
+            auto sx = tx + painter.text_size(before_s, palette.fonts.size).width;
+            auto ex = tx + painter.text_size(before_e, palette.fonts.size).width;
             auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
             auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
             painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
@@ -264,11 +261,11 @@ class BaseTheme : public Theme {
 
         if (text.empty() && !focused) {
             painter.draw_text(placeholder, {tx, baseline_y}, palette.placeholder,
-                              palette.font_size);
+                              palette.fonts.size);
         } else if (!text.empty()) {
             if (password_mode) {
-                auto dot_radius = palette.font_size * 0.25f;
-                auto char_w = painter.text_size("8", palette.font_size).width;
+                auto dot_radius = palette.fonts.size * 0.25f;
+                auto char_w = painter.text_size("8", palette.fonts.size).width;
                 auto center_off_y = (fm.ascent - fm.descent) / 2.0f;
                 auto char_count = 0;
                 auto i = 0;
@@ -281,7 +278,7 @@ class BaseTheme : public Theme {
                     i = Utf8Iterator::next(text, i);
                 }
             } else {
-                painter.draw_text(text, {tx, baseline_y}, text_c, palette.font_size);
+                painter.draw_text(text, {tx, baseline_y}, text_c, palette.fonts.size);
             }
         }
 
@@ -289,7 +286,7 @@ class BaseTheme : public Theme {
             auto before = text.substr(0, cursor_pos);
             auto cx = tx;
             if (!before.empty()) {
-                cx += painter.text_size(before, palette.font_size).width;
+                cx += painter.text_size(before, palette.fonts.size).width;
             }
             auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
             auto cy_bot = cy_top + fm.height + 2.0f;
@@ -300,9 +297,9 @@ class BaseTheme : public Theme {
 
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
                            bool active, bool show_mnemonics, int mnemonic_index) const override {
-        auto const &style = menubar;
+        auto const &style = menubar;       
         auto padding = style.padding;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
 
         if (hovered || active) {
             auto bg = style.background_hovered.value_or(style.background.darken(0.1f));
@@ -311,14 +308,14 @@ class BaseTheme : public Theme {
 
         auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_c = style.text;
-        painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, style.font_size);
+        painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, palette.fonts.size);
 
         if (show_mnemonics && mnemonic_index >= 0) {
             auto before = title.substr(0, mnemonic_index);
             auto ch = std::string(1, title[mnemonic_index]);
             auto before_w =
-                before.empty() ? 0.0f : painter.text_size(before, style.font_size).width;
-            auto ch_w = painter.text_size(ch, style.font_size).width;
+                before.empty() ? 0.0f : painter.text_size(before, palette.fonts.size).width;
+            auto ch_w = painter.text_size(ch, palette.fonts.size).width;
             auto ul_y = baseline + fm.descent * 0.4f;
 
             painter.draw_line({rect.x + padding.left + before_w, ul_y},
@@ -346,7 +343,7 @@ class BaseTheme : public Theme {
                         std::string_view shortcut, bool hovered, bool enabled, bool checkable,
                         bool checked) const override {
         auto const &style = combobox;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_col = style.text;
 
@@ -370,12 +367,12 @@ class BaseTheme : public Theme {
         if (!enabled) {
             text_col.a *= 0.4f;
         }
-        painter.draw_text(text, {text_x, baseline}, text_col, style.font_size);
+        painter.draw_text(text, {text_x, baseline}, text_col, palette.fonts.size);
 
         if (!shortcut.empty()) {
-            auto shortcut_w = painter.text_size(shortcut, style.font_size).width;
+            auto shortcut_w = painter.text_size(shortcut, palette.fonts.size).width;
             auto shortcut_x = rect.x + rect.width - style.padding.right - shortcut_w - 10.0f;
-            painter.draw_text(shortcut, {shortcut_x, baseline}, text_col, style.font_size);
+            painter.draw_text(shortcut, {shortcut_x, baseline}, text_col, palette.fonts.size);
         }
     }
 
@@ -462,10 +459,9 @@ class BaseTheme : public Theme {
             text_orientation = Painter::TextOrientation::VerticalCCW;
         }
 
-        auto fm = painter.font_metrics(style.font_size);
-        auto text_w = painter.text_size(text, style.font_size).width;
-
-        float text_x, baseline_y;
+        auto fm = painter.font_metrics(palette.fonts.size);
+        auto text_w = painter.text_size(text, palette.fonts.size).width;
+        auto text_x = 0.0f, baseline_y = 0.0f;
         if (vertical) {
             auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
             auto left_space = style.tab_padding_h;
@@ -486,8 +482,8 @@ class BaseTheme : public Theme {
             baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         }
 
-        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size, FontFamily::System,
-                          text_orientation);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size,
+                          FontFamily::System, text_orientation);
 
         if (has_close) {
             auto close_btn_size = 14.0f;
@@ -531,7 +527,7 @@ class BaseTheme : public Theme {
 
         painter.fill_rect(rect, bg);
 
-        auto fm = painter.font_metrics(palette.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto text_x = rect.x + style.item_padding_h;
         if (icon) {
             auto icon_y = rect.y + (rect.height - static_cast<float>(icon->height)) / 2.0f;
@@ -540,7 +536,7 @@ class BaseTheme : public Theme {
         }
         auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_c = selected ? palette.highlighted_text : palette.text;
-        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.font_size);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
     }
 
     void draw_list_background(Painter &painter, Rect const &rect, bool focused) const override {
@@ -579,7 +575,7 @@ class BaseTheme : public Theme {
                         bool has_children, bool expanded, bool selected, bool hovered,
                         bool alternate) const override {
         auto const &style = tree_view;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
 
         auto x_offset = style.item_padding_h + depth * style.indent;
 
@@ -604,7 +600,7 @@ class BaseTheme : public Theme {
 
         auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_col = selected ? style.selected_text : style.text;
-        painter.draw_text(text, {x_offset, text_y}, text_col, style.font_size);
+        painter.draw_text(text, {x_offset, text_y}, text_col, palette.fonts.size);
     }
 
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
@@ -627,7 +623,7 @@ class BaseTheme : public Theme {
                        bool open) const override {
         auto const &style = combobox;
         auto border = focused ? style.border_focused : style.border;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
 
         painter.draw_filled_frame(rect, style.background, border, palette, true);
@@ -635,7 +631,8 @@ class BaseTheme : public Theme {
         if (!text.empty()) {
             auto clip_w = rect.width - style.padding.left - style.padding.right - 16.0f;
             painter.push_clip({style.padding.left, 0, clip_w, rect.height});
-            painter.draw_text(text, {style.padding.left, baseline_y}, style.text, style.font_size);
+            painter.draw_text(text, {style.padding.left, baseline_y}, palette.text,
+                              palette.fonts.size);
             painter.pop_clip();
         }
 
@@ -651,7 +648,7 @@ class BaseTheme : public Theme {
     void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
                             bool hovered) const override {
         auto const &style = combobox;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto tc = hovered ? style.item_text_hovered : style.text;
 
@@ -659,7 +656,7 @@ class BaseTheme : public Theme {
             painter.fill_rect(rect, style.item_hovered);
         }
 
-        painter.draw_text(text, {rect.x + style.padding.left, baseline}, tc, style.font_size);
+        painter.draw_text(text, {rect.x + style.padding.left, baseline}, tc, palette.fonts.size);
     }
 
     void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const override {
@@ -707,7 +704,7 @@ class BaseTheme : public Theme {
 
         auto content_x = field_rect.x + style.padding.left;
         auto content_w = field_rect.width - style.padding.left - style.padding.right;
-        auto fm = painter.font_metrics(palette.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto clip_rect = Rect{content_x, rect.y, content_w, rect.height};
         painter.push_clip(clip_rect);
@@ -715,21 +712,21 @@ class BaseTheme : public Theme {
         if (selection_start >= 0 && selection_end > selection_start) {
             auto before_s = text.substr(0, selection_start);
             auto before_e = text.substr(0, selection_end);
-            auto sx = content_x + painter.text_size(before_s, palette.font_size).width;
-            auto ex = content_x + painter.text_size(before_e, palette.font_size).width;
+            auto sx = content_x + painter.text_size(before_s, palette.fonts.size).width;
+            auto ex = content_x + painter.text_size(before_e, palette.fonts.size).width;
             auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
             auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
             painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
         }
 
         auto text_c = enabled ? palette.text : palette.text_disabled;
-        painter.draw_text(text, {content_x, baseline_y}, text_c, palette.font_size);
+        painter.draw_text(text, {content_x, baseline_y}, text_c, palette.fonts.size);
 
         if (focused && cursor_pos >= 0 && cursor_visible) {
             auto before = text.substr(0, cursor_pos);
             auto cx = content_x;
             if (!before.empty()) {
-                cx += painter.text_size(before, palette.font_size).width;
+                cx += painter.text_size(before, palette.fonts.size).width;
             }
             auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
             auto cy_bot = cy_top + fm.height + 2.0f;
@@ -781,7 +778,7 @@ class BaseTheme : public Theme {
                         float scroll_x, float scroll_y, bool focused, bool enabled,
                         std::chrono::steady_clock::time_point cursor_blink_time) const override {
         auto const &style = text_edit;
-        auto fm = painter.font_metrics(palette.font_size, FontFamily::Monospace);
+        auto fm = painter.font_metrics(palette.fonts.size, FontFamily::Monospace);
         auto bg = palette.base;
         auto border = focused ? palette.accent : palette.border;
         auto text_c = enabled ? palette.text : palette.text_disabled;
@@ -800,9 +797,9 @@ class BaseTheme : public Theme {
             auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
             auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
             auto num = std::to_string(i + 1);
-            auto nw = Painter::measure_text(num, palette.font_size, FontFamily::Monospace).width;
+            auto nw = Painter::measure_text(num, palette.fonts.size, FontFamily::Monospace).width;
             painter.draw_text(num, {rect.x + gutter_width - nw - 8.0f, baseline},
-                              palette.placeholder, palette.font_size, FontFamily::Monospace);
+                              palette.placeholder, palette.fonts.size, FontFamily::Monospace);
         }
 
         auto area = Rect{rect.x + gutter_width, rect.y, rect.width - gutter_width, rect.height};
@@ -826,23 +823,22 @@ class BaseTheme : public Theme {
                 auto sel_end = (i == selection_end_line) ? selection_end_col : line_end_col;
 
                 if (sel_start < sel_end) {
-                    auto sx =
-                        tx0 + (sel_start > 0
-                                   ? Painter::measure_text(lines[i].substr(0, sel_start),
-                                                           palette.font_size, FontFamily::Monospace)
-                                         .width
-                                   : 0.0f);
+                    auto sx = tx0 + (sel_start > 0 ? Painter::measure_text(
+                                                         lines[i].substr(0, sel_start),
+                                                         palette.fonts.size, FontFamily::Monospace)
+                                                         .width
+                                                   : 0.0f);
                     auto ex = tx0 + Painter::measure_text(lines[i].substr(0, sel_end),
-                                                          palette.font_size, FontFamily::Monospace)
+                                                          palette.fonts.size, FontFamily::Monospace)
                                         .width;
                     if (i != selection_end_line) {
-                        ex += palette.font_size * 0.4f;
+                        ex += palette.fonts.size * 0.4f;
                     }
                     painter.fill_rect({sx, y, ex - sx, line_height}, sel_bg);
                 }
             }
 
-            painter.draw_text(lines[i], {tx0, baseline}, text_c, palette.font_size,
+            painter.draw_text(lines[i], {tx0, baseline}, text_c, palette.fonts.size,
                               FontFamily::Monospace);
         }
 
@@ -856,7 +852,7 @@ class BaseTheme : public Theme {
                 auto cx = tx0;
                 if (cursor_col > 0 && cursor_line < static_cast<int>(lines.size())) {
                     cx += Painter::measure_text(lines[cursor_line].substr(0, cursor_col),
-                                                palette.font_size, FontFamily::Monospace)
+                                                palette.fonts.size, FontFamily::Monospace)
                               .width;
                 }
                 painter.draw_line({cx, cy}, {cx, cy + line_height}, palette.text, 1.5f);
@@ -937,36 +933,34 @@ class BaseTheme : public Theme {
         return {w, fm.height + 4.0f};
     }
 
-    Color error_color() const override { return palette.error.lighten(0.3f); }
-
     Size measure_button(std::string_view text, Icon const &icon) const override {
-        auto text_w = Painter::measure_text(text, palette.font_size).width;
+        auto text_w = Painter::measure_text(text, palette.fonts.size).width;
         auto icon_w = 0.0f;
         if (icon) {
             icon_w = static_cast<float>(icon->width);
         }
         auto total_w = text_w + (icon ? icon_w + 4.0f : 0.0f);
         auto w = total_w + button.padding.left + button.padding.right;
-        auto h = palette.font_size + button.padding.top + button.padding.bottom;
+        auto h = palette.fonts.size + button.padding.top + button.padding.bottom;
         return {w, h};
     }
 
     Size measure_checkbox(std::string_view text) const override {
-        auto text_w = Painter::measure_text(text, palette.font_size).width;
+        auto text_w = Painter::measure_text(text, palette.fonts.size).width;
         auto w = checkbox.box_size + checkbox.spacing + text_w;
-        auto h = std::max(checkbox.box_size, palette.font_size);
+        auto h = std::max(checkbox.box_size, palette.fonts.size);
         return Size{w, h};
     }
 
     Size measure_radio_button(std::string_view text) const override {
-        auto text_w = Painter::measure_text(text, palette.font_size).width;
+        auto text_w = Painter::measure_text(text, palette.fonts.size).width;
         auto w = radio.box_size + radio.spacing + text_w;
-        auto h = std::max(radio.box_size, palette.font_size);
+        auto h = std::max(radio.box_size, palette.fonts.size);
         return Size{w, h};
     }
 
     Size measure_menubar_item(std::string_view text) const override {
-        auto text_w = Painter::measure_text(text, menubar.font_size).width;
+        auto text_w = Painter::measure_text(text, palette.fonts.size).width;
         return {text_w + menubar.padding.left + menubar.padding.right, 0};
     }
 
@@ -976,19 +970,19 @@ class BaseTheme : public Theme {
         if (icon) {
             w += static_cast<float>(icon->width) + menu.item_padding;
         }
-        w += Painter::measure_text(text, menu.font_size).width;
+        w += Painter::measure_text(text, palette.fonts.size).width;
         if (!shortcut.empty()) {
-            w += menu.item_padding + Painter::measure_text(shortcut, menu.font_size).width;
+            w += menu.item_padding + Painter::measure_text(shortcut, palette.fonts.size).width;
         }
-        auto h = menu.font_size + menu.item_padding * 2;
+        auto h = palette.fonts.size + menu.item_padding * 2;
         return {w, h};
     }
 
     float menu_separator_height() const override { return 8.0f; }
     Size measure_tab(std::string_view text) const override {
-        auto text_w = Painter::measure_text(text, tab_widget.font_size).width;
+        auto text_w = Painter::measure_text(text, palette.fonts.size).width;
         auto w = text_w + tab_widget.tab_padding_h * 2;
-        auto h = tab_widget.font_size + tab_widget.tab_padding_v * 2;
+        auto h = palette.fonts.size + tab_widget.tab_padding_v * 2;
         return {w, h};
     }
     float list_item_height() const override { return 24.0f; }
@@ -1025,7 +1019,7 @@ class Win11Theme : public BaseTheme {
                            bool active, bool show_mnemonics, int mnemonic_index) const override {
         auto const &style = menubar;
         auto padding = style.padding;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
 
         if (hovered || active) {
             Color bg = style.background_hovered.value_or(style.background.darken(0.1f));
@@ -1040,7 +1034,7 @@ class Win11Theme : public BaseTheme {
                 text_c = Color::rgb(1, 1, 1);
             }
         }
-        painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, style.font_size);
+        painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, palette.fonts.size);
     }
 
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
@@ -1069,7 +1063,7 @@ class Win11Theme : public BaseTheme {
                         bool has_children, bool expanded, bool selected, bool hovered,
                         bool alternate) const override {
         auto const &style = tree_view;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto indent = style.indent;
 
         auto x_offset = style.item_padding_h + depth * indent;
@@ -1093,8 +1087,8 @@ class Win11Theme : public BaseTheme {
         }
 
         auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto text_col = selected ? style.selected_text : style.text;
-        painter.draw_text(text, {x_offset, text_y}, text_col, style.font_size);
+        auto text_col = selected ? palette.accent : palette.text;
+        painter.draw_text(text, {x_offset, text_y}, text_col, palette.fonts.size);
     }
 };
 
@@ -1167,7 +1161,7 @@ class Win95Theme : public BaseTheme {
                         bool alternate) const override {
         auto const &style = tree_view;
         auto const &cb_style = checkbox;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto x_offset = style.item_padding_h + depth * style.indent;
 
         if (has_children) {
@@ -1179,19 +1173,19 @@ class Win95Theme : public BaseTheme {
             painter.draw_filled_frame(box_rect, palette.base, palette.border, palette, false);
 
             auto expand_collapse_char = expanded ? "-" : "+";
-            auto char_w = painter.text_size(expand_collapse_char, style.font_size).width;
+            auto char_w = painter.text_size(expand_collapse_char, palette.fonts.size).width;
             auto char_x = icon_x + (box_size - char_w) / 2.0f;
             auto char_y = box_rect.y + (box_size - fm.height) / 2.0f + fm.ascent;
 
-            painter.draw_text(expand_collapse_char, Point{char_x, char_y}, style.text,
-                              style.font_size);
+            painter.draw_text(expand_collapse_char, Point{char_x, char_y}, palette.text,
+                              palette.fonts.size);
         }
 
         x_offset += style.indent + 4.0f;
 
         auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_col = selected ? style.selected_text : style.text;
-        painter.draw_text(text, Point{x_offset, text_y}, text_col, style.font_size);
+        painter.draw_text(text, Point{x_offset, text_y}, text_col, palette.fonts.size);
     }
 
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
@@ -1259,8 +1253,8 @@ class MaterialTheme : public BaseTheme {
 
         painter.fill_rect(rect, bg);
 
-        auto fm = painter.font_metrics(style.font_size);
-        auto text_w = painter.text_size(text, style.font_size).width;
+        auto fm = painter.font_metrics(palette.fonts.size);
+        auto text_w = painter.text_size(text, palette.fonts.size).width;
 
         auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
         auto left_space = style.tab_padding_h;
@@ -1271,7 +1265,7 @@ class MaterialTheme : public BaseTheme {
         }
 
         auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 
         if (has_close) {
             auto close_btn_size = 14.0f;
@@ -1340,8 +1334,8 @@ class GnomeTheme : public BaseTheme {
         auto tab_rect = rect.inset(2.0f);
         painter.fill_rounded_rect(tab_rect, bg, 6.0f);
 
-        auto fm = painter.font_metrics(style.font_size);
-        auto text_w = painter.text_size(text, style.font_size).width;
+        auto fm = painter.font_metrics(palette.fonts.size);
+        auto text_w = painter.text_size(text, palette.fonts.size).width;
 
         auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
         auto left_space = style.tab_padding_h;
@@ -1352,7 +1346,7 @@ class GnomeTheme : public BaseTheme {
         }
 
         auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(text, {text_x, baseline_y}, text_c, style.font_size);
+        painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 
         if (has_close) {
             auto close_btn_size = 14.0f;
@@ -1432,7 +1426,7 @@ class Plasma6Theme : public BaseTheme {
                         bool has_children, bool expanded, bool selected, bool hovered,
                         bool alternate) const override {
         auto const &style = tree_view;
-        auto fm = painter.font_metrics(style.font_size);
+        auto fm = painter.font_metrics(palette.fonts.size);
         auto indent = style.indent;
 
         auto x_offset = style.item_padding_h + depth * indent;
@@ -1461,7 +1455,7 @@ class Plasma6Theme : public BaseTheme {
 
         auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_col = selected ? style.selected_text : style.text;
-        painter.draw_text(text, {x_offset, text_y}, text_col, style.font_size);
+        painter.draw_text(text, {x_offset, text_y}, text_col, palette.fonts.size);
     }
 };
 
@@ -1778,7 +1772,7 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
     Palette p;
     p.fonts.system = "sans-serif";
     p.fonts.monospace = "monospace";
-    p.fonts.font_size = 14.0f;
+    p.fonts.size = 14.0f;
     p.fonts.auto_repeat_delay = 0.5f;
     p.fonts.auto_repeat_interval = 0.4f;
 
@@ -1790,8 +1784,8 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
         if (!sf.monospace.empty()) {
             p.fonts.monospace = sf.monospace;
         }
-        if (sf.font_size > 0) {
-            p.fonts.font_size = std::floor(sf.font_size * (96.0f / 72.0f));
+        if (sf.size > 0) {
+            p.fonts.size = std::floor(sf.size * (96.0f / 72.0f));
         }
         if (sf.auto_repeat_delay > 0) {
             p.fonts.auto_repeat_delay = sf.auto_repeat_delay;
@@ -1825,12 +1819,8 @@ Palette Theme::default_palette(ThemeStyle style, ColorScheme scheme) {
         break;
     }
 
-    p.font_size = p.fonts.font_size;
-    p.system_font = p.fonts.system;
-    p.monospace_font = p.fonts.monospace;
     p.auto_repeat_delay = p.fonts.auto_repeat_delay;
     p.auto_repeat_interval = p.fonts.auto_repeat_interval;
-
     return p;
 }
 

@@ -33,14 +33,16 @@ void ContextMenu::show(Window *win, Point position) {
     }
 
     auto const &style = Theme::current().combobox;
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
     auto max_w = 0.0f;
 
-    item_height_ = style.font_size + style.item_padding * 2.0f + 4.0f;
+    item_height_ = palette.fonts.size + style.item_padding * 2.0f + 4.0f;
     for (auto const &item : items_) {
         if (item.type == MenuItem::Type::Separator) {
             continue;
         }
-        auto w = Painter::measure_text(item.command->name(), style.font_size).width;
+        auto w = Painter::measure_text(item.command->name(), palette.fonts.size).width;
         max_w = std::max(max_w, w);
     }
 

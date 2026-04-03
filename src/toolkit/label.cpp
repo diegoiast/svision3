@@ -21,7 +21,7 @@ Label &Label::set_text(std::string const &text) {
 
 void Label::paint(Painter &painter) {
     auto pallete = Theme::current().palette;
-    auto fs = font_size_override_.value_or(pallete.font_size);
+    auto fs = font_size_override_.value_or(pallete.fonts.size);
     auto col = color_override_.value_or(pallete.text);
     auto fm = painter.font_metrics(fs);
     auto display_text = text_;
@@ -57,7 +57,7 @@ bool Label::handle_mouse(MouseEvent const &) { return false; }
 
 Size Label::size_hint() const {
     auto pallete = Theme::current().palette;
-    auto font_size = font_size_override_.value_or(pallete.font_size);
+    auto font_size = font_size_override_.value_or(pallete.fonts.size);
     if (shrinkable_ || text_.empty()) {
         return {0, Painter::measure_font_metrics(font_size).height + 4.0f};
     }

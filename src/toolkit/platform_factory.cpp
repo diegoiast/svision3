@@ -124,8 +124,8 @@ Application::Application() : impl_(std::make_unique<Impl>()) {
 
     auto const &theme = Theme::current();
     spdlog::info("Theme: {} (Font: '{}' {}px, Monospace: '{}', Scale: {:.2f})", theme.name,
-                 theme.system_font, theme.palette.font_size, theme.monospace_font,
-                 impl_->platform->scale_factor());
+                 theme.palette.fonts.system, theme.palette.fonts.size,
+                 theme.palette.fonts.monospace, impl_->platform->scale_factor());
 }
 
 Application::~Application() {

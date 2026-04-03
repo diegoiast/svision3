@@ -311,7 +311,9 @@ void MenuBar::toggle_menu(int index) {
 Size MenuBar::size_hint() const {
     auto const &theme = Theme::current();
     auto const &style = theme.menubar;
-    auto fm = Painter::measure_font_metrics(style.font_size);
+    auto const &palette = theme.palette;
+
+    auto fm = Painter::measure_font_metrics(palette.fonts.size);
     auto w = 0.0f;
     for (auto const &m : menus_) {
         w += theme.measure_menubar_item(m->display_title()).width;

@@ -197,14 +197,18 @@ TabWidget &TabWidget::set_trailing_widget(std::unique_ptr<Widget> widget) {
 }
 
 auto TabWidget::tab_bar_thickness() const -> float {
-    auto const &style = Theme::current().tab_widget;
-    auto fm = Painter::measure_font_metrics(style.font_size);
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
+    auto const &style = theme.tab_widget;
+    auto fm = Painter::measure_font_metrics(palette.fonts.size);
     return fm.height + style.tab_padding_v * 2;
 }
 
 auto TabWidget::tab_size(int i) const -> float {
-    auto const &style = Theme::current().tab_widget;
-    auto tw = Painter::measure_text(tabs_[i].title, style.font_size).width;
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
+    auto const &style = theme.tab_widget;
+    auto tw = Painter::measure_text(tabs_[i].title, palette.fonts.size).width;
     return tw + close_btn_size_ + close_btn_gap_ + style.tab_padding_h * 2;
 }
 
@@ -309,7 +313,9 @@ void TabWidget::layout_content() {
 }
 
 auto TabWidget::hit_test_tab(Point p) const -> HitResult {
-    auto const &style = Theme::current().tab_widget;
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
+    auto const &style = theme.tab_widget;
     auto thickness = tab_bar_thickness();
     auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
     auto x = 0.0f;
@@ -360,7 +366,7 @@ auto TabWidget::hit_test_tab(Point p) const -> HitResult {
         for (auto i = 0; i < static_cast<int>(tabs_.size()); i++) {
             auto h = tab_size(i);
             if (p.y >= draw_y && p.y < draw_y + h) {
-                auto text_w = Painter::measure_text(tabs_[i].title, style.font_size).width;
+                auto text_w = Painter::measure_text(tabs_[i].title, palette.fonts.size).width;
                 auto close_cx = x + thickness / 2.0f;
                 auto close_cy = 0.0f;
                 if (orientation_ == TabOrientation::West) {
@@ -388,7 +394,7 @@ auto TabWidget::hit_test_tab(Point p) const -> HitResult {
         for (auto i = 0; i < static_cast<int>(tabs_.size()); i++) {
             auto w = tab_size(i);
             if (p.x >= draw_x && p.x < draw_x + w) {
-                auto text_w = Painter::measure_text(tabs_[i].title, style.font_size).width;
+                auto text_w = Painter::measure_text(tabs_[i].title, palette.fonts.size).width;
                 auto close_x = draw_x + style.tab_padding_h + text_w + close_btn_gap_;
                 auto close_cy = y + thickness / 2.0f;
                 auto hr = close_btn_size_ / 2.0f + 2.0f;
@@ -432,9 +438,11 @@ void TabWidget::paint(Painter &painter) {
         state.layout_dirty = false;
     }
 
-    auto const &style = Theme::current().tab_widget;
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
+    auto const &style = theme.tab_widget;
+    auto fm = Painter::measure_font_metrics(palette.fonts.size);
     auto thickness = tab_bar_thickness();
-    auto fm = painter.font_metrics(style.font_size);
     auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
     auto bar_x = 0.0f;
     auto bar_y = 0.0f;

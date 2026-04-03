@@ -31,7 +31,7 @@ TEST_CASE("Theme::create with all styles and schemes", "[theme]") {
 
 TEST_CASE("Theme::default_palette returns valid palette", "[theme]") {
     auto p = Theme::default_palette(ThemeStyle::MacOS, ColorScheme::Light);
-    REQUIRE(p.font_size > 0);
+    REQUIRE(p.fonts.size > 0);
     REQUIRE(p.corner_radius >= 0);
     REQUIRE(p.border_width >= 0);
     REQUIRE(p.text.a == 1.0f);
@@ -78,11 +78,11 @@ TEST_CASE("Theme from custom palette", "[theme]") {
     p.border = Color::rgb(0.5f, 0.5f, 0.5f);
     p.accent = Color::rgb(1.0f, 0.0f, 0.0f);
     p.alternate = Color::rgb(0.25f, 0.25f, 0.25f);
-    p.font_size = 16.0f;
+    p.fonts.size = 16.0f;
 
     auto t = Theme::create(ThemeStyle::MacOS, p);
     REQUIRE(t->palette.window.r == 0.1f);
-    REQUIRE(t->palette.font_size == 16.0f);
+    REQUIRE(t->palette.fonts.size == 16.0f);
 }
 
 TEST_CASE("ProgressBar style has Win95 chunked", "[theme]") {

@@ -205,8 +205,10 @@ void TreeView::scroll_to_node(int index) {
 }
 
 float TreeView::row_height() const {
+    auto const &theme = Theme::current();
     auto const &style = Theme::current().tree_view;
-    auto fm = Painter::measure_font_metrics(style.font_size);
+    auto const &palette = theme.palette;
+    auto fm = Painter::measure_font_metrics(palette.fonts.size);
     return fm.height + style.item_padding * 2;
 }
 

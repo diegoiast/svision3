@@ -77,22 +77,23 @@ void Menu::show(Window *win, Point position) {
     if (!window_ || items_.empty()) {
         return;
     }
-
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
     auto const &style = Theme::current().menu;
     auto max_name_w = 0.0f;
     auto max_shortcut_w = 0.0f;
 
-    item_height_ = style.font_size + style.item_padding * 2.0f + 4.0f;
+    item_height_ = palette.fonts.size + style.item_padding * 2.0f + 4.0f;
     for (auto const &item : items_) {
         if (item.type == MenuItem::Type::Separator) {
             continue;
         }
-        auto name_w = Painter::measure_text(item.command->name(), style.font_size).width;
+        auto name_w = Painter::measure_text(item.command->name(), palette.fonts.size).width;
 
         max_name_w = std::max(max_name_w, name_w);
         if (!item.command->shortcut_string().empty()) {
             auto shortcut_w =
-                Painter::measure_text(item.command->shortcut_string(), style.font_size).width;
+                Painter::measure_text(item.command->shortcut_string(), palette.fonts.size).width;
             max_shortcut_w = std::max(max_shortcut_w, shortcut_w);
         }
     }
@@ -171,10 +172,11 @@ int Menu::item_at(Point p) const {
 }
 
 void Menu::paint(Painter &painter) {
-    Theme::current().draw_menu_background(painter, {0, 0, bounds_.width, bounds_.height});
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
 
+    theme.draw_menu_background(painter, {0, 0, bounds_.width, bounds_.height});
     auto y = 2.0f;
-
     for (auto i = 0; i < static_cast<int>(items_.size()); i++) {
         auto const &item = items_[i];
 
@@ -190,17 +192,15 @@ void Menu::paint(Painter &painter) {
         auto shortcut = item.command->shortcut_string();
         auto text = strip_mnemonic(item.command->name());
 
-        Theme::current().draw_menu_item(painter, item_rect, text, icon_data, shortcut,
-                                        i == hovered_, enabled, false, false);
-
+        theme.draw_menu_item(painter, item_rect, text, icon_data, shortcut, i == hovered_, enabled,
+                             false, false);
         if (item.type == MenuItem::Type::Submenu) {
             auto const &style = Theme::current().combobox;
-            auto fm = painter.font_metrics(style.font_size);
+            auto fm = painter.font_metrics(palette.fonts.size);
             auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
             auto arrow_x = bounds_.width - 15.0f;
-            painter.draw_text(">", {arrow_x, baseline}, style.text, style.font_size);
+            painter.draw_text(">", {arrow_x, baseline}, style.text, palette.fonts.size);
         }
-
         y += item_height_;
     }
 }

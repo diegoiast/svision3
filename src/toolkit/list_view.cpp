@@ -300,7 +300,7 @@ void ListView::scroll_to(int index) {
 float ListView::item_height() const {
     auto const &style = Theme::current().list_view;
     auto const &palette = Theme::current().palette;
-    auto fm = Painter::measure_font_metrics(palette.font_size);
+    auto fm = Painter::measure_font_metrics(palette.fonts.size);
     return fm.height + style.item_padding * 2;
 }
 
@@ -344,7 +344,7 @@ void ListView::paint(Painter &painter) {
     auto const &palette = theme.palette;
 
     auto ih = item_height();
-    auto fm = painter.font_metrics(palette.font_size);
+    auto fm = painter.font_metrics(palette.fonts.size);
     auto n = adapter_->count();
 
     Theme::current().draw_list_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
@@ -485,7 +485,6 @@ bool ListView::handle_key(KeyEvent const &event) {
         notify_selection();
         return true;
     }
-
     case Key::Home: {
         if (multi_select_ && event.shift) {
             if (anchor_ < 0) {
@@ -514,6 +513,9 @@ bool ListView::handle_key(KeyEvent const &event) {
         scroll_to(n - 1);
         return true;
     }
+    default:
+        // Just to keep the compiler happy
+        break;
     }
 
     if (multi_select_ && event.text == "a" && (event.super || event.ctrl)) {

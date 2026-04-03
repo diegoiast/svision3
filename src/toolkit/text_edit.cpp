@@ -117,8 +117,8 @@ static constexpr FontFamily kFont = FontFamily::Monospace;
 float TextEdit::line_height() const {
     auto const &style = Theme::current().text_edit;
     auto const &palette = Theme::current().palette;
-    auto fm = Painter::measure_font_metrics(palette.font_size, kFont);
-    return std::max(fm.height, palette.font_size) + 2.0f;
+    auto fm = Painter::measure_font_metrics(palette.fonts.size, kFont);
+    return std::max(fm.height, palette.fonts.size) + 2.0f;
 }
 
 float TextEdit::gutter_width() const {
@@ -131,7 +131,7 @@ float TextEdit::gutter_width() const {
         n /= 10;
     }
     digits = std::max(digits, 2);
-    return Painter::measure_text(std::string(digits, '9'), palette.font_size, kFont).width + 16.0f;
+    return Painter::measure_text(std::string(digits, '9'), palette.fonts.size, kFont).width + 16.0f;
 }
 
 TextEdit::Pos TextEdit::pos_from_point(Point p) const {
@@ -156,10 +156,10 @@ TextEdit::Pos TextEdit::pos_from_point(Point p) const {
     auto col = 0;
     while (col < (int)ln.size()) {
         auto next_col = Utf8Iterator::next(ln, col);
-        auto w = Painter::measure_text(ln.substr(0, next_col), palette.font_size, kFont).width;
+        auto w = Painter::measure_text(ln.substr(0, next_col), palette.fonts.size, kFont).width;
 
         if (w > click_x) {
-            auto prev_w = Painter::measure_text(ln.substr(0, col), palette.font_size, kFont).width;
+            auto prev_w = Painter::measure_text(ln.substr(0, col), palette.fonts.size, kFont).width;
             if (click_x - prev_w < w - click_x) {
                 return {line, static_cast<int>(col)};
             } else {
@@ -180,7 +180,7 @@ void TextEdit::clamp_scroll() {
 
     scroll_y_ = std::clamp(scroll_y_, 0.0f, std::max(0.0f, content_h - visible_h));
     for (auto const &ln : lines_) {
-        float w = Painter::measure_text(ln, palette.font_size, kFont).width;
+        float w = Painter::measure_text(ln, palette.fonts.size, kFont).width;
         if (w > max_line_w) {
             max_line_w = w;
         }
@@ -212,7 +212,7 @@ void TextEdit::ensure_cursor_visible() {
     auto visible_w = rect_.width - gw;
 
     if (cursor_.col > 0) {
-        cx = Painter::measure_text(lines_[cursor_.line].substr(0, cursor_.col), palette.font_size,
+        cx = Painter::measure_text(lines_[cursor_.line].substr(0, cursor_.col), palette.fonts.size,
                                    kFont)
                  .width;
     }
