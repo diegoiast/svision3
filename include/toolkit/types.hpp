@@ -42,13 +42,22 @@ struct Rect {
 };
 
 struct Color {
-    float r = 0;
-    float g = 0;
-    float b = 0;
+    float r = 0.0f;
+    float g = 0.0f;
+    float b = 0.0f;
     float a = 1.0f;
 
     static constexpr Color rgb(float r, float g, float b) { return {r, g, b, 1.0f}; }
     static constexpr Color rgba(float r, float g, float b, float a) { return {r, g, b, a}; }
+    static constexpr Color from_rgb(uint32_t argb) {
+        return {
+            static_cast<float>((argb >> 16) & 0xff) / 255.0f,
+            static_cast<float>((argb >> 8) & 0xff) / 255.0f,
+            static_cast<float>(argb & 0xff) / 255.0f,
+            1,
+        };
+    }
+
     static constexpr Color from_argb(uint32_t argb) {
         return {
             static_cast<float>((argb >> 16) & 0xff) / 255.0f,

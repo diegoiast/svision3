@@ -38,17 +38,7 @@ class BaseTheme : public Theme {
             ws.shadow = p.shadow;
         };
 
-        apply_base(tab_widget, palette);
-        bool is_dark = palette.window.luma() < 0.5f;
-        tab_widget.tab_active_bg = palette.window;
-        tab_widget.tab_inactive_bg =
-            is_dark ? palette.window.lighten(0.04f) : palette.window.darken(0.04f);
-        tab_widget.tab_hover_bg =
-            is_dark ? palette.window.lighten(0.08f) : palette.window.darken(0.02f);
-        tab_widget.tab_active_text = palette.text;
-        tab_widget.tab_inactive_text = Color::mid(
-            palette.text, is_dark ? palette.window.lighten(0.20f) : palette.window.darken(0.20f));
-
+        auto is_dark = palette.window.luma() < 0.5f;
         apply_base(tree_view, palette);
         tree_view.selected_bg = palette.accent;
         tree_view.selected_text = Color::with_gray(1.0f);
@@ -417,19 +407,27 @@ class BaseTheme : public Theme {
     }
 
     void draw_tab_bar_background(Painter &painter, Rect const &rect) const override {
-        auto const &style = tab_widget;
-        painter.fill_rect(rect, style.tab_inactive_bg);
+        painter.fill_rect(rect, palette.window);
     }
 
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                   bool hovered, bool enabled, TabOrientation orientation, bool has_close,
                   bool hovered_close) const override {
         auto const &style = tab_widget;
-        auto bg =
-            active ? style.tab_active_bg : (hovered ? style.tab_hover_bg : style.tab_inactive_bg);
-        auto text_c = active ? style.tab_active_text : style.tab_inactive_text;
+        auto bg = palette.window;
+        if (active) {
+            bg = palette.base;
+        } else {
+            if (hovered && palette.background_hovered) {
+                bg = *palette.background_hovered;
+            }
+        }
 
-        painter.fill_rect(rect, bg);
+        if (active) {
+            painter.fill_rounded_rect(rect, bg, palette.tab_radius);
+        } else {
+            painter.fill_rect(rect, bg);
+        }
 
         auto vertical =
             (orientation == TabOrientation::West || orientation == TabOrientation::East);
@@ -463,6 +461,7 @@ class BaseTheme : public Theme {
             baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         }
 
+        auto text_c = /*active ? palette.highlighted_text : */ palette.text;
         painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size,
                           FontFamily::System, text_orientation);
 
@@ -858,27 +857,26 @@ class BaseTheme : public Theme {
     void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const override {
         Color ring = palette.border;
         ring.a = 0.5f;
-        float lw = 2.0f;
-        float inset = lw / 2.0f + 0.5f;
-        Rect r = rect.inset(inset);
-
-        float dash_len = 2.0f;
-        float gap_len = 2.0f;
+        auto lw = 2.0f;
+        auto inset = lw / 2.0f + 0.5f;
+        auto r = rect.inset(inset);
+        auto dash_len = 2.0f;
+        auto gap_len = 2.0f;
 
         auto draw_dashed_line = [&](Point start, Point end) {
-            float dx = end.x - start.x;
-            float dy = end.y - start.y;
-            float len = std::sqrt(dx * dx + dy * dy);
+            auto dx = end.x - start.x;
+            auto dy = end.y - start.y;
+            auto len = std::sqrt(dx * dx + dy * dy);
             if (len < 0.001f) {
                 return;
             }
-            float ux = dx / len;
-            float uy = dy / len;
-            float pos = 0.0f;
-            bool drawing = true;
+            auto ux = dx / len;
+            auto uy = dy / len;
+            auto pos = 0.0f;
+            auto drawing = true;
             while (pos < len) {
-                float seg_len = drawing ? dash_len : gap_len;
-                float next_pos = std::min(pos + seg_len, len);
+                auto seg_len = drawing ? dash_len : gap_len;
+                auto next_pos = std::min(pos + seg_len, len);
                 if (drawing) {
                     painter.draw_line({start.x + ux * pos, start.y + uy * pos},
                                       {start.x + ux * next_pos, start.y + uy * next_pos}, ring, lw);
@@ -888,7 +886,7 @@ class BaseTheme : public Theme {
             }
         };
 
-        float cr = std::max(0.0f, corner_radius - inset);
+        auto cr = std::max(0.0f, corner_radius - inset);
         if (cr > 0.0f) {
             draw_dashed_line({r.x + cr, r.y}, {r.x + r.width - cr, r.y});
             draw_dashed_line({r.x + r.width, r.y + cr}, {r.x + r.width, r.y + r.height - cr});
@@ -1230,15 +1228,21 @@ class MaterialTheme : public BaseTheme {
                   bool hovered, bool enabled, TabOrientation orientation, bool has_close,
                   bool hovered_close) const override {
         auto const &style = tab_widget;
-        auto bg =
-            active ? style.tab_active_bg : (hovered ? style.tab_hover_bg : style.tab_inactive_bg);
-        auto text_c = active ? style.tab_active_text : style.tab_inactive_text;
+        auto bg = palette.window;
+        if (active) {
+            bg = palette.base;
+            if (palette.background_pressed) {
+                bg = *palette.background_pressed;
+            }
+        } else {
+            if (hovered && palette.background_hovered) {
+                bg = *palette.background_hovered;
+            }
+        }
 
-        painter.fill_rect(rect, bg);
-
+        auto text_c = active ? palette.highlighted_text : palette.text;
         auto fm = painter.font_metrics(palette.fonts.size);
         auto text_w = painter.text_size(text, palette.fonts.size).width;
-
         auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
         auto left_space = style.tab_padding_h;
         auto text_area_w = rect.width - left_space - right_space;
@@ -1307,19 +1311,23 @@ class GnomeTheme : public BaseTheme {
                   bool hovered, bool enabled, TabOrientation orientation, bool has_close,
                   bool hovered_close) const override {
         auto const &style = tab_widget;
-        auto bg =
-            active ? style.tab_active_bg : (hovered ? style.tab_hover_bg : style.tab_inactive_bg);
-        if (!active && !hovered) {
-            bg = bg.darken(0.05f);
+        // FIXME: we do not support hover colors. Should we use the button colors?
+        auto bg = palette.window;
+        if (active) {
+            if (palette.background_pressed) {
+                bg = *palette.background_pressed;
+            }
+        } else {
+            if (hovered && palette.background_hovered) {
+                bg = *palette.background_hovered;
+            }
         }
-        auto text_c = active ? style.tab_active_text : style.tab_inactive_text;
-
+        auto text_c = active ? palette.highlighted_text : palette.text;
         auto tab_rect = rect.inset(2.0f);
         painter.fill_rounded_rect(tab_rect, bg, 6.0f);
 
         auto fm = painter.font_metrics(palette.fonts.size);
         auto text_w = painter.text_size(text, palette.fonts.size).width;
-
         auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
         auto left_space = style.tab_padding_h;
         auto text_area_w = rect.width - left_space - right_space;
@@ -1332,11 +1340,9 @@ class GnomeTheme : public BaseTheme {
         painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 
         if (has_close) {
+            // FIXME: clsoe button size is hardcoded
             auto close_btn_size = 14.0f;
             auto close_x = rect.x + rect.width - style.tab_padding_h - close_btn_size - 2.0f;
-            // FIXME: no close button?
-            // auto close_rect = Rect{close_x, rect.y + (rect.height - close_btn_size) / 2.0f,
-            //                        close_btn_size, close_btn_size};
             auto close_cy = rect.y + rect.height / 2.0f;
             auto close_cx = close_x + close_btn_size / 2.0f;
 
@@ -1389,22 +1395,28 @@ class Plasma6Theme : public BaseTheme {
         BaseTheme::draw_tab(painter, rect, text, active, hovered, enabled, orientation, has_close,
                             hovered_close);
 
+        // FIXME: move indicators the base theme, with an indicator size/position in the palette
         if (active) {
             auto indicator = Rect{};
-            float lw = 2.0f;
+            auto lw = 4.0f;
+            auto r2 = rect;
+
+            r2.x += palette.tab_radius;
+            r2.width -= palette.tab_radius * 2;
+
             if (orientation == TabOrientation::North) {
-                indicator = {rect.x, rect.y + rect.height - lw, rect.width, lw};
+                indicator = {r2.x, 0, r2.width, lw};
             } else if (orientation == TabOrientation::South) {
-                indicator = {rect.x, rect.y, rect.width, lw};
+                indicator = {r2.x, r2.y, r2.width, lw};
             } else if (orientation == TabOrientation::West) {
-                indicator = {rect.x + rect.width - lw, rect.y, lw, rect.height};
+                indicator = {lw, r2.y, lw, r2.height};
             } else if (orientation == TabOrientation::East) {
-                indicator = {rect.x, rect.y, lw, rect.height};
+                indicator = {r2.x, r2.y, lw, r2.height};
             }
+            // FIXME- this is not ideal, as the marker should also have a rounded corners.
             painter.fill_rect(indicator, palette.accent);
         }
     }
-
     void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
                         bool has_children, bool expanded, bool selected, bool hovered,
                         bool alternate) const override {
@@ -1560,52 +1572,52 @@ static void palette_win11(Palette &p, ColorScheme scheme) {
 
 static void palette_material(Palette &p, ColorScheme scheme) {
     // default Material 3 primary (Deep Purple)
-    Color material_purple = Color::from_argb(0xFF6750A4);
+    Color material_purple = Color::from_rgb(0x6750A4);
     p.corner_radius = 4.0f;
+    p.tab_radius = 0.0f;
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::from_argb(0xFFFFFBFE);
-        p.base = Color::from_argb(0xFFFFFFFF);
-        p.alternate = Color::from_argb(0xFFF7F2FA);
-        p.text = Color::from_argb(0xFF1C1B1F);
-        p.text_disabled = Color::from_argb(0xFF9E9E9E);
-        p.placeholder = Color::from_argb(0xFF79747E);
+        p.window = Color::from_rgb(0xFFFBFE);
+        p.base = Color::from_rgb(0xFFFFFF);
+        p.alternate = Color::from_rgb(0xF7F2FA);
+        p.text = Color::from_rgb(0x1C1B1F);
+        p.text_disabled = Color::from_rgb(0x9E9E9E);
+        p.placeholder = Color::from_rgb(0x79747E);
         p.highlight = material_purple;
-        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
-        p.border = Color::from_argb(0xFFE7E0EC);
+        p.highlighted_text = Color::from_rgb(0x000000);
+        p.border = Color::from_rgb(0xE7E0EC);
         p.accent = material_purple;
-        p.link = Color::from_argb(0xFF2962FF);
-        p.shadow = Color::from_argb(0x1F000000);
-        p.dark_shadow = Color::from_argb(0x33000000);
-        p.background_pressed = Color::from_argb(0xFFE8DEF8);
-        p.background_hovered = Color::from_argb(0xFFF3EDF7);
-        p.tooltip = Color::from_argb(0xFFE6E1E5);
-
-        p.success = Color::from_argb(0xFF2E7D32);
-        p.warning = Color::from_argb(0xFFF9A825);
-        p.error = Color::from_argb(0xFFB3261E);
+        p.link = Color::from_rgb(0xFF2962FF);
+        p.shadow = Color::from_rgb(0x000000);
+        p.dark_shadow = Color::from_rgb(0x000000);
+        p.background_pressed = Color::from_rgb(0xE8DEF8);
+        p.background_hovered = Color::from_rgb(0xF3EDF7);
+        p.tooltip = Color::from_rgb(0xE6E1E5);
+        p.success = Color::from_rgb(0x2E7D32);
+        p.warning = Color::from_rgb(0xF9A825);
+        p.error = Color::from_rgb(0xB3261E);
         break;
     case ColorScheme::Dark:
-        p.window = Color::from_argb(0xFF1C1B1F);
-        p.base = Color::from_argb(0xFF1C1B1F);
-        p.alternate = Color::from_argb(0xFF292529);
-        p.text = Color::from_argb(0xFFE6E1E5);
-        p.text_disabled = Color::from_argb(0xFF9E9E9E);
-        p.placeholder = Color::from_argb(0xFF79747E);
+        p.window = Color::from_rgb(0x1C1B1F);
+        p.base = Color::from_rgb(0x1C1B1F);
+        p.alternate = Color::from_rgb(0x292529);
+        p.text = Color::from_rgb(0xE6E1E5);
+        p.text_disabled = Color::from_rgb(0x9E9E9E);
+        p.placeholder = Color::from_rgb(0x79747E);
         p.highlight = material_purple;
-        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
-        p.border = Color::from_argb(0xFF49454F);
+        p.highlighted_text = Color::from_rgb(0xFFFFFF);
+        p.border = Color::from_rgb(0x49454F);
         p.accent = material_purple;
-        p.link = Color::from_argb(0xFF82B1FF);
-        p.shadow = Color::from_argb(0x33000000);
+        p.link = Color::from_rgb(0x82B1FF);
+        p.shadow = Color::from_rgb(0x000000);
         p.dark_shadow = Color::from_argb(0x66000000);
-        p.tooltip = Color::from_argb(0xFF2B2B2B);
-        p.background_pressed = Color::from_argb(0xFF3E3748);
-        p.background_hovered = Color::from_argb(0xFF4A4256);
-        p.success = Color::from_argb(0xFF2E7D32);
-        p.warning = Color::from_argb(0xFFF9A825);
-        p.error = Color::from_argb(0xFFB3261E);
+        p.background_pressed = Color::from_rgb(0x3E3748);
+        p.background_hovered = Color::from_rgb(0x4A4256);
+        p.tooltip = Color::from_rgb(0x2B2B2B);
+        p.success = Color::from_rgb(0x2E7D32);
+        p.warning = Color::from_rgb(0xF9A825);
+        p.error = Color::from_rgb(0xB3261E);
         break;
     }
 }
@@ -1662,25 +1674,28 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
 }
 
 static void palette_plasma6(Palette &p, ColorScheme scheme) {
+    // default Breeze accent blue
+    Color plasma6_color = Color::from_argb(0xFF3DAEE9);
     p.corner_radius = 5.0f;
-    Color plasma6_color = Color::from_argb(0xFF3DAEE9); // default Breeze accent blue
+    p.tab_radius = 5.0f;
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::from_argb(0xFFF0F0F0);    // active window background stays gray
-        p.base = Color::from_argb(0xFFFFFFFF);      // main content area
-        p.alternate = Color::from_argb(0xFFF7F7F7); // alternate background in active window
+        p.window = Color::from_argb(0xFFeff0f1);
+        p.base = Color::from_argb(0xFFFFFFFF);
+        p.alternate = Color::from_argb(0xFFF7F7F7);
         p.text = Color::from_argb(0xFF2E3436);
         p.text_disabled = Color::from_argb(0xFF7F8C8D);
         p.placeholder = Color::from_argb(0xFFAAAAAA);
-        p.highlight = plasma6_color; // selection highlight inside window
+        p.highlight = plasma6_color;
         p.highlighted_text = Color::from_argb(0xFFFFFFFF);
         p.border = Color::from_argb(0xFFE0E0E0);
         p.accent = plasma6_color;
         p.link = plasma6_color;
         p.shadow = Color::from_argb(0x22000000);
         p.dark_shadow = Color::from_argb(0x44000000);
-        p.background_pressed = Color::from_argb(0xFFE0E0E0); // pressed button in active window
+        p.background_pressed = Color::from_argb(0xFFE0E0E0);
+        p.background_hovered = Color::from_argb(0xFFa3d4fa);
         p.tooltip = Color::from_argb(0xFFFDFDFD);
         p.success = Color::from_argb(0xFF27AE60);
         p.warning = Color::from_argb(0xFFF39C12);

@@ -546,14 +546,14 @@ void TabWidget::paint(Painter &painter) {
 
     if (palette.border_width > 0) {
         if (orientation_ == TabOrientation::North) {
-            painter.draw_line({0, thickness}, {rect_.width, thickness}, style.border,
+            painter.draw_line({0, thickness}, {rect_.width, thickness}, palette.border,
                               palette.border_width);
         } else if (orientation_ == TabOrientation::South) {
             painter.draw_line({0, rect_.height - thickness},
-                              {rect_.width, rect_.height - thickness}, style.border,
+                              {rect_.width, rect_.height - thickness}, palette.border,
                               palette.border_width);
         } else if (orientation_ == TabOrientation::West) {
-            painter.draw_line({thickness, 0}, {thickness, rect_.height}, style.border,
+            painter.draw_line({thickness, 0}, {thickness, rect_.height}, palette.border,
                               palette.border_width);
         } else if (orientation_ == TabOrientation::East) {
             painter.draw_line({rect_.width - thickness, 0}, {rect_.width - thickness, rect_.height},

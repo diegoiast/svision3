@@ -61,12 +61,7 @@ struct MenuBarStyle {
 };
 
 // FIXME: remove this style
-struct TabWidgetStyle : WidgetStyle {
-    Color tab_active_bg;
-    Color tab_inactive_bg;
-    Color tab_active_text;
-    Color tab_inactive_text;
-    Color tab_hover_bg;
+struct TabWidgetStyle {
     float tab_padding_h = 16.0f;
     float tab_padding_v = 6.0f;
 };
@@ -157,6 +152,7 @@ struct Palette {
     float progress_bar_height = 5.0f;
     float corner_radius = 0.0f;
     float border_width = 1.0f;
+    float tab_radius = 0.0f;
     bool beveled = false;
 
     // FIXME: this should be platform dependent, read from desktop configuration
