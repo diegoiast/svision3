@@ -50,19 +50,13 @@ struct ComboboxStyle {
 };
 
 // FIXME: remove this style
-struct MenuStyle : WidgetStyle {
-    std::optional<Color> background_hovered;
-    std::optional<Color> background_pressed;
-    Color item_hovered;
-    Color item_text_hovered;
+struct MenuStyle {
     float item_padding = 4.0f;
     Margins padding = {2, 2, 2, 2};
 };
 
 // FIXME: remove this style
-struct MenuBarStyle : WidgetStyle {
-    std::optional<Color> background_hovered;
-    std::optional<Color> background_pressed;
+struct MenuBarStyle {
     Margins padding = {4, 8, 4, 8};
 };
 

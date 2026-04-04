@@ -38,16 +38,6 @@ class BaseTheme : public Theme {
             ws.shadow = p.shadow;
         };
 
-        apply_base(menu, palette);
-        menu.background = palette.base;
-        menu.background_hovered = palette.highlight;
-        menu.item_hovered = palette.highlight;
-        menu.item_text_hovered = Color::with_gray(1.0f);
-
-        apply_base(menubar, palette);
-        menubar.background = palette.window;
-        menubar.background_hovered = palette.highlight;
-
         apply_base(tab_widget, palette);
         bool is_dark = palette.window.luma() < 0.5f;
         tab_widget.tab_active_bg = palette.window;
@@ -275,14 +265,17 @@ class BaseTheme : public Theme {
         auto const &style = menubar;       
         auto padding = style.padding;
         auto fm = painter.font_metrics(palette.fonts.size);
+        auto text_c = palette.text;
 
         if (hovered || active) {
-            auto bg = style.background_hovered.value_or(style.background.darken(0.1f));
+            // FIXME: do we want hovered colors?
+            // auto bg = style.background_hovered.value_or(style.background.darken(0.1f));
+            auto bg = palette.highlight;
             painter.fill_rect(rect, bg);
+            text_c = palette.highlighted_text;
         }
 
         auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto text_c = style.text;
         painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, palette.fonts.size);
 
         if (show_mnemonics && mnemonic_index >= 0) {
@@ -299,7 +292,8 @@ class BaseTheme : public Theme {
     }
 
     void draw_menubar_background(Painter &painter, Rect const &rect) const override {
-        painter.fill_rect(rect, menubar.background);
+        // FIXME: do we want a different background for menubar?
+        painter.fill_rect(rect, palette.window);
         auto border_c = palette.window;
         painter.draw_line({rect.x, rect.height - 1.0f}, {rect.x + rect.width, rect.height - 1.0f},
                           border_c, 1.0f);
@@ -1013,17 +1007,15 @@ class Win11Theme : public BaseTheme {
         auto fm = painter.font_metrics(palette.fonts.size);
 
         if (hovered || active) {
-            Color bg = style.background_hovered.value_or(style.background.darken(0.1f));
+            Color bg = palette.highlight;
             auto hover_rect = rect.inset(2.0f);
             painter.fill_rounded_rect(hover_rect, bg, palette.corner_radius);
         }
 
         auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto text_c = style.text;
+        auto text_c = palette.text;
         if (hovered || active) {
-            if (palette.background_hovered.value_or(Color::rgb(0, 0, 0)).luma() < 0.5f) {
-                text_c = Color::rgb(1, 1, 1);
-            }
+            text_c = palette.highlighted_text;
         }
         painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, palette.fonts.size);
     }
