@@ -38,15 +38,6 @@ class BaseTheme : public Theme {
             ws.shadow = p.shadow;
         };
 
-        apply_base(combobox, palette);
-        combobox.background = palette.base;
-        combobox.border_focused = palette.accent;
-        combobox.arrow =
-            palette.text.luma() < 0.5f ? palette.text.darken(0.25f) : palette.text.lighten(0.25f);
-        combobox.dropdown_bg = palette.base;
-        combobox.item_hovered = palette.highlight;
-        combobox.item_text_hovered = Color::with_gray(1.0f);
-
         apply_base(menu, palette);
         menu.background = palette.base;
         menu.background_hovered = palette.highlight;
@@ -79,17 +70,6 @@ class BaseTheme : public Theme {
 
         layout.margins = {8, 8, 8, 8};
         layout.spacing = 8.0f;
-
-        if (is_dark) {
-            tooltip.background = Color::rgb(0.25f, 0.25f, 0.22f);
-            tooltip.border = Color::rgb(0.45f, 0.45f, 0.40f);
-            tooltip.text = Color::rgb(0.92f, 0.92f, 0.90f);
-        } else {
-            tooltip.background = Color::rgb(1.0f, 1.0f, 0.88f);
-            tooltip.border = Color::rgb(0.6f, 0.6f, 0.5f);
-            tooltip.text = Color::rgb(0.1f, 0.1f, 0.1f);
-        }
-        tooltip.font_size = palette.fonts.size - 1.0f;
     }
 
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
@@ -329,9 +309,10 @@ class BaseTheme : public Theme {
         auto const &style = combobox;
         auto shadow = Color::rgba(0, 0, 0, 0.12f);
         painter.fill_rounded_rect({rect.x + 1, rect.y + 1, rect.width, rect.height}, shadow,
-                                  style.corner_radius);
-        painter.fill_rounded_rect(rect, style.dropdown_bg, style.corner_radius);
-        painter.draw_rounded_rect(rect, style.border, style.corner_radius, style.border_width);
+                                  palette.corner_radius);
+        painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
+        painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
+                                  palette.border_width);
     }
 
     void draw_menu_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
@@ -340,15 +321,16 @@ class BaseTheme : public Theme {
         auto const &style = combobox;
         auto fm = painter.font_metrics(palette.fonts.size);
         auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto text_col = style.text;
+        auto text_col = palette.text;
 
         if (hovered && enabled) {
-            painter.fill_rounded_rect(rect, style.item_hovered, style.corner_radius * 0.5f);
+            // FIXME: highlight hovered is it needed?
+            painter.fill_rounded_rect(rect, palette.highlight, palette.corner_radius * 0.5f);
         }
 
         if (checkable && checked) {
             auto check_rect = Rect{rect.x + 4, rect.y + (rect.height - 12) / 2, 12, 12};
-            painter.fill_rounded_rect(check_rect, style.border, 2.0f);
+            painter.fill_rounded_rect(check_rect, palette.border, 2.0f);
         }
 
         auto icon_x = rect.x + style.padding.left + 4;
@@ -374,7 +356,7 @@ class BaseTheme : public Theme {
     void draw_menu_separator(Painter &painter, Rect const &rect) const override {
         auto const &style = combobox;
         auto mid_y = rect.y + rect.height / 2.0f;
-        auto sep_col = style.border;
+        auto sep_col = palette.border;
         sep_col.a *= 0.5f;
         painter.draw_line({rect.x + 8, mid_y}, {rect.x + rect.width - 8, mid_y}, sep_col, 0.5f);
     }
@@ -627,11 +609,11 @@ class BaseTheme : public Theme {
     void draw_combobox(Painter &painter, Rect const &rect, std::string_view text, bool focused,
                        bool open) const override {
         auto const &style = combobox;
-        auto border = focused ? style.border_focused : style.border;
+        auto border = focused ? palette.accent : palette.border;
         auto fm = painter.font_metrics(palette.fonts.size);
         auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
 
-        painter.draw_filled_frame(rect, style.background, border, palette, true);
+        painter.draw_filled_frame(rect, palette.window, border, palette, true);
 
         if (!text.empty()) {
             auto clip_w = rect.width - style.padding.left - style.padding.right - 16.0f;
@@ -644,9 +626,9 @@ class BaseTheme : public Theme {
         auto arrow_x = rect.width - style.padding.right - 8.0f;
         auto arrow_y = rect.height / 2.0f;
         auto aw = 4.0f;
-        painter.draw_line({arrow_x - aw, arrow_y - 2.0f}, {arrow_x, arrow_y + 2.0f}, style.arrow,
+        painter.draw_line({arrow_x - aw, arrow_y - 2.0f}, {arrow_x, arrow_y + 2.0f}, palette.text,
                           1.5f);
-        painter.draw_line({arrow_x, arrow_y + 2.0f}, {arrow_x + aw, arrow_y - 2.0f}, style.arrow,
+        painter.draw_line({arrow_x, arrow_y + 2.0f}, {arrow_x + aw, arrow_y - 2.0f}, palette.text,
                           1.5f);
     }
 
@@ -655,30 +637,31 @@ class BaseTheme : public Theme {
         auto const &style = combobox;
         auto fm = painter.font_metrics(palette.fonts.size);
         auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto tc = hovered ? style.item_text_hovered : style.text;
+        auto tc = hovered ? palette.highlighted_text : palette.text;
 
         if (hovered) {
-            painter.fill_rect(rect, style.item_hovered);
+            painter.fill_rect(rect, palette.highlight);
         }
 
         painter.draw_text(text, {rect.x + style.padding.left, baseline}, tc, palette.fonts.size);
     }
 
     void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const override {
-        auto const &style = tooltip;
-
-        if (style.corner_radius > 0.0f) {
-            painter.fill_rounded_rect(rect, style.background, style.corner_radius);
-            painter.draw_rounded_rect(rect, style.border, style.corner_radius, style.border_width);
+        if (palette.corner_radius > 0.0f) {
+            painter.fill_rounded_rect(rect, palette.tooltip, palette.corner_radius);
+            painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
+                                      palette.border_width);
         } else {
-            painter.fill_rect(rect, style.background);
-            painter.draw_rect(rect, style.border, style.border_width);
+            painter.fill_rect(rect, palette.tooltip);
+            painter.draw_rect(rect, palette.border, palette.border_width);
         }
 
-        auto fm = painter.font_metrics(style.font_size);
-        auto text_x = rect.x + style.padding;
-        auto baseline_y = rect.y + style.padding + fm.ascent;
-        painter.draw_text(text, {text_x, baseline_y}, style.text, style.font_size);
+        // FIXME: padding is hardcoded for tooltips
+        auto padding = 5;
+        auto fm = painter.font_metrics(palette.fonts.size);
+        auto text_x = rect.x + padding;
+        auto baseline_y = rect.y + padding + fm.ascent;
+        painter.draw_text(text, {text_x, baseline_y}, palette.text, palette.fonts.size);
     }
 
     void draw_toolbar(Painter &painter, Rect const &rect) const override {
@@ -992,9 +975,12 @@ class BaseTheme : public Theme {
     }
     float list_item_height() const override { return 24.0f; }
     Size measure_tooltip(std::string_view text) const override {
-        auto text_w = Painter::measure_text(text, tooltip.font_size).width;
-        auto w = text_w + tooltip.padding * 2;
-        auto h = tooltip.font_size + tooltip.padding * 2;
+        auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+
+        // FIXME: padding is hardcoded for tabs
+        auto padding = 0.5f;
+        auto w = text_w + padding * 2;
+        auto h = palette.fonts.size + padding * 2;
         return {w, h};
     }
 
@@ -1501,6 +1487,7 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
         p.dark_shadow = Color::from_argb(0x55000000);
         p.background_pressed = Color::from_argb(0xFFE5E5EA);
         p.background_hovered = Color::from_argb(0xFFEDEDF0);
+        p.tooltip = Color::from_argb(0xF2F2F2F2);
         p.success = Color::from_argb(0xFF34C759);
         p.warning = Color::from_argb(0xFFFF9F0A);
         p.error = Color::from_argb(0xFFFF3B30);
@@ -1519,6 +1506,7 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
         p.link = macBlue;
         p.shadow = Color::from_argb(0x66000000);
         p.dark_shadow = Color::from_argb(0x99000000);
+        p.tooltip = Color::from_argb(0xE62C2C2E);
         p.background_pressed = Color::from_argb(0xFF3A3A3C);
         p.background_hovered = Color::from_argb(0xFF48484A);
         p.success = Color::from_argb(0xFF30D158);
@@ -1546,6 +1534,7 @@ static void palette_win11(Palette &p, ColorScheme scheme) {
         p.link = Color::from_argb(0xFF0067C0);
         p.shadow = Color::from_argb(0x20000000);
         p.dark_shadow = Color::from_argb(0x40000000);
+        p.tooltip = Color::from_argb(0xFFFFFFFF);
         p.background_pressed = Color::from_argb(0xFFE5E5E5);
         p.background_hovered = Color::from_argb(0xFFEDEDED);
         p.success = Color::from_argb(0xFF107C10);
@@ -1567,6 +1556,7 @@ static void palette_win11(Palette &p, ColorScheme scheme) {
         p.link = Color::from_argb(0xFF4CC2FF);
         p.shadow = Color::from_argb(0x66000000);
         p.dark_shadow = Color::from_argb(0x99000000);
+        p.tooltip = Color::from_argb(0xFF2B2B2B);
         p.background_pressed = Color::from_argb(0xFF3A3A3A);
         p.background_hovered = Color::from_argb(0xFF444444);
         p.success = Color::from_argb(0xFF6CCB5F);
@@ -1598,6 +1588,8 @@ static void palette_material(Palette &p, ColorScheme scheme) {
         p.dark_shadow = Color::from_argb(0x33000000);
         p.background_pressed = Color::from_argb(0xFFE8DEF8);
         p.background_hovered = Color::from_argb(0xFFF3EDF7);
+        p.tooltip = Color::from_argb(0xFFE6E1E5);
+
         p.success = Color::from_argb(0xFF2E7D32);
         p.warning = Color::from_argb(0xFFF9A825);
         p.error = Color::from_argb(0xFFB3261E);
@@ -1616,6 +1608,7 @@ static void palette_material(Palette &p, ColorScheme scheme) {
         p.link = Color::from_argb(0xFF82B1FF);
         p.shadow = Color::from_argb(0x33000000);
         p.dark_shadow = Color::from_argb(0x66000000);
+        p.tooltip = Color::from_argb(0xFF2B2B2B);
         p.background_pressed = Color::from_argb(0xFF3E3748);
         p.background_hovered = Color::from_argb(0xFF4A4256);
         p.success = Color::from_argb(0xFF2E7D32);
@@ -1647,6 +1640,7 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.dark_shadow = Color::from_argb(0xFF000000);
         p.background_pressed = Color::from_argb(0xFFB0B0B0);
         p.background_hovered = Color::from_argb(0xFFB8B8B8);
+        p.tooltip = Color::from_argb(0xFFFFFFE1);
         p.success = Color::from_argb(0xFF008000);
         p.warning = Color::from_argb(0xFFFF8000);
         p.error = Color::from_argb(0xFF800000);
@@ -1667,6 +1661,7 @@ static void palette_win95(Palette &p, ColorScheme scheme) {
         p.dark_shadow = Color::from_argb(0xFF000000);
         p.background_pressed = windows95_color;
         p.background_hovered = Color::from_argb(0xFF303030);
+        p.tooltip = Color::from_argb(0xFFFFFFE1);
         p.success = Color::from_argb(0xFF008000);
         p.warning = Color::from_argb(0xFFFF8000);
         p.error = Color::from_argb(0xFF800000);
@@ -1694,7 +1689,7 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.shadow = Color::from_argb(0x22000000);
         p.dark_shadow = Color::from_argb(0x44000000);
         p.background_pressed = Color::from_argb(0xFFE0E0E0); // pressed button in active window
-        // p.background_hovered = Color::from_argb(0xFFECECEC); // hovered button in active window
+        p.tooltip = Color::from_argb(0xFFFDFDFD);
         p.success = Color::from_argb(0xFF27AE60);
         p.warning = Color::from_argb(0xFFF39C12);
         p.error = Color::from_argb(0xFFE74C3C);
@@ -1715,6 +1710,7 @@ static void palette_plasma6(Palette &p, ColorScheme scheme) {
         p.dark_shadow = Color::from_argb(0x55000000);
         p.background_pressed = Color::from_argb(0xFF2C3034);
         p.background_hovered = Color::from_argb(0xFF3B4045);
+        p.tooltip = Color::rgb(0.25f, 0.25f, 0.22f);
         p.success = Color::from_argb(0xFF27AE60);
         p.warning = Color::from_argb(0xFFF39C12);
         p.error = Color::from_argb(0xFFE74C3C);
@@ -1744,6 +1740,7 @@ static void palette_gnome(Palette &p, ColorScheme scheme) {
         p.link = adwaita_color;
         p.shadow = Color::from_argb(0x22000000);
         p.dark_shadow = Color::from_argb(0x44000000);
+        p.tooltip = Color::rgb(0.25f, 0.25f, 0.22f);
         p.background_pressed = Color::from_argb(0xFFECECEC);
         p.background_hovered = Color::from_argb(0xFFF5F5F5);
         p.success = Color::from_argb(0xFF2E7D32);
@@ -1764,6 +1761,7 @@ static void palette_gnome(Palette &p, ColorScheme scheme) {
         p.link = adwaita_color;
         p.shadow = Color::from_argb(0x66000000);
         p.dark_shadow = Color::from_argb(0x99000000);
+        p.tooltip = Color::rgb(0.25f, 0.25f, 0.22f);
         p.background_pressed = Color::from_argb(0xFF484848);
         p.background_hovered = Color::from_argb(0xFF565656);
         p.success = Color::from_argb(0xFF2E7D32);

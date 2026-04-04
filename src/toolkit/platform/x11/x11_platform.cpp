@@ -1033,7 +1033,10 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
     auto *w = impl_.get();
     auto scale = d->scale;
     auto const &style = Theme::current().tooltip;
-    auto pad = style.padding, fs = style.font_size;
+    auto const &theme = Theme::current();
+    // FIXME padding for tooltips is hardcodede in X11
+    auto pad = 5.0f;
+    auto fs = theme.palette.fonts.size;
     auto tsz = Painter::measure_text(text, fs);
     auto fm = Painter::measure_font_metrics(fs);
     auto tw = tsz.width + pad * 2, th = fm.height + pad * 2;
@@ -1074,6 +1077,8 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
         XMoveResizeWindow(d->display, w->tooltip_xwindow, sx, sy, piw, pih);
     }
     XMapRaised(d->display, w->tooltip_xwindow);
+
+    // FIXME: tooltip on X11 are hardcoded to use cairo
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, piw, pih);
     cairo_t *cr = cairo_create(surf);
 
@@ -1085,9 +1090,10 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
     cairo_scale(cr, scale, scale);
     CairoPainter painter(cr);
     Rect r{0, 0, tw, th};
-    painter.fill_rounded_rect(r, style.background, style.corner_radius);
-    painter.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
-    painter.draw_text(text, {pad, pad + fm.ascent}, style.text, fs);
+    painter.fill_rounded_rect(r, theme.palette.tooltip, theme.palette.corner_radius);
+    painter.draw_rounded_rect(r, theme.palette.border, theme.palette.corner_radius,
+                              theme.palette.border_width);
+    painter.draw_text(text, {pad, pad + fm.ascent}, theme.palette.text, fs);
     cairo_surface_flush(surf);
     cairo_surface_t *xs =
         cairo_xlib_surface_create(d->display, w->tooltip_xwindow, visual, piw, pih);

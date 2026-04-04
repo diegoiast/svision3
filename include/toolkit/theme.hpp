@@ -47,12 +47,7 @@ struct ToggleStyle {
 };
 
 // FIXME: remove this style
-struct ComboboxStyle : WidgetStyle {
-    Color border_focused;
-    Color arrow;
-    Color dropdown_bg;
-    Color item_hovered;
-    Color item_text_hovered;
+struct ComboboxStyle {
     float item_padding = 4.0f;
     Margins padding = {6, 8, 6, 8};
 };
@@ -119,13 +114,6 @@ struct SliderStyle {
 
 // FIXME: remove this style
 struct TooltipStyle {
-    Color background = Color::rgb(1.0f, 1.0f, 0.88f);
-    Color border = Color::rgb(0.6f, 0.6f, 0.5f);
-    Color text = Color::rgb(0.1f, 0.1f, 0.1f);
-    float font_size = 12.0f;
-    float padding = 5.0f;
-    float corner_radius = 3.0f;
-    float border_width = 1.0f;
     float delay_sec = 0.6f;
 };
 
@@ -157,6 +145,8 @@ struct Palette {
     Color accent;
     // Color for links/actions
     Color link;
+    // Background color of tooltip windows
+    Color tooltip;
 
     // If the palette supports shadows, a shadow, otherwise the same as border
     Color shadow;

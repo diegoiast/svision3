@@ -1105,12 +1105,15 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
     tooltip_data = std::make_unique<TooltipData>();
     tooltip_data->text = text;
 
+    auto const &theme = Theme::current();
     auto const &style = Theme::current().tooltip;
-    auto fs = style.font_size;
+    auto fs = theme.palette.fonts.size;
     auto tsz = Painter::measure_text(text, fs);
+    // FIXME: padding for tooltip is hardcoded in wayland.
+    auto padding = 5.0f;
     auto fm = Painter::measure_font_metrics(fs);
-    auto tw = tsz.width + style.padding * 2;
-    auto th = fm.height + style.padding * 2;
+    auto tw = tsz.width + padding * 2;
+    auto th = fm.height + padding * 2;
 
     tooltip_data->width = static_cast<int>(std::ceil(tw * scale));
     tooltip_data->height = static_cast<int>(std::ceil(th * scale));
@@ -1233,22 +1236,27 @@ void WaylandPlatformWindow::paint_tooltip() {
                                                               CAIRO_FORMAT_ARGB32, pw, ph, stride);
     cairo_t *cr = cairo_create(cs);
 
+    // FIXME: Wayland backend tooltips are hardcoded to cairo
     cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
     cairo_paint(cr);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
 
-    auto const &style = Theme::current().tooltip;
-    float fs = style.font_size;
+    auto const &theme = Theme::current();
+    auto const &palette = Theme::current().palette;
+    // auto const &style = Theme::current().tooltip;
+    auto fs = palette.fonts.size;
     auto fm = Painter::measure_font_metrics(fs);
-    float tw = static_cast<float>(pw) / scale;
-    float th = static_cast<float>(ph) / scale;
+    auto tw = static_cast<float>(pw) / scale;
+    auto th = static_cast<float>(ph) / scale;
+
+    // FIXME: padding for tooltips on wayland is hardcoded
+    auto padding = 5.0f;
 
     CairoPainter painter(cr);
     Rect r{0, 0, tw, th};
-    painter.fill_rounded_rect(r, style.background, style.corner_radius);
-    painter.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
-    painter.draw_text(tooltip_data->text, {style.padding, style.padding + fm.ascent}, style.text,
-                      fs);
+    painter.fill_rounded_rect(r, palette.tooltip, palette.corner_radius);
+    painter.draw_rounded_rect(r, palette.border, palette.corner_radius, palette.border_width);
+    painter.draw_text(tooltip_data->text, {padding, padding + fm.ascent}, palette.text, fs);
 
     cairo_surface_flush(cs);
     cairo_destroy(cr);

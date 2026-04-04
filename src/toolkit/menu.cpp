@@ -199,7 +199,7 @@ void Menu::paint(Painter &painter) {
             auto fm = painter.font_metrics(palette.fonts.size);
             auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
             auto arrow_x = bounds_.width - 15.0f;
-            painter.draw_text(">", {arrow_x, baseline}, style.text, palette.fonts.size);
+            painter.draw_text(">", {arrow_x, baseline}, palette.text, palette.fonts.size);
         }
         y += item_height_;
     }
