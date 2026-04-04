@@ -592,17 +592,17 @@ class BaseTheme : public Theme {
 
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = tree_view;
-        if (style.beveled) {
-            painter.draw_filled_frame(rect, style.background, style.border, palette, true);
+        if (palette.beveled) {
+            painter.draw_filled_frame(rect, style.background, palette.border, palette, true);
         } else {
-            painter.fill_rounded_rect(rect, style.background, style.corner_radius);
-            if (style.border_width > 0) {
-                painter.draw_rounded_rect(rect, style.border, style.corner_radius,
-                                          style.border_width);
+            painter.fill_rounded_rect(rect, style.background, palette.corner_radius);
+            if (palette.border_width > 0) {
+                painter.draw_rounded_rect(rect, style.border, palette.corner_radius,
+                                          palette.border_width);
             }
         }
         if (focused) {
-            painter.draw_focus_ring(rect, style.corner_radius);
+            painter.draw_focus_ring(rect, palette.corner_radius);
         }
     }
 
@@ -1015,13 +1015,13 @@ class Win11Theme : public BaseTheme {
         if (hovered || active) {
             Color bg = style.background_hovered.value_or(style.background.darken(0.1f));
             auto hover_rect = rect.inset(2.0f);
-            painter.fill_rounded_rect(hover_rect, bg, style.corner_radius);
+            painter.fill_rounded_rect(hover_rect, bg, palette.corner_radius);
         }
 
         auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
         auto text_c = style.text;
         if (hovered || active) {
-            if (style.background_hovered.value_or(Color::rgb(0, 0, 0)).luma() < 0.5f) {
+            if (palette.background_hovered.value_or(Color::rgb(0, 0, 0)).luma() < 0.5f) {
                 text_c = Color::rgb(1, 1, 1);
             }
         }
@@ -1181,13 +1181,13 @@ class Win95Theme : public BaseTheme {
 
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = tree_view;
-        if (style.beveled) {
-            painter.draw_filled_frame(rect, style.background, style.border, palette, true);
+        if (palette.beveled) {
+            painter.draw_filled_frame(rect, style.background, palette.border, palette, true);
         } else {
-            painter.fill_rounded_rect(rect, style.background, style.corner_radius);
-            if (style.border_width > 0) {
-                painter.draw_rounded_rect(rect, style.border, style.corner_radius,
-                                          style.border_width);
+            painter.fill_rounded_rect(rect, style.background, palette.corner_radius);
+            if (palette.border_width > 0) {
+                painter.draw_rounded_rect(rect, style.border, palette.corner_radius,
+                                          palette.border_width);
             }
         }
     }

@@ -25,9 +25,6 @@ struct WidgetStyle {
     Color background_selected;
     Color highlight;
     Color shadow;
-    float border_width = 1.0f;
-    float corner_radius = 0.0f;
-    bool beveled = false;
 };
 
 // FIXME: remove this style
