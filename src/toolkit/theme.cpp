@@ -25,29 +25,6 @@ class BaseTheme : public Theme {
         // Initialize backward compatibility members
         name = "Base";
         style = ThemeStyle::Material;
-
-        // FIXME: all this should be removed. Custom colors are just a bad idea
-        //        themes will not use these anyway.
-        auto apply_base = [](WidgetStyle &ws, Palette const &p) {
-            ws.background = p.window;
-            ws.border = p.border;
-            ws.border_focused = p.border;
-            ws.text = p.text;
-            ws.background_selected = p.highlight;
-            ws.highlight = p.highlight;
-            ws.shadow = p.shadow;
-        };
-
-        auto is_dark = palette.window.luma() < 0.5f;
-        apply_base(tree_view, palette);
-        tree_view.selected_bg = palette.accent;
-        tree_view.selected_text = Color::with_gray(1.0f);
-        tree_view.hovered_bg =
-            is_dark ? palette.window.lighten(0.06f) : palette.window.darken(0.04f);
-        tree_view.alternate_bg = palette.alternate;
-        tree_view.indent = 20.0f;
-        tree_view.background = Color::with_gray(1.0f);
-
         layout.margins = {8, 8, 8, 8};
         layout.spacing = 8.0f;
     }
@@ -568,29 +545,28 @@ class BaseTheme : public Theme {
                 painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
                                       {arrow_x + arrow_size, arrow_y - arrow_size / 2},
                                       {arrow_x + arrow_size / 2, arrow_y + arrow_size / 2},
-                                      style.text);
+                                      palette.text);
             } else {
                 painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
                                       {arrow_x, arrow_y + arrow_size / 2},
-                                      {arrow_x + arrow_size, arrow_y}, style.text);
+                                      {arrow_x + arrow_size, arrow_y}, palette.text);
             }
         }
 
         x_offset += style.indent + 4.0f;
 
         auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto text_col = selected ? style.selected_text : style.text;
+        auto text_col = selected ? palette.highlighted_text : palette.text;
         painter.draw_text(text, {x_offset, text_y}, text_col, palette.fonts.size);
     }
 
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
-        auto const &style = tree_view;
         if (palette.beveled) {
-            painter.draw_filled_frame(rect, style.background, palette.border, palette, true);
+            painter.draw_filled_frame(rect, palette.window, palette.border, palette, true);
         } else {
-            painter.fill_rounded_rect(rect, style.background, palette.corner_radius);
+            painter.fill_rounded_rect(rect, palette.window, palette.corner_radius);
             if (palette.border_width > 0) {
-                painter.draw_rounded_rect(rect, style.border, palette.corner_radius,
+                painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
                                           palette.border_width);
             }
         }
@@ -1057,12 +1033,12 @@ class Win11Theme : public BaseTheme {
             if (expanded) {
                 painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
                                       {arrow_x + arrow_size, arrow_y},
-                                      {arrow_x, arrow_y + arrow_size / 2}, style.text);
+                                      {arrow_x, arrow_y + arrow_size / 2}, palette.text);
             } else {
                 painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
                                       {arrow_x + arrow_size, arrow_y - arrow_size / 2},
                                       {arrow_x + arrow_size / 2, arrow_y + arrow_size / 2},
-                                      style.text);
+                                      palette.text);
             }
             x_offset += indent;
         }
@@ -1165,18 +1141,18 @@ class Win95Theme : public BaseTheme {
         x_offset += style.indent + 4.0f;
 
         auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto text_col = selected ? style.selected_text : style.text;
+        auto text_col = selected ? palette.highlighted_text : palette.text;
         painter.draw_text(text, Point{x_offset, text_y}, text_col, palette.fonts.size);
     }
 
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override {
         auto const &style = tree_view;
         if (palette.beveled) {
-            painter.draw_filled_frame(rect, style.background, palette.border, palette, true);
+            painter.draw_filled_frame(rect, palette.window, palette.border, palette, true);
         } else {
-            painter.fill_rounded_rect(rect, style.background, palette.corner_radius);
+            painter.fill_rounded_rect(rect, palette.window, palette.corner_radius);
             if (palette.border_width > 0) {
-                painter.draw_rounded_rect(rect, style.border, palette.corner_radius,
+                painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
                                           palette.border_width);
             }
         }
@@ -1434,22 +1410,22 @@ class Plasma6Theme : public BaseTheme {
 
             if (expanded) {
                 painter.draw_line({center_x - arrow_size / 2, arrow_y - arrow_offset},
-                                  {center_x, arrow_y + arrow_size / 2}, style.text, 1.5f);
+                                  {center_x, arrow_y + arrow_size / 2}, palette.text, 1.5f);
                 painter.draw_line({center_x, arrow_y + arrow_size / 2},
-                                  {center_x + arrow_size / 2, arrow_y - arrow_offset}, style.text,
+                                  {center_x + arrow_size / 2, arrow_y - arrow_offset}, palette.text,
                                   1.5f);
             } else {
                 painter.draw_line({center_x - arrow_offset, arrow_y - arrow_size / 2},
-                                  {center_x + arrow_offset, arrow_y}, style.text, 1.5f);
+                                  {center_x + arrow_offset, arrow_y}, palette.text, 1.5f);
                 painter.draw_line({center_x - arrow_offset, arrow_y + arrow_size / 2},
-                                  {center_x + arrow_offset, arrow_y}, style.text, 1.5f);
+                                  {center_x + arrow_offset, arrow_y}, palette.text, 1.5f);
             }
         }
 
         x_offset += indent + 4.0f;
 
         auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-        auto text_col = selected ? style.selected_text : style.text;
+        auto text_col = selected ? palette.highlighted_text : palette.text;
         painter.draw_text(text, {x_offset, text_y}, text_col, palette.fonts.size);
     }
 };

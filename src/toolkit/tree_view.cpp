@@ -247,6 +247,7 @@ void TreeView::paint(Painter &painter) {
 
     auto const &theme = Theme::current();
     auto const &style = theme.tree_view;
+    auto const &palette = theme.palette;
     auto rh = row_height();
     auto n = static_cast<int>(flat_nodes_.size());
     auto indent = style.indent;
@@ -268,9 +269,9 @@ void TreeView::paint(Painter &painter) {
         auto alt_row = alternating_ && (i % 2 == 1);
 
         if (selected) {
-            painter.fill_rect(item_rect, style.selected_bg);
+            painter.fill_rect(item_rect, palette.highlight);
         } else if (alt_row) {
-            painter.fill_rect(item_rect, style.alternate_bg);
+            painter.fill_rect(item_rect, palette.alternate);
         }
 
         auto is_win95 = (theme.name == "Windows 95");
@@ -294,7 +295,7 @@ void TreeView::paint(Painter &painter) {
                     }
                 }
                 if (should_draw_line) {
-                    painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, style.border,
+                    painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, palette.border,
                                       1.0f);
                 }
             }
@@ -310,23 +311,23 @@ void TreeView::paint(Painter &painter) {
             }
             if (has_next_sibling) {
                 auto connector_x = item_padding_h + flat.depth * indent + indent / 2;
-                painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, style.border, 1.0f);
+                painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, palette.border, 1.0f);
             }
 
             auto handle_x = item_padding_h + flat.depth * indent + indent / 2;
             auto handle_end_x = item_padding_h + flat.depth * indent + indent;
             auto handle_y = iy + rh / 2;
-            painter.draw_line({handle_x, handle_y}, {handle_end_x, handle_y}, style.border, 1.0f);
+            painter.draw_line({handle_x, handle_y}, {handle_end_x, handle_y}, palette.border, 1.0f);
         } else {
             if (i < n - 1 && flat_nodes_[i + 1].depth == 0) {
                 auto connector_x = item_padding_h + indent / 2;
-                painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, style.border, 1.0f);
+                painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, palette.border, 1.0f);
             }
 
             auto handle_x = item_padding_h + indent / 2;
             auto handle_end_x = item_padding_h + indent;
             auto handle_y = iy + rh / 2;
-            painter.draw_line({handle_x, handle_y}, {handle_end_x, handle_y}, style.border, 1.0f);
+            painter.draw_line({handle_x, handle_y}, {handle_end_x, handle_y}, palette.border, 1.0f);
         }
 
         if (is_win95) {
@@ -344,8 +345,7 @@ void TreeView::paint(Painter &painter) {
         auto bar_x = rect_.width - 6.0f;
         auto sb = Rect{bar_x, bar_y, 4.0f, bar_h};
 
-        painter.fill_rounded_rect(sb, Color::rgba(style.text.r, style.text.g, style.text.b, 0.25f),
-                                  2.0f);
+        painter.fill_rounded_rect(sb, palette.text, 2.0f);
     }
 
     painter.pop_clip();

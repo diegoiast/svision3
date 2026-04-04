@@ -16,18 +16,6 @@
 namespace toolkit {
 
 // FIXME: remove this style
-struct WidgetStyle {
-    Color background;
-    Color border;
-    Color border_focused;
-    Color text;
-    Color text_disabled;
-    Color background_selected;
-    Color highlight;
-    Color shadow;
-};
-
-// FIXME: remove this style
 struct ButtonStyle {
     Margins padding = {8, 16, 8, 16};
 };
@@ -82,11 +70,7 @@ struct TableViewStyle {
 };
 
 // FIXME: remove this style
-struct TreeViewStyle : WidgetStyle {
-    Color selected_bg;
-    Color selected_text;
-    Color hovered_bg;
-    Color alternate_bg;
+struct TreeViewStyle {
     float item_padding = 4.0f;
     float item_padding_h = 8.0f;
     float indent = 20.0f;
