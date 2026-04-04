@@ -125,14 +125,16 @@ int main(int argc, char *argv[]) {
                                           return std::regex_match(text, email_regex);
                                       })
                                       .on_change([l = email_stats_label.get()](auto &s, auto &w) {
+                                          auto const &palette = toolkit::Theme::current().palette;
                                           if (s.empty()) {
                                               l->set_text("Empty");
+                                              l->set_background_color(palette.warning);
+                                          } else if (w.is_valid()) {
+                                              l->set_text("Valid");
+                                              l->set_background_color(palette.success);
                                           } else {
-                                              if (w.is_valid()) {
-                                                  l->set_text("Valid");
-                                              } else {
-                                                  l->set_text("Invalid");
-                                              }
+                                              l->set_text("Invalid");
+                                              l->set_background_color(palette.error);
                                           }
                                       }),
                                   ui::expand)

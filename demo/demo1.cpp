@@ -310,17 +310,21 @@ int main(int argc, char *argv[]) {
     });
     input5->set_validation_mode(toolkit::LineInput::ValidationMode::Notify);
 
-    auto status_label = std::make_unique<toolkit::Label>("Valid");
+    auto status_label = std::make_unique<toolkit::Label>("Empty");
     auto *status_ptr = status_label.get();
-    status_ptr->set_background_color(toolkit::Color::rgb(0.8f, 1.0f, 0.8f));
+    status_ptr->set_background_color(toolkit::Theme::current().palette.warning);
 
-    input5->on_change = [input5_ptr, status_ptr](std::string const &, auto &input) {
-        if (input.is_valid()) {
+    input5->on_change = [input5_ptr, status_ptr](std::string const &s, auto &input) {
+        auto const &palette = toolkit::Theme::current().palette;
+        if (s.empty()) {
+            status_ptr->set_text("Empty");
+            status_ptr->set_background_color(palette.warning);
+        } else if (input.is_valid()) {
             status_ptr->set_text("Valid");
-            status_ptr->set_background_color(toolkit::Color::rgb(0.8f, 1.0f, 0.8f));
+            status_ptr->set_background_color(palette.success);
         } else {
             status_ptr->set_text("Invalid");
-            status_ptr->set_background_color(toolkit::Color::rgb(1.0f, 0.8f, 0.8f));
+            status_ptr->set_background_color(palette.error);
         }
     };
 
