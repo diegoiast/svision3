@@ -115,14 +115,12 @@ void TextEdit::reset_cursor_blink() { cursor_blink_time_ = std::chrono::steady_c
 static constexpr FontFamily kFont = FontFamily::Monospace;
 
 float TextEdit::line_height() const {
-    auto const &style = Theme::current().text_edit;
     auto const &palette = Theme::current().palette;
     auto fm = Painter::measure_font_metrics(palette.fonts.size, kFont);
     return std::max(fm.height, palette.fonts.size) + 2.0f;
 }
 
 float TextEdit::gutter_width() const {
-    auto const &style = Theme::current().text_edit;
     auto const &palette = Theme::current().palette;
     auto digits = 1;
     auto n = static_cast<int>(lines_.size());
@@ -135,7 +133,6 @@ float TextEdit::gutter_width() const {
 }
 
 TextEdit::Pos TextEdit::pos_from_point(Point p) const {
-    auto const &style = Theme::current().text_edit;
     auto const &palette = Theme::current().palette;
     auto lh = line_height();
     auto gw = gutter_width();
@@ -193,13 +190,13 @@ void TextEdit::clamp_scroll() {
 }
 
 void TextEdit::ensure_cursor_visible() {
-    auto const &style = Theme::current().text_edit;
     auto const &palette = Theme::current().palette;
-
     auto lh = line_height();
     auto gw = gutter_width();
     auto cy = lh * cursor_.line;
     auto visible_h = rect_.height;
+    auto cx = 0.0f;
+    auto visible_w = rect_.width - gw;
 
     if (cy + lh > scroll_y_ + visible_h) {
         scroll_y_ = cy + lh - visible_h;
@@ -207,10 +204,6 @@ void TextEdit::ensure_cursor_visible() {
     if (cy < scroll_y_) {
         scroll_y_ = cy;
     }
-
-    auto cx = 0.0f;
-    auto visible_w = rect_.width - gw;
-
     if (cursor_.col > 0) {
         cx = Painter::measure_text(lines_[cursor_.line].substr(0, cursor_.col), palette.fonts.size,
                                    kFont)
@@ -391,10 +384,8 @@ void TextEdit::paint(Painter &painter) {
     clamp_scroll();
 
     auto first = std::max(0, static_cast<int>(scroll_y_ / lh));
-
     auto ss = sel_start();
     auto se = sel_end();
-
     auto sel_start_line = has_selection() ? ss.line : -1;
     auto sel_start_col = has_selection() ? ss.col : -1;
     auto sel_end_line = has_selection() ? se.line : -1;

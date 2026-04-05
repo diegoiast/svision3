@@ -269,21 +269,19 @@ bool LineInput::is_valid() const {
 void LineInput::paint(Painter &painter) {
     auto const &theme = Theme::current();
     auto const &style = theme.line_input;
+    auto rect = Rect{0, 0, rect_.width, rect_.height};
+    auto sel_start_pos = has_selection() ? static_cast<int>(sel_start()) : -1;
+    auto sel_end_pos = has_selection() ? static_cast<int>(sel_end()) : -1;
 
     std::optional<Color> bg;
     if (validation_mode_ == ValidationMode::Notify && !is_valid()) {
         bg = theme.palette.error;
     }
 
-    auto rect = Rect{0, 0, rect_.width, rect_.height};
-
-    auto sel_start_pos = has_selection() ? static_cast<int>(sel_start()) : -1;
-    auto sel_end_pos = has_selection() ? static_cast<int>(sel_end()) : -1;
 
     ensure_cursor_visible(painter);
 
     auto d_text = password_mode_ ? get_masked_text(text_) : text_;
-
     auto cursor_visible = true;
     if (is_focused()) {
         auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
@@ -346,8 +344,8 @@ void LineInput::paint_buttons(Painter &painter) {
             auto eye_col = palette.text;
             eye_col.a = peek_hovered_ ? 0.8f : 0.45f;
 
-            float eye_radius = sz * 0.35f;
-            float pupil_radius = sz * 0.15f;
+            auto eye_radius = sz * 0.35f;
+            auto pupil_radius = sz * 0.15f;
 
             painter.draw_circle({cx, cy}, eye_radius, eye_col, 1.2f);
 
@@ -685,6 +683,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
 void LineInput::on_focus() {
     reset_cursor_blink();
     if (window_ && blink_timer_id_ == 0) {
+        // FIXME: cursor blink time should be defined by platform
         blink_timer_id_ = window_->start_timer(
             0.5f,
             [this] {

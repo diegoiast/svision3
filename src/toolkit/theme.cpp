@@ -167,19 +167,16 @@ class BaseTheme : public Theme {
                          int selection_end, bool focused, bool enabled, bool password_mode,
                          float scroll_offset, std::optional<Color> background,
                          bool cursor_visible) const override {
-        auto const &style = line_input;
         auto border = focused ? palette.accent : palette.border;
+        painter.draw_filled_frame(rect, palette.base, border, palette, true);
+
+        auto const &style = line_input;
         auto fm = painter.font_metrics(palette.fonts.size);
         auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
         auto content_x = style.padding.left;
         auto content_w = rect.width - style.padding.left - style.padding.right;
         auto tx = rect.x + content_x - scroll_offset;
-
-        painter.draw_filled_frame(rect, palette.base, border, palette, true);
-
         auto clip_rect = Rect{rect.x + content_x, rect.y, content_w, rect.height};
-        painter.push_clip(clip_rect);
-
         auto text_c = enabled ? palette.text : palette.text_disabled;
         if (selection_start >= 0 && selection_end > selection_start) {
             auto before_s = text.substr(0, selection_start);
@@ -224,7 +221,6 @@ class BaseTheme : public Theme {
             auto cy_bot = cy_top + fm.height + 2.0f;
             painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);
         }
-        painter.pop_clip();
     }
 
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
@@ -497,35 +493,13 @@ class BaseTheme : public Theme {
     }
 
     void draw_list_background(Painter &painter, Rect const &rect, bool focused) const override {
-
-        if (palette.beveled) {
-            painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
-        } else {
-            painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
-            if (palette.border_width > 0) {
-                painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
-                                          palette.border_width);
-            }
-        }
-        if (focused) {
-            painter.draw_focus_ring(rect, palette.corner_radius);
-        }
+        auto border = focused ? palette.accent : palette.border;
+        painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
     }
 
     void draw_table_background(Painter &painter, Rect const &rect, bool focused) const override {
-        auto const &style = table_view;
-        if (palette.beveled) {
-            painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
-        } else {
-            painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
-            if (palette.border_width > 0) {
-                painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
-                                          palette.border_width);
-            }
-        }
-        if (focused) {
-            painter.draw_focus_ring(rect, palette.corner_radius);
-        }
+        auto border = focused ? palette.accent : palette.border;
+        painter.draw_filled_frame(rect, palette.base, border, palette, true);
     }
 
     void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
@@ -566,12 +540,11 @@ class BaseTheme : public Theme {
         } else {
             painter.fill_rounded_rect(rect, palette.window, palette.corner_radius);
             if (palette.border_width > 0) {
-                painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
-                                          palette.border_width);
+                auto bw = palette.border_width;
+                auto inset = bw / 2.0f;
+                painter.draw_rounded_rect(rect.inset(inset), palette.border,
+                                          std::max(0.0f, palette.corner_radius - inset), bw);
             }
-        }
-        if (focused) {
-            painter.draw_focus_ring(rect, palette.corner_radius);
         }
     }
 
@@ -741,7 +714,6 @@ class BaseTheme : public Theme {
         auto text_c = enabled ? palette.text : palette.text_disabled;
 
         painter.draw_filled_frame(rect, bg, border, palette, true);
-        painter.push_clip(rect);
 
         auto last = std::min(static_cast<int>(lines.size()) - 1,
                              first_visible_line + static_cast<int>(rect.height / line_height));
@@ -761,8 +733,8 @@ class BaseTheme : public Theme {
 
         auto area = Rect{rect.x + gutter_width, rect.y, rect.width - gutter_width, rect.height};
         auto tx0 = rect.x + gutter_width - scroll_x;
-        // FIXME - hardcoded color
-        auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
+        // FIXME - selection color is not enabled.
+        auto sel_bg = palette.highlight;
         auto has_sel = selection_start_line >= 0 && selection_end_line >= 0 &&
                        (selection_start_line < selection_end_line ||
                         (selection_start_line == selection_end_line &&
@@ -826,8 +798,6 @@ class BaseTheme : public Theme {
             // FIXME: whats is this 2.0f?
             painter.fill_rounded_rect(sb, palette.text, 2.0f);
         }
-
-        painter.pop_clip();
     }
 
     void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const override {
@@ -966,6 +936,7 @@ class MacOSTheme : public BaseTheme {
         focus_ring_corner_radius = 4.0f;
     }
 };
+
 class Win11Theme : public BaseTheme {
   public:
     explicit Win11Theme(Palette p) : BaseTheme(std::move(p)) {

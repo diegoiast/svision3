@@ -317,11 +317,12 @@ float TableView::total_content_width() const {
 }
 
 void TableView::clamp_scroll() {
+    auto bw = Theme::current().palette.border_width;
     auto hh = header_height();
-    auto visible_h = rect_.height - hh;
+    auto visible_h = rect_.height - hh - bw * 2;
     auto content_h = total_content_height();
     auto max_y = std::max(0.0f, content_h - visible_h);
-    auto visible_w = rect_.width;
+    auto visible_w = rect_.width - bw * 2;
     auto content_w = total_content_width();
     auto max_x = std::max(0.0f, content_w - visible_w);
 
@@ -333,8 +334,9 @@ int TableView::row_at_y(float y) const {
     if (!model_) {
         return -1;
     }
+    auto bw = Theme::current().palette.border_width;
     auto hh = header_height();
-    auto local_y = y - hh + scroll_y_;
+    auto local_y = y - hh - bw + scroll_y_;
 
     if (local_y < 0) {
         return -1;
@@ -349,7 +351,8 @@ int TableView::row_at_y(float y) const {
 }
 
 int TableView::column_at_x(float x) const {
-    auto cx = -scroll_x_;
+    auto bw = Theme::current().palette.border_width;
+    auto cx = bw - scroll_x_;
     for (auto c = 0; c < static_cast<int>(column_widths_.size()); c++) {
         cx += column_widths_[c];
         if (x < cx) {
@@ -360,13 +363,14 @@ int TableView::column_at_x(float x) const {
 }
 
 int TableView::header_resize_hit(float x, float y) const {
+    auto bw = Theme::current().palette.border_width;
     auto hh = header_height();
-    if (y < 0 || y > hh) {
+    if (y < bw || y > hh + bw) {
         return -1;
     }
 
     auto constexpr grip = 6.0f;
-    auto cx = -scroll_x_;
+    auto cx = bw - scroll_x_;
     for (auto c = 0; c < static_cast<int>(column_widths_.size()); c++) {
         cx += column_widths_[c];
         if (x >= cx - grip && x <= cx + grip) {
@@ -378,9 +382,10 @@ int TableView::header_resize_hit(float x, float y) const {
 
 void TableView::scroll_to_row(int row) {
     // FIXME: modify variables to more descriptive names
+    auto bw = Theme::current().palette.border_width;
     auto rh = row_height();
     auto hh = header_height();
-    auto visible_h = rect_.height - hh;
+    auto visible_h = rect_.height - hh - bw * 2;
     auto top = rh * static_cast<float>(row);
     auto bot = top + rh;
 
@@ -394,14 +399,16 @@ void TableView::scroll_to_row(int row) {
 }
 
 void TableView::paint(Painter &painter) {
+    auto const &theme = Theme::current();
+    theme.draw_table_background(painter, {0, 0, rect_.width, rect_.height},
+                                           is_focused());
+
     if (!model_) {
         return;
     }
-    ensure_column_widths();
-
-    auto const &theme = Theme::current();
     auto const &palette = theme.palette;
     auto const &style = theme.table_view;
+    ensure_column_widths();
 
     auto rh = row_height();
     auto hh = header_height();
@@ -410,30 +417,37 @@ void TableView::paint(Painter &painter) {
     auto ncols = model_->column_count();
     auto is_dark = palette.window.luma() < 0.5f;
 
-    Theme::current().draw_table_background(painter, {0, 0, rect_.width, rect_.height},
-                                           is_focused());
-    painter.push_clip({0, 0, rect_.width, rect_.height});
-
     auto bw = palette.border_width;
-    auto header_rect = Rect{bw, 0, rect_.width - bw * 2, hh};
+    auto header_rect = Rect{bw, bw, rect_.width - bw * 2, hh};
     auto hx = bw - scroll_x_;
     auto header_bg = is_dark ? palette.base : palette.alternate;
-    painter.fill_rect(header_rect, header_bg);
+
+    // Fill header background, respecting rounded corners of the container
+    if (palette.corner_radius > 0) {
+        auto cr = std::max(0.0f, palette.corner_radius - bw);
+        // Clip to the top-rounded area of the header
+        painter.push_clip(header_rect);
+        painter.fill_rounded_rect({header_rect.x, header_rect.y, header_rect.width, header_rect.height + cr}, header_bg, cr);
+        painter.pop_clip();
+    } else {
+        painter.fill_rect(header_rect, header_bg);
+    }
 
     for (auto c = 0; c < ncols; c++) {
         auto cw = column_widths_[c];
         auto sep_x = hx + cw;
 
         if (sep_x > bw && hx < rect_.width - bw) {
-            auto text_y = (hh - fm.height) / 2.0f + fm.ascent;
+            auto text_y = bw + (hh - fm.height) / 2.0f + fm.ascent;
             auto text = std::string(model_->header_text(c));
 
             if (c == sort_column_ && sort_order_ != SortOrder::None) {
                 text += (sort_order_ == SortOrder::Ascending) ? " \xe2\x96\xb2" : " \xe2\x96\xbc";
             }
 
+            // FIXME: add theme primitive to draw the table header
             painter.push_clip(
-                {std::max(hx, bw), 0, std::min(cw, rect_.width - bw - std::max(hx, bw)), hh});
+                {std::max(hx, bw), bw, std::min(cw, rect_.width - bw - std::max(hx, bw)), hh});
 
             painter.draw_text(text, {hx + style.item_padding_h, text_y}, palette.text,
                               palette.fonts.size);
@@ -441,15 +455,15 @@ void TableView::paint(Painter &painter) {
         }
         if (sep_x > bw && sep_x < rect_.width - bw) {
             auto border = is_dark ? palette.border.lighten(0.2f) : palette.border;
-            painter.draw_line({sep_x, 0}, {sep_x, hh}, border, 0.5f);
+            painter.draw_line({sep_x, bw}, {sep_x, bw + hh}, border, 0.5f);
         }
         hx += cw;
     }
-    painter.draw_line({bw, hh}, {rect_.width - bw, hh}, palette.border);
+    painter.draw_line({bw, bw + hh}, {rect_.width - bw, bw + hh}, palette.border);
 
-    auto body_clip = Rect{0, hh, rect_.width, rect_.height - hh};
+    auto body_clip = Rect{bw, bw + hh, rect_.width - bw * 2, rect_.height - hh - bw * 2};
     auto first_visible = std::max(0, (int)(scroll_y_ / rh));
-    auto last_visible = std::min(nrows - 1, (int)((scroll_y_ + rect_.height - hh) / rh));
+    auto last_visible = std::min(nrows - 1, (int)((scroll_y_ + rect_.height - hh - bw * 2) / rh));
     auto inner_w = rect_.width - bw * 2;
     auto row_sel = palette.highlight;
     auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
@@ -458,7 +472,7 @@ void TableView::paint(Painter &painter) {
     painter.fill_rect(body_clip, palette.base);
     for (int i = first_visible; i <= last_visible; i++) {
         auto mr = model_row(i);
-        auto ry = hh + rh * i - scroll_y_;
+        auto ry = bw + hh + rh * i - scroll_y_;
         auto selected = is_selected(i);
         auto hovered = (i == hovered_row_) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
@@ -478,7 +492,6 @@ void TableView::paint(Painter &painter) {
             cx += cw;
         }
     }
-    painter.pop_clip();
 
     // ── Scrollbars ──────────────────────────────────────────────────────────
     auto content_h = total_content_height();

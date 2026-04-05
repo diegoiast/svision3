@@ -36,15 +36,16 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
     } else {
         // Draw flat border just inside the rectangle to avoid clipping issues.
         // Stroke is centered on the path, so we inset by half the width.
-        auto inset = palette.border_width / 2.0f;
+        auto bw = palette.border_width;
+        auto inset = bw / 2.0f;
         auto border_rect = rect.inset(inset);
         auto border_c = sunken ? palette.border.darken(0.2f) : border;
 
         if (palette.corner_radius > 0.0f) {
             draw_rounded_rect(border_rect, border_c, std::max(0.0f, palette.corner_radius - inset),
-                              palette.border_width);
+                              bw);
         } else {
-            draw_rect(border_rect, border_c, palette.border_width);
+            draw_rect(border_rect, border_c, bw);
         }
     }
 }
