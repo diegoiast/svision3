@@ -11,10 +11,6 @@ class Plasma6Theme : public BaseTheme {
   public:
     explicit Plasma6Theme(Palette p);
 
-    void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
-                     ButtonState state, bool focused, bool enabled, bool flat,
-                     std::optional<Color> background) const override;
-
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                   bool hovered, bool enabled, TabOrientation orientation, bool has_close,
                   bool hovered_close) const override;

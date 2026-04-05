@@ -101,33 +101,17 @@ void Win95Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_
     painter.draw_text(text, Point{x_offset, text_y}, text_col, palette.fonts.size);
 }
 
-void Win95Theme::draw_tree_background(Painter &painter, Rect const &rect, bool focused) const {
-    if (palette.beveled) {
-        painter.draw_filled_frame(rect, palette.window, palette.border, palette, true);
-    } else {
-        painter.fill_rounded_rect(rect, palette.window, palette.corner_radius);
-        if (palette.border_width > 0) {
-            auto bw = palette.border_width;
-            auto inset = bw / 2.0f;
-            painter.draw_rounded_rect(rect.inset(inset), palette.border,
-                                      std::max(0.0f, palette.corner_radius - inset), bw);
-        }
-    }
-}
-
 void Win95Theme::draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                                   bool enabled) const {
+    auto const chunk_width = 8.0f;
+    auto const chunk_gap = 2.0f;
+
     auto bg = enabled ? palette.window : palette.window.darken(0.1f);
     auto fill_c = enabled ? palette.accent : palette.accent.darken(0.2f);
-    const auto chunk_width = 8.0f;
-    const auto chunk_gap = 2.0f;
-
-    painter.draw_filled_frame(rect, bg, palette.border, palette, true);
-
     auto inner = rect.inset(palette.border_width);
+    auto chunk_count = static_cast<int>(inner.width / (chunk_width + chunk_gap));
     auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
 
-    auto chunk_count = static_cast<int>(inner.width / (chunk_width + chunk_gap));
     for (int i = 0; i < chunk_count; ++i) {
         auto cx = inner.x + i * (chunk_width + chunk_gap);
         if (cx + chunk_width > inner.x + fill_w) {

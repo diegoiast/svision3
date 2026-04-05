@@ -17,8 +17,6 @@ class Win95Theme : public BaseTheme {
                         bool has_children, bool expanded, bool selected, bool hovered,
                         bool alternate) const override;
 
-    void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override;
-
     void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                            bool enabled) const override;
 };

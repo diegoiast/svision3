@@ -274,6 +274,7 @@ void TreeView::paint(Painter &painter) {
             painter.fill_rect(item_rect, palette.alternate);
         }
 
+        // FIXME: this should not be here.
         auto is_win95 = (theme.name == "Windows 95");
         if (is_win95) {
             painter.set_line_style(Painter::LineStyle::Dotted);
@@ -330,6 +331,7 @@ void TreeView::paint(Painter &painter) {
             painter.draw_line({handle_x, handle_y}, {handle_end_x, handle_y}, palette.border, 1.0f);
         }
 
+        // FIXME: move this code to the theme
         if (is_win95) {
             painter.set_line_style(Painter::LineStyle::Solid);
         }
@@ -529,6 +531,8 @@ bool TreeView::handle_key(KeyEvent const &event) {
         }
         return false;
     }
+    default:
+        break;
     }
 
     return false;

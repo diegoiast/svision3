@@ -15,21 +15,6 @@ Plasma6Theme::Plasma6Theme(Palette p) : BaseTheme(std::move(p)) {
     focus_ring_corner_radius = 4.0f;
 }
 
-void Plasma6Theme::draw_button(Painter &painter, Rect const &rect, std::string_view text,
-                               Icon const &icon, ButtonState state, bool focused, bool enabled,
-                               bool flat, std::optional<Color> background) const {
-    BaseTheme::draw_button(painter, rect, text, icon, state, focused, enabled, flat, background);
-
-    auto pressed = state == ButtonState::ClickedInside;
-    if (enabled && !flat && !pressed) {
-        auto line_c = palette.border;
-        line_c.a = 0.3f;
-        painter.draw_line({rect.x + palette.corner_radius, rect.y + rect.height - 2.0f},
-                          {rect.x + rect.width - palette.corner_radius, rect.y + rect.height - 2.0f},
-                          line_c, 1.0f);
-    }
-}
-
 void Plasma6Theme::draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                             bool hovered, bool enabled, TabOrientation orientation, bool has_close,
                             bool hovered_close) const {

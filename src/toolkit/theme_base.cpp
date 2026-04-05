@@ -325,8 +325,6 @@ void BaseTheme::draw_progress_bar(Painter &painter, Rect const &rect, float prog
     auto inner = rect.inset(palette.border_width);
     auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
     auto fill_rect = Rect{inner.x, inner.y, fill_w, inner.height};
-
-    painter.draw_filled_frame(rect, bg, palette.border, palette, true);
     painter.fill_rect(fill_rect, fill);
 }
 
@@ -539,9 +537,9 @@ void BaseTheme::draw_tree_item(Painter &painter, Rect const &rect, std::string_v
 
 void BaseTheme::draw_tree_background(Painter &painter, Rect const &rect, bool focused) const {
     if (palette.beveled) {
-        painter.draw_filled_frame(rect, palette.window, palette.border, palette, true);
+        painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
     } else {
-        painter.fill_rounded_rect(rect, palette.window, palette.corner_radius);
+        painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
         if (palette.border_width > 0) {
             auto bw = palette.border_width;
             auto inset = bw / 2.0f;
@@ -558,7 +556,7 @@ void BaseTheme::draw_combobox(Painter &painter, Rect const &rect, std::string_vi
     auto fm = painter.font_metrics(palette.fonts.size);
     auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
 
-    painter.draw_filled_frame(rect, palette.window, border, palette, true);
+    painter.draw_filled_frame(rect, palette.base, border, palette, true);
 
     if (!text.empty()) {
         auto clip_w = rect.width - style.padding.left - style.padding.right - 16.0f;
