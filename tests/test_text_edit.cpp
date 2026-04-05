@@ -1,11 +1,12 @@
 #include "toolkit/text_edit.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
 TEST_CASE("TextEdit relative coordinates", "[textedit]") {
-    Theme::set_current(Theme::create(ThemeStyle::MacOS, ColorScheme::Light));
+    Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
     TextEdit te("Line 1\nLine 2");
     te.set_rect({100, 100, 200, 200});
 

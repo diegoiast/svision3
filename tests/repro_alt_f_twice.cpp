@@ -2,6 +2,7 @@
 #include "toolkit/layout.hpp"
 #include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
 #include "toolkit/window.hpp"
 #include <catch2/catch_test_macros.hpp>
 
@@ -9,7 +10,7 @@ using namespace toolkit;
 
 TEST_CASE("Alt+F twice should not crash", "[menubar][crash]") {
     DummyPlatformGuard guard;
-    Theme::set_current(Theme::create(ThemeStyle::Win11, ColorScheme::Light));
+    Theme::set_current(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light));
 
     Window win("Test Alt+F Crash", {800, 600});
     auto root = std::make_unique<VBoxLayout>();

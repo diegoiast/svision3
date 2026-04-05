@@ -1,11 +1,12 @@
-#include <catch2/catch_test_macros.hpp>
 #include "toolkit/line_input.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
 TEST_CASE("LineInput hit tests with read-only and password", "[lineinput]") {
-    Theme::set_current(Theme::create(ThemeStyle::MacOS, ColorScheme::Light));
+    Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
     LineInput li("Placeholder");
     li.set_text("some text");
     li.set_password_mode(true);
@@ -33,7 +34,7 @@ TEST_CASE("LineInput hit tests with read-only and password", "[lineinput]") {
 }
 
 TEST_CASE("LineInput relative coordinates", "[lineinput]") {
-    Theme::set_current(Theme::create(ThemeStyle::MacOS, ColorScheme::Light));
+    Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
     LineInput li("Placeholder");
     li.set_rect({100, 100, 200, 30});
     
@@ -46,7 +47,7 @@ TEST_CASE("LineInput relative coordinates", "[lineinput]") {
 }
 
 TEST_CASE("LineInput clear button hover and click", "[lineinput]") {
-    Theme::set_current(Theme::create(ThemeStyle::MacOS, ColorScheme::Light));
+    Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
     LineInput li("Placeholder");
     li.set_text("Some text");
     li.set_rect({0, 0, 200, 30});

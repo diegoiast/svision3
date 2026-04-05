@@ -3,6 +3,7 @@
 #include "toolkit/application.hpp"
 #include "toolkit/line_input.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
 #include <fmt/format.h>
 #include <fstream>
 #include <regex>
@@ -23,7 +24,7 @@ int main() {
 static toolkit::ThemeStyle current_style = toolkit::ThemeStyle::MacOS;
 static toolkit::ColorScheme current_scheme = toolkit::ColorScheme::Light;
 static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
-    toolkit::Theme::set_current(toolkit::Theme::create(current_style, current_scheme));
+    toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
     app.notify_theme_changed();
     window->request_redraw();
 }

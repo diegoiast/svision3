@@ -164,10 +164,6 @@ int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
 
     toolkit::Application app;
-
-    toolkit::Theme::set_current(
-        toolkit::Theme::create(toolkit::ThemeStyle::MacOS, toolkit::ColorScheme::Light));
-
     auto *window = app.create_window("SQLite Viewer", {800, 600});
 
     ViewerState vs;

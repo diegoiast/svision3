@@ -2,6 +2,7 @@
 #include "toolkit/menubar.hpp"
 #include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
 #include "toolkit/window.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <spdlog/spdlog.h>
@@ -10,7 +11,7 @@ using namespace toolkit;
 
 TEST_CASE("MenuBar interaction", "[menubar]") {
     DummyPlatformGuard guard;
-    Theme::set_current(Theme::create(ThemeStyle::Win11, ColorScheme::Light));
+    Theme::set_current(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light));
 
     Window win("Test MenuBar", {800, 600});
     auto root = std::make_unique<VBoxLayout>();

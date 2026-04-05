@@ -20,6 +20,7 @@
 #include "toolkit/table_view.hpp"
 #include "toolkit/text_edit.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
 #include "toolkit/toolbar.hpp"
 #include "toolkit/tree_view.hpp"
 #include "toolkit/window.hpp"
@@ -37,7 +38,7 @@ static toolkit::ColorScheme current_scheme = toolkit::ColorScheme::Light;
 #include "BeatesSongs.hpp"
 
 static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
-    toolkit::Theme::set_current(toolkit::Theme::create(current_style, current_scheme));
+    toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
     app.notify_theme_changed();
     window->request_redraw();
 }
@@ -56,7 +57,7 @@ int main(int argc, char *argv[]) {
         }
     }
     current_style = toolkit::Theme::detect_system_style();
-    toolkit::Theme::set_current(toolkit::Theme::create(current_style, current_scheme));
+    toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
 
     auto *window = app.create_window("Demo", {600, 400});
 

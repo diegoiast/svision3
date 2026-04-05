@@ -5,13 +5,14 @@
 #include "toolkit/platform.hpp"
 #include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
 #include <cstdio>
 
 using namespace toolkit;
 
 TEST_CASE("Layout mouse interaction relative", "[layout]") {
     DummyPlatformGuard guard;
-    Theme::set_current(Theme::create(ThemeStyle::MacOS, ColorScheme::Light));
+    Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
 
     Window win("Test", {800, 600});
     

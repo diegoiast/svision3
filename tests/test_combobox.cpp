@@ -1,10 +1,10 @@
-#include <catch2/catch_test_macros.hpp>
 #include "toolkit/combobox.hpp"
-#include "toolkit/window.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
-#include <cstdio>
+#include "toolkit/theme_factory.hpp"
+#include "toolkit/window.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
@@ -17,7 +17,7 @@ TEST_CASE("Combobox default state", "[combobox]") {
 
 TEST_CASE("Combobox interaction with virtual window", "[combobox]") {
     DummyPlatformGuard guard;
-    Theme::set_current(Theme::create(ThemeStyle::MacOS, ColorScheme::Light));
+    Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
 
     Window win("Test", {800, 600});
     auto cb_ptr = std::make_unique<Combobox>(std::vector<std::string>{"One", "Two", "Three"});

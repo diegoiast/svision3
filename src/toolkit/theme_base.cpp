@@ -1,0 +1,930 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
+#include "toolkit/theme_base.hpp"
+#include "toolkit/button_state.hpp"
+#include "toolkit/painter.hpp"
+#include "toolkit/types.hpp"
+#include "toolkit/utf8.hpp"
+#include <algorithm>
+#include <cmath>
+
+namespace toolkit {
+
+BaseTheme::BaseTheme(Palette p) {
+    this->palette = std::move(p);
+    if (palette.fonts.size == 0 && palette.fonts.size > 0) {
+        palette.fonts.size = palette.fonts.size;
+    }
+
+    // Initialize backward compatibility members
+    name = "Base";
+    style = ThemeStyle::Material;
+    layout.margins = {8, 8, 8, 8};
+    layout.spacing = 8.0f;
+}
+
+void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
+                            ButtonState state, bool focused, bool enabled, bool flat,
+                            std::optional<Color> background) const {
+
+    auto hovered = state == ButtonState::Hovered || state == ButtonState::ClickedInside;
+    auto pressed = state == ButtonState::ClickedInside;
+    auto border_c = (focused || hovered || pressed) ? palette.accent : palette.border;
+    auto text_c = enabled ? palette.text : palette.text_disabled;
+    auto text_offset = (palette.beveled && pressed && enabled) ? 1.0f : 0.0f;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto text_w = painter.text_size(text, palette.fonts.size).width;
+    auto icon_w = 0.0f;
+    auto icon_h = 0.0f;
+
+    if (icon) {
+        icon_w = static_cast<float>(icon->width);
+        icon_h = static_cast<float>(icon->height);
+    }
+    auto total_w = text_w + (icon ? (icon_w + 4.0f) : 0.0f);
+    auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto text_x = (rect.width - total_w) / 2.0f + text_offset + (icon ? icon_w + 4.0f : 0.0f);
+    auto text_pos = Point{text_x, baseline_y + text_offset};
+    auto show_full_frame = !flat || hovered || pressed;
+
+    auto defaultBg = palette.base;
+    if (flat && state != ButtonState::Hovered) {
+        defaultBg = palette.window;
+    }
+    auto bg = background.value_or(defaultBg);
+    if (enabled && !background) {
+        if (pressed && palette.background_pressed) {
+            bg = *palette.background_pressed;
+        } else if (focused) {
+            // FIXME: do we need a focused color for Buttons?
+            bg = palette.base;
+        } else if (hovered && palette.background_hovered) {
+            bg = *palette.background_hovered;
+        }
+    }
+    if (show_full_frame) {
+        painter.draw_filled_frame(rect, bg, border_c, palette, pressed && enabled);
+    } else if (palette.corner_radius > 0.0f) {
+        painter.fill_rounded_rect(rect, bg, palette.corner_radius);
+    } else {
+        painter.fill_rect(rect, bg);
+    }
+    if (icon) {
+        auto icon_x = (rect.width - total_w) / 2.0f + text_offset;
+        auto icon_y = (rect.height - icon_h) / 2.0f;
+        painter.draw_image(*icon, Point{icon_x, icon_y});
+    }
+    painter.draw_text(text, text_pos, text_c, palette.fonts.size);
+}
+
+void BaseTheme::draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
+                              CheckState check_state, ButtonState button_state, bool focused,
+                              bool enabled) const {
+    auto const &style = checkbox;
+    auto hovered =
+        button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
+    auto pressed = button_state == ButtonState::ClickedInside;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto box = style.box_size;
+    auto box_y = (rect.height - box) / 2.0f;
+    auto box_rect = Rect{rect.x, box_y, box, box};
+    auto border = focused ? palette.accent : palette.border;
+    auto bg = palette.base;
+    if (enabled) {
+        if (pressed) {
+            bg = palette.alternate;
+        } else if (button_state == ButtonState::ClickedOutside) {
+            bg = palette.base;
+        } else if (hovered) {
+            bg = palette.alternate;
+        }
+    }
+
+    painter.draw_filled_frame(box_rect, bg, border, palette, pressed && enabled);
+
+    if (check_state == CheckState::Checked) {
+        auto cx = box_rect.x + box * 0.22f;
+        auto cy = box_rect.y + box * 0.5f;
+        auto lw = std::max(1.5f, box * 0.14f);
+        painter.draw_line({cx, cy}, {cx + box * 0.18f, cy + box * 0.2f}, palette.text, lw);
+        painter.draw_line({cx + box * 0.18f, cy + box * 0.2f},
+                          {cx + box * 0.55f, cy - box * 0.25f}, palette.text, lw);
+    } else if (check_state == CheckState::Partial) {
+        auto gap = box * 0.25f;
+        auto inner = box_rect.inset(gap);
+        painter.fill_rect(inner, palette.text_disabled);
+    }
+
+    auto text_x = rect.x + box + style.spacing;
+    auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto text_c = enabled ? palette.text : palette.text_disabled;
+    painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
+}
+
+void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::string_view text, bool checked,
+                                  ButtonState button_state, bool focused, bool enabled) const {
+    auto const &style = radio;
+    auto hovered =
+        button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
+    auto pressed = button_state == ButtonState::ClickedInside;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto r = style.box_size / 2.0f;
+    auto center = Point{rect.x + r, rect.height / 2.0f};
+    auto text_x = rect.x + style.box_size + style.spacing;
+    auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto border = focused ? palette.accent : palette.border;
+    auto bg = palette.base;
+    if (enabled) {
+        if (pressed) {
+            bg = palette.alternate;
+        } else if (button_state == ButtonState::ClickedOutside) {
+            bg = palette.base;
+        } else if (hovered) {
+            bg = palette.alternate;
+        }
+    }
+
+    painter.fill_circle(center, r, bg);
+    painter.draw_circle(center, r, border, palette.border_width);
+    if (palette.beveled) {
+        painter.draw_circle(center, r - 1.0f, palette.shadow, 1.0f);
+    }
+    if (checked) {
+        painter.fill_circle(center, r * 0.45f, palette.text);
+    }
+    auto text_c = enabled ? palette.text : palette.text_disabled;
+    painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
+}
+
+void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
+                                std::string_view placeholder, int cursor_pos, int selection_start,
+                                int selection_end, bool focused, bool enabled, bool password_mode,
+                                float scroll_offset, std::optional<Color> background,
+                                bool cursor_visible) const {
+    auto const &style = line_input;
+    auto border = focused ? palette.accent : palette.border;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto content_x = style.padding.left;
+    auto content_w = rect.width - style.padding.left - style.padding.right;
+    auto tx = rect.x + content_x - scroll_offset;
+
+    painter.draw_filled_frame(rect, palette.base, border, palette, true);
+
+    auto clip_rect = Rect{rect.x + content_x, rect.y, content_w, rect.height};
+    painter.push_clip(clip_rect);
+
+    auto text_c = enabled ? palette.text : palette.text_disabled;
+    if (selection_start >= 0 && selection_end > selection_start) {
+        auto before_s = text.substr(0, selection_start);
+        auto before_e = text.substr(0, selection_end);
+        auto sx = tx + painter.text_size(before_s, palette.fonts.size).width;
+        auto ex = tx + painter.text_size(before_e, palette.fonts.size).width;
+        auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
+        auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
+        painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
+    }
+
+    if (text.empty() && !focused) {
+        painter.draw_text(placeholder, {tx, baseline_y}, palette.placeholder,
+                          palette.fonts.size);
+    } else if (!text.empty()) {
+        if (password_mode) {
+            auto dot_radius = palette.fonts.size * 0.25f;
+            auto char_w = painter.text_size("8", palette.fonts.size).width;
+            auto center_off_y = (fm.ascent - fm.descent) / 2.0f;
+            auto char_count = 0;
+            auto i = 0;
+
+            while (i < text.size()) {
+                auto cx = tx + char_count * char_w + char_w / 2.0f;
+                auto cy = baseline_y - center_off_y;
+                painter.fill_circle({cx, cy}, dot_radius, text_c);
+                char_count++;
+                i = Utf8Iterator::next(text, i);
+            }
+        } else {
+            painter.draw_text(text, {tx, baseline_y}, text_c, palette.fonts.size);
+        }
+    }
+
+    if (focused && cursor_pos >= 0 && cursor_visible) {
+        auto before = text.substr(0, cursor_pos);
+        auto cx = tx;
+        if (!before.empty()) {
+            cx += painter.text_size(before, palette.fonts.size).width;
+        }
+        auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
+        auto cy_bot = cy_top + fm.height + 2.0f;
+        painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);
+    }
+    painter.pop_clip();
+}
+
+void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
+                                  bool active, bool show_mnemonics, int mnemonic_index) const {
+    auto const &style = menubar;
+    auto padding = style.padding;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto text_c = palette.text;
+
+    if (hovered || active) {
+        // FIXME: do we want hovered colors?
+        // auto bg = style.background_hovered.value_or(style.background.darken(0.1f));
+        auto bg = palette.highlight;
+        painter.fill_rect(rect, bg);
+        text_c = palette.highlighted_text;
+    }
+
+    auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
+    painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, palette.fonts.size);
+
+    if (show_mnemonics && mnemonic_index >= 0) {
+        auto before = title.substr(0, mnemonic_index);
+        auto ch = std::string(1, title[mnemonic_index]);
+        auto before_w =
+            before.empty() ? 0.0f : painter.text_size(before, palette.fonts.size).width;
+        auto ch_w = painter.text_size(ch, palette.fonts.size).width;
+        auto ul_y = baseline + fm.descent * 0.4f;
+
+        painter.draw_line({rect.x + padding.left + before_w, ul_y},
+                          {rect.x + padding.left + before_w + ch_w, ul_y}, text_c, 1.0f);
+    }
+}
+
+void BaseTheme::draw_menubar_background(Painter &painter, Rect const &rect) const {
+    // FIXME: do we want a different background for menubar?
+    painter.fill_rect(rect, palette.window);
+    auto border_c = palette.window;
+    painter.draw_line({rect.x, rect.height - 1.0f}, {rect.x + rect.width, rect.height - 1.0f},
+                      border_c, 1.0f);
+}
+
+void BaseTheme::draw_menu_background(Painter &painter, Rect const &rect) const {
+    auto shadow = Color::rgba(0, 0, 0, 0.12f);
+    painter.fill_rounded_rect({rect.x + 1, rect.y + 1, rect.width, rect.height}, shadow,
+                              palette.corner_radius);
+    painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
+    painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
+                              palette.border_width);
+}
+
+void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
+                               std::string_view shortcut, bool hovered, bool enabled, bool checkable,
+                               bool checked) const {
+    auto const &style = combobox;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto text_col = palette.text;
+
+    if (hovered && enabled) {
+        // FIXME: highlight hovered is it needed?
+        painter.fill_rounded_rect(rect, palette.highlight, palette.corner_radius * 0.5f);
+    }
+
+    if (checkable && checked) {
+        auto check_rect = Rect{rect.x + 4, rect.y + (rect.height - 12) / 2, 12, 12};
+        painter.fill_rounded_rect(check_rect, palette.border, 2.0f);
+    }
+
+    auto icon_x = rect.x + style.padding.left + 4;
+    if (icon) {
+        auto icon_y = rect.y + (rect.height - static_cast<float>(icon->height)) / 2.0f;
+        painter.draw_image(*icon, Point{icon_x, icon_y});
+        icon_x += static_cast<float>(icon->width) + 4;
+    }
+
+    auto text_x = icon_x;
+    if (!enabled) {
+        // FIXME: remove this alpha channel changing
+        text_col.a *= 0.4f;
+    }
+    painter.draw_text(text, {text_x, baseline}, text_col, palette.fonts.size);
+
+    if (!shortcut.empty()) {
+        auto shortcut_w = painter.text_size(shortcut, palette.fonts.size).width;
+        auto shortcut_x = rect.x + rect.width - style.padding.right - shortcut_w - 10.0f;
+        painter.draw_text(shortcut, {shortcut_x, baseline}, text_col, palette.fonts.size);
+    }
+}
+
+void BaseTheme::draw_menu_separator(Painter &painter, Rect const &rect) const {
+    auto mid_y = rect.y + rect.height / 2.0f;
+    auto sep_col = palette.border;
+    // FIXME: remove this alpha channel changing
+    sep_col.a *= 0.5f;
+    painter.draw_line({rect.x + 8, mid_y}, {rect.x + rect.width - 8, mid_y}, sep_col, 0.5f);
+}
+
+void BaseTheme::draw_progress_bar(Painter &painter, Rect const &rect, float progress,
+                                  bool enabled) const {
+    auto bg = palette.window;
+    auto fill = palette.accent;
+
+    auto inner = rect.inset(palette.border_width);
+    auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
+    auto fill_rect = Rect{inner.x, inner.y, fill_w, inner.height};
+
+    painter.draw_filled_frame(rect, bg, palette.border, palette, true);
+    painter.fill_rect(fill_rect, fill);
+}
+
+void BaseTheme::draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal, bool hovered,
+                            bool pressed, bool focused, bool enabled) const {
+    auto const &style = slider;
+
+    auto groove_rect = Rect{};
+    auto handle_rect = Rect{};
+    auto v = std::clamp(value, 0.0f, 1.0f);
+
+    if (horizontal) {
+        auto groove_y = rect.y + (rect.height - style.groove_thickness) / 2.0f;
+        groove_rect = {rect.x, groove_y, rect.width, style.groove_thickness};
+        auto track_len = rect.width - style.handle_size;
+        auto handle_x = rect.x + style.handle_size / 2.0f + track_len * v;
+        handle_rect = {handle_x - style.handle_size / 2.0f,
+                       rect.y + (rect.height - style.handle_size) / 2.0f, style.handle_size,
+                       style.handle_size};
+    } else {
+        auto groove_x = rect.x + (rect.width - style.groove_thickness) / 2.0f;
+        groove_rect = {groove_x, rect.y, style.groove_thickness, rect.height};
+        auto track_len = rect.height - style.handle_size;
+        // Vertical slider: 0 is at bottom (local height - offset)
+        // Slider::pos_to_value uses: offset = length - p - h_size / 2;
+        // So p = length - h_size / 2 - offset
+        // where offset = ratio * track_len
+        auto handle_y = rect.y + rect.height - style.handle_size / 2.0f - track_len * v;
+        handle_rect = {rect.x + (rect.width - style.handle_size) / 2.0f,
+                       handle_y - style.handle_size / 2.0f, style.handle_size,
+                       style.handle_size};
+    }
+
+    painter.fill_rounded_rect(groove_rect, palette.border, style.groove_thickness / 2.0f);
+
+    // FIXME: we need hover color?
+    auto bg = pressed ? palette.window : palette.base;
+    auto border = palette.border;
+    if (hovered && palette.background_hovered) {
+        bg = *palette.background_hovered;
+    }
+    if (pressed && palette.background_pressed) {
+        bg = *palette.background_pressed;
+    }
+    if (hovered || pressed) {
+        border = palette.accent;
+    }
+    painter.fill_rounded_rect(handle_rect, bg, style.handle_size / 4.0f);
+    painter.draw_rounded_rect(handle_rect, palette.border, style.handle_size / 4.0f, 1.0f);
+}
+
+void BaseTheme::draw_tab_bar_background(Painter &painter, Rect const &rect) const {
+    painter.fill_rect(rect, palette.window);
+}
+
+void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
+                         bool hovered, bool enabled, TabOrientation orientation, bool has_close,
+                         bool hovered_close) const {
+    auto const &style = tab_widget;
+    auto bg = palette.window;
+    if (active) {
+        bg = palette.base;
+    } else {
+        if (hovered && palette.background_hovered) {
+            bg = *palette.background_hovered;
+        }
+    }
+
+    if (active) {
+        painter.fill_rounded_rect(rect, bg, palette.tab_radius);
+    } else {
+        painter.fill_rect(rect, bg);
+    }
+
+    auto vertical =
+        (orientation == TabOrientation::West || orientation == TabOrientation::East);
+    auto text_orientation = Painter::TextOrientation::Horizontal;
+    if (orientation == TabOrientation::West) {
+        text_orientation = Painter::TextOrientation::VerticalCW;
+    } else if (orientation == TabOrientation::East) {
+        text_orientation = Painter::TextOrientation::VerticalCCW;
+    }
+
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto text_w = painter.text_size(text, palette.fonts.size).width;
+    auto text_x = 0.0f, baseline_y = 0.0f;
+    if (vertical) {
+        auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
+        auto left_space = style.tab_padding_h;
+        auto text_area_h = rect.height - left_space - right_space;
+        text_x = rect.x + (rect.width - fm.height) / 2.0f;
+        baseline_y = rect.y + left_space + (text_area_h - text_w) / 2.0f + fm.ascent;
+        if (baseline_y < rect.y + left_space + fm.ascent) {
+            baseline_y = rect.y + left_space + fm.ascent;
+        }
+    } else {
+        auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
+        auto left_space = style.tab_padding_h;
+        auto text_area_w = rect.width - left_space - right_space;
+        text_x = rect.x + left_space + (text_area_w - text_w) / 2.0f;
+        if (text_x < rect.x + left_space) {
+            text_x = rect.x + left_space;
+        }
+        baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    }
+
+    auto text_c = /*active ? palette.highlighted_text : */ palette.text;
+    painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size,
+                      FontFamily::System, text_orientation);
+
+    if (has_close) {
+        auto close_btn_size = 14.0f;
+        auto close_x = rect.x + rect.width - style.tab_padding_h - close_btn_size;
+        auto close_rect = Rect{close_x, rect.y + (rect.height - close_btn_size) / 2.0f,
+                               close_btn_size, close_btn_size};
+        auto close_cy = rect.y + rect.height / 2.0f;
+        auto close_cx = close_x + close_btn_size / 2.0f;
+
+        if (hovered_close) {
+            painter.fill_rounded_rect(close_rect, Color::rgb(0.9f, 0.2f, 0.2f), 4.0f);
+        }
+
+        auto cs = close_btn_size * 0.3f;
+        auto x_col = hovered_close ? Color::rgb(1.0f, 1.0f, 1.0f)
+                                   : Color::rgba(text_c.r, text_c.g, text_c.b, 0.6f);
+        painter.draw_line({close_cx - cs, close_cy - cs}, {close_cx + cs, close_cy + cs}, x_col,
+                          1.5f);
+        painter.draw_line({close_cx + cs, close_cy - cs}, {close_cx - cs, close_cy + cs}, x_col,
+                          1.5f);
+    }
+}
+
+void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
+                               bool selected, bool hovered, bool alternate) const {
+    auto const &style = list_view;
+    Color bg;
+
+    auto is_dark = palette.window.luma() < 0.5f;
+    auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
+
+    if (selected) {
+        bg = palette.highlight;
+    } else if (hovered) {
+        bg = Color::lerp(alt_color, palette.highlight, 0.5);
+    } else if (alternate) {
+        bg = alt_color;
+    } else {
+        bg = palette.base;
+    }
+
+    painter.fill_rect(rect, bg);
+
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto text_x = rect.x + style.item_padding_h;
+    if (icon) {
+        auto icon_y = rect.y + (rect.height - static_cast<float>(icon->height)) / 2.0f;
+        painter.draw_image(*icon, {text_x, icon_y});
+        text_x += static_cast<float>(icon->width) + style.item_padding;
+    }
+    auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto text_c = selected ? palette.highlighted_text : palette.text;
+    painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
+}
+
+void BaseTheme::draw_list_background(Painter &painter, Rect const &rect, bool focused) const {
+    painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
+    if (palette.border_width > 0) {
+        auto bw = palette.border_width;
+        auto inset = bw / 2.0f;
+        painter.draw_rounded_rect(rect.inset(inset), palette.border,
+                                  std::max(0.0f, palette.corner_radius - inset), bw);
+    }
+}
+
+void BaseTheme::draw_table_background(Painter &painter, Rect const &rect, bool focused) const {
+    painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
+}
+
+void BaseTheme::draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
+                               bool has_children, bool expanded, bool selected, bool hovered,
+                               bool alternate) const {
+    auto const &style = tree_view;
+    auto fm = painter.font_metrics(palette.fonts.size);
+
+    auto x_offset = style.item_padding_h + depth * style.indent;
+
+    if (has_children) {
+        auto arrow_x = x_offset + 4;
+        auto arrow_y = rect.y + rect.height / 2;
+        auto arrow_size = 8.0f;
+
+        if (expanded) {
+            painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
+                                  {arrow_x + arrow_size, arrow_y - arrow_size / 2},
+                                  {arrow_x + arrow_size / 2, arrow_y + arrow_size / 2},
+                                  palette.text);
+        } else {
+            painter.fill_triangle({arrow_x, arrow_y - arrow_size / 2},
+                                  {arrow_x, arrow_y + arrow_size / 2},
+                                  {arrow_x + arrow_size, arrow_y}, palette.text);
+        }
+    }
+
+    x_offset += style.indent + 4.0f;
+
+    auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto text_col = selected ? palette.highlighted_text : palette.text;
+    painter.draw_text(text, {x_offset, text_y}, text_col, palette.fonts.size);
+}
+
+void BaseTheme::draw_tree_background(Painter &painter, Rect const &rect, bool focused) const {
+    if (palette.beveled) {
+        painter.draw_filled_frame(rect, palette.window, palette.border, palette, true);
+    } else {
+        painter.fill_rounded_rect(rect, palette.window, palette.corner_radius);
+        if (palette.border_width > 0) {
+            auto bw = palette.border_width;
+            auto inset = bw / 2.0f;
+            painter.draw_rounded_rect(rect.inset(inset), palette.border,
+                                      std::max(0.0f, palette.corner_radius - inset), bw);
+        }
+    }
+}
+
+void BaseTheme::draw_combobox(Painter &painter, Rect const &rect, std::string_view text, bool focused,
+                              bool open) const {
+    auto const &style = combobox;
+    auto border = focused ? palette.accent : palette.border;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+
+    painter.draw_filled_frame(rect, palette.window, border, palette, true);
+
+    if (!text.empty()) {
+        auto clip_w = rect.width - style.padding.left - style.padding.right - 16.0f;
+        painter.push_clip({style.padding.left, 0, clip_w, rect.height});
+        painter.draw_text(text, {style.padding.left, baseline_y}, palette.text,
+                          palette.fonts.size);
+        painter.pop_clip();
+    }
+
+    auto arrow_x = rect.width - style.padding.right - 8.0f;
+    auto arrow_y = rect.height / 2.0f;
+    auto aw = 4.0f;
+    painter.draw_line({arrow_x - aw, arrow_y - 2.0f}, {arrow_x, arrow_y + 2.0f}, palette.text,
+                      1.5f);
+    painter.draw_line({arrow_x, arrow_y + 2.0f}, {arrow_x + aw, arrow_y - 2.0f}, palette.text,
+                      1.5f);
+}
+
+void BaseTheme::draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
+                                   bool hovered) const {
+    auto const &style = combobox;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto tc = hovered ? palette.highlighted_text : palette.text;
+
+    if (hovered) {
+        painter.fill_rect(rect, palette.highlight);
+    }
+
+    painter.draw_text(text, {rect.x + style.padding.left, baseline}, tc, palette.fonts.size);
+}
+
+void BaseTheme::draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const {
+    if (palette.corner_radius > 0.0f) {
+        painter.fill_rounded_rect(rect, palette.tooltip, palette.corner_radius);
+        painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
+                                  palette.border_width);
+    } else {
+        painter.fill_rect(rect, palette.tooltip);
+        painter.draw_rect(rect, palette.border, palette.border_width);
+    }
+
+    // FIXME: padding is hardcoded for tooltips
+    auto padding = 5;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto text_x = rect.x + padding;
+    auto baseline_y = rect.y + padding + fm.ascent;
+    painter.draw_text(text, {text_x, baseline_y}, palette.text, palette.fonts.size);
+}
+
+void BaseTheme::draw_toolbar(Painter &painter, Rect const &rect) const {
+    if (palette.beveled) {
+        painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, palette.highlight,
+                          1.0f);
+        painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
+                          {rect.x + rect.width, rect.y + rect.height - 1.0f}, palette.shadow,
+                          1.0f);
+    } else {
+        auto border_c = palette.window.darken(0.15f);
+        painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
+                          {rect.x + rect.width, rect.y + rect.height - 1.0f}, border_c, 1.0f);
+    }
+}
+
+void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_view text, int cursor_pos,
+                             int selection_start, int selection_end, bool focused, bool enabled,
+                             bool hovered_up, bool pressed_up, bool hovered_down, bool pressed_down,
+                             bool cursor_visible) const {
+    auto const &style = line_input;
+    auto const &btn_style = button;
+    auto bw = rect.height;
+    auto field_rect = Rect{rect.x, rect.y, rect.width - bw, rect.height};
+    auto border = focused ? palette.accent : palette.border;
+
+    painter.draw_filled_frame(field_rect, palette.base, border, palette, true);
+
+    auto content_x = field_rect.x + style.padding.left;
+    auto content_w = field_rect.width - style.padding.left - style.padding.right;
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto clip_rect = Rect{content_x, rect.y, content_w, rect.height};
+    painter.push_clip(clip_rect);
+
+    if (selection_start >= 0 && selection_end > selection_start) {
+        auto before_s = text.substr(0, selection_start);
+        auto before_e = text.substr(0, selection_end);
+        auto sx = content_x + painter.text_size(before_s, palette.fonts.size).width;
+        auto ex = content_x + painter.text_size(before_e, palette.fonts.size).width;
+        auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
+        auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
+        painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
+    }
+
+    auto text_c = enabled ? palette.text : palette.text_disabled;
+    painter.draw_text(text, {content_x, baseline_y}, text_c, palette.fonts.size);
+
+    if (focused && cursor_pos >= 0 && cursor_visible) {
+        auto before = text.substr(0, cursor_pos);
+        auto cx = content_x;
+        if (!before.empty()) {
+            cx += painter.text_size(before, palette.fonts.size).width;
+        }
+        auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
+        auto cy_bot = cy_top + fm.height + 2.0f;
+        painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);
+    }
+
+    painter.pop_clip();
+
+    auto btn_w = bw;
+    auto up_rect = Rect{rect.x + rect.width - btn_w, rect.y, btn_w, rect.height / 2.0f};
+    auto down_rect = Rect{rect.x + rect.width - btn_w, rect.y + rect.height / 2.0f, btn_w,
+                          rect.height / 2.0f};
+
+    auto draw_spinbox_button = [&](Rect const &r, bool hovered, bool pressed) {
+        auto b_bg = palette.window;
+        if (pressed && palette.background_pressed) {
+            b_bg = *palette.background_pressed;
+        } else if (hovered && palette.background_hovered) {
+            b_bg = *palette.background_hovered;
+        }
+        painter.draw_filled_frame(r, b_bg, border, palette, false);
+
+        auto cx = r.x + r.width / 2.0f;
+        auto cy = r.y + r.height / 2.0f;
+        auto arrow_sz = 3.5f;
+        auto tc = palette.text;
+
+        if (r.y < rect.y + rect.height / 2.0f) {
+            painter.draw_line({cx - arrow_sz, cy + arrow_sz * 0.4f}, {cx, cy - arrow_sz * 0.4f},
+                              tc, 1.5f);
+            painter.draw_line({cx, cy - arrow_sz * 0.4f}, {cx + arrow_sz, cy + arrow_sz * 0.4f},
+                              tc, 1.5f);
+        } else {
+            painter.draw_line({cx - arrow_sz, cy - arrow_sz * 0.4f}, {cx, cy + arrow_sz * 0.4f},
+                              tc, 1.5f);
+            painter.draw_line({cx, cy + arrow_sz * 0.4f}, {cx + arrow_sz, cy - arrow_sz * 0.4f},
+                              tc, 1.5f);
+        }
+    };
+
+    draw_spinbox_button(up_rect, hovered_up, pressed_up);
+    draw_spinbox_button(down_rect, hovered_down, pressed_down);
+}
+
+void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect, std::span<std::string const> lines,
+                               int cursor_line, int cursor_col, int selection_start_line,
+                               int selection_start_col, int selection_end_line, int selection_end_col,
+                               int first_visible_line, float line_height, float gutter_width,
+                               float scroll_x, float scroll_y, bool focused, bool enabled,
+                               std::chrono::steady_clock::time_point cursor_blink_time) const {
+    auto fm = painter.font_metrics(palette.fonts.size, FontFamily::Monospace);
+    auto bg = palette.base;
+    auto border = focused ? palette.accent : palette.border;
+    auto text_c = enabled ? palette.text : palette.text_disabled;
+
+    painter.draw_filled_frame(rect, bg, border, palette, true);
+
+    auto last = std::min(static_cast<int>(lines.size()) - 1,
+                         first_visible_line + static_cast<int>(rect.height / line_height));
+
+    auto gutter_rect = Rect{rect.x, rect.y, gutter_width, rect.height};
+    auto gutter_bg = palette.base;
+    painter.fill_rect(gutter_rect, gutter_bg);
+
+    for (auto i = first_visible_line; i <= last; i++) {
+        auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
+        auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
+        auto num = std::to_string(i + 1);
+        auto nw = Painter::measure_text(num, palette.fonts.size, FontFamily::Monospace).width;
+        painter.draw_text(num, {rect.x + gutter_width - nw - 8.0f, baseline},
+                          palette.placeholder, palette.fonts.size, FontFamily::Monospace);
+    }
+
+    auto area = Rect{rect.x + gutter_width, rect.y, rect.width - gutter_width, rect.height};
+    auto tx0 = rect.x + gutter_width - scroll_x;
+    // FIXME - hardcoded color
+    auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
+    auto has_sel = selection_start_line >= 0 && selection_end_line >= 0 &&
+                   (selection_start_line < selection_end_line ||
+                    (selection_start_line == selection_end_line &&
+                     selection_start_col < selection_end_col));
+
+    painter.push_clip(area);
+    for (auto i = first_visible_line; i <= last; i++) {
+        auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
+        auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
+
+        if (has_sel) {
+            auto line_start_col = 0;
+            auto line_end_col = static_cast<int>(lines[i].size());
+            auto sel_start = (i == selection_start_line) ? selection_start_col : line_start_col;
+            auto sel_end = (i == selection_end_line) ? selection_end_col : line_end_col;
+
+            if (sel_start < sel_end) {
+                auto sx = tx0 + (sel_start > 0 ? Painter::measure_text(
+                                                     lines[i].substr(0, sel_start),
+                                                     palette.fonts.size, FontFamily::Monospace)
+                                                     .width
+                                               : 0.0f);
+                auto ex = tx0 + Painter::measure_text(lines[i].substr(0, sel_end),
+                                                      palette.fonts.size, FontFamily::Monospace)
+                                    .width;
+                if (i != selection_end_line) {
+                    ex += palette.fonts.size * 0.4f;
+                }
+                painter.fill_rect({sx, y, ex - sx, line_height}, sel_bg);
+            }
+        }
+
+        painter.draw_text(lines[i], {tx0, baseline}, text_c, palette.fonts.size,
+                          FontFamily::Monospace);
+    }
+
+    if (focused) {
+        // FIXME: cursor should not be handled here. Just pass "cursor_blink".
+        auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time;
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+        if ((ms / 500) % 2 == 0) {
+            auto cy =
+                rect.y + line_height * static_cast<float>(cursor_line - first_visible_line);
+            auto cx = tx0;
+            if (cursor_col > 0 && cursor_line < static_cast<int>(lines.size())) {
+                cx += Painter::measure_text(lines[cursor_line].substr(0, cursor_col),
+                                            palette.fonts.size, FontFamily::Monospace)
+                          .width;
+            }
+            painter.draw_line({cx, cy}, {cx, cy + line_height}, palette.text, 1.5f);
+        }
+    }
+
+    painter.pop_clip();
+
+    auto content_h = line_height * static_cast<float>(lines.size());
+    if (content_h > rect.height) {
+        auto bar_h = std::max(20.0f, rect.height * (rect.height / content_h));
+        auto bar_y = (scroll_y / content_h) * rect.height;
+        auto sb = Rect{rect.x + rect.width - 6.0f, rect.y + bar_y, 4.0f, bar_h};
+        // FIXME: whats is this 2.0f?
+        painter.fill_rounded_rect(sb, palette.text, 2.0f);
+    }
+}
+
+void BaseTheme::draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const {
+    Color ring = palette.border;
+    ring.a = 0.5f;
+    auto lw = 2.0f;
+    auto inset = lw / 2.0f + 0.5f;
+    auto r = rect.inset(inset);
+    auto dash_len = 2.0f;
+    auto gap_len = 2.0f;
+
+    auto draw_dashed_line = [&](Point start, Point end) {
+        auto dx = end.x - start.x;
+        auto dy = end.y - start.y;
+        auto len = std::sqrt(dx * dx + dy * dy);
+        if (len < 0.001f) {
+            return;
+        }
+        auto ux = dx / len;
+        auto uy = dy / len;
+        auto pos = 0.0f;
+        auto drawing = true;
+        while (pos < len) {
+            auto seg_len = drawing ? dash_len : gap_len;
+            auto next_pos = std::min(pos + seg_len, len);
+            if (drawing) {
+                painter.draw_line({start.x + ux * pos, start.y + uy * pos},
+                                  {start.x + ux * next_pos, start.y + uy * next_pos}, ring, lw);
+            }
+            pos = next_pos;
+            drawing = !drawing;
+        }
+    };
+
+    auto cr = std::max(0.0f, corner_radius - inset);
+    if (cr > 0.0f) {
+        draw_dashed_line({r.x + cr, r.y}, {r.x + r.width - cr, r.y});
+        draw_dashed_line({r.x + r.width, r.y + cr}, {r.x + r.width, r.y + r.height - cr});
+        draw_dashed_line({r.x + r.width - cr, r.y + r.height}, {r.x + cr, r.y + r.height});
+        draw_dashed_line({r.x, r.y + r.height - cr}, {r.x, r.y + cr});
+
+        // Connect corners with diagonals
+        draw_dashed_line({r.x + cr, r.y}, {r.x, r.y + cr});
+        draw_dashed_line({r.x + r.width - cr, r.y}, {r.x + r.width, r.y + cr});
+        draw_dashed_line({r.x + r.width, r.y + r.height - cr},
+                         {r.x + r.width - cr, r.y + r.height});
+        draw_dashed_line({r.x + cr, r.y + r.height}, {r.x, r.y + r.height - cr});
+    } else {
+        draw_dashed_line({r.x, r.y}, {r.x + r.width, r.y});
+        draw_dashed_line({r.x + r.width, r.y}, {r.x + r.width, r.y + r.height});
+        draw_dashed_line({r.x + r.width, r.y + r.height}, {r.x, r.y + r.height});
+        draw_dashed_line({r.x, r.y + r.height}, {r.x, r.y});
+    }
+}
+
+Size BaseTheme::measure_label(std::string_view text, float font_size) const {
+    auto fm = Painter::measure_font_metrics(font_size);
+    auto w = Painter::measure_text(text, font_size).width;
+    return {w, fm.height + 4.0f};
+}
+
+Size BaseTheme::measure_button(std::string_view text, Icon const &icon) const {
+    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto icon_w = 0.0f;
+    if (icon) {
+        icon_w = static_cast<float>(icon->width);
+    }
+    auto total_w = text_w + (icon ? icon_w + 4.0f : 0.0f);
+    auto w = total_w + button.padding.left + button.padding.right;
+    auto h = palette.fonts.size + button.padding.top + button.padding.bottom;
+    return {w, h};
+}
+
+Size BaseTheme::measure_checkbox(std::string_view text) const {
+    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto w = checkbox.box_size + checkbox.spacing + text_w;
+    auto h = std::max(checkbox.box_size, palette.fonts.size);
+    return Size{w, h};
+}
+
+Size BaseTheme::measure_radio_button(std::string_view text) const {
+    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto w = radio.box_size + radio.spacing + text_w;
+    auto h = std::max(radio.box_size, palette.fonts.size);
+    return Size{w, h};
+}
+
+Size BaseTheme::measure_menubar_item(std::string_view text) const {
+    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    return {text_w + menubar.padding.left + menubar.padding.right, 0};
+}
+
+Size BaseTheme::measure_menu_item(std::string_view text, Icon const &icon,
+                                  std::string_view shortcut) const {
+    auto w = menu.item_padding * 2;
+    if (icon) {
+        w += static_cast<float>(icon->width) + menu.item_padding;
+    }
+    w += Painter::measure_text(text, palette.fonts.size).width;
+    if (!shortcut.empty()) {
+        w += menu.item_padding + Painter::measure_text(shortcut, palette.fonts.size).width;
+    }
+    auto h = palette.fonts.size + menu.item_padding * 2;
+    return {w, h};
+}
+
+float BaseTheme::menu_separator_height() const { return 8.0f; }
+Size BaseTheme::measure_tab(std::string_view text) const {
+    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto w = text_w + tab_widget.tab_padding_h * 2;
+    auto h = palette.fonts.size + tab_widget.tab_padding_v * 2;
+    return {w, h};
+}
+float BaseTheme::list_item_height() const { return 24.0f; }
+Size BaseTheme::measure_tooltip(std::string_view text) const {
+    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+
+    // FIXME: padding is hardcoded for tabs
+    auto padding = 0.5f;
+    auto w = text_w + padding * 2;
+    auto h = palette.fonts.size + padding * 2;
+    return {w, h};
+}
+
+Margins BaseTheme::button_padding() const { return button.padding; }
+Margins BaseTheme::line_input_padding() const { return line_input.padding; }
+
+} // namespace toolkit

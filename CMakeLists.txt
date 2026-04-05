@@ -63,6 +63,11 @@ set(TOOLKIT_SOURCES
     src/toolkit/menubar.cpp
     src/toolkit/layout.cpp
     src/toolkit/theme.cpp
+    src/toolkit/theme_base.cpp
+    src/toolkit/theme_factory.cpp
+    src/toolkit/theme_plasma.cpp
+    src/toolkit/theme_win11.cpp
+    src/toolkit/theme_win95.cpp
     src/toolkit/window.cpp
     src/toolkit/widget.cpp
     src/toolkit/platform_factory.cpp

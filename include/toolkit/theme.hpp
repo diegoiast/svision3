@@ -153,18 +153,11 @@ inline constexpr int theme_style_count = 6;
 
 enum class ThemeStyle { MacOS, Material, Win11, Win95, Plasma6, GNOME };
 
-// FIXME: this is bad, should be in a shared include
-enum class TabOrientation;
-
 class Painter;
 
 class Theme {
   public:
     virtual ~Theme() = default;
-
-    // Factory methods
-    static std::unique_ptr<Theme> create(ThemeStyle style, ColorScheme scheme = ColorScheme::Light);
-    static std::unique_ptr<Theme> create(ThemeStyle style, Palette const &palette);
 
     // FIXME this should be in the application, this method should be removed
     static const Theme &current();

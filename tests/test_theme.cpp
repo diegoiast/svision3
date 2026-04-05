@@ -1,4 +1,5 @@
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
@@ -14,16 +15,16 @@ TEST_CASE("Theme::style_name returns correct names", "[theme]") {
 
 TEST_CASE("theme_style_count matches enum", "[theme]") { REQUIRE(theme_style_count == 6); }
 
-TEST_CASE("Theme::create produces named theme", "[theme]") {
-    auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Light);
+TEST_CASE("ThemeFactory::crete produces named theme", "[theme]") {
+    auto t = ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light);
     REQUIRE(t->name == "macOS");
 }
 
-TEST_CASE("Theme::create with all styles and schemes", "[theme]") {
+TEST_CASE("ThemeFactory::crete with all styles and schemes", "[theme]") {
     for (int i = 0; i < theme_style_count; i++) {
         auto style = static_cast<ThemeStyle>(i);
         for (auto scheme : {ColorScheme::Light, ColorScheme::Dark}) {
-            auto t = Theme::create(style, scheme);
+            auto t = ThemeFactory::create(style, scheme);
             REQUIRE_FALSE(t->name.empty());
         }
     }
@@ -51,20 +52,20 @@ TEST_CASE("Non-Win95 palettes are not beveled", "[theme]") {
 }
 
 TEST_CASE("Theme::set_current / current round-trip", "[theme]") {
-    auto t = Theme::create(ThemeStyle::Material, ColorScheme::Dark);
+    auto t = ThemeFactory::create(ThemeStyle::Material, ColorScheme::Dark);
     Theme::set_current(std::move(t));
     REQUIRE(Theme::current().name == "Material");
 }
 
 TEST_CASE("Dark theme has lighter text than background", "[theme]") {
-    auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Dark);
+    auto t = ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Dark);
     auto text_luma = t->palette.text.luma();
     auto bg_luma = t->palette.window.luma();
     REQUIRE(text_luma > bg_luma);
 }
 
 TEST_CASE("Light theme has darker text than background", "[theme]") {
-    auto t = Theme::create(ThemeStyle::MacOS, ColorScheme::Light);
+    auto t = ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light);
     float text_luma = t->palette.text.luma();
     float bg_luma = t->palette.window.luma();
     REQUIRE(text_luma < bg_luma);
@@ -80,12 +81,12 @@ TEST_CASE("Theme from custom palette", "[theme]") {
     p.alternate = Color::rgb(0.25f, 0.25f, 0.25f);
     p.fonts.size = 16.0f;
 
-    auto t = Theme::create(ThemeStyle::MacOS, p);
+    auto t = ThemeFactory::create(ThemeStyle::MacOS, p);
     REQUIRE(t->palette.window.r == 0.1f);
     REQUIRE(t->palette.fonts.size == 16.0f);
 }
 
 TEST_CASE("ProgressBar style has Win95 chunked", "[theme]") {
-    auto t = Theme::create(ThemeStyle::Win95, ColorScheme::Light);
+    auto t = ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light);
     REQUIRE(t->palette.progress_bar_height == 20.0f);
 }

@@ -2,6 +2,7 @@
 #include "toolkit/platform.hpp"
 #include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
 #include "toolkit/window.hpp"
 #include <catch2/catch_test_macros.hpp>
 
@@ -9,7 +10,7 @@ using namespace toolkit;
 
 TEST_CASE("ContextMenu interaction", "[contextmenu]") {
     DummyPlatformGuard guard;
-    Theme::set_current(Theme::create(ThemeStyle::MacOS, ColorScheme::Light));
+    Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
 
     Window win("Test", {800, 600});
 

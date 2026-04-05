@@ -101,6 +101,8 @@ struct Margins {
 
 enum class Alignment { Fill, Start, Center, End };
 
+enum class TabOrientation { North, South, East, West };
+
 enum class CheckState { Unchecked, Checked, Partial };
 
 enum class CursorShape { Arrow, IBeam, Hand, NotAllowed, ResizeEW };

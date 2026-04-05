@@ -4,6 +4,7 @@
 #include "toolkit/platform.hpp"
 #include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/theme_factory.hpp"
 #include "toolkit/widget.hpp"
 
 #include <cstdlib>
@@ -120,7 +121,7 @@ Application::Application() : impl_(std::make_unique<Impl>()) {
     impl_->icon_provider = std::make_unique<DummyIconProvider>();
 
     // Refresh theme now that platform is active to detect correct fonts/scale
-    Theme::set_current(Theme::create(Theme::detect_system_style()));
+    Theme::set_current(ThemeFactory::create(Theme::detect_system_style()));
 
     auto const &theme = Theme::current();
     spdlog::info("Theme: {} (Font: '{}' {}px, Monospace: '{}', Scale: {:.2f})", theme.name,
