@@ -1,7 +1,7 @@
 {
     "activeExecutableName": "",
     "activeTaskName": "",
-    "buildDir": "${source_directory}/build",
+    "build_directory": "${source_directory}/build",
     "displayFilter": "",
     "executables": [
         {
@@ -15,7 +15,7 @@
         {
             "executables": {
                 "linux": "SVISION_PAINT=opengl SVISION_BACKEND=x11 build/Debug/demo",
-                "windows": "Debug\\demo.exe"
+                "windows": "build\\Debug\\demo.exe"
             },
             "name": "Demo (opengl)",
             "runDirectory": "${source_directory}"
@@ -23,7 +23,7 @@
         {
             "executables": {
                 "linux": "build/Debug/demo2",
-                "windows": "build\\Debug\\demo.exe2"
+                "windows": "build\\Debug\\demo2.exe"
             },
             "name": "Demo2 (declarative)",
             "runDirectory": "${source_directory}"
@@ -31,14 +31,14 @@
         {
             "executables": {
                 "linux": "SVISION_PAINT=cairo SVISION_BACKEND=wayland build/Debug/demo",
-                "windows": "Debug\\demo.exe"
+                "windows": "build\\Debug\\demo.exe"
             },
             "name": "Demo (cairo/wayland)",
             "runDirectory": "${source_directory}"
         },
         {
             "executables": {
-                "linux": "build//Debug/sqlite_viewer",
+                "linux": "build/Debug/sqlite_viewer",
                 "windows": "build\\Debug\\sqlite_viewer.exe"
             },
             "name": "SQLite viewer",
@@ -46,7 +46,7 @@
         },
         {
             "executables": {
-                "linux": "build\\Debug/tests",
+                "linux": "build/Debug/tests",
                 "windows": "build\\Debug\\tests.exe"
             },
             "name": "Unit tests",
@@ -73,7 +73,7 @@
         {
             "commands": {
                 "linux": [
-                    "~/local/bin/conan install . --output-folder=. --build=missing -s build_type=Release",
+                    "~/.local/bin/conan install . --output-folder=. --build=missing -s build_type=Release",
                     "cmake --preset conan-release -G Ninja"
                 ],
                 "windows": [
@@ -86,21 +86,21 @@
             "runDirectory": "${source_directory}"
         },
         {
-            "commands": "cmake --build build --preset conan-debug",
+            "commands": "cmake --build --preset conan-debug",
             "isBuild": true,
             "name": "CMake Build Debug (parallel)",
             "runDirectory": "${source_directory}"
         },
         {
-            "commands": "cmake --build build --preset conan-release",
+            "commands": "cmake --build --preset conan-debug --verbose -j 1",
             "isBuild": true,
-            "name": "CMake Build Release (parallel)",
+            "name": "CMake Build Debug (single thread)",
             "runDirectory": "${source_directory}"
         },
         {
-            "commands": "cmake --build build --preset conan-debug --verbose -j 1",
+            "commands": "cmake --build --preset conan-release",
             "isBuild": true,
-            "name": "CMake Build Debug (single thread)",
+            "name": "CMake Build build_directory (parallel)",
             "runDirectory": "${source_directory}"
         }
     ]
