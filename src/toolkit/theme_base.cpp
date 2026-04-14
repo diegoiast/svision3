@@ -399,49 +399,48 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
         painter.fill_rect(rect, bg);
     }
 
-    auto vertical =
-        (orientation == TabOrientation::West || orientation == TabOrientation::East);
+    auto vertical = (orientation == TabOrientation::West || orientation == TabOrientation::East);
     auto text_orientation = Painter::TextOrientation::Horizontal;
     if (orientation == TabOrientation::West) {
-        text_orientation = Painter::TextOrientation::VerticalCW;
-    } else if (orientation == TabOrientation::East) {
         text_orientation = Painter::TextOrientation::VerticalCCW;
+    } else if (orientation == TabOrientation::East) {
+        text_orientation = Painter::TextOrientation::VerticalCW;
     }
 
     auto fm = painter.font_metrics(palette.fonts.size);
     auto text_w = painter.text_size(text, palette.fonts.size).width;
     auto text_x = 0.0f, baseline_y = 0.0f;
+    auto close_cx = 0.0f, close_cy = 0.0f;
+    auto const close_btn_size = 14.0f;
+    auto const close_btn_gap = 6.0f;
+
     if (vertical) {
-        auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
-        auto left_space = style.tab_padding_h;
-        auto text_area_h = rect.height - left_space - right_space;
-        text_x = rect.x + (rect.width - fm.height) / 2.0f;
-        baseline_y = rect.y + left_space + (text_area_h - text_w) / 2.0f + fm.ascent;
-        if (baseline_y < rect.y + left_space + fm.ascent) {
-            baseline_y = rect.y + left_space + fm.ascent;
+        if (orientation == TabOrientation::West) {
+            text_x = rect.x + (rect.width - fm.height) / 2.0f + fm.ascent;
+            baseline_y = rect.y + rect.height - style.tab_padding_h;
+            close_cx = rect.x + rect.width / 2.0f;
+            close_cy = baseline_y - text_w - close_btn_gap - close_btn_size / 2.0f;
+        } else {
+            text_x = rect.x + (rect.width + fm.height) / 2.0f - fm.ascent;
+            baseline_y = rect.y + style.tab_padding_h;
+            close_cx = rect.x + rect.width / 2.0f;
+            close_cy = baseline_y + text_w + close_btn_gap + close_btn_size / 2.0f;
         }
     } else {
-        auto right_space = has_close ? (style.tab_padding_h + 14.0f + 6.0f) : 0.0f;
-        auto left_space = style.tab_padding_h;
-        auto text_area_w = rect.width - left_space - right_space;
-        text_x = rect.x + left_space + (text_area_w - text_w) / 2.0f;
-        if (text_x < rect.x + left_space) {
-            text_x = rect.x + left_space;
-        }
+        text_x = rect.x + style.tab_padding_h;
         baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+        close_cx = rect.x + style.tab_padding_h + text_w + close_btn_gap + close_btn_size / 2.0f;
+        close_cy = rect.y + rect.height / 2.0f;
     }
 
-    auto text_c = /*active ? palette.highlighted_text : */ palette.text;
-    painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size,
-                      FontFamily::System, text_orientation);
+    auto text_c = palette.text;
+    painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size, FontFamily::System,
+                      text_orientation);
 
     if (has_close) {
-        auto close_btn_size = 14.0f;
-        auto close_x = rect.x + rect.width - style.tab_padding_h - close_btn_size;
-        auto close_rect = Rect{close_x, rect.y + (rect.height - close_btn_size) / 2.0f,
-                               close_btn_size, close_btn_size};
-        auto close_cy = rect.y + rect.height / 2.0f;
-        auto close_cx = close_x + close_btn_size / 2.0f;
+        auto close_rect =
+            Rect{close_cx - close_btn_size / 2.0f, close_cy - close_btn_size / 2.0f, close_btn_size,
+                 close_btn_size};
 
         if (hovered_close) {
             painter.fill_rounded_rect(close_rect, Color::rgb(0.9f, 0.2f, 0.2f), 4.0f);

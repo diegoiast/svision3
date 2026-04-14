@@ -25,19 +25,25 @@ void Plasma6Theme::draw_tab(Painter &painter, Rect const &rect, std::string_view
     if (active) {
         auto indicator = Rect{};
         auto lw = 4.0f;
+        auto vertical = (orientation == TabOrientation::West || orientation == TabOrientation::East);
         auto r2 = rect;
 
-        r2.x += palette.tab_radius;
-        r2.width -= palette.tab_radius * 2;
+        if (vertical) {
+            r2.y += palette.tab_radius;
+            r2.height -= palette.tab_radius * 2;
+        } else {
+            r2.x += palette.tab_radius;
+            r2.width -= palette.tab_radius * 2;
+        }
 
         if (orientation == TabOrientation::North) {
-            indicator = {r2.x, 0, r2.width, lw};
+            indicator = {r2.x, rect.y, r2.width, lw};
         } else if (orientation == TabOrientation::South) {
-            indicator = {r2.x, r2.y, r2.width, lw};
+            indicator = {r2.x, rect.y + rect.height - lw, r2.width, lw};
         } else if (orientation == TabOrientation::West) {
-            indicator = {lw, r2.y, lw, r2.height};
+            indicator = {rect.x, r2.y, lw, r2.height};
         } else if (orientation == TabOrientation::East) {
-            indicator = {r2.x, r2.y, lw, r2.height};
+            indicator = {rect.x + rect.width - lw, r2.y, lw, r2.height};
         }
         // FIXME- this is not ideal, as the marker should also have a rounded corners.
         painter.fill_rect(indicator, palette.accent);
