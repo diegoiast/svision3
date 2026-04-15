@@ -13,41 +13,7 @@ Plasma6Theme::Plasma6Theme(Palette p) : BaseTheme(std::move(p)) {
     slider.groove_thickness = 6.0f;
     focus_ring_margin = 2.0f;
     focus_ring_corner_radius = 4.0f;
-}
-
-void Plasma6Theme::draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
-                            bool hovered, bool enabled, TabOrientation orientation, bool has_close,
-                            bool hovered_close) const {
-    BaseTheme::draw_tab(painter, rect, text, active, hovered, enabled, orientation, has_close,
-                        hovered_close);
-
-    // FIXME: move indicators the base theme, with an indicator size/position in the palette
-    if (active) {
-        auto indicator = Rect{};
-        auto lw = 4.0f;
-        auto vertical = (orientation == TabOrientation::West || orientation == TabOrientation::East);
-        auto r2 = rect;
-
-        if (vertical) {
-            r2.y += palette.tab_radius;
-            r2.height -= palette.tab_radius * 2;
-        } else {
-            r2.x += palette.tab_radius;
-            r2.width -= palette.tab_radius * 2;
-        }
-
-        if (orientation == TabOrientation::North) {
-            indicator = {r2.x, rect.y, r2.width, lw};
-        } else if (orientation == TabOrientation::South) {
-            indicator = {r2.x, rect.y + rect.height - lw, r2.width, lw};
-        } else if (orientation == TabOrientation::West) {
-            indicator = {rect.x, r2.y, lw, r2.height};
-        } else if (orientation == TabOrientation::East) {
-            indicator = {rect.x + rect.width - lw, r2.y, lw, r2.height};
-        }
-        // FIXME- this is not ideal, as the marker should also have a rounded corners.
-        painter.fill_rect(indicator, palette.accent);
-    }
+    tab_widget.indicator_weight = -4.0f;
 }
 
 void Plasma6Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_view text,

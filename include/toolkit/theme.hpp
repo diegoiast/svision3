@@ -52,6 +52,7 @@ struct MenuBarStyle {
 struct TabWidgetStyle {
     float tab_padding_h = 16.0f;
     float tab_padding_v = 6.0f;
+    std::optional<float> indicator_weight;
 };
 
 // FIXME: remove this style

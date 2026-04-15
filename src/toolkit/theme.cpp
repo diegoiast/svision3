@@ -80,6 +80,7 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
 
 static void palette_win11(Palette &p, ColorScheme scheme) {
     auto windows_blue = Color::from_argb(0xFF0078D4);
+    p.tab_radius = 4.0f;
 
     switch (scheme) {
     case ColorScheme::Light:

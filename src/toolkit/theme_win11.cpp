@@ -10,6 +10,7 @@ Win11Theme::Win11Theme(Palette p) : BaseTheme(std::move(p)) {
     name = "Windows 11";
     focus_ring_margin = 3.0f;
     focus_ring_corner_radius = 4.0f;
+    tab_widget.indicator_weight = 2.0f;
 }
 
 void Win11Theme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
@@ -31,28 +32,6 @@ void Win11Theme::draw_menubar_item(Painter &painter, Rect const &rect, std::stri
         text_c = palette.highlighted_text;
     }
     painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, palette.fonts.size);
-}
-
-void Win11Theme::draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
-                          bool hovered, bool enabled, TabOrientation orientation, bool has_close,
-                          bool hovered_close) const {
-    BaseTheme::draw_tab(painter, rect, text, active, hovered, enabled, orientation, has_close,
-                        hovered_close);
-
-    if (active) {
-        auto indicator = Rect{};
-        auto lw = 2.0f;
-        if (orientation == TabOrientation::North) {
-            indicator = {rect.x + 4.0f, rect.y + rect.height - lw, rect.width - 8.0f, lw};
-        } else if (orientation == TabOrientation::South) {
-            indicator = {rect.x + 4.0f, rect.y, rect.width - 8.0f, lw};
-        } else if (orientation == TabOrientation::West) {
-            indicator = {rect.x + rect.width - lw, rect.y + 4.0f, lw, rect.height - 8.0f};
-        } else if (orientation == TabOrientation::East) {
-            indicator = {rect.x, rect.y, lw, rect.height};
-        }
-        painter.fill_rect(indicator, palette.accent);
-    }
 }
 
 void Win11Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_view text,

@@ -24,9 +24,9 @@ BaseTheme::BaseTheme(Palette p) {
     layout.spacing = 8.0f;
 }
 
-void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
-                            ButtonState state, bool focused, bool enabled, bool flat,
-                            std::optional<Color> background) const {
+void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view text,
+                            Icon const &icon, ButtonState state, bool focused, bool enabled,
+                            bool flat, std::optional<Color> background) const {
 
     auto hovered = state == ButtonState::Hovered || state == ButtonState::ClickedInside;
     auto pressed = state == ButtonState::ClickedInside;
@@ -108,8 +108,8 @@ void BaseTheme::draw_checkbox(Painter &painter, Rect const &rect, std::string_vi
         auto cy = box_rect.y + box * 0.5f;
         auto lw = std::max(1.5f, box * 0.14f);
         painter.draw_line({cx, cy}, {cx + box * 0.18f, cy + box * 0.2f}, palette.text, lw);
-        painter.draw_line({cx + box * 0.18f, cy + box * 0.2f},
-                          {cx + box * 0.55f, cy - box * 0.25f}, palette.text, lw);
+        painter.draw_line({cx + box * 0.18f, cy + box * 0.2f}, {cx + box * 0.55f, cy - box * 0.25f},
+                          palette.text, lw);
     } else if (check_state == CheckState::Partial) {
         auto gap = box * 0.25f;
         auto inner = box_rect.inset(gap);
@@ -122,8 +122,9 @@ void BaseTheme::draw_checkbox(Painter &painter, Rect const &rect, std::string_vi
     painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 }
 
-void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::string_view text, bool checked,
-                                  ButtonState button_state, bool focused, bool enabled) const {
+void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::string_view text,
+                                  bool checked, ButtonState button_state, bool focused,
+                                  bool enabled) const {
     auto const &style = radio;
     auto hovered =
         button_state == ButtonState::Hovered || button_state == ButtonState::ClickedInside;
@@ -187,8 +188,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     }
 
     if (text.empty() && !focused) {
-        painter.draw_text(placeholder, {tx, baseline_y}, palette.placeholder,
-                          palette.fonts.size);
+        painter.draw_text(placeholder, {tx, baseline_y}, palette.placeholder, palette.fonts.size);
     } else if (!text.empty()) {
         if (password_mode) {
             auto dot_radius = palette.fonts.size * 0.25f;
@@ -222,8 +222,9 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     painter.pop_clip();
 }
 
-void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
-                                  bool active, bool show_mnemonics, int mnemonic_index) const {
+void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
+                                  bool hovered, bool active, bool show_mnemonics,
+                                  int mnemonic_index) const {
     auto const &style = menubar;
     auto padding = style.padding;
     auto fm = painter.font_metrics(palette.fonts.size);
@@ -243,8 +244,7 @@ void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::strin
     if (show_mnemonics && mnemonic_index >= 0) {
         auto before = title.substr(0, mnemonic_index);
         auto ch = std::string(1, title[mnemonic_index]);
-        auto before_w =
-            before.empty() ? 0.0f : painter.text_size(before, palette.fonts.size).width;
+        auto before_w = before.empty() ? 0.0f : painter.text_size(before, palette.fonts.size).width;
         auto ch_w = painter.text_size(ch, palette.fonts.size).width;
         auto ul_y = baseline + fm.descent * 0.4f;
 
@@ -266,13 +266,12 @@ void BaseTheme::draw_menu_background(Painter &painter, Rect const &rect) const {
     painter.fill_rounded_rect({rect.x + 1, rect.y + 1, rect.width, rect.height}, shadow,
                               palette.corner_radius);
     painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
-    painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
-                              palette.border_width);
+    painter.draw_rounded_rect(rect, palette.border, palette.corner_radius, palette.border_width);
 }
 
-void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
-                               std::string_view shortcut, bool hovered, bool enabled, bool checkable,
-                               bool checked) const {
+void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_view text,
+                               Icon const &icon, std::string_view shortcut, bool hovered,
+                               bool enabled, bool checkable, bool checked) const {
     auto const &style = combobox;
     auto fm = painter.font_metrics(palette.fonts.size);
     auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
@@ -328,8 +327,8 @@ void BaseTheme::draw_progress_bar(Painter &painter, Rect const &rect, float prog
     painter.fill_rect(fill_rect, fill);
 }
 
-void BaseTheme::draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal, bool hovered,
-                            bool pressed, bool focused, bool enabled) const {
+void BaseTheme::draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal,
+                            bool hovered, bool pressed, bool focused, bool enabled) const {
     auto const &style = slider;
 
     auto groove_rect = Rect{};
@@ -354,8 +353,7 @@ void BaseTheme::draw_slider(Painter &painter, Rect const &rect, float value, boo
         // where offset = ratio * track_len
         auto handle_y = rect.y + rect.height - style.handle_size / 2.0f - track_len * v;
         handle_rect = {rect.x + (rect.width - style.handle_size) / 2.0f,
-                       handle_y - style.handle_size / 2.0f, style.handle_size,
-                       style.handle_size};
+                       handle_y - style.handle_size / 2.0f, style.handle_size, style.handle_size};
     }
 
     painter.fill_rounded_rect(groove_rect, palette.border, style.groove_thickness / 2.0f);
@@ -385,7 +383,10 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
                          bool hovered_close) const {
     auto const &style = tab_widget;
     auto bg = palette.window;
+    // auto text_c = active ? palette.highlighted_text : palette.tegxt;
+    auto text_c = enabled ? palette.text : palette.text_disabled;
     if (active) {
+        // bg = palette.background_pressed.value_or(palette.base);
         bg = palette.base;
     } else {
         if (hovered && palette.background_hovered) {
@@ -433,14 +434,12 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
         close_cy = rect.y + rect.height / 2.0f;
     }
 
-    auto text_c = palette.text;
     painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size, FontFamily::System,
                       text_orientation);
 
     if (has_close) {
-        auto close_rect =
-            Rect{close_cx - close_btn_size / 2.0f, close_cy - close_btn_size / 2.0f, close_btn_size,
-                 close_btn_size};
+        auto close_rect = Rect{close_cx - close_btn_size / 2.0f, close_cy - close_btn_size / 2.0f,
+                               close_btn_size, close_btn_size};
 
         if (hovered_close) {
             painter.fill_rounded_rect(close_rect, Color::rgb(0.9f, 0.2f, 0.2f), 4.0f);
@@ -454,10 +453,37 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
         painter.draw_line({close_cx + cs, close_cy - cs}, {close_cx - cs, close_cy + cs}, x_col,
                           1.5f);
     }
+
+    if (active && style.indicator_weight.has_value() && *style.indicator_weight != 0.0f) {
+        auto const weight = std::abs(*style.indicator_weight);
+        auto const on_inner = *style.indicator_weight > 0.0f;
+        auto indicator = Rect{};
+        auto r2 = rect;
+
+        if (vertical) {
+            r2.y += palette.tab_radius;
+            r2.height -= palette.tab_radius * 2;
+        } else {
+            r2.x += palette.tab_radius;
+            r2.width -= palette.tab_radius * 2;
+        }
+
+        if (orientation == TabOrientation::North) {
+            indicator = {r2.x, on_inner ? rect.y + rect.height - weight : rect.y, r2.width, weight};
+        } else if (orientation == TabOrientation::South) {
+            indicator = {r2.x, on_inner ? rect.y : rect.y + rect.height - weight, r2.width, weight};
+        } else if (orientation == TabOrientation::West) {
+            indicator = {on_inner ? rect.x + rect.width - weight : rect.x, r2.y, weight, r2.height};
+        } else if (orientation == TabOrientation::East) {
+            indicator = {on_inner ? rect.x : rect.x + rect.width - weight, r2.y, weight, r2.height};
+        }
+        painter.fill_rect(indicator, palette.accent);
+    }
 }
 
-void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
-                               bool selected, bool hovered, bool alternate) const {
+void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
+                               Icon const &icon, bool selected, bool hovered,
+                               bool alternate) const {
     auto const &style = list_view;
     Color bg;
 
@@ -548,8 +574,8 @@ void BaseTheme::draw_tree_background(Painter &painter, Rect const &rect, bool fo
     }
 }
 
-void BaseTheme::draw_combobox(Painter &painter, Rect const &rect, std::string_view text, bool focused,
-                              bool open) const {
+void BaseTheme::draw_combobox(Painter &painter, Rect const &rect, std::string_view text,
+                              bool focused, bool open) const {
     auto const &style = combobox;
     auto border = focused ? palette.accent : palette.border;
     auto fm = painter.font_metrics(palette.fonts.size);
@@ -560,8 +586,7 @@ void BaseTheme::draw_combobox(Painter &painter, Rect const &rect, std::string_vi
     if (!text.empty()) {
         auto clip_w = rect.width - style.padding.left - style.padding.right - 16.0f;
         painter.push_clip({style.padding.left, 0, clip_w, rect.height});
-        painter.draw_text(text, {style.padding.left, baseline_y}, palette.text,
-                          palette.fonts.size);
+        painter.draw_text(text, {style.padding.left, baseline_y}, palette.text, palette.fonts.size);
         painter.pop_clip();
     }
 
@@ -608,11 +633,9 @@ void BaseTheme::draw_tooltip(Painter &painter, Rect const &rect, std::string_vie
 
 void BaseTheme::draw_toolbar(Painter &painter, Rect const &rect) const {
     if (palette.beveled) {
-        painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, palette.highlight,
-                          1.0f);
+        painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, palette.highlight, 1.0f);
         painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
-                          {rect.x + rect.width, rect.y + rect.height - 1.0f}, palette.shadow,
-                          1.0f);
+                          {rect.x + rect.width, rect.y + rect.height - 1.0f}, palette.shadow, 1.0f);
     } else {
         auto border_c = palette.window.darken(0.15f);
         painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
@@ -620,10 +643,10 @@ void BaseTheme::draw_toolbar(Painter &painter, Rect const &rect) const {
     }
 }
 
-void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_view text, int cursor_pos,
-                             int selection_start, int selection_end, bool focused, bool enabled,
-                             bool hovered_up, bool pressed_up, bool hovered_down, bool pressed_down,
-                             bool cursor_visible) const {
+void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_view text,
+                             int cursor_pos, int selection_start, int selection_end, bool focused,
+                             bool enabled, bool hovered_up, bool pressed_up, bool hovered_down,
+                             bool pressed_down, bool cursor_visible) const {
     auto const &style = line_input;
     auto const &btn_style = button;
     auto bw = rect.height;
@@ -667,8 +690,8 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
 
     auto btn_w = bw;
     auto up_rect = Rect{rect.x + rect.width - btn_w, rect.y, btn_w, rect.height / 2.0f};
-    auto down_rect = Rect{rect.x + rect.width - btn_w, rect.y + rect.height / 2.0f, btn_w,
-                          rect.height / 2.0f};
+    auto down_rect =
+        Rect{rect.x + rect.width - btn_w, rect.y + rect.height / 2.0f, btn_w, rect.height / 2.0f};
 
     auto draw_spinbox_button = [&](Rect const &r, bool hovered, bool pressed) {
         auto b_bg = palette.window;
@@ -685,15 +708,15 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
         auto tc = palette.text;
 
         if (r.y < rect.y + rect.height / 2.0f) {
-            painter.draw_line({cx - arrow_sz, cy + arrow_sz * 0.4f}, {cx, cy - arrow_sz * 0.4f},
-                              tc, 1.5f);
-            painter.draw_line({cx, cy - arrow_sz * 0.4f}, {cx + arrow_sz, cy + arrow_sz * 0.4f},
-                              tc, 1.5f);
+            painter.draw_line({cx - arrow_sz, cy + arrow_sz * 0.4f}, {cx, cy - arrow_sz * 0.4f}, tc,
+                              1.5f);
+            painter.draw_line({cx, cy - arrow_sz * 0.4f}, {cx + arrow_sz, cy + arrow_sz * 0.4f}, tc,
+                              1.5f);
         } else {
-            painter.draw_line({cx - arrow_sz, cy - arrow_sz * 0.4f}, {cx, cy + arrow_sz * 0.4f},
-                              tc, 1.5f);
-            painter.draw_line({cx, cy + arrow_sz * 0.4f}, {cx + arrow_sz, cy - arrow_sz * 0.4f},
-                              tc, 1.5f);
+            painter.draw_line({cx - arrow_sz, cy - arrow_sz * 0.4f}, {cx, cy + arrow_sz * 0.4f}, tc,
+                              1.5f);
+            painter.draw_line({cx, cy + arrow_sz * 0.4f}, {cx + arrow_sz, cy - arrow_sz * 0.4f}, tc,
+                              1.5f);
         }
     };
 
@@ -701,9 +724,10 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
     draw_spinbox_button(down_rect, hovered_down, pressed_down);
 }
 
-void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect, std::span<std::string const> lines,
-                               int cursor_line, int cursor_col, int selection_start_line,
-                               int selection_start_col, int selection_end_line, int selection_end_col,
+void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
+                               std::span<std::string const> lines, int cursor_line, int cursor_col,
+                               int selection_start_line, int selection_start_col,
+                               int selection_end_line, int selection_end_col,
                                int first_visible_line, float line_height, float gutter_width,
                                float scroll_x, float scroll_y, bool focused, bool enabled,
                                std::chrono::steady_clock::time_point cursor_blink_time) const {
@@ -726,18 +750,18 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect, std::span<std
         auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
         auto num = std::to_string(i + 1);
         auto nw = Painter::measure_text(num, palette.fonts.size, FontFamily::Monospace).width;
-        painter.draw_text(num, {rect.x + gutter_width - nw - 8.0f, baseline},
-                          palette.placeholder, palette.fonts.size, FontFamily::Monospace);
+        painter.draw_text(num, {rect.x + gutter_width - nw - 8.0f, baseline}, palette.placeholder,
+                          palette.fonts.size, FontFamily::Monospace);
     }
 
     auto area = Rect{rect.x + gutter_width, rect.y, rect.width - gutter_width, rect.height};
     auto tx0 = rect.x + gutter_width - scroll_x;
     // FIXME - hardcoded color
     auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
-    auto has_sel = selection_start_line >= 0 && selection_end_line >= 0 &&
-                   (selection_start_line < selection_end_line ||
-                    (selection_start_line == selection_end_line &&
-                     selection_start_col < selection_end_col));
+    auto has_sel =
+        selection_start_line >= 0 && selection_end_line >= 0 &&
+        (selection_start_line < selection_end_line ||
+         (selection_start_line == selection_end_line && selection_start_col < selection_end_col));
 
     painter.push_clip(area);
     for (auto i = first_visible_line; i <= last; i++) {
@@ -751,11 +775,12 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect, std::span<std
             auto sel_end = (i == selection_end_line) ? selection_end_col : line_end_col;
 
             if (sel_start < sel_end) {
-                auto sx = tx0 + (sel_start > 0 ? Painter::measure_text(
-                                                     lines[i].substr(0, sel_start),
-                                                     palette.fonts.size, FontFamily::Monospace)
-                                                     .width
-                                               : 0.0f);
+                auto sx =
+                    tx0 + (sel_start > 0
+                               ? Painter::measure_text(lines[i].substr(0, sel_start),
+                                                       palette.fonts.size, FontFamily::Monospace)
+                                     .width
+                               : 0.0f);
                 auto ex = tx0 + Painter::measure_text(lines[i].substr(0, sel_end),
                                                       palette.fonts.size, FontFamily::Monospace)
                                     .width;
@@ -775,8 +800,7 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect, std::span<std
         auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time;
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         if ((ms / 500) % 2 == 0) {
-            auto cy =
-                rect.y + line_height * static_cast<float>(cursor_line - first_visible_line);
+            auto cy = rect.y + line_height * static_cast<float>(cursor_line - first_visible_line);
             auto cx = tx0;
             if (cursor_col > 0 && cursor_line < static_cast<int>(lines.size())) {
                 cx += Painter::measure_text(lines[cursor_line].substr(0, cursor_col),
