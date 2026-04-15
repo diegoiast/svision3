@@ -61,15 +61,17 @@ class Painter {
 
     // FIXME: draw_filled_frame - this should be removed and use the version from the theme
     void draw_filled_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
-                    bool sunken = false);
+                           bool sunken = false);
 
     // FIXME: draw_focus_ring - this should be removed and use the version from the theme
     void draw_focus_ring(Rect const &rect, float corner_radius);
 
     // FIXME: remove measure_text() - this is a useless abstraction
+    // FIXME: how about when each painter will have its own font rasterzer class?
     static Size measure_text(std::string_view text, float font_size = 14.0f,
                              FontFamily font = FontFamily::System);
     // FIXME: measure_font_metrics() - this is a useless abstraction
+    // FIXME: how about when each painter will have its own font rasterzer class?
     static FontMetrics measure_font_metrics(float font_size, FontFamily font = FontFamily::System);
 
     static float snap_to_pixel(float val, float scale);
