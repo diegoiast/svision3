@@ -125,3 +125,47 @@ TEST_CASE("VBoxLayout collect_mnemonics", "[layout]") {
     layout.collect_mnemonics(mnemonics);
     REQUIRE(mnemonics.size() == 2);
 }
+
+TEST_CASE("VBoxLayout respects margins for child positioning", "[layout]") {
+    VBoxLayout layout;
+    layout.set_margins({10, 20, 30, 40}); // top, right, bottom, left
+    auto b = std::make_unique<Button>("X");
+    auto *b_ptr = b.get();
+    layout.add_widget(std::move(b), 0, Alignment::Start);
+    
+    layout.set_rect({0, 0, 100, 100});
+    layout.find_focusable_at({0, 0}); // Trigger lazy layout
+    
+    REQUIRE(b_ptr->rect().y == 10);
+    REQUIRE(b_ptr->rect().x == 40);
+}
+
+TEST_CASE("HBoxLayout respects margins for child positioning", "[layout]") {
+    HBoxLayout layout;
+    layout.set_margins({10, 20, 30, 40}); // top, right, bottom, left
+    auto b = std::make_unique<Button>("X");
+    auto *b_ptr = b.get();
+    layout.add_widget(std::move(b), 0, Alignment::Start);
+    
+    layout.set_rect({0, 0, 100, 100});
+    layout.find_focusable_at({0, 0}); // Trigger lazy layout
+    
+    REQUIRE(b_ptr->rect().y == 10);
+    REQUIRE(b_ptr->rect().x == 40);
+}
+
+TEST_CASE("HBoxLayout fills vertically with Alignment::Fill", "[layout]") {
+    HBoxLayout layout;
+    layout.set_margins({10, 20, 30, 40}); // top, right, bottom, left
+    auto b = std::make_unique<Button>("X");
+    auto *b_ptr = b.get();
+    // Default alignment should be Center in HBoxLayout, let's explicitly test Fill
+    layout.add_widget(std::move(b), 0, Alignment::Fill);
+    
+    layout.set_rect({0, 0, 100, 100});
+    layout.find_focusable_at({0, 0}); // Trigger lazy layout
+    
+    // content_h = 100 - 10 (top) - 30 (bottom) = 60
+    REQUIRE(b_ptr->rect().y == 10);
+    REQUIRE(b_ptr->rect().height == 60);
+}

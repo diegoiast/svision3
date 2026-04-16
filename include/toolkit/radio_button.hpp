@@ -35,10 +35,10 @@ class RadioButton : public Widget {
     Size size_hint() const override;
 
     bool selected() const { return selected_; }
+    void set_selected(bool s) { selected_ = s; }
 
   private:
     friend class RadioGroup;
-    void set_selected(bool s) { selected_ = s; }
     void on_state_changed();
     bool should_fire_click() const;
 

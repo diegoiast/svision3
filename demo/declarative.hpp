@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-// Declarative UI API 
+// Declarative UI API
 
 #include "toolkit/button.hpp"
 #include "toolkit/checkbox.hpp"
@@ -18,154 +18,192 @@
 #include <toolkit/list_view.hpp>
 #include <toolkit/table_view.hpp>
 #include <toolkit/text_edit.hpp>
+#include <toolkit/tree_view.hpp>
 
 namespace ui {
 
-
-// Widget wrapper with fluent API
-template <typename T> struct Widget {
+// Element: fluent builder wrapper around a unique_ptr<T>
+template <typename T> struct Element {
     std::unique_ptr<T> w;
-    
-    Widget(std::unique_ptr<T> widget) : w(std::move(widget)) {}
-    
-    Widget(Widget &&) = default;
-    Widget &operator=(Widget &&) = default;
-    Widget(const Widget &) = delete;
-    Widget &operator=(const Widget &) = delete;
-    
-    Widget text(std::string_view t) {
+    Element(std::unique_ptr<T> widget) : w(std::move(widget)) {}
+    Element(Element &&) = default;
+    Element &operator=(Element &&) = default;
+    Element(const Element &) = delete;
+    Element &operator=(const Element &) = delete;
+
+    Element text(std::string_view t) {
         w->set_text(std::string(t));
         return std::move(*this);
     }
-    Widget tooltip(std::string_view t) {
+    Element tooltip(std::string_view t) {
         w->set_tooltip(std::string(t));
         return std::move(*this);
     }
-    Widget enabled(bool e = true) {
+    Element enabled(bool e = true) {
         w->set_enabled(e);
         return std::move(*this);
     }
-    Widget visible(bool v = true) {
+    Element visible(bool v = true) {
         w->set_visible(v);
         return std::move(*this);
     }
-    Widget checked(bool c = true) {
-        if constexpr (std::is_same_v<T, toolkit::Checkbox> ||
-                      std::is_same_v<T, toolkit::RadioButton>) {
-            w->set_checked(c);
-        } else {
-            static_assert(sizeof(T) == 0, "checked only works on Checkbox or RadioButton");
-        }
+    Element checked(bool c = true) {
+        static_assert(std::is_same_v<T, toolkit::Checkbox>, "checked only works on Checkbox");
+        w->set_checked(c);
         return std::move(*this);
     }
-    Widget tri_state(bool b) {
-        if constexpr (std::is_same_v<T, toolkit::Checkbox>) {
-            w->set_tri_state(b);
-        } else {
-            static_assert(sizeof(T) == 0, "checked only works on Checkbox");
-        }
+    Element tri_state(bool b) {
+        w->set_tri_state(b);
         return std::move(*this);
     }
-    Widget selected(int i) {
-        if constexpr (std::is_same_v<T, toolkit::Combobox>) {
-            w->set_selected(i);
-        } else {
-            static_assert(sizeof(T) == 0, "selected only works on Combobox");
-        }
+    Element selected(bool s) {
+        static_assert(std::is_same_v<T, toolkit::RadioButton>,
+                      "selected(bool) only works on RadioButton");
+        w->set_selected(s);
         return std::move(*this);
     }
-    Widget spacing(float s) {
+    Element selected(int i) {
+        static_assert(std::is_same_v<T, toolkit::Combobox>, "selected(int) only works on Combobox");
+        w->set_selected(i);
+        return std::move(*this);
+    }
+    Element spacing(float s) {
         w->set_spacing(s);
         return std::move(*this);
     }
-    Widget margins(toolkit::Margins m) {
+    Element margins(toolkit::Margins m) {
         w->set_margins(m);
         return std::move(*this);
     }
-    
-    // Widget-specific setters
-    Widget value(float v) {
-        w->set_value(v);
-        return std::move(*this);
-    }
-    Widget range(float min, float max) {
-        w->set_range(min, max);
-        return std::move(*this);
-    }
-    Widget shrinkable(bool s) {
-        w->set_shrinkable(s);
-        return std::move(*this);
-    }
-    Widget stretch(int s) {
-        w->set_stretch(s);
-        return std::move(*this);
-    }
-    Widget password_mode(bool p) {
-        w->set_password_mode(p);
-        return std::move(*this);
-    }
-    Widget read_only(bool r) {
-        w->set_read_only(r);
-        return std::move(*this);
-    }
-    
-    T *operator->() const { return w.get(); }
-    operator T *() const { return w.get(); }
-    
-    template <typename W> Widget &add_child(Widget<W> &&child, int stretch = 0) {
-        w->add_widget(std::move(child.w), stretch);
-        return *this;
-    }
-    
-    template <typename W> Widget add(Widget<W> &&child, int stretch = 0) {
-        return std::move(add_child(std::move(child), stretch));
-    }
-    
-    template <typename W> Widget add(Widget<W> &child, int stretch = 0) {
-        return std::move(add_child(std::move(child), stretch));
-    }
-    
-    template <typename W> Widget add(std::unique_ptr<W> child, int stretch = 0) {
-        w->add_widget(std::move(child), stretch);
-        return std::move(*this);
-    }
 
-    Widget on_click(std::function<void()> f) {
+    Element on_click(std::function<void()> f) {
         w->on_click = std::move(f);
         return std::move(*this);
     }
-    Widget on_toggle(std::function<void(bool)> f) {
+
+    Element on_toggle(std::function<void(bool)> f) {
         w->on_toggle = std::move(f);
         return std::move(*this);
     }
 
-    // TabWidget special functions
-    template <typename W> Widget add_tab(std::string_view title, Widget<W> &&child) {
-        if constexpr (std::is_same_v<T, toolkit::TabWidget>) {
-            w->add_tab(std::string(title), std::move(child.w));
+    Element background_color(toolkit::Color c) {
+        w->set_background_color(c);
+        return std::move(*this);
+    }
+    Element alignment(toolkit::Alignment a) {
+        w->set_alignment(a);
+        return std::move(*this);
+    }
+    Element padding(toolkit::Margins m) {
+        w->set_padding(m);
+        return std::move(*this);
+    }
+    Element focusable(bool f) {
+        w->set_focusable(f);
+        return std::move(*this);
+    }
+    Element flat(bool f) {
+        if constexpr (std::is_same_v<T, toolkit::Button>) {
+            w->set_flat(f);
         } else {
-            static_assert(sizeof(T) == 0, "add_tab only works on TabWidget");
+            static_assert(std::is_same_v<T, void>, "flat only works on Button");
+        }
+        return std::move(*this);
+    }
+    Element auto_repeat(bool ar, float delay = 0.5f, float interval = 0.1f) {
+        if constexpr (std::is_same_v<T, toolkit::Button>) {
+            w->set_auto_repeat(ar, delay, interval);
+        } else {
+            static_assert(std::is_same_v<T, void>, "auto_repeat only works on Button");
         }
         return std::move(*this);
     }
 
-    template <typename W> Widget add_tab(std::string_view title, Widget<W> &child) {
+    // Element-specific setters
+    Element value(float v) {
+        w->set_value(v);
+        return std::move(*this);
+    }
+    Element range(float min, float max) {
+        w->set_range(min, max);
+        return std::move(*this);
+    }
+    Element shrinkable(bool s) {
+        w->set_shrinkable(s);
+        return std::move(*this);
+    }
+    Element stretch(int s) {
+        w->set_stretch(s);
+        return std::move(*this);
+    }
+    Element password_mode(bool p) {
+        w->set_password_mode(p);
+        return std::move(*this);
+    }
+    Element read_only(bool r) {
+        w->set_read_only(r);
+        return std::move(*this);
+    }
+
+    T *operator->() const { return w.get(); }
+    operator T *() const { return w.get(); }
+
+    template <typename W> Element &add_child(Element<W> &&child, int stretch = 0) {
+        w->add_widget(std::move(child.w), stretch, toolkit::Alignment::Fill);
+        return *this;
+    }
+
+    template <typename W> Element add(Element<W> &&child, int stretch = 0) {
+        return std::move(add_child(std::move(child), stretch));
+    }
+
+    template <typename W> Element add(Element<W> &child, int stretch = 0) {
+        return std::move(add_child(std::move(child), stretch));
+    }
+
+    template <typename W> Element add(std::unique_ptr<W> child, int stretch = 0) {
+        w->add_widget(std::move(child), stretch);
+        return std::move(*this);
+    }
+
+    // TabWidget special functions
+    Element orientation(toolkit::TabOrientation o) {
+        w->set_orientation(o);
+        return std::move(*this);
+    }
+
+    template <typename W> Element leading_widget(Element<W> &&child) {
+        w->set_leading_widget(std::move(child.w));
+        return std::move(*this);
+    }
+
+    template <typename W> Element trailing_widget(Element<W> &&child) {
+        w->set_trailing_widget(std::move(child.w));
+        return std::move(*this);
+    }
+
+    template <typename W> Element add_tab(std::string_view title, Element<W> &&child) {
+        w->add_tab(std::string(title), std::move(child.w));
+        return std::move(*this);
+    }
+
+    template <typename W> Element add_tab(std::string_view title, Element<W> &child) {
         return add_tab(title, std::move(child));
     }
 
     // Line edit special functions
-    Widget validation_mode(toolkit::LineInput::ValidationMode mode) {
+    Element validation_mode(toolkit::LineInput::ValidationMode mode) {
         w->set_validation_mode(mode);
         return std::move(*this);
     }
 
-    Widget
+    Element
     validator(std::function<bool(std::string const &, toolkit::LineInput const &input)> validator) {
         w->set_validator(validator);
         return std::move(*this);
     }
 
-    template <typename F> Widget on_change(F &&f) {
+    template <typename F> Element on_change(F &&f) {
         if constexpr (std::is_same_v<T, toolkit::LineInput>) {
             w->on_change = std::forward<F>(f);
         } else if constexpr (std::is_same_v<T, toolkit::Slider>) {
@@ -174,15 +212,21 @@ template <typename T> struct Widget {
             w->on_change = std::forward<F>(f);
         } else if constexpr (std::is_same_v<T, toolkit::Combobox>) {
             w->on_change = std::forward<F>(f);
+        } else {
+            static_assert(std::is_same_v<T, void>, "Method not supported");
         }
         return std::move(*this);
     }
 
-    Widget alternate_row_colors(bool value) {
+    Element alternate_row_colors(bool value) {
         if constexpr (std::is_same_v<T, toolkit::TableView>) {
             w->set_alternating_row_colors(value);
         } else if constexpr (std::is_same_v<T, toolkit::ListView>) {
             w->set_alternating_row_colors(value);
+        } else if constexpr (std::is_same_v<T, toolkit::TreeView>) {
+            w->set_alternating_row_colors(value);
+        } else {
+            static_assert(std::is_same_v<T, void>, "Method not supported");
         }
         return std::move(*this);
     }
@@ -193,80 +237,98 @@ template <typename T> struct Widget {
 };
 
 // Factory functions
-inline Widget<toolkit::Label> label(std::string_view text = "") {
-    return Widget<toolkit::Label>(std::make_unique<toolkit::Label>(std::string(text)));
+inline Element<toolkit::Label> label(std::string_view text = "") {
+    return Element<toolkit::Label>(std::make_unique<toolkit::Label>(std::string(text)));
 }
 
-inline Widget<toolkit::Button> button(std::string_view text = "") {
-    return Widget<toolkit::Button>(std::make_unique<toolkit::Button>(std::string(text)));
+inline Element<toolkit::Button> button(std::string_view text = "") {
+    return Element<toolkit::Button>(std::make_unique<toolkit::Button>(std::string(text)));
 }
 
-inline Widget<toolkit::Checkbox> checkbox(std::string_view text = "") {
-    return Widget<toolkit::Checkbox>(std::make_unique<toolkit::Checkbox>(std::string(text)));
+inline Element<toolkit::Checkbox> checkbox(std::string_view text = "") {
+    return Element<toolkit::Checkbox>(std::make_unique<toolkit::Checkbox>(std::string(text)));
 }
 
-inline Widget<toolkit::LineInput> line_input(std::string_view placeholder = "") {
-    return Widget<toolkit::LineInput>(
+inline Element<toolkit::LineInput> line_input(std::string_view placeholder = "") {
+    return Element<toolkit::LineInput>(
         std::make_unique<toolkit::LineInput>(std::string(placeholder)));
 }
 
-inline Widget<toolkit::ListView> list_view(std::shared_ptr<toolkit::ListAdapter> model) {
-    return Widget<toolkit::ListView>(std::make_unique<toolkit::ListView>(model));
+inline Element<toolkit::ListView> list_view(std::shared_ptr<toolkit::ListAdapter> model) {
+    return Element<toolkit::ListView>(std::make_unique<toolkit::ListView>(model));
 }
 
-inline Widget<toolkit::TableView> table_view(std::shared_ptr<toolkit::TableModel> model) {
-    return Widget<toolkit::TableView>(std::make_unique<toolkit::TableView>(model));
+inline Element<toolkit::TableView> table_view(std::shared_ptr<toolkit::TableModel> model) {
+    return Element<toolkit::TableView>(std::make_unique<toolkit::TableView>(model));
 }
 
-inline Widget<toolkit::Slider> slider(float value = 0, float min = 0, float max = 100) {
+inline Element<toolkit::TreeView> tree_view(std::shared_ptr<toolkit::TreeModel> model) {
+    return Element<toolkit::TreeView>(std::make_unique<toolkit::TreeView>(model));
+}
+
+inline Element<toolkit::Slider> slider(float value = 0, float min = 0, float max = 100) {
     auto s = std::make_unique<toolkit::Slider>();
     s->set_range(min, max);
     s->set_value(value);
-    return Widget<toolkit::Slider>(std::move(s));
+    return Element<toolkit::Slider>(std::move(s));
 }
 
-inline Widget<toolkit::ProgressBar> progress_bar(float value = 0) {
+inline Element<toolkit::ProgressBar> progress_bar(float value = 0) {
     auto p = std::make_unique<toolkit::ProgressBar>();
     p->set_value(value);
-    return Widget<toolkit::ProgressBar>(std::move(p));
+    return Element<toolkit::ProgressBar>(std::move(p));
 }
 
-inline Widget<toolkit::SpinBox> spin_box(int value = 0, int min = 0, int max = 100, int step = 1) {
-    return Widget<toolkit::SpinBox>(std::make_unique<toolkit::SpinBox>(value, min, max, step));
+inline Element<toolkit::SpinBox> spin_box(int value = 0, int min = 0, int max = 100, int step = 1) {
+    return Element<toolkit::SpinBox>(std::make_unique<toolkit::SpinBox>(value, min, max, step));
 }
 
-inline Widget<toolkit::Combobox> combobox(std::vector<std::string> items) {
-    return Widget<toolkit::Combobox>(std::make_unique<toolkit::Combobox>(std::move(items)));
+inline Element<toolkit::Combobox> combobox(std::vector<std::string> items) {
+    return Element<toolkit::Combobox>(std::make_unique<toolkit::Combobox>(std::move(items)));
 }
 
-inline Widget<toolkit::Label> spacer() {
-    return Widget<toolkit::Label>(std::make_unique<toolkit::Label>(""));
+inline Element<toolkit::Label> spacer() {
+    return Element<toolkit::Label>(std::make_unique<toolkit::Label>(""));
 }
 
 // Radio group for radio buttons
-inline std::shared_ptr<toolkit::RadioGroup> radio_group() {
-    return std::make_shared<toolkit::RadioGroup>();
+struct RadioGroupWrapper {
+    std::shared_ptr<toolkit::RadioGroup> group;
+    RadioGroupWrapper() : group(std::make_shared<toolkit::RadioGroup>()) {}
+    RadioGroupWrapper &on_change(std::function<void(int index)> f) {
+        group->on_change = std::move(f);
+        return *this;
+    }
+    operator toolkit::RadioGroup &() const { return *group; }
+    operator std::shared_ptr<toolkit::RadioGroup>() const { return group; }
+};
+
+inline RadioGroupWrapper radio_group() { return RadioGroupWrapper(); }
+
+inline Element<toolkit::RadioButton> radio_button(std::string_view text, RadioGroupWrapper &group) {
+    return Element<toolkit::RadioButton>(
+        std::make_unique<toolkit::RadioButton>(std::string(text), *group.group));
 }
 
-inline Widget<toolkit::RadioButton> radio_button(std::string_view text,
-                                                 std::shared_ptr<toolkit::RadioGroup> group) {
-    return Widget<toolkit::RadioButton>(
+inline Element<toolkit::RadioButton> radio_button(std::string_view text,
+                                                  std::shared_ptr<toolkit::RadioGroup> group) {
+    return Element<toolkit::RadioButton>(
         std::make_unique<toolkit::RadioButton>(std::string(text), *group));
 }
 
-inline Widget<toolkit::RadioButton> radio_button(std::string_view text,
-                                                 toolkit::RadioGroup &group) {
-    return Widget<toolkit::RadioButton>(
+inline Element<toolkit::RadioButton> radio_button(std::string_view text,
+                                                  toolkit::RadioGroup &group) {
+    return Element<toolkit::RadioButton>(
         std::make_unique<toolkit::RadioButton>(std::string(text), group));
 }
 
-inline Widget<toolkit::TextEdit> text_edit(std::string text = {}) {
-    return Widget<toolkit::TextEdit>(std::make_unique<toolkit::TextEdit>(text));
+inline Element<toolkit::TextEdit> text_edit(std::string text = {}) {
+    return Element<toolkit::TextEdit>(std::make_unique<toolkit::TextEdit>(text));
 }
 
 // Tab widget - special handling for add_tab
-inline Widget<toolkit::TabWidget> tab_widget() {
-    return Widget<toolkit::TabWidget>(std::make_unique<toolkit::TabWidget>());
+inline Element<toolkit::TabWidget> tab_widget() {
+    return Element<toolkit::TabWidget>(std::make_unique<toolkit::TabWidget>());
 }
 
 // Layouts
@@ -278,20 +340,19 @@ inline int default_padding() { return 10; }
 constexpr int expand = 1;
 constexpr int no_stretch = 0;
 
-inline Widget<toolkit::VBoxLayout> vbox() {
+inline Element<toolkit::VBoxLayout> vbox() {
     auto layout = std::make_unique<toolkit::VBoxLayout>();
     layout->set_spacing(default_padding());
     layout->set_margins(default_margins());
-    return Widget<toolkit::VBoxLayout>(std::move(layout));
+    return Element<toolkit::VBoxLayout>(std::move(layout));
 }
 
-inline Widget<toolkit::HBoxLayout> hbox() {
+inline Element<toolkit::HBoxLayout> hbox() {
     auto layout = std::make_unique<toolkit::HBoxLayout>();
     layout->set_spacing(default_padding());
     layout->set_margins(default_margins());
-    
-    return Widget<toolkit::HBoxLayout>(std::move(layout));
+
+    return Element<toolkit::HBoxLayout>(std::move(layout));
 }
 
 } // namespace ui
-
