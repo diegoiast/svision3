@@ -346,7 +346,7 @@ int main(int argc, char *argv[]) {
     window->set_root(
         ui::vbox()
             .margins(ui::no_margins())
-            .spacing(0)
+            .spacing(ui::no_spacing)
             .add(rootWidget, ui::expand)
             .add(ui::spacer())
             .add(ui::vbox()

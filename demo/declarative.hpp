@@ -339,6 +339,7 @@ inline int default_padding() { return 10; }
 
 constexpr int expand = 1;
 constexpr int no_stretch = 0;
+constexpr int no_spacing = 0;
 
 inline Element<toolkit::VBoxLayout> vbox() {
     auto layout = std::make_unique<toolkit::VBoxLayout>();
