@@ -46,7 +46,7 @@ class Window {
     std::vector<Command::Ptr> const &global_commands() const { return global_commands_; }
 
     void add_widget(std::unique_ptr<Widget> widget);
-    void set_root(std::unique_ptr<Widget> root);
+    Window &set_root(std::unique_ptr<Widget> root);
     void on_theme_changed();
     void show();
     void close();
@@ -63,7 +63,7 @@ class Window {
     void handle_key(KeyEvent const &event);
     void handle_resize(Size new_size);
 
-    void resize_to_fit();
+    Window &resize_to_fit();
 
     void set_cursor(CursorShape shape);
 

@@ -207,7 +207,7 @@ void Window::hide_tooltip_window() {
     }
 }
 
-void Window::set_root(std::unique_ptr<Widget> root) {
+Window &Window::set_root(std::unique_ptr<Widget> root) {
     root_ = std::move(root);
     if (root_) {
         root_->set_window(this);
@@ -216,6 +216,7 @@ void Window::set_root(std::unique_ptr<Widget> root) {
             impl_->platform->set_min_size(min_size());
         }
     }
+    return *this;
 }
 
 void Window::add_widget(std::unique_ptr<Widget> widget) {
@@ -640,9 +641,9 @@ void Window::handle_resize(Size new_size) {
     }
 }
 
-void Window::resize_to_fit() {
+Window &Window::resize_to_fit() {
     if (!root_) {
-        return;
+        return *this;
     }
     auto hint = root_->size_hint();
     Size new_size = size_;
@@ -661,6 +662,7 @@ void Window::resize_to_fit() {
             impl_->platform->set_size(size_);
         }
     }
+    return *this;
 }
 
 void Window::update_tooltip(Widget *under, Point mouse_pos) {
