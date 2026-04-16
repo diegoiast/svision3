@@ -1,9 +1,11 @@
 #include "declarative.hpp"
 #include "nfd.h"
 #include "toolkit/application.hpp"
+#include "toolkit/image_loader.hpp"
 #include "toolkit/line_input.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
+#include "toolkit/xdg_icons.hpp"
 #include <fmt/format.h>
 #include <fstream>
 #include <regex>
@@ -31,13 +33,14 @@ static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
 
 int main(int argc, char *argv[]) {
     toolkit::Application app;
+    app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("Faenza"));
     current_style = toolkit::Theme::detect_system_style();
 
     auto style_names = std::vector<std::string>{};
     for (int i = 0; i < toolkit::theme_style_count; i++) {
         style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
     }
-    auto window = app.create_window("Declarative Kitchen sink", {800, 600});
+    auto window = app.create_window("Declarative Kitchen sink", {600, 400});
     auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
     auto platformText =
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name());
@@ -127,6 +130,13 @@ int main(int argc, char *argv[]) {
              }},
     });
 
+    auto repeat_label = ui::label("Count: 0");
+    auto repeat_action = [l = repeat_label.get()]() {
+        static int count = 0;
+        count++;
+        l->set_text(fmt::format("Count: {}", count));
+    };
+
     auto make_plus = []() {
         return ui::button("+").flat(true).focusable(false).padding({2, 8, 2, 8});
     };
@@ -161,12 +171,6 @@ int main(int argc, char *argv[]) {
                     .add(ui::radio_button("Dark", group))
                     .add(progressBar)
                     .add([&]() {
-                        auto repeat_label = ui::label("Count: 0");
-                        auto repeat_action = [l = repeat_label.get()]() {
-                            static int count = 0;
-                            count++;
-                            l->set_text(fmt::format("Count: {}", count));
-                        };
                         return ui::hbox()
                             .margins(ui::no_margins())
                             .add(
@@ -347,6 +351,14 @@ int main(int argc, char *argv[]) {
         ui::vbox()
             .margins(ui::no_margins())
             .spacing(ui::no_spacing)
+            .add(ui::toolbar()
+                     .command("OK", [] { spdlog::info("Toolbar: OK"); })
+                     .command("Exit", "Close the application", XDG::IconActions::applicationExit,
+                              [&window] { window->close(); })
+                     .separator()
+                     .command("Disabled", "This command is disabled")
+                     .disable()
+                     .command("Increase count", "Increase the counter", {}, repeat_action))
             .add(rootWidget, ui::expand)
             .add(ui::spacer())
             .add(ui::vbox()
@@ -364,10 +376,11 @@ int main(int argc, char *argv[]) {
                          window->set_statistics_logging_enabled(checked);
                      })))
             .add(ui::hbox()
-                     .add(ui::button("About").enabled(false))
+                     .add(ui::button("About").disable())
                      .add(ui::spacer(), ui::expand)
                      .add(ui::button("&Quit").on_click([&window] { window->close(); }))));
 
+    window->resize_to_fit();
     window->show();
     return app.run();
 }

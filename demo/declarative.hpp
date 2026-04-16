@@ -18,6 +18,7 @@
 #include <toolkit/list_view.hpp>
 #include <toolkit/table_view.hpp>
 #include <toolkit/text_edit.hpp>
+#include <toolkit/toolbar.hpp>
 #include <toolkit/tree_view.hpp>
 
 namespace ui {
@@ -25,6 +26,7 @@ namespace ui {
 // Element: fluent builder wrapper around a unique_ptr<T>
 template <typename T> struct Element {
     std::unique_ptr<T> w;
+    toolkit::Command *last_cmd_ = nullptr;
     Element(std::unique_ptr<T> widget) : w(std::move(widget)) {}
     Element(Element &&) = default;
     Element &operator=(Element &&) = default;
@@ -41,6 +43,16 @@ template <typename T> struct Element {
     }
     Element enabled(bool e = true) {
         w->set_enabled(e);
+        return std::move(*this);
+    }
+    Element disable() {
+        if constexpr (std::is_same_v<T, toolkit::Toolbar>) {
+            if (last_cmd_) {
+                last_cmd_->set_enabled(false);
+            }
+        } else {
+            w->set_enabled(false);
+        }
         return std::move(*this);
     }
     Element visible(bool v = true) {
@@ -163,6 +175,40 @@ template <typename T> struct Element {
 
     template <typename W> Element add(std::unique_ptr<W> child, int stretch = 0) {
         w->add_widget(std::move(child), stretch);
+        return std::move(*this);
+    }
+
+    // Toolbar special functions
+    Element command(toolkit::Command::Ptr cmd) {
+        static_assert(std::is_same_v<T, toolkit::Toolbar>, "command only works on Toolbar");
+        last_cmd_ = cmd.get();
+        w->add_command(std::move(cmd));
+        return std::move(*this);
+    }
+    Element command(std::string name, std::function<void()> action) {
+        static_assert(std::is_same_v<T, toolkit::Toolbar>, "command only works on Toolbar");
+        auto cmd = toolkit::Command::create(std::move(name), std::move(action));
+        last_cmd_ = cmd.get();
+        w->add_command(std::move(cmd));
+        return std::move(*this);
+    }
+    Element command(std::string name, std::string tooltip = {}, std::string icon = {},
+                    std::function<void()> action = {}) {
+        static_assert(std::is_same_v<T, toolkit::Toolbar>, "command only works on Toolbar");
+        auto cmd = toolkit::Command::create(std::move(name), std::move(action));
+        last_cmd_ = cmd.get();
+        if (!tooltip.empty()) {
+            cmd->set_tooltip(std::move(tooltip));
+        }
+        if (!icon.empty()) {
+            cmd->set_icon(std::move(icon));
+        }
+        w->add_command(std::move(cmd));
+        return std::move(*this);
+    }
+    Element separator() {
+        static_assert(std::is_same_v<T, toolkit::Toolbar>, "separator only works on Toolbar");
+        w->add_separator();
         return std::move(*this);
     }
 
@@ -352,8 +398,11 @@ inline Element<toolkit::HBoxLayout> hbox() {
     auto layout = std::make_unique<toolkit::HBoxLayout>();
     layout->set_spacing(default_padding());
     layout->set_margins(default_margins());
-
     return Element<toolkit::HBoxLayout>(std::move(layout));
+}
+
+inline Element<toolkit::Toolbar> toolbar() {
+    return Element<toolkit::Toolbar>(std::make_unique<toolkit::Toolbar>());
 }
 
 } // namespace ui
