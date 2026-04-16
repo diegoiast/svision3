@@ -1,7 +1,6 @@
 #include "declarative.hpp"
 #include "nfd.h"
 #include "toolkit/application.hpp"
-#include "toolkit/file_tree_model.hpp"
 #include "toolkit/line_input.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
@@ -78,7 +77,55 @@ int main(int argc, char *argv[]) {
         window->request_redraw();
     };
 
-    auto tree_model = std::make_shared<toolkit::FileTreeModel>(".");
+    // Just to make the code prettier after clang-format :)
+    using STM = toolkit::SimpleTreeModel;
+    auto tree_model = std::make_shared<STM>(std::vector<toolkit::TreeNode>{
+        {.text = "Documents",
+         .children =
+             {
+                 {.text = "resume.pdf"},
+                 {.text = "cover_letter.pdf"},
+                 {.text = "Projects",
+                  .children =
+                      {
+                          {.text = "svision"},
+                          {.text = "toolkit"},
+                          {.text = "web"},
+                      },
+                  .expanded = true},
+             },
+         .expanded = true},
+        {.text = "Music",
+         .children =
+             {
+                 {.text = "Beatles",
+                  .children =
+                      {
+                          {.text = "Abbey Road"},
+                          {.text = "Revolver"},
+                          {.text = "Sgt. Pepper's"},
+                      }},
+                 {.text = "Pink Floyd"},
+                 {.text = "Queen"},
+             }},
+        {.text = "Pictures",
+         .children =
+             {
+                 {.text = "2024",
+                  .children =
+                      {
+                          {.text = "vacation.jpg"},
+                          {.text = "family.png"},
+                      }},
+                 {.text = "2025"},
+             }},
+        {.text = "Downloads",
+         .children =
+             {
+                 {.text = "archive.tar.gz"},
+                 {.text = "installer.dmg"},
+             }},
+    });
 
     auto make_plus = []() {
         return ui::button("+").flat(true).focusable(false).padding({2, 8, 2, 8});
