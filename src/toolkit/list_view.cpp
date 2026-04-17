@@ -356,14 +356,18 @@ void ListView::paint(Painter &painter) {
     auto n = adapter_->count();
     auto bw = palette.border_width;
     auto is_dark = palette.window.luma() < 0.5f;
-    auto first_visible = std::max(0, static_cast<int>(scroll_offset_ / ih));
-    auto last_visible = std::min(n - 1, static_cast<int>((scroll_offset_ + rect_.height - bw * 2) / ih));
     auto inner_w = rect_.width - bw * 2;
+    auto inner_h = rect_.height - bw * 2;
+    auto first_visible = std::max(0, static_cast<int>(scroll_offset_ / ih));
+    auto last_visible = std::min(n - 1, static_cast<int>((scroll_offset_ + inner_h) / ih));
     auto row_sel = palette.highlight;
     auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
+
+    auto body_clip = Rect{bw, bw, inner_w, inner_h};
+    painter.push_clip(body_clip);
     for (auto i = first_visible; i <= last_visible; i++) {
-        auto iy = ih * static_cast<float>(i) - scroll_offset_;
-        auto item_rect = Rect{0, iy, inner_w, ih};
+        auto iy = bw + ih * static_cast<float>(i) - scroll_offset_;
+        auto item_rect = Rect{bw, iy, inner_w, ih};
         auto selected = is_selected(i);
         auto hovered = (i == hovered_) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
@@ -371,15 +375,14 @@ void ListView::paint(Painter &painter) {
         theme.draw_list_item(painter, item_rect, adapter_->text_at(i), {}, selected, hovered,
                              alt_row);
     }
+    painter.pop_clip();
 
     auto content_h = total_content_height();
-    if (content_h > rect_.height - bw * 2) {
-        auto bar_h = std::max(20.0f, (rect_.height - bw * 2) * ((rect_.height - bw * 2) / content_h));
-        auto bar_y = (scroll_offset_ / content_h) * (rect_.height - bw * 2);
-        auto bar_x = rect_.width - bw * 2 - 6.0f;
+    if (content_h > inner_h) {
+        auto bar_h = std::max(20.0f, inner_h * (inner_h / content_h));
+        auto bar_y = bw + (scroll_offset_ / content_h) * inner_h;
+        auto bar_x = rect_.width - bw - 6.0f;
         auto sb = Rect{bar_x, bar_y, 4.0f, bar_h};
-
-        // FIXME: what is this 2.0f?
         painter.fill_rounded_rect(sb, palette.text, 2.0f);
     }
 }

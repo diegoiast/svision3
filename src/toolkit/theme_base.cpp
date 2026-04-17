@@ -515,13 +515,7 @@ void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_v
 }
 
 void BaseTheme::draw_list_background(Painter &painter, Rect const &rect, bool focused) const {
-    painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
-    if (palette.border_width > 0) {
-        auto bw = palette.border_width;
-        auto inset = bw / 2.0f;
-        painter.draw_rounded_rect(rect.inset(inset), palette.border,
-                                  std::max(0.0f, palette.corner_radius - inset), bw);
-    }
+    painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
 }
 
 void BaseTheme::draw_table_background(Painter &painter, Rect const &rect, bool focused) const {
