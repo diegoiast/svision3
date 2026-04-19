@@ -608,20 +608,14 @@ void BaseTheme::draw_combobox_item(Painter &painter, Rect const &rect, std::stri
 }
 
 void BaseTheme::draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const {
-    if (palette.corner_radius > 0.0f) {
-        painter.fill_rounded_rect(rect, palette.tooltip, palette.corner_radius);
-        painter.draw_rounded_rect(rect, palette.border, palette.corner_radius,
-                                  palette.border_width);
-    } else {
-        painter.fill_rect(rect, palette.tooltip);
-        painter.draw_rect(rect, palette.border, palette.border_width);
-    }
+    painter.fill_rounded_rect(rect, palette.tooltip, palette.corner_radius);
+    painter.draw_rounded_rect(rect, palette.border, palette.corner_radius, palette.border_width);
 
-    // FIXME: padding is hardcoded for tooltips
-    auto padding = 5;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto text_x = rect.x + padding;
-    auto baseline_y = rect.y + padding + fm.ascent;
+    auto &palette = Theme::current().palette;
+    auto const &style = tooltip;
+    auto text_x = rect.x + style.padding;
+    auto baseline_y = rect.y + style.padding + fm.ascent;
     painter.draw_text(text, {text_x, baseline_y}, palette.text, palette.fonts.size);
 }
 

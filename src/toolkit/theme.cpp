@@ -2,11 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/theme_factory.hpp"
 #include "toolkit/types.hpp"
-#include <algorithm>
 #include <cmath>
 #include <spdlog/spdlog.h>
 

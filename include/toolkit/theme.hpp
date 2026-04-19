@@ -86,6 +86,7 @@ struct SliderStyle {
 // FIXME: remove this style
 struct TooltipStyle {
     float delay_sec = 0.6f;
+    float padding = 5.0f;
 };
 
 struct LayoutStyle {

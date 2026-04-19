@@ -819,7 +819,8 @@ void Win32PlatformWindow::set_cursor(CursorShape shape) {
 void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point local_pos) {
     float scale = get_window_scale(hwnd);
     auto const &style = Theme::current().tooltip;
-    float pad = style.padding, font_sz = style.font_size;
+    auto &palette = Theme::current().palette;
+    float pad = style.padding, font_sz = palette.fonts.size;
     auto text_sz = Painter::measure_text(text, font_sz);
     auto fm = Painter::measure_font_metrics(font_sz);
     float w = text_sz.width + pad * 2, h = fm.height + pad * 2;
@@ -904,9 +905,10 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point loc
     {
         GDIPainter painter(mem_dc, scale);
         Rect r{0, 0, w, h};
-        painter.fill_rounded_rect(r, style.background, style.corner_radius);
-        painter.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
-        painter.draw_text(text, {pad, pad + fm.ascent}, style.text, font_sz);
+        auto &palette = Theme::current().palette;
+        painter.fill_rounded_rect(r, palette.tooltip, palette.corner_radius);
+        painter.draw_rounded_rect(r, palette.border, palette.corner_radius, palette.border_width);
+        painter.draw_text(text, {pad, pad + fm.ascent}, palette.text, font_sz);
     }
 
     POINT pt_pos = {sx, sy};

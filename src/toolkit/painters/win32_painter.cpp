@@ -6,17 +6,20 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+
+// clang-format off
 #include <windows.h>
 #include <objidl.h>
 #include <gdiplus.h>
+// clang-format on
 
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
-#include <spdlog/spdlog.h>
 #include <cmath>
 #include <cstring>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <vector>
 
@@ -34,8 +37,12 @@ static std::wstring to_wide(std::string_view s) {
 
 static Gdiplus::Color to_gdiplus_color(Color const &c) {
     auto clamp = [](float v) {
-        if (v < 0) return 0;
-        if (v > 1) return 255;
+        if (v < 0) {
+            return 0;
+        }
+        if (v > 1) {
+            return 255;
+        }
         return static_cast<int>(std::round(v * 255));
     };
     return Gdiplus::Color(static_cast<BYTE>(clamp(c.a)), static_cast<BYTE>(clamp(c.r)),
@@ -50,7 +57,7 @@ struct Win32TextRasterizer::Impl {
     HFONT create_font(float font_size, float scale = 1.0f, FontFamily family = FontFamily::System) {
         auto const &t = Theme::current();
         std::string face_name =
-            (family == FontFamily::Monospace) ? t.monospace_font : t.system_font;
+            (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
         auto wface = to_wide(face_name);
         int height = -static_cast<int>(std::round(font_size * scale));
         DWORD pitch =
@@ -339,7 +346,8 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
     }
 
     auto const &t = Theme::current();
-    std::string face_name = (family == FontFamily::Monospace) ? t.monospace_font : t.system_font;
+    std::string face_name =
+        (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
     auto wface = to_wide(face_name);
 
     Gdiplus::Font font(wface.c_str(), font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
@@ -383,7 +391,8 @@ void GDIPainter::draw_image(ImageData const &image, Point position) {
     Gdiplus::Bitmap bmp(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
                         (BYTE *)image.pixels.data());
     if (bmp.GetLastStatus() != Gdiplus::Ok) {
-        spdlog::error("draw_image: failed to create GDI+ bitmap (status: {})", (int)bmp.GetLastStatus());
+        spdlog::error("draw_image: failed to create GDI+ bitmap (status: {})",
+                      (int)bmp.GetLastStatus());
         return;
     }
     impl_->graphics->DrawImage(&bmp, position.x, position.y, static_cast<float>(image.width),
@@ -392,14 +401,16 @@ void GDIPainter::draw_image(ImageData const &image, Point position) {
 
 void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     if (image.width <= 0 || image.height <= 0 || dest.width <= 0 || dest.height <= 0) {
-        spdlog::error("draw_image_scaled: image or destination is empty (image: {}x{}, dest: {}x{})",
-                      image.width, image.height, dest.width, dest.height);
+        spdlog::error(
+            "draw_image_scaled: image or destination is empty (image: {}x{}, dest: {}x{})",
+            image.width, image.height, dest.width, dest.height);
         return;
     }
     Gdiplus::Bitmap bmp(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
                         (BYTE *)image.pixels.data());
     if (bmp.GetLastStatus() != Gdiplus::Ok) {
-        spdlog::error("draw_image_scaled: failed to create GDI+ bitmap (status: {})", (int)bmp.GetLastStatus());
+        spdlog::error("draw_image_scaled: failed to create GDI+ bitmap (status: {})",
+                      (int)bmp.GetLastStatus());
         return;
     }
     impl_->graphics->DrawImage(&bmp, dest.x, dest.y, dest.width, dest.height);
@@ -411,7 +422,8 @@ Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, Fo
         return {0, 0};
     }
     auto const &t = Theme::current();
-    std::string face_name = (family == FontFamily::Monospace) ? t.monospace_font : t.system_font;
+    std::string face_name =
+        (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
     auto wface = to_wide(face_name);
     Gdiplus::Font font(wface.c_str(), font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
     Gdiplus::RectF layoutRect(0, 0, 10000, 10000);
@@ -432,7 +444,8 @@ Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, Fo
 
 Painter::FontMetrics GDIPainter::font_metrics_gdiplus(float font_size, FontFamily family) {
     auto const &t = Theme::current();
-    std::string face_name = (family == FontFamily::Monospace) ? t.monospace_font : t.system_font;
+    std::string face_name =
+        (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
     auto wface = to_wide(face_name);
     Gdiplus::FontFamily ff(wface.c_str());
     float em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
