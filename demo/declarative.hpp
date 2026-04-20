@@ -16,12 +16,18 @@
 #include "toolkit/tab_widget.hpp"
 
 #include <toolkit/list_view.hpp>
+#include <toolkit/menu.hpp>
+#include <toolkit/menubar.hpp>
 #include <toolkit/table_view.hpp>
 #include <toolkit/text_edit.hpp>
 #include <toolkit/toolbar.hpp>
 #include <toolkit/tree_view.hpp>
 
 namespace ui {
+
+// Forward declarations
+struct CommandElement;
+struct MenuElement;
 
 // Element: fluent builder wrapper around a unique_ptr<T>
 template <typename T> struct Element {
@@ -102,6 +108,14 @@ template <typename T> struct Element {
         w->set_background_color(c);
         return std::move(*this);
     }
+    Element icon(toolkit::Icon icon) {
+        if constexpr (std::is_same_v<T, toolkit::Button>) {
+            w->set_icon(std::move(icon));
+        } else {
+            static_assert(std::is_same_v<T, void>, "icon only works on Button");
+        }
+        return std::move(*this);
+    }
     Element alignment(toolkit::Alignment a) {
         w->set_alignment(a);
         return std::move(*this);
@@ -177,6 +191,10 @@ template <typename T> struct Element {
         w->add_widget(std::move(child), stretch);
         return std::move(*this);
     }
+
+    // MenuBar special functions
+    Element add_menu(MenuElement &&m);
+    Element add_menu(std::string_view title, MenuElement &&m);
 
     // Toolbar special functions
     Element command(toolkit::Command::Ptr cmd) {
@@ -282,7 +300,72 @@ template <typename T> struct Element {
     T *get() const { return w.get(); }
 };
 
+// CommandElement and MenuElement
+struct CommandElement {
+    std::shared_ptr<toolkit::Command> cmd;
+    CommandElement(std::shared_ptr<toolkit::Command> c) : cmd(std::move(c)) {}
+    CommandElement shortcut(std::string s) {
+        cmd->set_shortcut(std::move(s));
+        return std::move(*this);
+    }
+    CommandElement tooltip(std::string t) {
+        cmd->set_tooltip(std::move(t));
+        return std::move(*this);
+    }
+    CommandElement icon(std::string i) {
+        cmd->set_icon(std::move(i));
+        return std::move(*this);
+    }
+    operator std::shared_ptr<toolkit::Command>() const { return cmd; }
+};
+
+struct MenuElement {
+    std::shared_ptr<toolkit::Menu> menu;
+    MenuElement(std::shared_ptr<toolkit::Menu> m) : menu(std::move(m)) {}
+    MenuElement action(CommandElement ce) {
+        menu->add_action(ce.cmd);
+        return std::move(*this);
+    }
+    MenuElement action(std::string name, std::function<void()> action) {
+        menu->add_action(std::move(name), std::move(action));
+        return std::move(*this);
+    }
+    MenuElement separator() {
+        menu->add_separator();
+        return std::move(*this);
+    }
+    MenuElement submenu(std::string name, MenuElement me) {
+        menu->add_submenu(std::move(name), me.menu);
+        return std::move(*this);
+    }
+    operator std::shared_ptr<toolkit::Menu>() const { return menu; }
+};
+
+template <typename T> Element<T> Element<T>::add_menu(MenuElement &&m) {
+    static_assert(std::is_same_v<T, toolkit::MenuBar>, "add_menu only works on MenuBar");
+    w->add_menu(m.menu);
+    return std::move(*this);
+}
+
+template <typename T> Element<T> Element<T>::add_menu(std::string_view title, MenuElement &&m) {
+    static_assert(std::is_same_v<T, toolkit::MenuBar>, "add_menu only works on MenuBar");
+    w->add_menu(std::string(title), m.menu);
+    return std::move(*this);
+}
+
 // Factory functions
+inline CommandElement command(std::string name, std::function<void()> action = {}) {
+    return CommandElement(toolkit::Command::create(std::move(name), std::move(action)));
+}
+
+inline MenuElement menu(std::string_view title = "") {
+    return MenuElement(std::make_shared<toolkit::Menu>(std::string(title)));
+}
+
+inline Element<toolkit::MenuBar> menubar() {
+    return Element<toolkit::MenuBar>(std::make_unique<toolkit::MenuBar>());
+}
+
 inline Element<toolkit::Label> label(std::string_view text = "") {
     return Element<toolkit::Label>(std::make_unique<toolkit::Label>(std::string(text)));
 }

@@ -41,7 +41,6 @@ int main(int argc, char *argv[]) {
         style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
     }
     auto window = app.create_window("Declarative Kitchen sink", {600, 400});
-    auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
     auto platformText =
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name());
     auto group = ui::radio_group().on_change([&app, &window](int index) {
@@ -70,12 +69,12 @@ int main(int argc, char *argv[]) {
     auto email_stats_label = ui::label("Empty");
     auto filter_progress = ui::progress_bar();
     filter_adapter->set_simulated_delay_ms(10);
-    filter_adapter->on_progress = [progress_view = filter_progress.get(), &window](float progress) {
+    filter_adapter->on_progress = [filter_progress_ptr = filter_progress.get(), &window](float progress) {
         if (progress < 0.0f) {
-            progress_view->set_visible(false);
+            filter_progress_ptr->set_visible(false);
         } else {
-            progress_view->set_visible(true);
-            progress_view->set_value(progress);
+            filter_progress_ptr->set_visible(true);
+            filter_progress_ptr->set_value(progress);
         }
         window->request_redraw();
     };
@@ -137,6 +136,39 @@ int main(int argc, char *argv[]) {
         l->set_text(fmt::format("Count: {}", count));
     };
 
+    auto open_icon = app.load_icon(XDG::IconActions::documentOpen, 16, XDG::IconContexts::actions);
+
+    auto open_action = [editor = editor.get()]() {
+        NFD_Init();
+        nfdu8char_t *out_path = nullptr;
+        nfdresult_t result = NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
+        if (result == NFD_OKAY && out_path) {
+            std::ifstream f(out_path);
+            if (f) {
+                std::string contents((std::istreambuf_iterator<char>(f)),
+                                     std::istreambuf_iterator<char>());
+                editor->set_text(contents);
+            }
+            NFD_FreePathU8(out_path);
+        }
+        NFD_Quit();
+    };
+
+    auto new_cmd = ui::command("New", [] { spdlog::info("Menu: New"); }).shortcut("Std+N");
+    auto open_cmd = ui::command("Open...", open_action).shortcut("F3");
+    auto save_cmd = ui::command("Save", [] { spdlog::info("Menu: Save"); }).shortcut("Std+S");
+    auto exit_cmd = ui::command("Exit", [&window] { window->close(); })
+                        .icon(XDG::IconActions::applicationExit);
+    auto undo_cmd = ui::command("Undo", [] { spdlog::info("Menu: Undo"); }).shortcut("Std+Z");
+    auto redo_cmd = ui::command("Redo", [] { spdlog::info("Menu: Redo"); }).shortcut("Std+Y");
+
+    window->add_command(new_cmd);
+    window->add_command(open_cmd);
+    window->add_command(save_cmd);
+    window->add_command(exit_cmd);
+    window->add_command(undo_cmd);
+    window->add_command(redo_cmd);
+
     auto make_plus = []() {
         return ui::button("+").flat(true).focusable(false).padding({2, 8, 2, 8});
     };
@@ -175,8 +207,7 @@ int main(int argc, char *argv[]) {
                             .margins(ui::no_margins())
                             .add(
                                 ui::button("Auto repeat").auto_repeat(true).on_click(repeat_action))
-                            // WIP - icon is not supported yet.
-                            .add(ui::button("Open") /*.icon(open_icon_btn) */)
+                            .add(ui::button("Open").icon(open_icon).on_click(open_action))
                             .add(repeat_label);
                     }())
                     .add(ui::label(platformText)))
@@ -241,23 +272,7 @@ int main(int argc, char *argv[]) {
                      ui::vbox()
                          .add(ui::hbox()
                                   .margins(ui::no_margins())
-                                  .add(ui::button("Open...").on_click([editor = editor.get()]() {
-                                      NFD_Init();
-                                      nfdu8char_t *out_path = nullptr;
-                                      nfdresult_t result =
-                                          NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
-                                      if (result == NFD_OKAY && out_path) {
-                                          std::ifstream f(out_path);
-                                          if (f) {
-                                              std::string contents(
-                                                  (std::istreambuf_iterator<char>(f)),
-                                                  std::istreambuf_iterator<char>());
-                                              editor->set_text(contents);
-                                          }
-                                          NFD_FreePathU8(out_path);
-                                      }
-                                      NFD_Quit();
-                                  }))
+                                  .add(ui::button("Open...").on_click(open_action))
                                   .add(ui::spacer(), ui::expand))
                          .add(editor, ui::expand))
             .add_tab("Tree", ui::vbox().add(ui::tree_view(tree_model).alternate_row_colors(true),
@@ -351,10 +366,32 @@ int main(int argc, char *argv[]) {
         ui::vbox()
             .margins(ui::no_margins())
             .spacing(ui::no_spacing)
+            .add(ui::menubar()
+                     .add_menu(ui::menu("&File")
+                                   .action(new_cmd)
+                                   .action(open_cmd)
+                                   .action(save_cmd)
+                                   .separator()
+                                   .submenu("Recent &Files", ui::menu()
+                                                                 .action("&File1.txt", [] {
+                                                                     spdlog::info("Opening File1");
+                                                                 })
+                                                                 .action("&File2.txt", [] {
+                                                                     spdlog::info("Opening File2");
+                                                                 }))
+                                   .separator()
+                                   .action(exit_cmd))
+                     .add_menu(ui::menu("&Edit")
+                                   .action(undo_cmd)
+                                   .action(redo_cmd)
+                                   .separator()
+                                   .action("Cut", [] { spdlog::info("Menu: Cut"); })
+                                   .action("Copy", [] { spdlog::info("Menu: Copy"); })
+                                   .action("Paste", [] { spdlog::info("Menu: Paste"); }))
+                     .add_menu(ui::menu("&Help").action("About", [] { spdlog::info("Menu: About"); })))
             .add(ui::toolbar()
                      .command("OK", [] { spdlog::info("Toolbar: OK"); })
-                     .command("Exit", "Close the application", XDG::IconActions::applicationExit,
-                              [&window] { window->close(); })
+                     .command(exit_cmd)
                      .separator()
                      .command("Disabled", "This command is disabled")
                      .disable()
