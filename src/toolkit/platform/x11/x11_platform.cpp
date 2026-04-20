@@ -1078,32 +1078,23 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
     }
     XMapRaised(d->display, w->tooltip_xwindow);
 
-    // FIXME: tooltip on X11 are hardcoded to use cairo
-    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, piw, pih);
-    cairo_t *cr = cairo_create(surf);
+    std::vector<uint8_t> pixels(static_cast<size_t>(piw) * pih * 4);
+    w->backend->render_to_buffer(app_, piw, pih, scale, pixels.data(), [&](Painter &p) {
+        auto fm = p.font_metrics(fs);
+        Rect r{0, 0, tw, th};
+        p.fill_rounded_rect(r, theme.palette.tooltip, theme.palette.corner_radius);
+        p.draw_rounded_rect(r, theme.palette.border, theme.palette.corner_radius,
+                            theme.palette.border_width);
+        p.draw_text(text, {pad, pad + fm.ascent}, theme.palette.text, fs);
+    });
 
-    // Clear with transparency
-    cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
-    cairo_paint(cr);
-    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
-
-    cairo_scale(cr, scale, scale);
-    CairoPainter painter(cr);
-    Rect r{0, 0, tw, th};
-    painter.fill_rounded_rect(r, theme.palette.tooltip, theme.palette.corner_radius);
-    painter.draw_rounded_rect(r, theme.palette.border, theme.palette.corner_radius,
-                              theme.palette.border_width);
-    painter.draw_text(text, {pad, pad + fm.ascent}, theme.palette.text, fs);
-    cairo_surface_flush(surf);
-    cairo_surface_t *xs =
-        cairo_xlib_surface_create(d->display, w->tooltip_xwindow, visual, piw, pih);
-    cairo_t *xcr = cairo_create(xs);
-    cairo_set_source_surface(xcr, surf, 0, 0);
-    cairo_paint(xcr);
-    cairo_destroy(xcr);
-    cairo_surface_destroy(xs);
-    cairo_destroy(cr);
-    cairo_surface_destroy(surf);
+    GC gc = XCreateGC(d->display, w->tooltip_xwindow, 0, nullptr);
+    XImage *img = XCreateImage(d->display, static_cast<Visual *>(visual), depth, ZPixmap, 0,
+                               reinterpret_cast<char *>(pixels.data()), piw, pih, 32, piw * 4);
+    XPutImage(d->display, w->tooltip_xwindow, gc, img, 0, 0, 0, 0, piw, pih);
+    img->data = nullptr;
+    XDestroyImage(img);
+    XFreeGC(d->display, gc);
     XFlush(d->display);
 }
 

@@ -12,7 +12,7 @@ namespace toolkit {
 // Requires a TextRasterizer for text operations and an active GL context.
 class GLPainter : public Painter {
   public:
-    GLPainter(float viewport_h, float scale, TextRasterizer &rasterizer);
+    GLPainter(float viewport_h, float scale, TextRasterizer *rasterizer);
 
     void push_clip(Rect const &rect) override;
     void pop_clip() override;
@@ -47,7 +47,6 @@ class GLPainter : public Painter {
   private:
     float vh_;
     float scale_;
-    TextRasterizer &rasterizer_;
     std::vector<Rect> clips_;
     std::vector<Point> translations_;
     Painter::LineStyle style_ = Painter::LineStyle::Solid;

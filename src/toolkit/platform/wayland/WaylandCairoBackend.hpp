@@ -17,7 +17,20 @@ class WaylandCairoBackend : public RenderingBackend {
     WaylandCairoBackend() = default;
     ~WaylandCairoBackend() override = default;
 
-    std::string_view name() const override { return "Cairo"; };
+    std::string_view name() const override { return "Cairo"; }
+
+    void render_to_buffer(PlatformApplication *, int w, int h, float scale, void *dst,
+                          std::function<void(Painter &)> fn) override {
+        cairo_surface_t *surf = cairo_image_surface_create_for_data(
+            static_cast<unsigned char *>(dst), CAIRO_FORMAT_ARGB32, w, h, w * 4);
+        cairo_t *cr = cairo_create(surf);
+        cairo_scale(cr, scale, scale);
+        CairoPainter painter(cr);
+        fn(painter);
+        cairo_surface_flush(surf);
+        cairo_destroy(cr);
+        cairo_surface_destroy(surf);
+    }
 
     void paint(Window *owner, PlatformWindow *pWindow, PlatformApplication *pApp, int lw,
                int lh) override {

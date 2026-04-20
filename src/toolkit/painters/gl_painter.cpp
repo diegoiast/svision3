@@ -47,8 +47,8 @@ static std::vector<std::pair<float, float>> rounded_rect_verts(float x, float y,
     return pts;
 }
 
-GLPainter::GLPainter(float viewport_h, float scale, TextRasterizer &rasterizer)
-    : vh_(viewport_h), scale_(scale), rasterizer_(rasterizer) {}
+GLPainter::GLPainter(float viewport_h, float scale, TextRasterizer *rasterizer)
+    : Painter(rasterizer), vh_(viewport_h), scale_(scale) {}
 
 void GLPainter::push_clip(Rect const &r) {
     Rect eff = r;
@@ -236,7 +236,7 @@ void GLPainter::draw_circle(Point center, float radius, Color const &c, float lw
 
 void GLPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
                           FontFamily font, TextOrientation orientation) {
-    auto rt = rasterizer_.rasterize(text, font_size, scale_, font);
+    auto rt = rasterizer_->rasterize(text, font_size, scale_, font);
     if (rt.width <= 0 || rt.height <= 0) {
         return;
     }
@@ -357,11 +357,11 @@ void GLPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
 }
 
 Size GLPainter::text_size(std::string_view text, float font_size, FontFamily font) {
-    return rasterizer_.measure(text, font_size, font);
+    return rasterizer_->measure(text, font_size, font);
 }
 
 GLPainter::FontMetrics GLPainter::font_metrics(float font_size, FontFamily font) {
-    return rasterizer_.metrics(font_size, font);
+    return rasterizer_->metrics(font_size, font);
 }
 
 void GLPainter::set_color(Color const &c) { glColor4f(c.r, c.g, c.b, c.a); }

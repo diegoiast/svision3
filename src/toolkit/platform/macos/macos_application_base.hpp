@@ -15,8 +15,8 @@ class MacOSPlatformApplicationBase : public PlatformApplication {
     void clipboard_set_text(std::string const &text) override;
     Size measure_text(std::string_view text, float font_size,
                       FontFamily font = FontFamily::System) override;
-    Painter::FontMetrics measure_font_metrics(
-        float font_size, FontFamily font = FontFamily::System) override;
+    Painter::FontMetrics measure_font_metrics(float font_size,
+                                              FontFamily font = FontFamily::System) override;
     std::string_view name() const override;
     std::string_view painter_name() const override;
     float scale_factor() const override;

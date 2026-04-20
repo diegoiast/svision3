@@ -1,3 +1,4 @@
+#include "Win32OpenGlRenderingBackend.hpp"
 #include "win32_platform.hpp"
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
@@ -230,8 +231,7 @@ static void paint_window(HWND hwnd, Window *win) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        Win32TextRasterizer rasterizer;
-        GLPainter painter(static_cast<float>(lh), scale, rasterizer);
+        GLPainter painter(static_cast<float>(lh), scale, &win_plat->rasterizer_);
         win->handle_paint(painter);
 
         glFlush();
@@ -683,6 +683,11 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
         }
         ReleaseDC(hwnd, hdc);
     }
+    if (hglrc) {
+        backend_ = std::make_unique<Win32OpenGlRenderingBackend>(hwnd, hglrc);
+    } else {
+        backend_ = std::make_unique<Win32GDIRenderingBackend>();
+    }
 }
 
 Win32PlatformWindow::~Win32PlatformWindow() {
@@ -851,44 +856,6 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point loc
         MoveWindow(tooltip_hwnd, sx, sy, piw, pih, FALSE);
     }
 
-#ifdef TOOLKIT_HAS_CAIRO
-    cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, piw, pih);
-    cairo_t *cr = cairo_create(surface);
-    cairo_scale(cr, scale, scale);
-    CairoPainter painter(cr);
-    Rect r{0, 0, w, h};
-    painter.fill_rounded_rect(r, style.background, style.corner_radius);
-    painter.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
-    painter.draw_text(text, {pad, pad + fm.ascent}, style.text, font_sz);
-    cairo_surface_flush(surface);
-    unsigned char *data = cairo_image_surface_get_data(surface);
-    int stride = cairo_image_surface_get_stride(surface);
-    HDC screen_dc = GetDC(nullptr);
-    HDC mem_dc = CreateCompatibleDC(screen_dc);
-    BITMAPINFO bmi = {};
-    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    bmi.bmiHeader.biWidth = piw;
-    bmi.bmiHeader.biHeight = -pih;
-    bmi.bmiHeader.biPlanes = 1;
-    bmi.bmiHeader.biBitCount = 32;
-    bmi.bmiHeader.biCompression = BI_RGB;
-    void *bits = nullptr;
-    HBITMAP hbm = CreateDIBSection(mem_dc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
-    std::memcpy(bits, data, stride * pih);
-    HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
-    POINT pt_pos = {sx, sy};
-    SIZE tsz = {piw, pih};
-    POINT pt_src = {0, 0};
-    BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-    UpdateLayeredWindow(tooltip_hwnd, screen_dc, &pt_pos, &tsz, mem_dc, &pt_src, 0, &blend,
-                        ULW_ALPHA);
-    SelectObject(mem_dc, old_bm);
-    DeleteObject(hbm);
-    DeleteDC(mem_dc);
-    ReleaseDC(nullptr, screen_dc);
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);
-#else
     HDC screen_dc = GetDC(nullptr);
     HDC mem_dc = CreateCompatibleDC(screen_dc);
     BITMAPINFO bmi = {};
@@ -902,14 +869,13 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point loc
     HBITMAP hbm = CreateDIBSection(mem_dc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
     HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
 
-    {
-        GDIPainter painter(mem_dc, scale);
+    backend_->render_to_buffer(app_, piw, pih, scale, bits, [&](Painter &p) {
+        auto fm = p.font_metrics(font_sz);
         Rect r{0, 0, w, h};
-        auto &palette = Theme::current().palette;
-        painter.fill_rounded_rect(r, palette.tooltip, palette.corner_radius);
-        painter.draw_rounded_rect(r, palette.border, palette.corner_radius, palette.border_width);
-        painter.draw_text(text, {pad, pad + fm.ascent}, palette.text, font_sz);
-    }
+        p.fill_rounded_rect(r, style.background, style.corner_radius);
+        p.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
+        p.draw_text(text, {pad, pad + fm.ascent}, style.text, font_sz);
+    });
 
     POINT pt_pos = {sx, sy};
     SIZE tsz = {piw, pih};
@@ -922,7 +888,6 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point loc
     DeleteObject(hbm);
     DeleteDC(mem_dc);
     ReleaseDC(nullptr, screen_dc);
-#endif
     ShowWindow(tooltip_hwnd, SW_SHOWNOACTIVATE);
 }
 

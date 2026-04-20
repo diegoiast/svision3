@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/painters/gl_offscreen.hpp"
 #include "toolkit/platform.hpp"
 
 #include <GL/gl.h>
@@ -21,6 +22,13 @@ class X11OpenGlBackend : public RenderingBackend {
     ~X11OpenGlBackend() override {}
 
     std::string_view name() const override { return "OpenGL"; }
+
+    void render_to_buffer(PlatformApplication *app, int w, int h, float scale, void *dst,
+                          std::function<void(Painter &)> fn) override {
+        auto *x11app = static_cast<X11PlatformApplication *>(app);
+        glXMakeCurrent(static_cast<Display *>(x11app->get_display()), xwindow_, glx_context_);
+        gl_render_to_buffer(w, h, scale, &rasterizer_, dst, fn);
+    }
 
     void paint(Window *owner, PlatformWindow *window, PlatformApplication *app, int lw,
                int lh) override {
@@ -45,8 +53,7 @@ class X11OpenGlBackend : public RenderingBackend {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        CairoTextRasterizer rasterizer;
-        GLPainter painter(static_cast<float>(lh), scale, rasterizer);
+        GLPainter painter(static_cast<float>(lh), scale, &rasterizer_);
         owner->handle_paint(painter);
 
         glXSwapBuffers(static_cast<Display *>(x11app->get_display()), xwindow_);
@@ -55,6 +62,7 @@ class X11OpenGlBackend : public RenderingBackend {
   private:
     ::Window xwindow_;
     GLXContext glx_context_;
+    CairoTextRasterizer rasterizer_;
 };
 
 } // namespace toolkit

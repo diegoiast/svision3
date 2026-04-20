@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/painters/gl_offscreen.hpp"
 #include "toolkit/platform.hpp"
 
 // Inline definition of the connector from wayland to cairo
@@ -32,7 +33,14 @@ class WaylandlOpenGlBackend : public RenderingBackend {
         }
     }
 
-    std::string_view name() const override { return "OpenGL"; };
+    std::string_view name() const override { return "OpenGL"; }
+
+    void render_to_buffer(PlatformApplication *app, int w, int h, float scale, void *dst,
+                          std::function<void(Painter &)> fn) override {
+        auto *wl_app = static_cast<WaylandPlatformApplication *>(app);
+        eglMakeCurrent(wl_app->egl_display, egl_surface, egl_surface, wl_app->egl_context);
+        gl_render_to_buffer(w, h, scale, &rasterizer_, dst, fn);
+    }
 
     void paint(Window *owner, PlatformWindow *pWindow, PlatformApplication *pApp, int lw,
                int lh) override {
@@ -69,8 +77,7 @@ class WaylandlOpenGlBackend : public RenderingBackend {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         // FIXME: do not use cairo inside opengl.
-        CairoTextRasterizer rasterizer;
-        GLPainter painter(static_cast<float>(lh), window->scale, rasterizer);
+        GLPainter painter(static_cast<float>(lh), window->scale, &rasterizer_);
         owner->handle_paint(painter);
 
         eglSwapBuffers(app->egl_display, egl_surface);
@@ -80,6 +87,7 @@ class WaylandlOpenGlBackend : public RenderingBackend {
     wl_egl_window *egl_window = nullptr;
     void *egl_surface = nullptr;
     int buf_width = 0, buf_height = 0;
+    CairoTextRasterizer rasterizer_;
 };
 
 } // namespace toolkit

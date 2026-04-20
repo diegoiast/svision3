@@ -1,6 +1,8 @@
 #pragma once
 
+#include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/platform.hpp"
+#include <memory>
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -97,6 +99,8 @@ class Win32PlatformWindow : public PlatformWindow {
     HGLRC hglrc = nullptr;
     HCURSOR arrow_cursor = nullptr, ibeam_cursor = nullptr;
     HCURSOR hand_cursor = nullptr, not_allowed_cursor = nullptr;
+    Win32TextRasterizer rasterizer_;
+    std::unique_ptr<RenderingBackend> backend_;
 };
 
 LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);

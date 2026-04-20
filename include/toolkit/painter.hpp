@@ -9,10 +9,12 @@
 
 namespace toolkit {
 
+class TextRasterizer;
 struct Palette;
 
 class Painter {
   public:
+    explicit Painter(TextRasterizer *rasterizer = nullptr) : rasterizer_(rasterizer) {}
     virtual ~Painter() = default;
 
     struct FontMetrics {
@@ -75,6 +77,9 @@ class Painter {
     static FontMetrics measure_font_metrics(float font_size, FontFamily font = FontFamily::System);
 
     static float snap_to_pixel(float val, float scale);
+
+  protected:
+    TextRasterizer *rasterizer_ = nullptr;
 };
 
 // Used for testing

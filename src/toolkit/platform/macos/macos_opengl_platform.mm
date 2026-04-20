@@ -1,4 +1,5 @@
 #include "macos_opengl_platform.hpp"
+#include "toolkit/painters/gl_offscreen.hpp"
 #include "toolkit/painters/gl_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
@@ -139,39 +140,14 @@ class CoreTextRasterizer : public TextRasterizer {
 @end
 
 @interface TKGLTooltipView : NSView
-@property (nonatomic, copy) NSString *text;
-@property (nonatomic) float fontSize;
-@property (nonatomic) toolkit::Color bgColor;
-@property (nonatomic) toolkit::Color borderColor;
-@property (nonatomic) toolkit::Color textColor;
-@property (nonatomic) float cornerRadius;
-@property (nonatomic) float borderWidth;
-@property (nonatomic) float padding;
+@property (nonatomic, strong) NSImage *renderedImage;
 @end
 
 @implementation TKGLTooltipView
-- (BOOL)isFlipped { return YES; }
 - (void)drawRect:(NSRect)dirtyRect {
-    NSRect b = [self bounds];
-    NSBezierPath *path = [NSBezierPath
-        bezierPathWithRoundedRect:b
-                          xRadius:self.cornerRadius
-                          yRadius:self.cornerRadius];
-    [[NSColor colorWithRed:self.bgColor.r green:self.bgColor.g
-                      blue:self.bgColor.b alpha:self.bgColor.a] setFill];
-    [path fill];
-    [[NSColor colorWithRed:self.borderColor.r green:self.borderColor.g
-                      blue:self.borderColor.b alpha:self.borderColor.a] setStroke];
-    [path setLineWidth:self.borderWidth];
-    [path stroke];
-    NSDictionary *attrs = @{
-        NSFontAttributeName : [NSFont systemFontOfSize:self.fontSize],
-        NSForegroundColorAttributeName :
-            [NSColor colorWithRed:self.textColor.r green:self.textColor.g
-                             blue:self.textColor.b alpha:self.textColor.a]
-    };
-    [self.text drawAtPoint:NSMakePoint(self.padding, self.padding)
-            withAttributes:attrs];
+    if (self.renderedImage) {
+        [self.renderedImage drawInRect:[self bounds]];
+    }
 }
 @end
 
@@ -179,7 +155,9 @@ class CoreTextRasterizer : public TextRasterizer {
 @property (nonatomic, assign) toolkit::Window *owner;
 @end
 
-@implementation TKGLView
+@implementation TKGLView {
+    toolkit::CoreTextRasterizer rasterizer_;
+}
 
 - (instancetype)initWithFrame:(NSRect)frame {
     NSOpenGLPixelFormatAttribute attrs[] = {NSOpenGLPFADoubleBuffer,
@@ -240,8 +218,7 @@ class CoreTextRasterizer : public TextRasterizer {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     float scale = static_cast<float>(bp.size.width / b.size.width);
-    toolkit::CoreTextRasterizer rasterizer;
-    toolkit::GLPainter painter(h, scale, rasterizer);
+    toolkit::GLPainter painter(h, scale, &rasterizer_);
     self.owner->handle_paint(painter);
 
     [[self openGLContext] flushBuffer];
@@ -396,6 +373,7 @@ struct MacOSOpenGLPlatformWindow::Impl {
     NSMutableDictionary<NSNumber *, NSTimer *> *timers = nil;
     int next_timer_id = 1;
     TKGLTooltipWindow *tooltip_window = nil;
+    CoreTextRasterizer rasterizer;
 };
 
 MacOSOpenGLPlatformWindow::MacOSOpenGLPlatformWindow(std::string_view title,
@@ -535,16 +513,41 @@ void MacOSOpenGLPlatformWindow::show_tooltip_window(std::string const &text,
         [impl_->tooltip_window setHasShadow:YES];
     }
     [impl_->tooltip_window setFrame:tipFrame display:NO];
+
+    float scale = static_cast<float>(impl_->ns_window.backingScaleFactor);
+    int piw = std::max(1, static_cast<int>(std::ceil(w * scale)));
+    int pih = std::max(1, static_cast<int>(std::ceil(h * scale)));
+
+    [[impl_->view openGLContext] makeCurrentContext];
+    std::vector<uint8_t> pixels(static_cast<size_t>(piw) * pih * 4);
+    gl_render_to_buffer(piw, pih, scale, &impl_->rasterizer, pixels.data(), [&](Painter &p) {
+        auto fm = p.font_metrics(fs);
+        Rect r{0, 0, w, h};
+        p.fill_rounded_rect(r, style.background, style.corner_radius);
+        p.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
+        p.draw_text(text, {pad, pad + fm.ascent}, style.text, fs);
+    });
+    [[impl_->view openGLContext] makeCurrentContext]; // restore main context
+
+    // Wrap pixels in a CGImage (BGRA, premultiplied alpha, little-endian)
+    auto *pixelsCopy = new uint8_t[static_cast<size_t>(piw) * pih * 4];
+    std::memcpy(pixelsCopy, pixels.data(), static_cast<size_t>(piw) * pih * 4);
+    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+    CGDataProviderRef dp = CGDataProviderCreateWithData(
+        pixelsCopy, pixelsCopy, static_cast<size_t>(piw) * pih * 4,
+        [](void *info, const void *, size_t) { delete[] static_cast<uint8_t *>(info); });
+    CGImageRef cgImg = CGImageCreate(
+        piw, pih, 8, 32, piw * 4, cs,
+        static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst),
+        dp, nullptr, false, kCGRenderingIntentDefault);
+    CGColorSpaceRelease(cs);
+    CGDataProviderRelease(dp);
+    NSImage *nsImg = [[NSImage alloc] initWithCGImage:cgImg size:NSMakeSize(w, h)];
+    CGImageRelease(cgImg);
+
     TKGLTooltipView *tv =
         [[TKGLTooltipView alloc] initWithFrame:NSMakeRect(0, 0, w, h)];
-    tv.text = [NSString stringWithUTF8String:text.c_str()];
-    tv.fontSize = fs;
-    tv.bgColor = style.background;
-    tv.borderColor = style.border;
-    tv.textColor = style.text;
-    tv.cornerRadius = style.corner_radius;
-    tv.borderWidth = style.border_width;
-    tv.padding = pad;
+    tv.renderedImage = nsImg;
     [impl_->tooltip_window setContentView:tv];
     [impl_->tooltip_window orderFront:nil];
 }
@@ -592,8 +595,7 @@ bool MacOSOpenGLPlatformWindow::save_to_png(std::string const &path) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    CoreTextRasterizer rasterizer;
-    GLPainter painter(static_cast<float>(h), 1.0f, rasterizer);
+    GLPainter painter(static_cast<float>(h), 1.0f, &impl_->rasterizer);
     owner_->handle_paint(painter);
     glFinish();
 

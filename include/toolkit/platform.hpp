@@ -5,10 +5,12 @@
 
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace toolkit {
 
@@ -22,6 +24,8 @@ class RenderingBackend {
     virtual std::string_view name() const = 0;
     virtual void paint(Window *owner, PlatformWindow *window, PlatformApplication *app, int lw,
                        int lh) = 0;
+    virtual void render_to_buffer(PlatformApplication *app, int w, int h, float scale, void *dst,
+                                  std::function<void(Painter &)> fn) = 0;
 };
 
 class PlatformWindow {
