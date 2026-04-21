@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/widget.hpp"
+#include "toolkit/platform.hpp"
 #include "toolkit/window.hpp"
 #include <spdlog/spdlog.h>
 
@@ -141,6 +142,18 @@ bool Widget::handle_key_impl(KeyEvent const &event) {
     }
 
     return false;
+}
+
+Size Widget::measure_text(std::string_view text, float font_size, FontFamily font) const {
+    if (auto *p = detail::current_platform())
+        return p->measure_text(text, font_size, font);
+    return {};
+}
+
+Painter::FontMetrics Widget::font_metrics(float font_size, FontFamily font) const {
+    if (auto *p = detail::current_platform())
+        return p->font_metrics(font_size, font);
+    return {};
 }
 
 } // namespace toolkit

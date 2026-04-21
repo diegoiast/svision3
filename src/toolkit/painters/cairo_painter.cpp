@@ -168,7 +168,7 @@ void CairoPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     cairo_surface_destroy(surface);
 }
 
-Size CairoPainter::text_size(std::string_view text, float font_size, FontFamily font) {
+Size CairoPainter::measure_text(std::string_view text, float font_size, FontFamily font) {
     cairo_select_font_face(cr_, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr_, std::round(font_size));
@@ -192,7 +192,7 @@ Size cairo_measure_text(std::string_view text, float font_size, FontFamily font)
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *cr = cairo_create(surf);
     CairoPainter p(cr);
-    auto sz = p.text_size(text, font_size, font);
+    auto sz = p.measure_text(text, font_size, font);
     cairo_destroy(cr);
     cairo_surface_destroy(surf);
     return sz;

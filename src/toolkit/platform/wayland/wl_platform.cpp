@@ -674,6 +674,8 @@ static void xdg_popup_done(void *data, struct xdg_popup *) {
 // --- WaylandPlatformApplication ---
 
 WaylandPlatformApplication::WaylandPlatformApplication() {
+    static CairoTextRasterizer s_rasterizer;
+    set_rasterizer(&s_rasterizer);
     display = wl_display_connect(nullptr);
     if (!display) {
         throw std::runtime_error("Failed to connect to Wayland display");
@@ -1109,10 +1111,11 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
     auto const &theme = Theme::current();
     auto const &style = Theme::current().tooltip;
     auto fs = theme.palette.fonts.size;
-    auto tsz = Painter::measure_text(text, fs);
+    auto *r = app_->rasterizer();
+    auto tsz = r ? r->measure(text, fs) : Size{};
     // FIXME: padding for tooltip is hardcoded in wayland.
     auto padding = 5.0f;
-    auto fm = Painter::measure_font_metrics(fs);
+    auto fm = r ? r->metrics(fs) : Painter::FontMetrics{};
     auto tw = tsz.width + padding * 2;
     auto th = fm.height + padding * 2;
 
@@ -1263,16 +1266,6 @@ bool WaylandPlatformWindow::save_to_png(std::string const &path) {
 }
 
 float WaylandPlatformWindow::scale_factor() const { return static_cast<float>(app_->output_scale); }
-
-Size WaylandPlatformApplication::measure_text(std::string_view text, float font_size,
-                                              FontFamily font) {
-    return cairo_measure_text(text, font_size, font);
-}
-
-Painter::FontMetrics WaylandPlatformApplication::measure_font_metrics(float font_size,
-                                                                      FontFamily font) {
-    return cairo_measure_font_metrics(font_size, font);
-}
 
 float WaylandPlatformApplication::scale_factor() const { return output_scale; }
 

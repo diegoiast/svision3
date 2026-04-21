@@ -16,7 +16,6 @@ TEST_CASE("Combobox default state", "[combobox]") {
 }
 
 TEST_CASE("Combobox interaction with virtual window", "[combobox]") {
-    DummyPlatformGuard guard;
     Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
 
     Window win("Test", {800, 600});

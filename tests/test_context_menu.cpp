@@ -9,7 +9,6 @@
 using namespace toolkit;
 
 TEST_CASE("ContextMenu interaction", "[contextmenu]") {
-    DummyPlatformGuard guard;
     Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
 
     Window win("Test", {800, 600});

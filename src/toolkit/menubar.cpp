@@ -313,7 +313,7 @@ Size MenuBar::size_hint() const {
     auto const &style = theme.menubar;
     auto const &palette = theme.palette;
 
-    auto fm = Painter::measure_font_metrics(palette.fonts.size);
+    auto fm = font_metrics(palette.fonts.size);
     auto w = 0.0f;
     for (auto const &m : menus_) {
         w += theme.measure_menubar_item(m->display_title()).width;

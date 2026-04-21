@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/context_menu.hpp"
+#include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <algorithm>
@@ -42,7 +43,7 @@ void ContextMenu::show(Window *win, Point position) {
         if (item.type == MenuItem::Type::Separator) {
             continue;
         }
-        auto w = Painter::measure_text(item.command->name(), palette.fonts.size).width;
+        auto w = detail::current_platform()->measure_text(item.command->name(), palette.fonts.size).width;
         max_w = std::max(max_w, w);
     }
 

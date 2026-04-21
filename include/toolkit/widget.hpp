@@ -126,6 +126,11 @@ class Widget {
     virtual void set_window(Window *w) { window_ = w; }
     Window *window() const { return window_; }
 
+    Size measure_text(std::string_view text, float font_size,
+                      FontFamily font = FontFamily::System) const;
+    Painter::FontMetrics font_metrics(float font_size,
+                                      FontFamily font = FontFamily::System) const;
+
     void set_parent(Widget *p) { parent_ = p; }
     Widget *parent() const { return parent_; }
 

@@ -379,6 +379,7 @@ target_link_libraries(sqlite_viewer PRIVATE toolkit db nfd)
 # ── Tests ─────────────────────────────────────────────────────────────────────
 find_package(Catch2 REQUIRED)
 add_executable(tests
+    tests/test_main.cpp
     tests/test_types.cpp
     tests/test_events.cpp
     tests/test_theme.cpp
@@ -407,4 +408,4 @@ add_executable(tests
     tests/test_db.cpp
     tests/test_image_loader.cpp
 )
-target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2WithMain)
+target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)

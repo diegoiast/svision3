@@ -146,7 +146,7 @@ class CoreGraphicsPainter : public Painter {
         CFRelease(line);
     }
 
-    Size text_size(std::string_view text, float font_size,
+    Size measure_text(std::string_view text, float font_size,
                    FontFamily family = FontFamily::System) override {
         NSFont *font = ns_font(font_size, family);
         NSString *str = [[NSString alloc] initWithBytes:text.data()
@@ -524,8 +524,9 @@ void MacOSNativePlatformWindow::show_tooltip_window(std::string const &text,
                                                     Point local_pos) {
     auto const &style = Theme::current().tooltip;
     float pad = style.padding, fs = style.font_size;
-    auto tsz = Painter::measure_text(text, fs);
-    auto fm = Painter::measure_font_metrics(fs);
+    auto *r = detail::current_platform();
+    auto tsz = r ? r->measure_text(text, fs) : Size{};
+    auto fm = r ? r->font_metrics(fs) : Painter::FontMetrics{};
     float w = tsz.width + pad * 2, h = fm.height + pad * 2;
     NSPoint vp = NSMakePoint(local_pos.x, local_pos.y);
     NSPoint wp = [impl_->view convertPoint:vp toView:nil];

@@ -826,8 +826,8 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point loc
     auto const &style = Theme::current().tooltip;
     auto &palette = Theme::current().palette;
     float pad = style.padding, font_sz = palette.fonts.size;
-    auto text_sz = Painter::measure_text(text, font_sz);
-    auto fm = Painter::measure_font_metrics(font_sz);
+    auto text_sz = rasterizer_.measure(text, font_sz);
+    auto fm = rasterizer_.metrics(font_sz);
     float w = text_sz.width + pad * 2, h = fm.height + pad * 2;
     POINT pt = {static_cast<LONG>(local_pos.x * scale), static_cast<LONG>(local_pos.y * scale)};
     ClientToScreen(hwnd, &pt);
@@ -906,23 +906,5 @@ bool Win32PlatformWindow::save_to_png(std::string const &path) {
 }
 
 float Win32PlatformWindow::scale_factor() const { return get_window_scale(hwnd); }
-
-Size Win32PlatformApplication::measure_text(std::string_view text, float font_size,
-                                            FontFamily font) {
-#ifdef TOOLKIT_HAS_CAIRO
-    return cairo_measure_text(text, font_size, font);
-#else
-    return GDIPainter::measure_text_gdiplus(text, font_size, font);
-#endif
-}
-
-Painter::FontMetrics Win32PlatformApplication::measure_font_metrics(float font_size,
-                                                                    FontFamily font) {
-#ifdef TOOLKIT_HAS_CAIRO
-    return cairo_measure_font_metrics(font_size, font);
-#else
-    return GDIPainter::font_metrics_gdiplus(font_size, font);
-#endif
-}
 
 } // namespace toolkit

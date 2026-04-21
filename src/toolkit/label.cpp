@@ -3,6 +3,7 @@
 
 #include "toolkit/label.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/window.hpp"
 
 namespace toolkit {
 
@@ -25,20 +26,20 @@ void Label::paint(Painter &painter) {
     auto col = color_override_.value_or(pallete.text);
     auto fm = painter.font_metrics(fs);
     auto display_text = text_;
-    auto text_w = painter.text_size(display_text, fs).width;
+    auto text_w = painter.measure_text(display_text, fs).width;
 
     if (elide_ && text_w > rect_.width && rect_.width > 0) {
         auto suffix = std::string_view{"..."};
-        float sw = painter.text_size(suffix, fs).width;
+        float sw = painter.measure_text(suffix, fs).width;
         if (sw < rect_.width) {
             while (!display_text.empty() && text_w + sw > rect_.width) {
                 // Simplified: remove one byte at a time.
                 // In a production app we should use Utf8Iterator to remove a full codepoint.
                 display_text.pop_back();
-                text_w = painter.text_size(display_text, fs).width;
+                text_w = painter.measure_text(display_text, fs).width;
             }
             display_text += suffix;
-            text_w = painter.text_size(display_text, fs).width;
+            text_w = painter.measure_text(display_text, fs).width;
         }
     }
 
@@ -59,7 +60,7 @@ Size Label::size_hint() const {
     auto pallete = Theme::current().palette;
     auto font_size = font_size_override_.value_or(pallete.fonts.size);
     if (shrinkable_ || text_.empty()) {
-        return {0, Painter::measure_font_metrics(font_size).height + 4.0f};
+        return {0, font_metrics(font_size).height + 4.0f};
     }
     return Theme::current().measure_label(text_, font_size);
 }

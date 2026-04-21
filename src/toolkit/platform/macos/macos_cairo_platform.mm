@@ -222,18 +222,6 @@ MacOSCairoPlatformApplication::create_window(std::string_view title, Size size,
     return std::make_unique<MacOSCairoPlatformWindow>(title, size, owner);
 }
 
-Size MacOSCairoPlatformApplication::measure_text(std::string_view text,
-                                            float font_size,
-                                            FontFamily font) {
-    return cairo_measure_text(text, font_size, font);
-}
-
-Painter::FontMetrics
-MacOSCairoPlatformApplication::measure_font_metrics(float font_size,
-                                                    FontFamily font) {
-    return cairo_measure_font_metrics(font_size, font);
-}
-
 // --- MacOSCairoPlatformWindow ---
 
 struct MacOSCairoPlatformWindow::Impl {
@@ -344,8 +332,9 @@ void MacOSCairoPlatformWindow::show_tooltip_window(std::string const &text,
                                               Point local_pos) {
     auto const &style = Theme::current().tooltip;
     float pad = style.padding, font_sz = style.font_size;
-    auto text_sz = Painter::measure_text(text, font_sz);
-    auto fm = Painter::measure_font_metrics(font_sz);
+    auto *r = detail::current_platform();
+    auto text_sz = r ? r->measure_text(text, font_sz) : Size{};
+    auto fm = r ? r->font_metrics(font_sz) : Painter::FontMetrics{};
     float w = text_sz.width + pad * 2, h = fm.height + pad * 2;
     NSPoint view_pt = NSMakePoint(local_pos.x, local_pos.y);
     NSPoint win_pt = [impl_->view convertPoint:view_pt toView:nil];

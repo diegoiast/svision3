@@ -2,6 +2,7 @@
 #include "toolkit/layout.hpp"
 #include "toolkit/button.hpp"
 #include "toolkit/label.hpp"
+#include "toolkit/platform/dummy_platform.hpp"
 
 using namespace toolkit;
 

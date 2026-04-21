@@ -9,10 +9,6 @@ class MacOSCairoPlatformApplication : public MacOSPlatformApplicationBase {
     std::unique_ptr<PlatformWindow> create_window(std::string_view title,
                                                    Size size,
                                                    Window *owner) override;
-    Size measure_text(std::string_view text, float font_size,
-                      FontFamily font = FontFamily::System) override;
-    Painter::FontMetrics measure_font_metrics(
-        float font_size, FontFamily font = FontFamily::System) override;
     std::string_view name() const override { return "macOS"; }
     std::string_view painter_name() const override { return "Cairo"; }
 };

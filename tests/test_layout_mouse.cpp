@@ -11,7 +11,6 @@
 using namespace toolkit;
 
 TEST_CASE("Layout mouse interaction relative", "[layout]") {
-    DummyPlatformGuard guard;
     Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
 
     Window win("Test", {800, 600});

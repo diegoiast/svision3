@@ -502,6 +502,8 @@ static void process_pending_events(X11PlatformApplication::Impl *d) {
 // ── X11PlatformApplication ──────────────────────────────────────────────────
 
 X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>()) {
+    static CairoTextRasterizer s_rasterizer;
+    set_rasterizer(&s_rasterizer);
     auto *d = impl_.get();
     XInitThreads();
     d->display = XOpenDisplay(nullptr);
@@ -750,14 +752,6 @@ void X11PlatformApplication::clipboard_set_text(std::string const &text) {
     XFlush(d->display);
 }
 
-Size X11PlatformApplication::measure_text(std::string_view text, float font_size, FontFamily font) {
-    return cairo_measure_text(text, font_size, font);
-}
-
-Painter::FontMetrics X11PlatformApplication::measure_font_metrics(float font_size,
-                                                                  FontFamily font) {
-    return cairo_measure_font_metrics(font_size, font);
-}
 
 X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
                                      Window *owner)
@@ -1037,8 +1031,9 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
     // FIXME padding for tooltips is hardcodede in X11
     auto pad = 5.0f;
     auto fs = theme.palette.fonts.size;
-    auto tsz = Painter::measure_text(text, fs);
-    auto fm = Painter::measure_font_metrics(fs);
+    auto *r = app_->rasterizer();
+    auto tsz = r ? r->measure(text, fs) : Size{};
+    auto fm = r ? r->metrics(fs) : Painter::FontMetrics{};
     auto tw = tsz.width + pad * 2, th = fm.height + pad * 2;
 
     int sx, sy;

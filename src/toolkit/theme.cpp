@@ -23,7 +23,9 @@ static std::unique_ptr<Theme> &mutable_current_ptr() {
 
 Theme const &Theme::current() { return *mutable_current_ptr(); }
 
-void Theme::set_current(std::unique_ptr<Theme> theme) { mutable_current_ptr() = std::move(theme); }
+void Theme::set_current(std::unique_ptr<Theme> theme) {
+    mutable_current_ptr() = std::move(theme);
+}
 
 // ── Palette Initialization ───────────────────────────────────────────────────
 

@@ -9,7 +9,6 @@
 using namespace toolkit;
 
 TEST_CASE("Alt+F twice should not crash", "[menubar][crash]") {
-    DummyPlatformGuard guard;
     Theme::set_current(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light));
 
     Window win("Test Alt+F Crash", {800, 600});

@@ -156,15 +156,15 @@ void TableView::auto_fit_column(int col) {
 
     auto padding = style.item_padding_h * 2;
     auto nrows = model_->row_count();
-    auto sort_arrow_w = Painter::measure_text(" \xe2\x96\xb2", palette.fonts.size).width;
+    auto sort_arrow_w = measure_text(" \xe2\x96\xb2", palette.fonts.size).width;
     ensure_column_widths();
 
     auto header{model_->header_text(col)};
-    auto max_w = Painter::measure_text(header, palette.fonts.size).width + sort_arrow_w;
+    auto max_w = measure_text(header, palette.fonts.size).width + sort_arrow_w;
     auto sample = std::min(nrows, 100);
 
     for (auto r = 0; r < sample; r++) {
-        auto w = Painter::measure_text(model_->cell_text(r, col), palette.fonts.size).width;
+        auto w = measure_text(model_->cell_text(r, col), palette.fonts.size).width;
         if (w > max_w) {
             max_w = w;
         }
@@ -290,14 +290,14 @@ void TableView::notify_selection() {
 float TableView::row_height() const {
     auto const &style = Theme::current().table_view;
     auto const &palette = Theme::current().palette;
-    auto fm = Painter::measure_font_metrics(palette.fonts.size);
+    auto fm = font_metrics(palette.fonts.size);
     return fm.height + style.item_padding * 2;
 }
 
 float TableView::header_height() const {
     auto const &style = Theme::current().table_view;
     auto const &palette = Theme::current().palette;
-    auto fm = Painter::measure_font_metrics(palette.fonts.size);
+    auto fm = font_metrics(palette.fonts.size);
     return fm.height + style.header_padding_v * 2;
 }
 

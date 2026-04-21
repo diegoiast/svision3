@@ -356,7 +356,7 @@ void GLPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     glDeleteTextures(1, &tex);
 }
 
-Size GLPainter::text_size(std::string_view text, float font_size, FontFamily font) {
+Size GLPainter::measure_text(std::string_view text, float font_size, FontFamily font) {
     return rasterizer_->measure(text, font_size, font);
 }
 

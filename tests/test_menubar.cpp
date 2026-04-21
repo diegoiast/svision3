@@ -10,7 +10,6 @@
 using namespace toolkit;
 
 TEST_CASE("MenuBar interaction", "[menubar]") {
-    DummyPlatformGuard guard;
     Theme::set_current(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light));
 
     Window win("Test MenuBar", {800, 600});

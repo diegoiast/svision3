@@ -86,7 +86,7 @@ void Win95Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_
         painter.draw_filled_frame(box_rect, palette.base, palette.border, palette, false);
 
         auto expand_collapse_char = expanded ? "-" : "+";
-        auto char_w = painter.text_size(expand_collapse_char, palette.fonts.size).width;
+        auto char_w = painter.measure_text(expand_collapse_char, palette.fonts.size).width;
         auto char_x = icon_x + (box_size - char_w) / 2.0f;
         auto char_y = box_rect.y + (box_size - fm.height) / 2.0f + fm.ascent;
 

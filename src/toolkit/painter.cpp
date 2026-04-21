@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/painter.hpp"
-#include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
 #include <cmath>
 
@@ -62,20 +61,6 @@ void Painter::draw_focus_ring(Rect const &rect, float corner_radius) {
     } else {
         draw_rect(r, ring, lw);
     }
-}
-
-Size Painter::measure_text(std::string_view text, float font_size, FontFamily font) {
-    if (auto *p = detail::current_platform()) {
-        return p->measure_text(text, font_size, font);
-    }
-    return {0, 0};
-}
-
-Painter::FontMetrics Painter::measure_font_metrics(float font_size, FontFamily font) {
-    if (auto *p = detail::current_platform()) {
-        return p->measure_font_metrics(font_size, font);
-    }
-    return {0, 0, 0};
 }
 
 float Painter::snap_to_pixel(float val, float scale) {

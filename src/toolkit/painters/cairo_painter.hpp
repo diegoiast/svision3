@@ -38,7 +38,7 @@ class CairoPainter : public Painter {
     void draw_image(ImageData const &image, Point position) override;
     void draw_image_scaled(ImageData const &image, Rect const &dest) override;
 
-    Size text_size(std::string_view text, float font_size,
+    Size measure_text(std::string_view text, float font_size,
                    FontFamily font = FontFamily::System) override;
     FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) override;
 

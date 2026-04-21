@@ -4,6 +4,7 @@
 #include "toolkit/theme_base.hpp"
 #include "toolkit/button_state.hpp"
 #include "toolkit/painter.hpp"
+#include "toolkit/platform.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/utf8.hpp"
 #include <algorithm>
@@ -34,7 +35,7 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
     auto text_c = enabled ? palette.text : palette.text_disabled;
     auto text_offset = (palette.beveled && pressed && enabled) ? 1.0f : 0.0f;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto text_w = painter.text_size(text, palette.fonts.size).width;
+    auto text_w = painter.measure_text(text, palette.fonts.size).width;
     auto icon_w = 0.0f;
     auto icon_h = 0.0f;
 
@@ -180,8 +181,8 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     if (selection_start >= 0 && selection_end > selection_start) {
         auto before_s = text.substr(0, selection_start);
         auto before_e = text.substr(0, selection_end);
-        auto sx = tx + painter.text_size(before_s, palette.fonts.size).width;
-        auto ex = tx + painter.text_size(before_e, palette.fonts.size).width;
+        auto sx = tx + painter.measure_text(before_s, palette.fonts.size).width;
+        auto ex = tx + painter.measure_text(before_e, palette.fonts.size).width;
         auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
         painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
@@ -192,7 +193,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     } else if (!text.empty()) {
         if (password_mode) {
             auto dot_radius = palette.fonts.size * 0.25f;
-            auto char_w = painter.text_size("8", palette.fonts.size).width;
+            auto char_w = painter.measure_text("8", palette.fonts.size).width;
             auto center_off_y = (fm.ascent - fm.descent) / 2.0f;
             auto char_count = 0;
             auto i = 0;
@@ -213,7 +214,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
         auto before = text.substr(0, cursor_pos);
         auto cx = tx;
         if (!before.empty()) {
-            cx += painter.text_size(before, palette.fonts.size).width;
+            cx += painter.measure_text(before, palette.fonts.size).width;
         }
         auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto cy_bot = cy_top + fm.height + 2.0f;
@@ -244,8 +245,8 @@ void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::strin
     if (show_mnemonics && mnemonic_index >= 0) {
         auto before = title.substr(0, mnemonic_index);
         auto ch = std::string(1, title[mnemonic_index]);
-        auto before_w = before.empty() ? 0.0f : painter.text_size(before, palette.fonts.size).width;
-        auto ch_w = painter.text_size(ch, palette.fonts.size).width;
+        auto before_w = before.empty() ? 0.0f : painter.measure_text(before, palette.fonts.size).width;
+        auto ch_w = painter.measure_text(ch, palette.fonts.size).width;
         auto ul_y = baseline + fm.descent * 0.4f;
 
         painter.draw_line({rect.x + padding.left + before_w, ul_y},
@@ -302,7 +303,7 @@ void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_v
     painter.draw_text(text, {text_x, baseline}, text_col, palette.fonts.size);
 
     if (!shortcut.empty()) {
-        auto shortcut_w = painter.text_size(shortcut, palette.fonts.size).width;
+        auto shortcut_w = painter.measure_text(shortcut, palette.fonts.size).width;
         auto shortcut_x = rect.x + rect.width - style.padding.right - shortcut_w - 10.0f;
         painter.draw_text(shortcut, {shortcut_x, baseline}, text_col, palette.fonts.size);
     }
@@ -409,7 +410,7 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
     }
 
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto text_w = painter.text_size(text, palette.fonts.size).width;
+    auto text_w = painter.measure_text(text, palette.fonts.size).width;
     auto text_x = 0.0f, baseline_y = 0.0f;
     auto close_cx = 0.0f, close_cy = 0.0f;
     auto const close_btn_size = 14.0f;
@@ -653,8 +654,8 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
     if (selection_start >= 0 && selection_end > selection_start) {
         auto before_s = text.substr(0, selection_start);
         auto before_e = text.substr(0, selection_end);
-        auto sx = content_x + painter.text_size(before_s, palette.fonts.size).width;
-        auto ex = content_x + painter.text_size(before_e, palette.fonts.size).width;
+        auto sx = content_x + painter.measure_text(before_s, palette.fonts.size).width;
+        auto ex = content_x + painter.measure_text(before_e, palette.fonts.size).width;
         auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
         painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
@@ -667,7 +668,7 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
         auto before = text.substr(0, cursor_pos);
         auto cx = content_x;
         if (!before.empty()) {
-            cx += painter.text_size(before, palette.fonts.size).width;
+            cx += painter.measure_text(before, palette.fonts.size).width;
         }
         auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto cy_bot = cy_top + fm.height + 2.0f;
@@ -737,7 +738,7 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
         auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
         auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
         auto num = std::to_string(i + 1);
-        auto nw = Painter::measure_text(num, palette.fonts.size, FontFamily::Monospace).width;
+        auto nw = painter.measure_text(num, palette.fonts.size, FontFamily::Monospace).width;
         painter.draw_text(num, {rect.x + gutter_width - nw - 8.0f, baseline}, palette.placeholder,
                           palette.fonts.size, FontFamily::Monospace);
     }
@@ -765,12 +766,12 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
             if (sel_start < sel_end) {
                 auto sx =
                     tx0 + (sel_start > 0
-                               ? Painter::measure_text(lines[i].substr(0, sel_start),
-                                                       palette.fonts.size, FontFamily::Monospace)
+                               ? painter.measure_text(lines[i].substr(0, sel_start),
+                                                   palette.fonts.size, FontFamily::Monospace)
                                      .width
                                : 0.0f);
-                auto ex = tx0 + Painter::measure_text(lines[i].substr(0, sel_end),
-                                                      palette.fonts.size, FontFamily::Monospace)
+                auto ex = tx0 + painter.measure_text(lines[i].substr(0, sel_end),
+                                                  palette.fonts.size, FontFamily::Monospace)
                                     .width;
                 if (i != selection_end_line) {
                     ex += palette.fonts.size * 0.4f;
@@ -791,8 +792,8 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
             auto cy = rect.y + line_height * static_cast<float>(cursor_line - first_visible_line);
             auto cx = tx0;
             if (cursor_col > 0 && cursor_line < static_cast<int>(lines.size())) {
-                cx += Painter::measure_text(lines[cursor_line].substr(0, cursor_col),
-                                            palette.fonts.size, FontFamily::Monospace)
+                cx += painter.measure_text(lines[cursor_line].substr(0, cursor_col),
+                                        palette.fonts.size, FontFamily::Monospace)
                           .width;
             }
             painter.draw_line({cx, cy}, {cx, cy + line_height}, palette.text, 1.5f);
@@ -865,13 +866,14 @@ void BaseTheme::draw_focus_ring(Painter &painter, Rect const &rect, float corner
 }
 
 Size BaseTheme::measure_label(std::string_view text, float font_size) const {
-    auto fm = Painter::measure_font_metrics(font_size);
-    auto w = Painter::measure_text(text, font_size).width;
+    auto *p = detail::current_platform();
+    auto fm = p->font_metrics(font_size);
+    auto w = p->measure_text(text, font_size).width;
     return {w, fm.height + 4.0f};
 }
 
 Size BaseTheme::measure_button(std::string_view text, Icon const &icon) const {
-    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
     auto icon_w = 0.0f;
     if (icon) {
         icon_w = static_cast<float>(icon->width);
@@ -883,33 +885,34 @@ Size BaseTheme::measure_button(std::string_view text, Icon const &icon) const {
 }
 
 Size BaseTheme::measure_checkbox(std::string_view text) const {
-    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
     auto w = checkbox.box_size + checkbox.spacing + text_w;
     auto h = std::max(checkbox.box_size, palette.fonts.size);
     return Size{w, h};
 }
 
 Size BaseTheme::measure_radio_button(std::string_view text) const {
-    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
     auto w = radio.box_size + radio.spacing + text_w;
     auto h = std::max(radio.box_size, palette.fonts.size);
     return Size{w, h};
 }
 
 Size BaseTheme::measure_menubar_item(std::string_view text) const {
-    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
     return {text_w + menubar.padding.left + menubar.padding.right, 0};
 }
 
 Size BaseTheme::measure_menu_item(std::string_view text, Icon const &icon,
                                   std::string_view shortcut) const {
+    auto *p = detail::current_platform();
     auto w = menu.item_padding * 2;
     if (icon) {
         w += static_cast<float>(icon->width) + menu.item_padding;
     }
-    w += Painter::measure_text(text, palette.fonts.size).width;
+    w += p->measure_text(text, palette.fonts.size).width;
     if (!shortcut.empty()) {
-        w += menu.item_padding + Painter::measure_text(shortcut, palette.fonts.size).width;
+        w += menu.item_padding + p->measure_text(shortcut, palette.fonts.size).width;
     }
     auto h = palette.fonts.size + menu.item_padding * 2;
     return {w, h};
@@ -917,14 +920,14 @@ Size BaseTheme::measure_menu_item(std::string_view text, Icon const &icon,
 
 float BaseTheme::menu_separator_height() const { return 8.0f; }
 Size BaseTheme::measure_tab(std::string_view text) const {
-    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
     auto w = text_w + tab_widget.tab_padding_h * 2;
     auto h = palette.fonts.size + tab_widget.tab_padding_v * 2;
     return {w, h};
 }
 float BaseTheme::list_item_height() const { return 24.0f; }
 Size BaseTheme::measure_tooltip(std::string_view text) const {
-    auto text_w = Painter::measure_text(text, palette.fonts.size).width;
+    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
 
     // FIXME: padding is hardcoded for tabs
     auto padding = 0.5f;

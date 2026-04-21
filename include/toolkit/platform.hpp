@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/painter.hpp"
+#include "toolkit/text_rasterizer.hpp"
 #include "toolkit/types.hpp"
 #include <cstdint>
 #include <functional>
@@ -66,14 +67,28 @@ class PlatformApplication {
     virtual std::string clipboard_get_text() = 0;
     virtual void clipboard_set_text(std::string const &text) = 0;
 
-    //
-    virtual Size measure_text(std::string_view text, float font_size,
-                              FontFamily font = FontFamily::System) = 0;
-    virtual Painter::FontMetrics measure_font_metrics(float font_size,
-                                                      FontFamily font = FontFamily::System) = 0;
+    void set_rasterizer(TextRasterizer *r) { rasterizer_ = r; }
+    TextRasterizer *rasterizer() const { return rasterizer_; }
+
+    Size measure_text(std::string_view text, float font_size,
+                      FontFamily font = FontFamily::System) const {
+        if (rasterizer_)
+            return rasterizer_->measure(text, font_size, font);
+        return {};
+    }
+    Painter::FontMetrics font_metrics(float font_size,
+                                      FontFamily font = FontFamily::System) const {
+        if (rasterizer_)
+            return rasterizer_->metrics(font_size, font);
+        return {};
+    }
+
     virtual std::string_view name() const = 0;
     virtual float scale_factor() const = 0;
     virtual SystemFonts system_fonts() const = 0;
+
+  protected:
+    TextRasterizer *rasterizer_ = nullptr;
 };
 
 std::unique_ptr<PlatformApplication> create_platform_application();

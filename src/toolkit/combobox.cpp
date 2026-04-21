@@ -311,11 +311,11 @@ auto Combobox::size_hint() const -> Size {
     auto const &theme = Theme::current();
     auto const &style = theme.combobox;
     auto const &palette = theme.palette;
-    auto fm = Painter::measure_font_metrics(palette.fonts.size);
+    auto fm = font_metrics(palette.fonts.size);
     auto max_w = 0.0f;
 
     for (auto const &item : items_) {
-        max_w = std::max(max_w, Painter::measure_text(item, palette.fonts.size).width);
+        max_w = std::max(max_w, measure_text(item, palette.fonts.size).width);
     }
 
     return {max_w + style.padding.left + style.padding.right + 20.0f,

@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/menu.hpp"
+#include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <algorithm>
@@ -88,12 +89,12 @@ void Menu::show(Window *win, Point position) {
         if (item.type == MenuItem::Type::Separator) {
             continue;
         }
-        auto name_w = Painter::measure_text(item.command->name(), palette.fonts.size).width;
+        auto name_w = detail::current_platform()->measure_text(item.command->name(), palette.fonts.size).width;
 
         max_name_w = std::max(max_name_w, name_w);
         if (!item.command->shortcut_string().empty()) {
             auto shortcut_w =
-                Painter::measure_text(item.command->shortcut_string(), palette.fonts.size).width;
+                detail::current_platform()->measure_text(item.command->shortcut_string(), palette.fonts.size).width;
             max_shortcut_w = std::max(max_shortcut_w, shortcut_w);
         }
     }

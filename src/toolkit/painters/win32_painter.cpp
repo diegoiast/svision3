@@ -374,7 +374,7 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
     impl_->graphics->Restore(state);
 }
 
-Size GDIPainter::text_size(std::string_view text, float font_size, FontFamily family) {
+Size GDIPainter::measure_text(std::string_view text, float font_size, FontFamily family) {
     return measure_text_gdiplus(text, font_size, family);
 }
 

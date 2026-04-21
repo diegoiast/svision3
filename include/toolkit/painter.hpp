@@ -55,7 +55,7 @@ class Painter {
     virtual void draw_image(ImageData const &image, Point position) = 0;
     virtual void draw_image_scaled(ImageData const &image, Rect const &dest) = 0;
 
-    virtual Size text_size(std::string_view text, float font_size = 14.0f,
+    virtual Size measure_text(std::string_view text, float font_size = 14.0f,
                            FontFamily font = FontFamily::System) = 0;
     virtual FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) = 0;
 
@@ -67,14 +67,6 @@ class Painter {
 
     // FIXME: draw_focus_ring - this should be removed and use the version from the theme
     void draw_focus_ring(Rect const &rect, float corner_radius);
-
-    // FIXME: remove measure_text() - this is a useless abstraction
-    // FIXME: how about when each painter will have its own font rasterzer class?
-    static Size measure_text(std::string_view text, float font_size = 14.0f,
-                             FontFamily font = FontFamily::System);
-    // FIXME: measure_font_metrics() - this is a useless abstraction
-    // FIXME: how about when each painter will have its own font rasterzer class?
-    static FontMetrics measure_font_metrics(float font_size, FontFamily font = FontFamily::System);
 
     static float snap_to_pixel(float val, float scale);
 
@@ -102,7 +94,7 @@ class MockPainter : public Painter {
                    TextOrientation) override {}
     void draw_image(ImageData const &, Point) override {}
     void draw_image_scaled(ImageData const &, Rect const &) override {}
-    Size text_size(std::string_view text, float font_size, FontFamily) override {
+    Size measure_text(std::string_view text, float font_size, FontFamily) override {
         return {static_cast<float>(text.size()) * font_size * 0.6f, font_size + 2.0f};
     }
     FontMetrics font_metrics(float font_size, FontFamily) override {

@@ -303,7 +303,7 @@ void ListView::scroll_to(int index) {
 float ListView::item_height() const {
     auto const &style = Theme::current().list_view;
     auto const &palette = Theme::current().palette;
-    auto fm = Painter::measure_font_metrics(palette.fonts.size);
+    auto fm = font_metrics(palette.fonts.size);
     return fm.height + style.item_padding * 2;
 }
 
