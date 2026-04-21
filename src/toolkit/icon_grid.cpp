@@ -154,13 +154,19 @@ void IconGrid::paint(Painter &painter) {
 
     auto const &theme = Theme::current();
     auto const &style = theme.icon_grid;
+    auto const &palette = theme.palette;
     theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
 
     auto layout = compute_layout();
     auto count = model_->count();
 
-    painter.push_clip({0, 0, rect_.width, rect_.height});
-    painter.push_translation({0, -scroll_offset_});
+    auto bw = palette.border_width;
+    auto inner_w = rect_.width - bw * 2;
+    auto inner_h = rect_.height - bw * 2;
+
+    auto body_clip = Rect{bw, bw, inner_w, inner_h};
+    painter.push_clip(body_clip);
+    painter.push_translation({bw, bw - scroll_offset_});
 
     for (size_t i = 0; i < count; ++i) {
         auto col = i % layout.columns;
@@ -175,7 +181,7 @@ void IconGrid::paint(Painter &painter) {
 
         // Simple culling
         if (item_rect.y + item_rect.height < scroll_offset_) continue;
-        if (item_rect.y > scroll_offset_ + rect_.height) break;
+        if (item_rect.y > scroll_offset_ + inner_h) break;
 
         auto is_selected = cursor_.has_value() && *cursor_ == i;
         auto is_hovered = hovered_.has_value() && *hovered_ == i;
@@ -188,12 +194,30 @@ void IconGrid::paint(Painter &painter) {
 
     painter.pop_translation();
     painter.pop_clip();
+
+    auto total_h = style.padding.top + style.padding.bottom + 
+                   static_cast<float>(layout.rows) * layout.item_height +
+                   static_cast<float>(std::max(size_t{0}, layout.rows - 1)) * style.spacing;
+
+    if (total_h > inner_h) {
+        auto bar_h = std::max(20.0f, inner_h * (inner_h / total_h));
+        auto bar_y = bw + (scroll_offset_ / total_h) * inner_h;
+        auto bar_x = rect_.width - bw - 6.0f;
+        auto sb = Rect{bar_x, bar_y, 4.0f, bar_h};
+        painter.fill_rounded_rect(sb, palette.text, 2.0f);
+    }
 }
 
 bool IconGrid::handle_mouse(MouseEvent const &event) {
     if (!model_) return false;
 
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
+    auto bw = palette.border_width;
+
     auto p = event.position;
+    p.x -= bw;
+    p.y -= bw;
     
     if (event.type == MouseEvent::Type::Scroll) {
         scroll_offset_ -= event.scroll_dy * 20.0f;
@@ -202,8 +226,9 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
         return true;
     }
 
-    p.y += scroll_offset_;
-    auto index = item_at(p);
+    auto p_scrolled = p;
+    p_scrolled.y += scroll_offset_;
+    auto index = item_at(p_scrolled);
 
     switch (event.type) {
     case MouseEvent::Type::Press:
@@ -230,7 +255,7 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
         break;
     }
 
-    return false;
+    return true;
 }
 
 bool IconGrid::handle_key(KeyEvent const &event) {
