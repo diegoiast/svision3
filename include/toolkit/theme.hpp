@@ -56,6 +56,12 @@ struct TabWidgetStyle {
 };
 
 // FIXME: remove this style
+struct IconGridStyle {
+    float spacing = 8.0f;
+    Margins padding = {8, 8, 8, 8};
+};
+
+// FIXME: remove this style
 struct ListViewStyle {
     float item_padding = 4.0f;
     float item_padding_h = 8.0f;
@@ -218,6 +224,9 @@ class Theme {
                                 int depth, bool has_children, bool expanded, bool selected,
                                 bool hovered, bool alternate) const = 0;
     virtual void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const = 0;
+    virtual void draw_icon_grid_item(Painter &painter, Rect const &rect, std::string_view text,
+                                     Icon const &icon, bool selected, bool hovered,
+                                     int icon_size, bool scale) const = 0;
     virtual void draw_combobox(Painter &painter, Rect const &rect, std::string_view text,
                                bool focused, bool open) const = 0;
     virtual void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
@@ -249,6 +258,7 @@ class Theme {
     virtual float menu_separator_height() const = 0;
     virtual Size measure_tab(std::string_view text) const = 0;
     virtual float list_item_height() const = 0;
+    virtual Size measure_icon_grid_item(std::string_view text, int icon_size) const = 0;
     virtual Size measure_tooltip(std::string_view text) const = 0;
 
     virtual Margins button_padding() const = 0;
@@ -271,6 +281,7 @@ class Theme {
     MenuStyle menu;
     MenuBarStyle menubar;
     TabWidgetStyle tab_widget;
+    IconGridStyle icon_grid;
     ListViewStyle list_view;
     TableViewStyle table_view;
     TreeViewStyle tree_view;

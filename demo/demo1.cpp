@@ -5,6 +5,7 @@
 #include "toolkit/button.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
+#include "toolkit/icon_grid.hpp"
 #include "toolkit/image_loader.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
@@ -172,14 +173,6 @@ int main(int argc, char *argv[]) {
 
     auto tabs = std::make_unique<toolkit::TabWidget>();
     auto *tabs_ptr = tabs.get();
-
-    auto b = std::make_unique<toolkit::Button>("Menu");
-    b->set_flat(true);
-    b->set_background_color(toolkit::Color::rgb(0.9f, 0.75f, 0.6f));
-    b->set_flat(true);
-    b->set_focusable(false);
-    b->set_padding({2, 8, 2, 8});
-    tabs->set_leading_widget(std::move(b));
 
     // ── Tab: Main ──────────────────────────────────────────────────────
     auto tab_main = std::make_unique<toolkit::VBoxLayout>();
@@ -361,7 +354,78 @@ int main(int argc, char *argv[]) {
 
     tabs->add_tab("Inputs", std::move(tab_inputs));
 
-    // ── Tab 3: Songs ─────────────────────────────────────────────────────
+    // ── Tab: Icon Grid ──────────────────────────────────────────────────
+    auto tab_grid = std::make_unique<toolkit::VBoxLayout>();
+    tab_grid->set_margins({20, 20, 20, 20});
+    tab_grid->set_spacing(12);
+
+    auto grid_model = std::make_shared<toolkit::SimpleIconGridModel>();
+    grid_model->set_items({
+        {"Folder", XDG::IconMimeTypes::inodeDirectory},
+        {"Document", XDG::IconMimeTypes::textXGeneric},
+        {"Image", XDG::IconMimeTypes::imageXGeneric},
+        {"Audio", XDG::IconMimeTypes::audioXGeneric},
+        {"Video", XDG::IconMimeTypes::videoXGeneric},
+        {"Archive", XDG::IconMimeTypes::applicationXArchive},
+        {"Executable", XDG::IconMimeTypes::applicationXExecutable},
+        {"Computer", XDG::IconDevices::computer},
+        {"Harddisk", XDG::IconDevices::driveHarddisk},
+        {"Removable", XDG::IconDevices::driveRemovableMedia},
+        {"Keyboard", XDG::IconDevices::inputKeyboard},
+        {"Mouse", XDG::IconDevices::inputMouse},
+        {"Game", XDG::IconDevices::inputGaming},
+        {"Calculator", XDG::IconApplications::accessoriesCalculator},
+        {"Editor", XDG::IconApplications::accessoriesTextEditor},
+        {"Terminal", XDG::IconApplications::utilitiesTerminal},
+        {"Browser", XDG::IconApplications::internetWebBrowser},
+        {"System", XDG::IconApplications::preferencesSystem},
+        {"Error", XDG::IconStatus::dialogError},
+        {"Warning", XDG::IconStatus::dialogWarning},
+        {"Info", XDG::IconStatus::dialogInformation},
+        {"Question", XDG::IconStatus::dialogQuestion},
+    });
+
+    auto grid = std::make_unique<toolkit::IconGrid>(grid_model);
+    auto *grid_ptr = grid.get();
+    grid->on_selection_changed = [](std::optional<size_t> index) {
+        if (index) {
+            spdlog::info("Icon Grid selected: {}", *index);
+        } else {
+            spdlog::info("Icon Grid selection cleared");
+        }
+    };
+
+    auto grid_controls = std::make_unique<toolkit::HBoxLayout>();
+    grid_controls->set_spacing(10);
+    grid_controls->add<toolkit::Label>().set_text("Icon Size:");
+
+    auto &size_slider = grid_controls->add<toolkit::Slider>(1).set_range(16, 128).set_value(48);
+    auto &size_label = grid_controls->add<toolkit::Label>().set_text("48px");
+
+    size_slider.set_on_change([grid_ptr, &size_label](toolkit::Slider &, float v) {
+        auto size = static_cast<int>(v);
+        grid_ptr->set_icon_size(size);
+        size_label.set_text(fmt::format("{}px", size));
+    });
+
+    auto scaling_cb = std::make_unique<toolkit::Checkbox>("Scale Icons");
+    scaling_cb->on_toggle = [grid_ptr](bool checked) { grid_ptr->set_scale_icons(checked); };
+    grid_controls->add_widget(std::move(scaling_cb));
+
+    tab_grid->add_widget(std::move(grid_controls));
+    tab_grid->add_widget(std::move(grid), 1);
+
+    tabs->add_tab("Grid", std::move(tab_grid));
+
+    auto b = std::make_unique<toolkit::Button>("Menu");
+    b->set_flat(true);
+    b->set_background_color(toolkit::Color::rgb(0.9f, 0.75f, 0.6f));
+    b->set_flat(true);
+    b->set_focusable(false);
+    b->set_padding({2, 8, 2, 8});
+    tabs->set_leading_widget(std::move(b));
+
+    // ── Tab: Songs ─────────────────────────────────────────────────────
     auto tab3 = std::make_unique<toolkit::VBoxLayout>();
     tab3->set_margins({20, 20, 20, 20});
     tab3->set_spacing(12);
@@ -421,7 +485,7 @@ int main(int argc, char *argv[]) {
 
     tabs->add_tab("Songs", std::move(tab3));
 
-    // ── Tab 4: Table ──────────────────────────────────────────────────────
+    // ── Tab: Table ──────────────────────────────────────────────────────
     auto tab4 = std::make_unique<toolkit::VBoxLayout>();
     tab4->set_margins({20, 20, 20, 20});
     tab4->set_spacing(12);
@@ -446,7 +510,7 @@ int main(int argc, char *argv[]) {
 
     tabs->add_tab("Table", std::move(tab4));
 
-    // ── Tab 5: Editor ─────────────────────────────────────────────────────
+    // ── Tab: Editor ─────────────────────────────────────────────────────
     auto tab5 = std::make_unique<toolkit::VBoxLayout>();
     tab5->set_margins({20, 20, 20, 20});
     tab5->set_spacing(12);
@@ -547,7 +611,7 @@ int main(int argc, char *argv[]) {
 
     tabs->add_tab("Tree", std::move(tab_tree));
 
-    // ── Tab 7: Tabs (Orientations) ────────────────────────────────────────
+    // ── Tab: Tabs (Orientations) ────────────────────────────────────────
     auto tab6 = std::make_unique<toolkit::VBoxLayout>();
     tab6->set_margins({0, 0, 0, 0});
     tab6->set_spacing(0);

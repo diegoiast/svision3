@@ -245,7 +245,8 @@ void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::strin
     if (show_mnemonics && mnemonic_index >= 0) {
         auto before = title.substr(0, mnemonic_index);
         auto ch = std::string(1, title[mnemonic_index]);
-        auto before_w = before.empty() ? 0.0f : painter.measure_text(before, palette.fonts.size).width;
+        auto before_w =
+            before.empty() ? 0.0f : painter.measure_text(before, palette.fonts.size).width;
         auto ch_w = painter.measure_text(ch, palette.fonts.size).width;
         auto ul_y = baseline + fm.descent * 0.4f;
 
@@ -515,6 +516,56 @@ void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_v
     painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 }
 
+void BaseTheme::draw_icon_grid_item(Painter &painter, Rect const &rect, std::string_view text,
+                                    Icon const &icon, bool selected, bool hovered, int icon_size,
+                                    bool scale) const {
+    if (selected) {
+        painter.fill_rounded_rect(rect, palette.highlight, 4.0f);
+    } else if (hovered) {
+        auto h = palette.highlight;
+        h.a = 0.2f;
+        painter.fill_rounded_rect(rect, h, 4.0f);
+    }
+
+    auto icon_area_x = rect.x + (rect.width - static_cast<float>(icon_size)) / 2.0f;
+    auto icon_area_y = rect.y + 4.0f;
+    if (icon) {
+        if (scale) {
+            painter.draw_image_scaled(*icon,
+                                      {icon_area_x, icon_area_y, static_cast<float>(icon_size),
+                                       static_cast<float>(icon_size)});
+        } else {
+            auto icon_x = icon_area_x +
+                          (static_cast<float>(icon_size) - static_cast<float>(icon->width)) / 2.0f;
+            auto icon_y = icon_area_y +
+                          (static_cast<float>(icon_size) - static_cast<float>(icon->height)) / 2.0f;
+            painter.draw_image(*icon, {icon_x, icon_y});
+        }
+    }
+
+    auto fm = painter.font_metrics(palette.fonts.size);
+    auto display_text = std::string(text);
+    auto text_w = painter.measure_text(display_text, palette.fonts.size).width;
+    auto max_text_w = rect.width - 4.0f;
+    if (text_w > max_text_w) {
+        auto suffix = std::string_view{"..."};
+        auto sw = painter.measure_text(suffix, palette.fonts.size).width;
+        if (sw < max_text_w) {
+            while (!display_text.empty() && text_w + sw > max_text_w) {
+                display_text.pop_back();
+                text_w = painter.measure_text(display_text, palette.fonts.size).width;
+            }
+            display_text += suffix;
+            text_w = painter.measure_text(display_text, palette.fonts.size).width;
+        }
+    }
+
+    auto text_x = rect.x + (rect.width - text_w) / 2.0f;
+    auto text_y = icon_area_y + static_cast<float>(icon_size) + 4.0f + fm.ascent;
+    auto text_c = selected ? palette.highlighted_text : palette.text;
+    painter.draw_text(display_text, Point{text_x, text_y}, text_c, palette.fonts.size);
+}
+
 void BaseTheme::draw_list_background(Painter &painter, Rect const &rect, bool focused) const {
     painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
 }
@@ -528,7 +579,6 @@ void BaseTheme::draw_tree_item(Painter &painter, Rect const &rect, std::string_v
                                bool alternate) const {
     auto const &style = tree_view;
     auto fm = painter.font_metrics(palette.fonts.size);
-
     auto x_offset = style.item_padding_h + depth * style.indent;
 
     if (has_children) {
@@ -547,7 +597,6 @@ void BaseTheme::draw_tree_item(Painter &painter, Rect const &rect, std::string_v
                                   {arrow_x + arrow_size, arrow_y}, palette.text);
         }
     }
-
     x_offset += style.indent + 4.0f;
 
     auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
@@ -577,7 +626,6 @@ void BaseTheme::draw_combobox(Painter &painter, Rect const &rect, std::string_vi
     auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
 
     painter.draw_filled_frame(rect, palette.base, border, palette, true);
-
     if (!text.empty()) {
         auto clip_w = rect.width - style.padding.left - style.padding.right - 16.0f;
         painter.push_clip({style.padding.left, 0, clip_w, rect.height});
@@ -609,14 +657,14 @@ void BaseTheme::draw_combobox_item(Painter &painter, Rect const &rect, std::stri
 }
 
 void BaseTheme::draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const {
-    painter.fill_rounded_rect(rect, palette.tooltip, palette.corner_radius);
-    painter.draw_rounded_rect(rect, palette.border, palette.corner_radius, palette.border_width);
-
     auto fm = painter.font_metrics(palette.fonts.size);
     auto &palette = Theme::current().palette;
     auto const &style = tooltip;
     auto text_x = rect.x + style.padding;
     auto baseline_y = rect.y + style.padding + fm.ascent;
+
+    painter.fill_rounded_rect(rect, palette.tooltip, palette.corner_radius);
+    painter.draw_rounded_rect(rect, palette.border, palette.corner_radius, palette.border_width);
     painter.draw_text(text, {text_x, baseline_y}, palette.text, palette.fonts.size);
 }
 
@@ -764,14 +812,15 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
             auto sel_end = (i == selection_end_line) ? selection_end_col : line_end_col;
 
             if (sel_start < sel_end) {
-                auto sx =
-                    tx0 + (sel_start > 0
-                               ? painter.measure_text(lines[i].substr(0, sel_start),
-                                                   palette.fonts.size, FontFamily::Monospace)
-                                     .width
-                               : 0.0f);
-                auto ex = tx0 + painter.measure_text(lines[i].substr(0, sel_end),
-                                                  palette.fonts.size, FontFamily::Monospace)
+                auto sx = tx0 + (sel_start > 0
+                                     ? painter
+                                           .measure_text(lines[i].substr(0, sel_start),
+                                                         palette.fonts.size, FontFamily::Monospace)
+                                           .width
+                                     : 0.0f);
+                auto ex = tx0 + painter
+                                    .measure_text(lines[i].substr(0, sel_end), palette.fonts.size,
+                                                  FontFamily::Monospace)
                                     .width;
                 if (i != selection_end_line) {
                     ex += palette.fonts.size * 0.4f;
@@ -792,7 +841,8 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
             auto cy = rect.y + line_height * static_cast<float>(cursor_line - first_visible_line);
             auto cx = tx0;
             if (cursor_col > 0 && cursor_line < static_cast<int>(lines.size())) {
-                cx += painter.measure_text(lines[cursor_line].substr(0, cursor_col),
+                cx += painter
+                          .measure_text(lines[cursor_line].substr(0, cursor_col),
                                         palette.fonts.size, FontFamily::Monospace)
                           .width;
             }
@@ -926,6 +976,17 @@ Size BaseTheme::measure_tab(std::string_view text) const {
     return {w, h};
 }
 float BaseTheme::list_item_height() const { return 24.0f; }
+
+Size BaseTheme::measure_icon_grid_item(std::string_view text, int icon_size) const {
+    auto *p = detail::current_platform();
+    auto text_w = p->measure_text(text, palette.fonts.size).width;
+    auto fm = p->font_metrics(palette.fonts.size);
+
+    auto w = std::max(static_cast<float>(icon_size), text_w) + 8.0f;
+    auto h = static_cast<float>(icon_size) + fm.height + 12.0f;
+    return {w, h};
+}
+
 Size BaseTheme::measure_tooltip(std::string_view text) const {
     auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
 

@@ -54,6 +54,9 @@ class BaseTheme : public Theme {
                         bool has_children, bool expanded, bool selected, bool hovered,
                         bool alternate) const override;
     void draw_tree_background(Painter &painter, Rect const &rect, bool focused) const override;
+    void draw_icon_grid_item(Painter &painter, Rect const &rect, std::string_view text,
+                             Icon const &icon, bool selected, bool hovered,
+                             int icon_size, bool scale) const override;
     void draw_combobox(Painter &painter, Rect const &rect, std::string_view text, bool focused,
                        bool open) const override;
     void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
@@ -84,6 +87,7 @@ class BaseTheme : public Theme {
     float menu_separator_height() const override;
     Size measure_tab(std::string_view text) const override;
     float list_item_height() const override;
+    Size measure_icon_grid_item(std::string_view text, int icon_size) const override;
     Size measure_tooltip(std::string_view text) const override;
     Margins button_padding() const override;
     Margins line_input_padding() const override;
