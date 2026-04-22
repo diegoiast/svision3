@@ -18,45 +18,19 @@ std::string SimpleIconGridModel::text_at(size_t index) const {
     return items_[index].text;
 }
 
-Icon SimpleIconGridModel::icon_at(size_t index, int size, bool snap) const {
+std::string SimpleIconGridModel::tooltip_at(size_t index) const {
+    if (index >= items_.size()) {
+        return "";
+    }
+    auto const &item = items_[index];
+    return item.tooltip.empty() ? item.text : item.tooltip;
+}
+
+Icon SimpleIconGridModel::icon_at(size_t index, int /*size*/, bool /*snap*/) const {
     if (index >= items_.size()) {
         return nullptr;
     }
-
-    auto &item = const_cast<Item &>(items_[index]);
-    auto target_size = size;
-
-    if (snap) {
-        // Snap to standard icon sizes for better loader compatibility
-        auto best_size = 16;
-        static const int standard_sizes[] = {16, 22, 24, 32, 48, 64, 128, 256};
-        auto min_diff = std::abs(standard_sizes[0] - size);
-        for (auto s : standard_sizes) {
-            auto diff = std::abs(s - size);
-            if (diff < min_diff) {
-                min_diff = diff;
-                best_size = s;
-            }
-        }
-        target_size = best_size;
-    }
-
-    if (item.cached_icon && item.cached_size == target_size) {
-        return item.cached_icon;
-    }
-
-    // Try multiple contexts to find the icon
-    static const char *contexts[] = {"",        "actions",   "apps",   "categories",
-                                     "devices", "mimetypes", "places", "status"};
-    for (auto const *ctx : contexts) {
-        item.cached_icon = Application::instance().load_icon(item.icon_name, target_size, ctx);
-        if (item.cached_icon) {
-            break;
-        }
-    }
-
-    item.cached_size = target_size;
-    return item.cached_icon;
+    return items_[index].icon;
 }
 
 void SimpleIconGridModel::set_items(std::vector<Item> items) {
@@ -67,6 +41,53 @@ void SimpleIconGridModel::set_items(std::vector<Item> items) {
 }
 
 void SimpleIconGridModel::append(Item item) {
+    items_.push_back(std::move(item));
+    if (on_data_changed) {
+        on_data_changed();
+    }
+}
+
+StandardIconModel::StandardIconModel(std::vector<StandardIconItem> items)
+    : items_(std::move(items)) {}
+
+std::string StandardIconModel::text_at(size_t index) const {
+    if (index >= items_.size()) {
+        return "";
+    }
+    return items_[index].text;
+}
+
+std::string StandardIconModel::tooltip_at(size_t index) const {
+    if (index >= items_.size()) {
+        return "";
+    }
+    auto const &item = items_[index];
+    return item.tooltip.empty() ? item.text : item.tooltip;
+}
+
+Icon StandardIconModel::icon_at(size_t index, int size, bool /*snap*/) const {
+    if (index >= items_.size()) {
+        return nullptr;
+    }
+
+    auto &item = items_[index];
+    if (item.cached_icon && item.cached_size == size) {
+        return item.cached_icon;
+    }
+
+    item.cached_icon = Application::instance().load_icon(item.icon_name, size, item.icon_category);
+    item.cached_size = size;
+    return item.cached_icon;
+}
+
+void StandardIconModel::set_items(std::vector<StandardIconItem> items) {
+    items_ = std::move(items);
+    if (on_data_changed) {
+        on_data_changed();
+    }
+}
+
+void StandardIconModel::append(StandardIconItem item) {
     items_.push_back(std::move(item));
     if (on_data_changed) {
         on_data_changed();
@@ -372,7 +393,7 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
             if (hovered_ != index) {
                 hovered_ = index;
                 if (hovered_) {
-                    set_tooltip(model_->text_at(*hovered_));
+                    set_tooltip(model_->tooltip_at(*hovered_));
                 } else {
                     set_tooltip("");
                 }

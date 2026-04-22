@@ -203,37 +203,58 @@ auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::s
     }
 
     auto search_theme = [&](const IconTheme &t) -> std::optional<std::string> {
+        std::string best_path;
+        int best_score = std::numeric_limits<int>::max();
+
+        auto context_lower = std::string(context);
+        std::transform(context_lower.begin(), context_lower.end(), context_lower.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+
         for (const auto &dir : t.directories) {
             auto dir_context_lower = dir.context;
             std::transform(dir_context_lower.begin(), dir_context_lower.end(),
                            dir_context_lower.begin(),
                            [](unsigned char c) { return std::tolower(c); });
-            auto context_lower = std::string(context);
-            std::transform(context_lower.begin(), context_lower.end(), context_lower.begin(),
-                           [](unsigned char c) { return std::tolower(c); });
+
             if (!context.empty() && dir_context_lower != context_lower) {
                 continue;
             }
 
+            int score = std::numeric_limits<int>::max();
+            std::string ext = ".png";
+
             if (dir.type == "scalable") {
                 if (size >= dir.min_size && size <= dir.max_size) {
-                    auto base = std::filesystem::path("themes") / t.name;
-                    auto icon_path = base / dir.path / (std::string(icon_name) + ".svg");
-                    if (std::filesystem::exists(icon_path)) {
-                        return icon_path.string();
-                    }
+                    score = 0;
+                    ext = ".svg";
+                } else {
+                    continue;
                 }
             } else {
-                if (std::abs(dir.size - size) < 8) {
-                    auto base = std::filesystem::path("themes") / t.name / dir.path;
-                    auto icon_path = base / (std::string(icon_name) + ".png");
-                    if (std::filesystem::exists(icon_path)) {
-                        return icon_path.string();
+                if (dir.size == size) {
+                    score = 0;
+                } else if (dir.size > size) {
+                    // Prefer smallest larger icon (downscaling)
+                    score = dir.size - size;
+                } else {
+                    // Upscaling is much less preferred
+                    score = 1000 + (size - dir.size);
+                }
+            }
+
+            if (score < best_score) {
+                auto base = std::filesystem::path("themes") / t.name / dir.path;
+                auto icon_path = base / (std::string(icon_name) + ext);
+                if (std::filesystem::exists(icon_path)) {
+                    best_score = score;
+                    best_path = icon_path.string();
+                    if (score == 0) {
+                        break;
                     }
                 }
             }
         }
-        return std::nullopt;
+        return best_path.empty() ? std::nullopt : std::make_optional(best_path);
     };
 
     auto result = search_theme(*theme);
@@ -254,8 +275,7 @@ auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::s
     return std::nullopt;
 }
 
-auto XdgImageLoader::load(std::string_view icon_name, int size, std::string_view context)
-    -> Icon {
+auto XdgImageLoader::load(std::string_view icon_name, int size, std::string_view context) -> Icon {
     auto path_opt = find_icon_path(icon_name, size, context);
     if (!path_opt) {
         return nullptr;

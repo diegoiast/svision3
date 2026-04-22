@@ -19,6 +19,7 @@ class IconGridModel {
     virtual ~IconGridModel() = default;
     virtual size_t count() const = 0;
     virtual std::string text_at(size_t index) const = 0;
+    virtual std::string tooltip_at(size_t index) const { return text_at(index); }
     virtual Icon icon_at(size_t index, int size, bool snap) const = 0;
 
     std::function<void()> on_data_changed;
@@ -28,15 +29,15 @@ class SimpleIconGridModel : public IconGridModel {
   public:
     struct Item {
         std::string text;
-        std::string icon_name;
-        Icon cached_icon;
-        int cached_size = 0;
+        std::string tooltip;
+        Icon icon;
     };
 
     explicit SimpleIconGridModel(std::vector<Item> items = {});
 
     size_t count() const override { return items_.size(); }
     std::string text_at(size_t index) const override;
+    std::string tooltip_at(size_t index) const override;
     Icon icon_at(size_t index, int size, bool snap) const override;
 
     void set_items(std::vector<Item> items);
@@ -44,6 +45,31 @@ class SimpleIconGridModel : public IconGridModel {
 
   private:
     std::vector<Item> items_;
+};
+
+struct StandardIconItem {
+    std::string text;
+    std::string tooltip;
+    std::string icon_name;
+    std::string icon_category;
+    mutable Icon cached_icon;
+    mutable int cached_size = -1;
+};
+
+class StandardIconModel : public IconGridModel {
+  public:
+    explicit StandardIconModel(std::vector<StandardIconItem> items = {});
+
+    size_t count() const override { return items_.size(); }
+    std::string text_at(size_t index) const override;
+    std::string tooltip_at(size_t index) const override;
+    Icon icon_at(size_t index, int size, bool snap) const override;
+
+    void set_items(std::vector<StandardIconItem> items);
+    void append(StandardIconItem item);
+
+  private:
+    std::vector<StandardIconItem> items_;
 };
 
 class IconGrid : public Widget {

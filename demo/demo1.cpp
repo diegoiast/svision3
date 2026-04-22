@@ -26,6 +26,7 @@
 #include "toolkit/tree_view.hpp"
 #include "toolkit/window.hpp"
 #include <fstream>
+#include <iterator>
 #include <nfd.h>
 #include <regex>
 #include <set>
@@ -360,31 +361,75 @@ int main(int argc, char *argv[]) {
     tab_grid->set_margins({20, 20, 20, 20});
     tab_grid->set_spacing(12);
 
-    auto grid_model = std::make_shared<toolkit::SimpleIconGridModel>();
-    grid_model->set_items({
-        {"Folder", XDG::IconMimeTypes::inodeDirectory},
-        {"Document", XDG::IconMimeTypes::textXGeneric},
-        {"Image", XDG::IconMimeTypes::imageXGeneric},
-        {"Audio", XDG::IconMimeTypes::audioXGeneric},
-        {"Video", XDG::IconMimeTypes::videoXGeneric},
-        {"Archive", XDG::IconMimeTypes::applicationXArchive},
-        {"Executable", XDG::IconMimeTypes::applicationXExecutable},
-        {"Computer", XDG::IconDevices::computer},
-        {"Harddisk", XDG::IconDevices::driveHarddisk},
-        {"Removable", XDG::IconDevices::driveRemovableMedia},
-        {"Keyboard", XDG::IconDevices::inputKeyboard},
-        {"Mouse", XDG::IconDevices::inputMouse},
-        {"Game", XDG::IconDevices::inputGaming},
-        {"Calculator", XDG::IconApplications::accessoriesCalculator},
-        {"Editor", XDG::IconApplications::accessoriesTextEditor},
-        {"Terminal", XDG::IconApplications::utilitiesTerminal},
-        {"Browser", XDG::IconApplications::internetWebBrowser},
-        {"System", XDG::IconApplications::preferencesSystem},
-        {"Error", XDG::IconStatus::dialogError},
-        {"Warning", XDG::IconStatus::dialogWarning},
-        {"Info", XDG::IconStatus::dialogInformation},
-        {"Question", XDG::IconStatus::dialogQuestion},
-    });
+    auto grid_model =
+        std::make_shared<toolkit::StandardIconModel>(std::vector<toolkit::StandardIconItem>{
+            {.text = "Folder",
+             .icon_name = XDG::IconMimeTypes::inodeDirectory,
+             .icon_category = XDG::IconContexts::places},
+            {.text = "Document",
+             .icon_name = XDG::IconMimeTypes::textXGeneric,
+             .icon_category = XDG::IconContexts::mimeTypes},
+            {.text = "Image",
+             .icon_name = XDG::IconMimeTypes::imageXGeneric,
+             .icon_category = XDG::IconContexts::mimeTypes},
+            {.text = "Audio",
+             .icon_name = XDG::IconMimeTypes::audioXGeneric,
+             .icon_category = XDG::IconContexts::mimeTypes},
+            {.text = "Video",
+             .icon_name = XDG::IconMimeTypes::videoXGeneric,
+             .icon_category = XDG::IconContexts::mimeTypes},
+            {.text = "Archive",
+             .icon_name = XDG::IconMimeTypes::applicationXArchive,
+             .icon_category = XDG::IconContexts::mimeTypes},
+            {.text = "Executable",
+             .icon_name = XDG::IconMimeTypes::applicationXExecutable,
+             .icon_category = XDG::IconContexts::mimeTypes},
+            {.text = "Computer",
+             .icon_name = XDG::IconDevices::computer,
+             .icon_category = XDG::IconContexts::devices},
+            {.text = "Harddisk",
+             .icon_name = XDG::IconDevices::driveHarddisk,
+             .icon_category = XDG::IconContexts::devices},
+            {.text = "Removable",
+             .icon_name = XDG::IconDevices::driveRemovableMedia,
+             .icon_category = XDG::IconContexts::devices},
+            {.text = "Keyboard",
+             .icon_name = XDG::IconDevices::inputKeyboard,
+             .icon_category = XDG::IconContexts::devices},
+            {.text = "Mouse",
+             .icon_name = XDG::IconDevices::inputMouse,
+             .icon_category = XDG::IconContexts::devices},
+            {.text = "Game",
+             .icon_name = XDG::IconDevices::inputGaming,
+             .icon_category = XDG::IconContexts::devices},
+            {.text = "Calculator",
+             .icon_name = XDG::IconApplications::accessoriesCalculator,
+             .icon_category = XDG::IconContexts::applications},
+            {.text = "Editor",
+             .icon_name = XDG::IconApplications::accessoriesTextEditor,
+             .icon_category = XDG::IconContexts::applications},
+            {.text = "Terminal",
+             .icon_name = XDG::IconApplications::utilitiesTerminal,
+             .icon_category = XDG::IconContexts::applications},
+            {.text = "Browser",
+             .icon_name = XDG::IconApplications::internetWebBrowser,
+             .icon_category = XDG::IconContexts::applications},
+            {.text = "System",
+             .icon_name = XDG::IconApplications::preferencesSystem,
+             .icon_category = XDG::IconContexts::categories},
+            {.text = "Error",
+             .icon_name = XDG::IconStatus::dialogError,
+             .icon_category = XDG::IconContexts::status},
+            {.text = "Warning",
+             .icon_name = XDG::IconStatus::dialogWarning,
+             .icon_category = XDG::IconContexts::status},
+            {.text = "Info",
+             .icon_name = XDG::IconStatus::dialogInformation,
+             .icon_category = XDG::IconContexts::status},
+            {.text = "Question",
+             .icon_name = XDG::IconStatus::dialogQuestion,
+             .icon_category = XDG::IconContexts::status},
+        });
 
     auto grid = std::make_unique<toolkit::IconGrid>(grid_model);
     auto *grid_ptr = grid.get();
@@ -403,7 +448,7 @@ int main(int argc, char *argv[]) {
     grid_controls->set_spacing(10);
     grid_controls->add<toolkit::Label>().set_text("Icon Size:");
 
-    auto &size_slider = grid_controls->add<toolkit::Slider>(1).set_range(16, 128).set_value(48);
+    auto &size_slider = grid_controls->add<toolkit::Slider>(1).set_range(16, 256).set_value(48);
     auto &size_label = grid_controls->add<toolkit::Label>().set_text("48px");
 
     size_slider.set_on_change([grid_ptr, &size_label](toolkit::Slider &, float v) {
