@@ -150,25 +150,24 @@ static void rgba_to_cairo_argb32(uint8_t *dst, std::vector<uint8_t> const &src) 
 }
 
 void CairoPainter::draw_image(ImageData const &image, Point position) {
-    auto const size = static_cast<size_t>(image.width) * image.height;
-    auto *data = new uint8_t[size * 4];
+    auto surface =
+        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, image.width, image.height);
+    auto *data = cairo_image_surface_get_data(surface);
     rgba_to_cairo_argb32(data, image.pixels);
-    auto surface = cairo_image_surface_create_for_data(data, CAIRO_FORMAT_ARGB32, image.width,
-                                                       image.height, image.width * 4);
+    cairo_surface_mark_dirty(surface);
+
     cairo_set_source_surface(cr_, surface, position.x, position.y);
     cairo_paint(cr_);
     cairo_surface_destroy(surface);
-    delete[] data;
 }
 
 void CairoPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
-    auto const size = static_cast<size_t>(image.width) * image.height;
-    auto *data = new uint8_t[size * 4];
-
-    auto surface = cairo_image_surface_create_for_data(data, CAIRO_FORMAT_ARGB32, image.width,
-                                                       image.height, image.width * 4);
-
+    auto surface =
+        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, image.width, image.height);
+    auto *data = cairo_image_surface_get_data(surface);
     rgba_to_cairo_argb32(data, image.pixels);
+    cairo_surface_mark_dirty(surface);
+
     cairo_save(cr_);
     cairo_translate(cr_, dest.x, dest.y);
     cairo_scale(cr_, static_cast<double>(dest.width) / image.width,
@@ -179,7 +178,6 @@ void CairoPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     cairo_restore(cr_);
 
     cairo_surface_destroy(surface);
-    delete[] data;
 }
 
 Size CairoPainter::measure_text(std::string_view text, float font_size, FontFamily font) {

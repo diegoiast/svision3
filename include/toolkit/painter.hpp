@@ -18,9 +18,9 @@ class Painter {
     virtual ~Painter() = default;
 
     struct FontMetrics {
-        float ascent;
-        float descent;
-        float height;
+        float ascent = 0;
+        float descent = 0;
+        float height = 0;
     };
 
     enum class LineStyle { Solid, Dashed, Dotted };

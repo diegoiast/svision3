@@ -10,7 +10,7 @@ namespace toolkit {
 
 struct MouseEvent {
     enum class Type { Press, Release, Move, Drag, Scroll, Leave };
-    Type type;
+    Type type = Type::Move;
     Point position;
     int button = 0;
     int click_count = 1;

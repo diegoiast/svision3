@@ -474,7 +474,7 @@ static void process_key(WaylandPlatformApplication *app, uint32_t key) {
     ke.shift = app->mod_shift;
     ke.ctrl = app->mod_ctrl;
     ke.alt = app->mod_alt;
-    ke.super = app->mod_ctrl;
+    ke.super = app->mod_super;
     ke.key = xkb_to_key(sym);
 
     if (ke.ctrl || ke.alt) {
@@ -782,6 +782,18 @@ WaylandPlatformApplication::~WaylandPlatformApplication() {
     }
     if (seat) {
         wl_seat_destroy(seat);
+    }
+    if (decoration_manager) {
+        zxdg_decoration_manager_v1_destroy(decoration_manager);
+    }
+    if (viewporter) {
+        wp_viewporter_destroy(viewporter);
+    }
+    if (fractional_scale_manager) {
+        wp_fractional_scale_manager_v1_destroy(fractional_scale_manager);
+    }
+    if (data_device_manager) {
+        wl_data_device_manager_destroy(data_device_manager);
     }
     if (wm_base) {
         xdg_wm_base_destroy(wm_base);
