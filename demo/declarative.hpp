@@ -15,6 +15,7 @@
 #include "toolkit/spin_box.hpp"
 #include "toolkit/tab_widget.hpp"
 
+#include <toolkit/icon_grid.hpp>
 #include <toolkit/list_view.hpp>
 #include <toolkit/menu.hpp>
 #include <toolkit/menubar.hpp>
@@ -33,6 +34,7 @@ struct MenuElement;
 template <typename T> struct Element {
     std::unique_ptr<T> w;
     toolkit::Command *last_cmd_ = nullptr;
+    bool expand_ = false;
     Element(std::unique_ptr<T> widget) : w(std::move(widget)) {}
     Element(Element &&) = default;
     Element &operator=(Element &&) = default;
@@ -145,6 +147,42 @@ template <typename T> struct Element {
         return std::move(*this);
     }
 
+    Element icon_size(int size) {
+        if constexpr (std::is_same_v<T, toolkit::IconGrid>) {
+            w->set_icon_size(size);
+        } else {
+            static_assert(std::is_same_v<T, void>, "icon_size only works on IconGrid");
+        }
+        return std::move(*this);
+    }
+
+    Element scale_icons(bool scale) {
+        if constexpr (std::is_same_v<T, toolkit::IconGrid>) {
+            w->set_scale_icons(scale);
+        } else {
+            static_assert(std::is_same_v<T, void>, "scale_icons only works on IconGrid");
+        }
+        return std::move(*this);
+    }
+
+    Element on_selection_changed(std::function<void(std::set<size_t> const &)> f) {
+        if constexpr (std::is_same_v<T, toolkit::IconGrid>) {
+            w->on_selection_changed = std::move(f);
+        } else {
+            static_assert(std::is_same_v<T, void>, "on_selection_changed only works on IconGrid");
+        }
+        return std::move(*this);
+    }
+
+    Element on_item_activated(std::function<void(size_t)> f) {
+        if constexpr (std::is_same_v<T, toolkit::IconGrid>) {
+            w->on_item_activated = std::move(f);
+        } else {
+            static_assert(std::is_same_v<T, void>, "on_item_activated only works on IconGrid");
+        }
+        return std::move(*this);
+    }
+
     // Element-specific setters
     Element value(float v) {
         w->set_value(v);
@@ -189,6 +227,23 @@ template <typename T> struct Element {
 
     template <typename W> Element add(std::unique_ptr<W> child, int stretch = 0) {
         w->add_widget(std::move(child), stretch);
+        return std::move(*this);
+    }
+
+    Element expand() {
+        expand_ = true;
+        return std::move(*this);
+    }
+
+    template <typename W> Element operator|(Element<W> &&child) {
+        int stretch = child.expand_ ? 1 : 0;
+        w->add_widget(std::move(child.w), stretch, toolkit::Alignment::Fill);
+        return std::move(*this);
+    }
+
+    template <typename W> Element operator|(Element<W> &child) {
+        int stretch = child.expand_ ? 1 : 0;
+        w->add_widget(std::move(child.w), stretch, toolkit::Alignment::Fill);
         return std::move(*this);
     }
 
@@ -414,6 +469,10 @@ inline Element<toolkit::SpinBox> spin_box(int value = 0, int min = 0, int max = 
 
 inline Element<toolkit::Combobox> combobox(std::vector<std::string> items) {
     return Element<toolkit::Combobox>(std::make_unique<toolkit::Combobox>(std::move(items)));
+}
+
+inline Element<toolkit::IconGrid> icon_grid(std::shared_ptr<toolkit::IconGridModel> model) {
+    return Element<toolkit::IconGrid>(std::make_unique<toolkit::IconGrid>(model));
 }
 
 inline Element<toolkit::Label> spacer() {
