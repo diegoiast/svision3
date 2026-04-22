@@ -3,11 +3,12 @@
 
 #pragma once
 
-#include "toolkit/widget.hpp"
 #include "toolkit/image_loader.hpp"
+#include "toolkit/widget.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -59,9 +60,14 @@ class IconGrid : public Widget {
     bool scale_icons() const { return scale_icons_; }
 
     std::optional<size_t> selected_index() const { return cursor_; }
+    std::set<size_t> selected_indices() const { return selected_indices_; }
     IconGrid &set_selected(std::optional<size_t> index);
+    IconGrid &toggle_selection(size_t index);
+    IconGrid &select_range(size_t from, size_t to);
+    IconGrid &select_in_rect(Rect const &r);
+    Rect rubber_selection_rect() const;
 
-    std::function<void(std::optional<size_t> index)> on_selection_changed;
+    std::function<void(std::set<size_t> const &indices)> on_selection_changed;
     std::function<void(size_t index)> on_item_activated;
 
     void paint(Painter &painter) override;
@@ -69,6 +75,7 @@ class IconGrid : public Widget {
     bool handle_key(KeyEvent const &event) override;
     void set_rect(Rect const &rect) override;
     Size size_hint() const override;
+    Widget *widget_at(Point p) override;
 
   private:
     struct LayoutInfo {
@@ -89,8 +96,14 @@ class IconGrid : public Widget {
     int icon_size_ = 48;
     bool scale_icons_ = false;
     std::optional<size_t> cursor_;
+    std::set<size_t> selected_indices_;
     std::optional<size_t> hovered_;
+    std::optional<size_t> selection_anchor_;
     float scroll_offset_ = 0;
+    bool rubber_selecting_ = false;
+    bool rubber_add_ = false;
+    Point rubber_start_;
+    Point rubber_end_;
 };
 
 } // namespace toolkit

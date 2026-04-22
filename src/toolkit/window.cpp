@@ -452,6 +452,10 @@ void Window::handle_mouse(MouseEvent const &event) {
             captured_widget_ = nullptr;
         }
 
+        if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
+            update_tooltip(captured_widget_, event.position);
+        }
+
         if (needs_redraw) {
             request_redraw("event (captured)");
         }
@@ -667,6 +671,7 @@ Window &Window::resize_to_fit() {
 
 void Window::update_tooltip(Widget *under, Point mouse_pos) {
     if (under == tooltip_widget_) {
+        tooltip_mouse_pos_ = mouse_pos;
         if (tooltip_visible_ && under && under->tooltip() != tooltip_text_) {
             tooltip_text_ = under->tooltip();
             if (!tooltip_text_.empty()) {

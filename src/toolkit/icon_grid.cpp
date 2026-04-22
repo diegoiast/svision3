@@ -135,9 +135,14 @@ IconGrid &IconGrid::set_selected(std::optional<size_t> index) {
     if (cursor_ == index) {
         return *this;
     }
+    auto old_indices = selected_indices_;
     cursor_ = index;
-    if (on_selection_changed) {
-        on_selection_changed(cursor_);
+    selected_indices_.clear();
+    if (cursor_) {
+        selected_indices_.insert(*cursor_);
+    }
+    if (selected_indices_ != old_indices && on_selection_changed) {
+        on_selection_changed(selected_indices_);
     }
     if (cursor_) {
         scroll_to(*cursor_);
@@ -146,6 +151,89 @@ IconGrid &IconGrid::set_selected(std::optional<size_t> index) {
         window_->request_redraw();
     }
     return *this;
+}
+
+IconGrid &IconGrid::toggle_selection(size_t index) {
+    if (selected_indices_.contains(index)) {
+        selected_indices_.erase(index);
+    } else {
+        selected_indices_.insert(index);
+    }
+    cursor_ = index;
+    if (on_selection_changed) {
+        on_selection_changed(selected_indices_);
+    }
+    if (window_) {
+        window_->request_redraw();
+    }
+    return *this;
+}
+
+IconGrid &IconGrid::select_range(size_t from, size_t to) {
+    auto start = std::min(from, to);
+    auto end = std::max(from, to);
+    selected_indices_.clear();
+    for (size_t i = start; i <= end; ++i) {
+        selected_indices_.insert(i);
+    }
+    cursor_ = to;
+    if (on_selection_changed) {
+        on_selection_changed(selected_indices_);
+    }
+    scroll_to(to);
+    if (window_) {
+        window_->request_redraw();
+    }
+    return *this;
+}
+
+IconGrid &IconGrid::select_in_rect(Rect const &r) {
+    if (!model_) {
+        return *this;
+    }
+
+    auto old_indices = selected_indices_;
+    auto const &theme = Theme::current();
+    auto const &style = theme.icon_grid;
+    auto layout = compute_layout();
+    auto count = model_->count();
+
+    for (size_t i = 0; i < count; ++i) {
+        auto col = i % layout.columns;
+        auto row = i / layout.columns;
+
+        auto ix =
+            style.padding.left + static_cast<float>(col) * (layout.item_width + style.spacing);
+        auto iy =
+            style.padding.top + static_cast<float>(row) * (layout.item_height + style.spacing);
+        auto iw = layout.item_width;
+        auto ih = layout.item_height;
+
+        auto intersects =
+            (ix < r.x + r.width) && (ix + iw > r.x) && (iy < r.y + r.height) && (iy + ih > r.y);
+        if (intersects) {
+            selected_indices_.insert(i);
+        }
+    }
+
+    if (selected_indices_ != old_indices && on_selection_changed && !rubber_selecting_) {
+        on_selection_changed(selected_indices_);
+    }
+    if (window_) {
+        window_->request_redraw();
+    }
+    return *this;
+}
+
+Rect IconGrid::rubber_selection_rect() const {
+    if (!rubber_selecting_) {
+        return {};
+    }
+    auto x = std::min(rubber_start_.x, rubber_end_.x);
+    auto y = std::min(rubber_start_.y, rubber_end_.y);
+    auto w = std::abs(rubber_end_.x - rubber_start_.x);
+    auto h = std::abs(rubber_end_.y - rubber_start_.y);
+    return {x, y, w, h};
 }
 
 void IconGrid::paint(Painter &painter) {
@@ -186,7 +274,7 @@ void IconGrid::paint(Painter &painter) {
             break;
         }
 
-        auto is_selected = cursor_.has_value() && *cursor_ == i;
+        auto is_selected = selected_indices_.contains(i);
         auto is_hovered = hovered_.has_value() && *hovered_ == i;
 
         auto disp = display_icon_size();
@@ -197,6 +285,12 @@ void IconGrid::paint(Painter &painter) {
 
     painter.pop_translation();
     painter.pop_clip();
+
+    if (rubber_selecting_) {
+        auto rr = rubber_selection_rect();
+        painter.fill_rect(rr, {0.2f, 0.2f, 0.6f, 0.3f});
+        painter.draw_rect(rr, {0.2f, 0.2f, 0.6f, 1.0f}, 1.0f);
+    }
 
     auto total_h = style.padding.top + style.padding.bottom +
                    static_cast<float>(layout.rows) * layout.item_height +
@@ -240,19 +334,84 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
     switch (event.type) {
     case MouseEvent::Type::Press:
         set_focused(true);
-        set_selected(index);
+        if (index) {
+            if (event.ctrl) {
+                toggle_selection(*index);
+            } else if (event.shift && cursor_) {
+                select_range(*cursor_, *index);
+            } else {
+                set_selected(index);
+            }
+            rubber_selecting_ = false;
+        } else {
+            rubber_add_ = event.ctrl;
+            if (!event.ctrl) {
+                selected_indices_.clear();
+            }
+            rubber_selecting_ = true;
+            rubber_start_ = p_scrolled;
+            rubber_end_ = p_scrolled;
+            auto rr = rubber_selection_rect();
+            rr.y -= scroll_offset_;
+            select_in_rect(rr);
+        }
         return true;
     case MouseEvent::Type::Move:
-        if (hovered_ != index) {
-            hovered_ = index;
-            if (hovered_) {
-                set_tooltip(model_->text_at(*hovered_));
-            } else {
-                set_tooltip("");
+        if (rubber_selecting_) {
+            rubber_end_ = p_scrolled;
+            auto rr = rubber_selection_rect();
+            rr.y -= scroll_offset_;
+            if (!rubber_add_) {
+                selected_indices_.clear();
             }
-            if (window_) {
-                window_->request_redraw();
+            select_in_rect(rr);
+            if (!selected_indices_.empty()) {
+                cursor_ = *selected_indices_.begin();
             }
+        } else {
+            if (hovered_ != index) {
+                hovered_ = index;
+                if (hovered_) {
+                    set_tooltip(model_->text_at(*hovered_));
+                } else {
+                    set_tooltip("");
+                }
+            }
+        }
+        if (window_) {
+            window_->request_redraw();
+        }
+        return true;
+    case MouseEvent::Type::Drag:
+        if (rubber_selecting_) {
+            rubber_end_ = p_scrolled;
+            auto rr = rubber_selection_rect();
+            rr.y -= scroll_offset_;
+            if (!rubber_add_) {
+                selected_indices_.clear();
+            }
+            select_in_rect(rr);
+            if (!selected_indices_.empty()) {
+                cursor_ = *selected_indices_.begin();
+            }
+        }
+        if (window_) {
+            window_->request_redraw();
+        }
+        return true;
+    case MouseEvent::Type::Release:
+        if (rubber_selecting_) {
+            rubber_selecting_ = false;
+            rubber_add_ = false;
+            if (!selected_indices_.empty()) {
+                cursor_ = *selected_indices_.begin();
+            }
+            if (on_selection_changed) {
+                on_selection_changed(selected_indices_);
+            }
+        }
+        if (window_) {
+            window_->request_redraw();
         }
         return true;
     case MouseEvent::Type::Leave:
@@ -320,6 +479,22 @@ bool IconGrid::handle_key(KeyEvent const &event) {
     case Key::End:
         new_cursor = count - 1;
         break;
+    case Key::A:
+        if (event.ctrl) {
+            selected_indices_.clear();
+            for (size_t i = 0; i < count; ++i) {
+                selected_indices_.insert(i);
+            }
+            cursor_ = 0;
+            if (on_selection_changed) {
+                on_selection_changed(selected_indices_);
+            }
+            if (window_) {
+                window_->request_redraw();
+            }
+            return true;
+        }
+        break;
     case Key::Enter:
         if (cursor_ && on_item_activated) {
             on_item_activated(*cursor_);
@@ -330,7 +505,13 @@ bool IconGrid::handle_key(KeyEvent const &event) {
     }
 
     if (new_cursor != cursor_) {
-        set_selected(new_cursor);
+        if (event.shift && cursor_) {
+            auto anchor = selection_anchor_.value_or(*cursor_);
+            select_range(anchor, *new_cursor);
+        } else {
+            selection_anchor_ = new_cursor;
+            set_selected(new_cursor);
+        }
         return true;
     }
 
@@ -414,6 +595,13 @@ std::optional<size_t> IconGrid::item_at(Point p) const {
     }
 
     return index;
+}
+
+auto IconGrid::widget_at(Point p) -> Widget * {
+    if (!hit_test(p)) {
+        return nullptr;
+    }
+    return this;
 }
 
 void IconGrid::clamp_scroll() {

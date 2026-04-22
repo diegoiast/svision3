@@ -28,6 +28,7 @@
 #include <fstream>
 #include <nfd.h>
 #include <regex>
+#include <set>
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -387,11 +388,14 @@ int main(int argc, char *argv[]) {
 
     auto grid = std::make_unique<toolkit::IconGrid>(grid_model);
     auto *grid_ptr = grid.get();
-    grid->on_selection_changed = [](std::optional<size_t> index) {
-        if (index) {
-            spdlog::info("Icon Grid selected: {}", *index);
-        } else {
+    grid->on_selection_changed = [](std::set<size_t> const &indices) {
+        if (indices.empty()) {
             spdlog::info("Icon Grid selection cleared");
+        } else {
+            spdlog::info("Icon Grid selected: {} item(s)", indices.size());
+            for (auto i : indices) {
+                spdlog::info("  - index {}", i);
+            }
         }
     };
 

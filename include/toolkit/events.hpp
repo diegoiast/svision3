@@ -44,6 +44,7 @@ enum class Key {
     RightControl,
     LeftSuper,
     RightSuper,
+    A,
     F1,
     F2,
     F3,

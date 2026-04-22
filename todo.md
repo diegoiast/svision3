@@ -2,9 +2,9 @@
 
 Legend: [x] done [ ] pending
 
-Implemented: 111
-Total: 209
-Progress: 111 / 209 ≈ 53%
+Implemented: 112
+Total: 207
+Progress: 112 / 207 ≈ 54%
 
 This document is not final (note that the menus and toolbars support is done in
 another document). The idea is to reach version 0.9 with all these items marked.
@@ -23,37 +23,38 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 8. [x] Conan package manager (cairo, spdlog)
 9. [x] Cairo 2D drawing abstraction (Painter)
 10. [x] High DPI / fractional scaling (all platforms)
-11. [ ] OpenGL rendering backend on Linux/Windows blurry fonts.
-12. [ ] Cairo has blurry fonts.
-13. [ ] OpenGL uses cairo for painting text. Should use stb_ttf or semething.
-14. [x] Command interfaces for menus/toolbars and app shortcuts.
-15. [ ] Backends have open/cairo/whatevre backed in. We need to separate them.
-16. [x] Paintings inside widgets should start at (0,0) not position at window.
-17. [ ] Scroll size - detect at runtime.
-18. [ ] Natural scrolling - detect at runtime.
-19. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
-20. [ ] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
-21. [ ] Shortcuts per platform. Functions to read shortcuts per platform on runtime.
-22. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
-23. [x] Generic timer system (start_timer / stop_timer)
-24. [x] Popup/overlay mechanism (used by Combobox)
-25. [x] Painter helpers (draw_frame, draw_focus_ring, fill_circle, etc.)
-26. [x] Font metrics for consistent text positioning
-27. [x] Clipping (push_clip / pop_clip).
-28. [x] Screenshot / save_to_png.
-29. [ ] Resource / asset management.
-30. [ ] Logging levels configurable at runtime.
-31. [x] Clipboard (copy/paste, all platforms).
-32. [ ] Drag and drop.
-33. [ ] Font selection / custom fonts.
-34. [ ] Image loading / rendering.
-35. [ ] Animation framework (transitions, easing).
-36. [ ] Undo/redo framework.
-37. [ ] Signals/slots (beyond single std::function) - or alternative.
-38. [ ] Serialization (save/restore widget state).
-39. [ ] Declarative UI support.
-40. [ ] All setters should return a reference to self - for chainability.
-41. [ ] Winwodws should have a Window::add<T> template that
+11. [x] OpenGL rendering backend on Linux/Windows blurry fonts.
+12. [ ] OpenGl artifacts - specially on buttons on Plasma.
+13. [x] Cairo has blurry fonts.
+14. [ ] OpenGL uses cairo for painting text. Should use stb_ttf or semething.
+15. [x] Command interfaces for menus/toolbars and app shortcuts.
+16. [x] Backends have open/cairo/whatevre backed in. We need to separate them.
+17. [x] Paintings inside widgets should start at (0,0) not position at window.
+18. [ ] Scroll size - detect at runtime.
+19. [ ] Natural scrolling - detect at runtime.
+20. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
+21. [ ] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
+22. [ ] Shortcuts per platform. Functions to read shortcuts per platform on runtime.
+23. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
+24. [x] Generic timer system (start_timer / stop_timer)
+25. [x] Popup/overlay mechanism (used by Combobox)
+26. [x] Painter helpers (draw_frame, draw_focus_ring, fill_circle, etc.)
+27. [x] Font metrics for consistent text positioning
+28. [x] Clipping (push_clip / pop_clip).
+29. [x] Screenshot / save_to_png.
+30. [ ] Resource / asset management.
+31. [ ] Logging levels configurable at runtime.
+32. [x] Clipboard (copy/paste, all platforms).
+33. [ ] Drag and drop.
+34. [ ] Font selection / custom fonts.
+35. [ ] Image loading / rendering.
+36. [ ] Animation framework (transitions, easing).
+37. [ ] Undo/redo framework.
+38. [ ] Signals/slots (beyond single std::function) - or alternative.
+39. [ ] Serialization (save/restore widget state).
+40. [*] Declarative UI support. - WIP.
+41. [x] All setters should return a reference to self - for chainability.
+42. [x] Winwodws should have a Window::add<T> template that
         internally creates the shared ptr, and returns a reference.
 
 ## Platform – Not Yet Implemented
@@ -70,14 +71,14 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [ ] Wayland clipboard (cross-client).
 1. [x] Wayland tooltips (xdg_popup)
 
-## Widgets [16/37]
+## Widgets [20/37]
 
 1. [x] Button (click callback, hover/pressed states).
 2. [x] Label (text display, shrinkable/clippable)
 3. [x] LineInput (text editing, cursor, blinking, placeholder).
 4. [x] Checkbox (toggle, on_toggle callback).
 5. [x] Checkbox - tristate.
-6. [ ] Checkbox - paint using the theme, not hardcoded drawing.
+6. [x] Checkbox - paint using the theme, not hardcoded drawing.
 7. [x] RadioButton + RadioGroup (mutual exclusivity).
 8. [x] Combobox (dropdown, keyboard nav, selection).
 9. [x] ProgressBar (themed, value 0-1).
@@ -91,24 +92,25 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 17. [ ] ScrollBar / ScrollArea.
 18. [ ] ScrollBar: API for theme/app to tell widgets "have an inline scrollbar" or external.
 19. [x] TextArea (multi-line input).
-20. [ ] TreeView.
+20. [x] TreeView.
 21. [x] TableView / DataGrid.
-22. [x] MenuBar / Menu / ContextMenu. - see [menus-toolbars-commands.md](separate document).
+22. [x] MenuBar / Menu / ContextMenu.
 23. [x] Toolbar.
 24. [x] Toolbar + images.
-25. [ ] Toolbar + custom widgets.
-26. [ ] Dialog (modal/modeles).
-27. [ ] StatusBar.
-28. [ ] GroupBox / Frame.
-29. [ ] Splitter.
-30. [ ] Image widget.
-31. [ ] Markdown label using litehtml+(markdown processor for C++).
-32. [ ] Markdown tooltip.
-33. [ ] Undo/redo system (text area + linuedit).
-34. [ ] Client side decorations with theme.
-35. [ ] Proper filter API for listview and table view.
-36. [ ] MainWindow with docking widgets on the sides.
-37. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
+25. [x] Icon grid (tooltips, selection, rubber band)
+26. [ ] Toolbar + custom widgets.
+27. [ ] Dialog (modal/modeles).
+28. [ ] StatusBar.
+29. [ ] GroupBox / Frame.
+30. [ ] Splitter.
+31. [ ] Image widget.
+32. [ ] Markdown label using litehtml+(markdown processor for C++).
+33. [ ] Markdown tooltip.
+34. [ ] Undo/redo system (text area + linuedit).
+35. [ ] Client side decorations with theme.
+36. [ ] Proper filter API for listview and table view.
+37. [ ] MainWindow with docking widgets on the sides.
+38. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
 
 ## Layout System [6/12]
 
@@ -125,7 +127,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 11. [ ] Method to center point inside rect.
 12. [ ] Paddings/margins should be defined by the theme (unless overriden in the widget).
 
-## Theming & Styling [9/24]
+## Theming & Styling [11/19]
 
 1. [x] Theme/style abstraction (WidgetStyle base struct).
 2. [x] Palette-based theme derivation (Theme::from_palette).
@@ -139,19 +141,13 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 10. [ ] Tint support.
 11. [ ] Scrollbar theming (overlay vs classic per theme).
 12. [ ] Focus ring styling per theme.
-13. [ ] XDG Icon theme support.
+13. [x] XDG Icon theme support.
 14. [ ] Simplify and minimize the theme structs.
 15. [ ] Theme should be in application, then window then widget, in all but app - optional.
-16. [ ] Load them from config file (which theme?).
-17. [ ] Themes should not be an enum, but virtual classes.
-18. [ ] Draw premetives from theme
-    1. [ ] Borders
-    2. [ ] Background
-    3. [ ] Tabs
-    4. [ ] Menus
-    5. [ ] Checkbox
-    6. [ ] Radio buttons
-    7. [ ] Ring focus
+16. [ ] Load theme from config file (which theme?).
+17. [x] Themes should not be an enum, but virtual classes.
+18. [x] Draw premetives from theme.
+19. [ ] Ring focus using theme.
 
 ### Windows 11 Theme
 
@@ -159,8 +155,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ### Plasma theme
 
-1. Button
-    1. [ ] Non-disabled button should have double bottom line
+1. TODO
 
 ### Gnome theme
 
@@ -203,7 +198,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 6. [ ] Attach a menu (long click, or sub-button).
 7. [ ] Button group (mutually exclusive toggles)
 
-## LineInput Features [DONE]
+## LineInput Features [14/15]
 
 1. [x] Text cursor with blinking (NSTimer + steady_clock).
 2. [x] Cursor navigation (arrows, Home, End).
@@ -219,6 +214,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 12. [x] Password mode (masked characters).
 13. [x] Read-only mode.
 14. [x] Input validation / formatting.
+15. [ ] Undo/redo.
 
 ## Widget State & Interaction [DONE]
 
@@ -243,7 +239,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 10. [x] Tab bar overflow (scroll when too many tabs).
 11. [ ] Tabs can have several icons at the title
 
-## ListView Features [14/17]
+## ListView Features [15/17]
 
 1. [x] ListAdapter abstract interface (count, text_at)
 2. [x] StringListAdapter (`vector<string>`, append, remove, set_items)
@@ -259,16 +255,16 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 12. [x] Alternating row colors (boolean toggle)
 13. [x] Multi-selection (Shift+Click range, Shift+Arrow, Cmd+A)
 14. [x] Selection API (selection(), set_selection(), select_all(), clear_selection())
-15. [ ] Column headers: TableView [done].
+15. [x] Column headers: TableView.
 16. [ ] Drag to reorder items.
 17. [ ] Inline editing.
 
 ## Label Features [1/5]
 
-1. [x] Text alignment (left / center / right)
-2. [ ] Word wrap / multi-line
-3. [ ] Selectable textfor checkbox
-4. [ ] Rich text / markup
+1. [x] Text alignment (left / center / right).
+2. [ ] Word wrap / multi-line.
+3. [ ] Selectable text for checkbox.
+4. [ ] Rich text / markup.
 5. [ ] Buddy support - when clicking a label, mark the buddy active.
 
 ## Combobox Features [0/2]
@@ -281,15 +277,6 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [ ] Visual regression tests (screenshot comparison)
 1. [ ] Widget interaction tests (simulated input)
 1. [ ] Appium test - using a dummy platform
-
-## Demo - WIP
-
-1. [x] Tab 1 – Main: label, line input, checkbox, combobox (theme styles), radio buttons (color schemes)
-1. [x] Tab 2 – Progress: progress bar updating every 1 second via timer
-1. [x] Tab 3 – Songs: ListView with Beatles songs, alternating rows, multi-select, filter + async
-1. [x] Tab 4: Button bar: ok, Disabled (grayed), spacer, Quit (right-aligned)
-1. [x] --screenshot= CLI flag for headless PNG export
-1. [ ] Tab 5 – Kitchen Sink (slider, spinbox, group box, all widgets)
 
 ## Sqlite_viewer - WIP
 

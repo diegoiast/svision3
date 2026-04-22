@@ -60,7 +60,7 @@ class Widget {
     }
 
     void invalidate_layout();
-    
+
     virtual Widget &set_layout_dirty(bool dirty);
     virtual bool is_layout_dirty() const { return state.layout_dirty; }
     virtual Widget &set_focusable(bool f);
@@ -128,8 +128,7 @@ class Widget {
 
     Size measure_text(std::string_view text, float font_size,
                       FontFamily font = FontFamily::System) const;
-    Painter::FontMetrics font_metrics(float font_size,
-                                      FontFamily font = FontFamily::System) const;
+    Painter::FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) const;
 
     void set_parent(Widget *p) { parent_ = p; }
     Widget *parent() const { return parent_; }
@@ -138,9 +137,9 @@ class Widget {
     auto map_from_window(Point p) const -> Point;
 
     void set_tooltip(std::string text);
-    std::string const &tooltip() const { return state.tooltip; }
-    
-    Widget& set_background_color(std::optional<Color> c);
+    virtual std::string const &tooltip() const { return state.tooltip; }
+
+    Widget &set_background_color(std::optional<Color> c);
     std::optional<Color> background_color() const { return background_color_; }
 
   protected:
