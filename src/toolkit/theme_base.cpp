@@ -552,7 +552,8 @@ void BaseTheme::draw_icon_grid_item(Painter &painter, Rect const &rect, std::str
         auto sw = painter.measure_text(suffix, palette.fonts.size).width;
         if (sw < max_text_w) {
             while (!display_text.empty() && text_w + sw > max_text_w) {
-                display_text.pop_back();
+                size_t last_pos = Utf8Iterator::prev(display_text, display_text.size());
+                display_text.erase(last_pos);
                 text_w = painter.measure_text(display_text, palette.fonts.size).width;
             }
             display_text += suffix;
