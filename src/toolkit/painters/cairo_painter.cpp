@@ -11,22 +11,33 @@
 
 namespace toolkit {
 
-CairoPainter::CairoPainter(cairo_t *cr) : cr_(cr) {}
+CairoPainter::CairoPainter(cairo_t *cr) : cr_(cr) {
+    auto status = cairo_status(cr_);
+    if (status != CAIRO_STATUS_SUCCESS) {
+        spdlog::error("CairoPainter created with error: {}", cairo_status_to_string(status));
+    }
+}
 
 void CairoPainter::push_clip(Rect const &rect) {
     cairo_save(cr_);
-    cairo_rectangle(cr_, rect.x, rect.y, rect.width, rect.height);
-    cairo_clip(cr_);
+    if (rect.width > 0 && rect.height > 0) {
+        cairo_rectangle(cr_, rect.x, rect.y, rect.width, rect.height);
+        cairo_clip(cr_);
+    }
 }
 
-void CairoPainter::pop_clip() { cairo_restore(cr_); }
+void CairoPainter::pop_clip() { 
+    cairo_restore(cr_); 
+}
 
 void CairoPainter::push_translation(Point p) {
     cairo_save(cr_);
     cairo_translate(cr_, p.x, p.y);
 }
 
-void CairoPainter::pop_translation() { cairo_restore(cr_); }
+void CairoPainter::pop_translation() { 
+    cairo_restore(cr_); 
+}
 
 void CairoPainter::set_line_style(LineStyle style) {
     if (style == LineStyle::Solid) {
@@ -135,6 +146,12 @@ void CairoPainter::draw_text(std::string_view text, Point position, Color const 
 
     std::string s{text};
     cairo_show_text(cr_, s.c_str());
+    
+    auto status = cairo_status(cr_);
+    if (status != CAIRO_STATUS_SUCCESS) {
+        spdlog::error("CairoPainter: draw_text error for '{}': {}", s, cairo_status_to_string(status));
+    }
+
     cairo_restore(cr_);
 }
 
@@ -150,25 +167,45 @@ static void rgba_to_cairo_argb32(uint8_t *dst, std::vector<uint8_t> const &src) 
 }
 
 void CairoPainter::draw_image(ImageData const &image, Point position) {
+    if (image.width <= 0 || image.height <= 0) {
+        return;
+    }
     auto surface =
         cairo_image_surface_create(CAIRO_FORMAT_ARGB32, image.width, image.height);
-    auto *data = cairo_image_surface_get_data(surface);
-    rgba_to_cairo_argb32(data, image.pixels);
-    cairo_surface_mark_dirty(surface);
-
-    cairo_set_source_surface(cr_, surface, position.x, position.y);
-    cairo_paint(cr_);
-    cairo_surface_destroy(surface);
-}
-
-void CairoPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
-    auto surface =
-        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, image.width, image.height);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        cairo_surface_destroy(surface);
+        return;
+    }
     auto *data = cairo_image_surface_get_data(surface);
     rgba_to_cairo_argb32(data, image.pixels);
     cairo_surface_mark_dirty(surface);
 
     cairo_save(cr_);
+    cairo_rectangle(cr_, position.x, position.y, image.width, image.height);
+    cairo_clip(cr_);
+    cairo_set_source_surface(cr_, surface, position.x, position.y);
+    cairo_paint(cr_);
+    cairo_restore(cr_);
+    cairo_surface_destroy(surface);
+}
+
+void CairoPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
+    if (image.width <= 0 || image.height <= 0 || dest.width <= 0 || dest.height <= 0) {
+        return;
+    }
+    auto surface =
+        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, image.width, image.height);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        cairo_surface_destroy(surface);
+        return;
+    }
+    auto *data = cairo_image_surface_get_data(surface);
+    rgba_to_cairo_argb32(data, image.pixels);
+    cairo_surface_mark_dirty(surface);
+
+    cairo_save(cr_);
+    cairo_rectangle(cr_, dest.x, dest.y, dest.width, dest.height);
+    cairo_clip(cr_);
     cairo_translate(cr_, dest.x, dest.y);
     cairo_scale(cr_, static_cast<double>(dest.width) / image.width,
                 static_cast<double>(dest.height) / image.height);
