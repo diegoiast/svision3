@@ -300,12 +300,35 @@ class CoreGraphicsPainter : public Painter {
     e.type = toolkit::MouseEvent::Type::Press;
     e.position = pos;
     e.button = 1;
+    e.click_count = static_cast<int>([event clickCount]);
+    self.owner->handle_mouse(e);
+}
+
+- (void)otherMouseDown:(NSEvent *)event {
+    auto pos = [self convertMouseEvent:event];
+    toolkit::MouseEvent e{};
+    e.type = toolkit::MouseEvent::Type::Press;
+    e.position = pos;
+    e.button = static_cast<int>([event buttonNumber]);
+    e.click_count = static_cast<int>([event clickCount]);
     self.owner->handle_mouse(e);
 }
 
 - (void)mouseUp:(NSEvent *)event {
     auto pos = [self convertMouseEvent:event];
     toolkit::MouseEvent e{toolkit::MouseEvent::Type::Release, pos, 0};
+    self.owner->handle_mouse(e);
+}
+
+- (void)rightMouseUp:(NSEvent *)event {
+    auto pos = [self convertMouseEvent:event];
+    toolkit::MouseEvent e{toolkit::MouseEvent::Type::Release, pos, 1};
+    self.owner->handle_mouse(e);
+}
+
+- (void)otherMouseUp:(NSEvent *)event {
+    auto pos = [self convertMouseEvent:event];
+    toolkit::MouseEvent e{toolkit::MouseEvent::Type::Release, pos, static_cast<int>([event buttonNumber])};
     self.owner->handle_mouse(e);
 }
 

@@ -357,6 +357,12 @@ static void pointer_button(void *data, wl_pointer *, uint32_t, uint32_t time, ui
         btn = 1; // BTN_RIGHT
     } else if (button == 0x112) {
         btn = 2; // BTN_MIDDLE
+    } else if (button == 0x113) {
+        btn = 3; // BTN_SIDE (Back)
+    } else if (button == 0x114) {
+        btn = 4; // BTN_EXTRA (Forward)
+    } else {
+        btn = 5 + (button - 0x115);
     }
 
     MouseEvent e{};

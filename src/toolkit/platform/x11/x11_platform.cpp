@@ -299,7 +299,19 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
         auto e = MouseEvent{};
         e.type = MouseEvent::Type::Press;
         e.position = pos;
-        e.button = (btn.button == Button1) ? 0 : (btn.button == Button3) ? 1 : 2;
+        if (btn.button == Button1) {
+            e.button = 0;
+        } else if (btn.button == Button3) {
+            e.button = 1;
+        } else if (btn.button == Button2) {
+            e.button = 2;
+        } else if (btn.button == 8) {
+            e.button = 3;
+        } else if (btn.button == 9) {
+            e.button = 4;
+        } else {
+            e.button = 5;
+        }
         e.click_count = detect_click_count(data, btn);
         e.shift = (btn.state & ShiftMask) != 0;
         e.ctrl = (btn.state & ControlMask) != 0;
@@ -316,7 +328,19 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
         auto e = MouseEvent{};
         e.type = MouseEvent::Type::Release;
         e.position = {static_cast<float>(btn.x) / scale, static_cast<float>(btn.y) / scale};
-        e.button = (btn.button == Button1) ? 0 : (btn.button == Button3) ? 1 : 2;
+        if (btn.button == Button1) {
+            e.button = 0;
+        } else if (btn.button == Button3) {
+            e.button = 1;
+        } else if (btn.button == Button2) {
+            e.button = 2;
+        } else if (btn.button == 8) {
+            e.button = 3;
+        } else if (btn.button == 9) {
+            e.button = 4;
+        } else {
+            e.button = 5;
+        }
         win->handle_mouse(e);
         break;
     }

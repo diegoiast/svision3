@@ -323,11 +323,19 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     case WM_LBUTTONDOWN:
     case WM_RBUTTONDOWN:
-    case WM_MBUTTONDOWN: {
+    case WM_MBUTTONDOWN:
+    case WM_XBUTTONDOWN: {
         float scale = get_window_scale(hwnd);
         int mx = static_cast<int>(static_cast<short>(LOWORD(lp)));
         int my = static_cast<int>(static_cast<short>(HIWORD(lp)));
-        int button = (msg == WM_LBUTTONDOWN) ? 0 : (msg == WM_RBUTTONDOWN) ? 1 : 2;
+        int button = 0;
+        if (msg == WM_LBUTTONDOWN) {
+            button = 0;
+        } else if (msg == WM_RBUTTONDOWN)
+            button = 1;
+        else if (msg == WM_MBUTTONDOWN) button = 2;
+        else if (msg == WM_XBUTTONDOWN) button = (GET_XBUTTON_WPARAM(wp) == XBUTTON1) ? 3 : 4;
+
         int clicks = detect_click_count(data, button, mx, my, GetMessageTime());
         MouseEvent e{};
         e.type = MouseEvent::Type::Press;
@@ -339,22 +347,28 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         e.super = (GetKeyState(VK_LWIN) & 0x8000) != 0 || (GetKeyState(VK_RWIN) & 0x8000) != 0;
         win->handle_mouse(e);
         SetCapture(hwnd);
-        return 0;
+        return TRUE;
     }
     case WM_LBUTTONUP:
     case WM_RBUTTONUP:
-    case WM_MBUTTONUP: {
+    case WM_MBUTTONUP:
+    case WM_XBUTTONUP: {
         ReleaseCapture();
         float scale = get_window_scale(hwnd);
         int mx = static_cast<int>(static_cast<short>(LOWORD(lp)));
         int my = static_cast<int>(static_cast<short>(HIWORD(lp)));
-        int button = (msg == WM_LBUTTONUP) ? 0 : (msg == WM_RBUTTONUP) ? 1 : 2;
+        int button = 0;
+        if (msg == WM_LBUTTONUP) button = 0;
+        else if (msg == WM_RBUTTONUP) button = 1;
+        else if (msg == WM_MBUTTONUP) button = 2;
+        else if (msg == WM_XBUTTONUP) button = (GET_XBUTTON_WPARAM(wp) == XBUTTON1) ? 3 : 4;
+
         MouseEvent e{};
         e.type = MouseEvent::Type::Release;
         e.position = {static_cast<float>(mx) / scale, static_cast<float>(my) / scale};
         e.button = button;
         win->handle_mouse(e);
-        return 0;
+        return TRUE;
     }
     case WM_MOUSEMOVE: {
         float scale = get_window_scale(hwnd);
