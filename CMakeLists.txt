@@ -352,6 +352,20 @@ if(WIN32)
 endif()
 target_link_libraries(demo3 PRIVATE toolkit nfd)
 
+add_executable(demo4 demo/demo4.cpp)
+set_target_properties(demo4 PROPERTIES WIN32_EXECUTABLE ON)
+if(WIN32)
+    set_target_properties(demo4 PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+endif()
+target_link_libraries(demo4 PRIVATE toolkit nfd)
+
+add_executable(demo5 demo/demo5.cpp)
+set_target_properties(demo5 PROPERTIES WIN32_EXECUTABLE ON)
+if(WIN32)
+    set_target_properties(demo5 PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+endif()
+target_link_libraries(demo5 PRIVATE toolkit)
+
 # ── nfd (Native File Dialog) ──────────────────────────────────────────────────
 if(APPLE)
     enable_language(OBJC)
