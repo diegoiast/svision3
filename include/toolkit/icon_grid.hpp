@@ -95,6 +95,7 @@ class IconGrid : public Widget {
 
     std::function<void(std::set<size_t> const &indices)> on_selection_changed;
     std::function<void(size_t index)> on_item_activated;
+    std::function<void()> on_back_requested;
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;

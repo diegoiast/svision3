@@ -5,6 +5,7 @@
 #include "toolkit/button.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
+#include "toolkit/file_dialog_widget.hpp"
 #include "toolkit/icon_grid.hpp"
 #include "toolkit/image_loader.hpp"
 #include "toolkit/label.hpp"
@@ -465,6 +466,18 @@ int main(int argc, char *argv[]) {
     tab_grid->add_widget(std::move(grid), 1);
 
     tabs->add_tab("Grid", std::move(tab_grid));
+
+    // ── Tab: Icon View ────────────────────────────────────────────────────
+    auto tab_icon_view = std::make_unique<toolkit::VBoxLayout>();
+    tab_icon_view->set_margins({20, 20, 20, 20});
+    tab_icon_view->set_spacing(10);
+
+    auto file_dialog = std::make_unique<toolkit::FileDialogWidget>();
+    auto file_dialog_ptr = file_dialog.get();
+    file_dialog->set_current_path(std::getenv("HOME"));
+
+    tab_icon_view->add_widget(std::move(file_dialog), 1);
+    tabs->add_tab("Icon View", std::move(tab_icon_view));
 
     auto b = std::make_unique<toolkit::Button>("Menu");
     b->set_flat(true);

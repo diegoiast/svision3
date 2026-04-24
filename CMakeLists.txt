@@ -52,6 +52,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/tab_widget.cpp
     src/toolkit/list_view.cpp
     src/toolkit/icon_grid.cpp
+    src/toolkit/file_dialog_widget.cpp
     src/toolkit/slider.cpp
     src/toolkit/spin_box.cpp
     src/toolkit/line_input.cpp
