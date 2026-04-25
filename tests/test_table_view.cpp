@@ -19,20 +19,18 @@ TEST_CASE("StringTableModel basics", "[tableview]") {
     auto m = make_model();
     REQUIRE(m->row_count() == 5);
     REQUIRE(m->column_count() == 3);
-    REQUIRE(std::string(m->header_text(0)) == "Name");
-    REQUIRE(std::string(m->header_text(1)) == "Age");
-    REQUIRE(std::string(m->header_text(2)) == "City");
-    REQUIRE(std::string(m->cell_text(0, 0)) == "Alice");
-    REQUIRE(std::string(m->cell_text(0, 2)) == "London");
-    REQUIRE(std::string(m->cell_text(4, 1)) == "32");
+    REQUIRE(m->header_text(0) == "Name");
+    REQUIRE(m->header_text(1) == "Age");
+    REQUIRE(m->header_text(2) == "City");
+    REQUIRE(m->cell_text(0, 0) == "Alice");
+    REQUIRE(m->cell_text(0, 2) == "London");
+    REQUIRE(m->cell_text(4, 1) == "32");
 }
 
 TEST_CASE("StringTableModel out of range", "[tableview]") {
     auto m = make_model();
-    REQUIRE(m->cell_text(-1, 0).empty());
     REQUIRE(m->cell_text(99, 0).empty());
     REQUIRE(m->cell_text(0, 99).empty());
-    REQUIRE(m->header_text(-1).empty());
     REQUIRE(m->header_text(99).empty());
 }
 
@@ -45,13 +43,13 @@ TEST_CASE("StringTableModel append and remove", "[tableview]") {
 
     m->append_row({"Frank", "40", "Rome"});
     REQUIRE(m->row_count() == 6);
-    REQUIRE(std::string(m->cell_text(5, 0)) == "Frank");
+    REQUIRE(m->cell_text(5, 0) == "Frank");
     REQUIRE(notified);
 
     notified = false;
     m->remove_row(0);
     REQUIRE(m->row_count() == 5);
-    REQUIRE(std::string(m->cell_text(0, 0)) == "Bob");
+    REQUIRE(m->cell_text(0, 0) == "Bob");
     REQUIRE(notified);
 }
 
@@ -64,14 +62,14 @@ TEST_CASE("StringTableModel set_data", "[tableview]") {
     REQUIRE(notified);
     REQUIRE(m->column_count() == 2);
     REQUIRE(m->row_count() == 2);
-    REQUIRE(std::string(m->header_text(0)) == "X");
-    REQUIRE(std::string(m->cell_text(1, 1)) == "4");
+    REQUIRE(m->header_text(0) == "X");
+    REQUIRE(m->cell_text(1, 1) == "4");
 }
 
 TEST_CASE("TableView default state", "[tableview]") {
     auto m = make_model();
     TableView tv(m);
-    REQUIRE(tv.selected_row() == -1);
+    REQUIRE(!tv.selected_row());
     REQUIRE(tv.selection().empty());
     REQUIRE(tv.is_focusable());
     REQUIRE_FALSE(tv.multi_select());
@@ -83,8 +81,8 @@ TEST_CASE("TableView default state", "[tableview]") {
 TEST_CASE("TableView set_selected_row", "[tableview]") {
     auto m = make_model();
     TableView tv(m);
-    tv.set_selected_row(2);
-    REQUIRE(tv.selected_row() == 2);
+    tv.set_selected_row(size_t{2});
+    REQUIRE(tv.selected_row() == size_t{2});
     REQUIRE(tv.is_selected(2));
     REQUIRE_FALSE(tv.is_selected(0));
     REQUIRE(tv.selection().size() == 1);
@@ -93,29 +91,29 @@ TEST_CASE("TableView set_selected_row", "[tableview]") {
 TEST_CASE("TableView set_selected_row replaces previous", "[tableview]") {
     auto m = make_model();
     TableView tv(m);
-    tv.set_selected_row(0);
-    tv.set_selected_row(3);
+    tv.set_selected_row(size_t{0});
+    tv.set_selected_row(size_t{3});
     REQUIRE(tv.selection().size() == 1);
     REQUIRE_FALSE(tv.is_selected(0));
     REQUIRE(tv.is_selected(3));
 }
 
-TEST_CASE("TableView set_selected_row out of range clears", "[tableview]") {
+TEST_CASE("TableView set_selected_row nullopt clears", "[tableview]") {
     auto m = make_model();
     TableView tv(m);
-    tv.set_selected_row(2);
-    tv.set_selected_row(-1);
+    tv.set_selected_row(size_t{2});
+    tv.set_selected_row(std::nullopt);
     REQUIRE(tv.selection().empty());
-    REQUIRE(tv.selected_row() == -1);
+    REQUIRE(!tv.selected_row());
 }
 
 TEST_CASE("TableView clear_selection", "[tableview]") {
     auto m = make_model();
     TableView tv(m);
-    tv.set_selected_row(1);
+    tv.set_selected_row(size_t{1});
     tv.clear_selection();
     REQUIRE(tv.selection().empty());
-    REQUIRE(tv.selected_row() == -1);
+    REQUIRE(!tv.selected_row());
 }
 
 TEST_CASE("TableView select_all", "[tableview]") {
@@ -123,7 +121,7 @@ TEST_CASE("TableView select_all", "[tableview]") {
     TableView tv(m);
     tv.select_all();
     REQUIRE(tv.selection().size() == 5);
-    for (int i = 0; i < 5; i++) {
+    for (size_t i = 0; i < 5; i++) {
         REQUIRE(tv.is_selected(i));
     }
 }
@@ -142,10 +140,10 @@ TEST_CASE("TableView set_selection explicit set", "[tableview]") {
 TEST_CASE("TableView on_selection_changed fires", "[tableview]") {
     auto m = make_model();
     TableView tv(m);
-    int notified = -1;
-    tv.on_selection_changed = [&](int row) { notified = row; };
-    tv.set_selected_row(3);
-    REQUIRE(notified == 3);
+    std::optional<size_t> notified;
+    tv.on_selection_changed = [&](std::optional<size_t> row) { notified = row; };
+    tv.set_selected_row(size_t{3});
+    REQUIRE(notified == size_t{3});
 }
 
 TEST_CASE("TableView set_model resets state", "[tableview]") {
@@ -153,18 +151,18 @@ TEST_CASE("TableView set_model resets state", "[tableview]") {
     auto m2 = std::make_shared<StringTableModel>(
         std::vector<std::string>{"A"}, std::vector<std::vector<std::string>>{{"1"}, {"2"}});
     TableView tv(m1);
-    tv.set_selected_row(2);
+    tv.set_selected_row(size_t{2});
     tv.set_model(m2);
-    REQUIRE(tv.selected_row() == -1);
+    REQUIRE(!tv.selected_row());
     REQUIRE(tv.selection().empty());
     REQUIRE(tv.model() == m2);
 }
 
 TEST_CASE("TableView with null model", "[tableview]") {
     TableView tv(nullptr);
-    REQUIRE(tv.selected_row() == -1);
-    tv.set_selected_row(0);
-    REQUIRE(tv.selected_row() == -1);
+    REQUIRE(!tv.selected_row());
+    tv.set_selected_row(size_t{0});
+    REQUIRE(!tv.selected_row());
     tv.select_all();
     REQUIRE(tv.selection().empty());
 }

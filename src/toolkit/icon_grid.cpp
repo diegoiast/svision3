@@ -9,116 +9,28 @@
 
 namespace toolkit {
 
-SimpleIconGridModel::SimpleIconGridModel(std::vector<Item> items) : items_(std::move(items)) {}
-
-std::string SimpleIconGridModel::text_at(size_t index) const {
-    if (index >= items_.size()) {
-        return "";
-    }
-    return items_[index].text;
-}
-
-std::string SimpleIconGridModel::tooltip_at(size_t index) const {
-    if (index >= items_.size()) {
-        return "";
-    }
-    auto const &item = items_[index];
-    return item.tooltip.empty() ? item.text : item.tooltip;
-}
-
-Icon SimpleIconGridModel::icon_at(size_t index, int /*size*/, bool /*snap*/) const {
-    if (index >= items_.size()) {
-        return nullptr;
-    }
-    return items_[index].icon;
-}
-
-void SimpleIconGridModel::set_items(std::vector<Item> items) {
-    items_ = std::move(items);
-    if (on_data_changed) {
-        on_data_changed();
-    }
-}
-
-void SimpleIconGridModel::append(Item item) {
-    items_.push_back(std::move(item));
-    if (on_data_changed) {
-        on_data_changed();
-    }
-}
-
-StandardIconModel::StandardIconModel(std::vector<StandardIconItem> items)
-    : items_(std::move(items)) {}
-
-std::string StandardIconModel::text_at(size_t index) const {
-    if (index >= items_.size()) {
-        return "";
-    }
-    return items_[index].text;
-}
-
-std::string StandardIconModel::tooltip_at(size_t index) const {
-    if (index >= items_.size()) {
-        return "";
-    }
-    auto const &item = items_[index];
-    return item.tooltip.empty() ? item.text : item.tooltip;
-}
-
-Icon StandardIconModel::icon_at(size_t index, int size, bool /*snap*/) const {
-    if (index >= items_.size()) {
-        return nullptr;
-    }
-
-    auto &item = items_[index];
-    if (item.cached_icon && item.cached_size == size) {
-        return item.cached_icon;
-    }
-
-    item.cached_icon = Application::instance().load_icon(item.icon_name, size, item.icon_category);
-    item.cached_size = size;
-    return item.cached_icon;
-}
-
-void StandardIconModel::set_items(std::vector<StandardIconItem> items) {
-    items_ = std::move(items);
-    if (on_data_changed) {
-        on_data_changed();
-    }
-}
-
-void StandardIconModel::append(StandardIconItem item) {
-    items_.push_back(std::move(item));
-    if (on_data_changed) {
-        on_data_changed();
-    }
-}
-
-IconGrid::IconGrid(std::shared_ptr<IconGridModel> model) : model_(std::move(model)) {
+IconGrid::IconGrid(std::shared_ptr<ItemModel> model) : model_(std::move(model)) {
     state.focusable = true;
     if (model_) {
         model_->on_data_changed = [this] {
             scroll_offset_ = 0;
-            if (model_ && model_->count() > 0) {
-                set_selected(0);
+            if (model_ && model_->row_count() > 0) {
+                set_selected(size_t{0});
             } else {
                 set_selected(std::nullopt);
             }
             invalidate_layout();
-            if (window_) {
-                window_->request_redraw();
-            }
         };
     }
 }
 
-IconGrid &IconGrid::set_model(std::shared_ptr<IconGridModel> model) {
+IconGrid &IconGrid::set_model(std::shared_ptr<ItemModel> model) {
     model_ = std::move(model);
     if (model_) {
         model_->on_data_changed = [this] {
             scroll_offset_ = 0;
-            if (model_ && model_->count() > 0) {
-                set_selected(0);
+            if (model_ && model_->row_count() > 0) {
+                set_selected(size_t{0});
             } else {
                 set_selected(std::nullopt);
             }
@@ -141,9 +53,6 @@ IconGrid &IconGrid::set_icon_size(int size) {
 IconGrid &IconGrid::set_scale_icons(bool scale) {
     scale_icons_ = scale;
     invalidate_layout();
-    if (window_) {
-        window_->request_redraw();
-    }
     return *this;
 }
 
@@ -151,11 +60,12 @@ int IconGrid::display_icon_size() const {
     if (scale_icons_) {
         return icon_size_;
     }
-    static const int standard_sizes[] = {16, 22, 24, 32, 48, 64, 128, 256};
-    int best = standard_sizes[0];
-    int best_diff = std::abs(standard_sizes[0] - icon_size_);
-    for (int s : standard_sizes) {
-        int diff = std::abs(s - icon_size_);
+
+    static int standard_sizes[] = {16, 22, 24, 32, 48, 64, 128, 256};
+    auto best = standard_sizes[0];
+    auto best_diff = std::abs(standard_sizes[0] - icon_size_);
+    for (auto s : standard_sizes) {
+        auto diff = std::abs(s - icon_size_);
         if (diff < best_diff) {
             best_diff = diff;
             best = s;
@@ -206,7 +116,7 @@ IconGrid &IconGrid::select_range(size_t from, size_t to) {
     auto start = std::min(from, to);
     auto end = std::max(from, to);
     selected_indices_.clear();
-    for (size_t i = start; i <= end; ++i) {
+    for (auto i = start; i <= end; ++i) {
         selected_indices_.insert(i);
     }
     cursor_ = to;
@@ -229,9 +139,9 @@ IconGrid &IconGrid::select_in_rect(Rect const &r) {
     auto const &theme = Theme::current();
     auto const &style = theme.icon_grid;
     auto layout = compute_layout();
-    auto count = model_->count();
+    auto count = model_->row_count();
 
-    for (size_t i = 0; i < count; ++i) {
+    for (auto i = size_t{0}; i < count; ++i) {
         auto col = i % layout.columns;
         auto row = i / layout.columns;
 
@@ -280,8 +190,7 @@ void IconGrid::paint(Painter &painter) {
     theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
 
     auto layout = compute_layout();
-    auto count = model_->count();
-
+    auto count = model_->row_count();
     auto bw = palette.border_width;
     auto inner_w = rect_.width - bw * 2;
     auto inner_h = rect_.height - bw * 2;
@@ -294,7 +203,8 @@ void IconGrid::paint(Painter &painter) {
     painter.push_clip(body_clip);
     painter.push_translation({bw, bw - scroll_offset_});
 
-    for (size_t i = 0; i < count; ++i) {
+    auto disp = display_icon_size();
+    for (auto i = size_t{0}; i < count; ++i) {
         auto col = i % layout.columns;
         auto row = i / layout.columns;
 
@@ -303,7 +213,6 @@ void IconGrid::paint(Painter &painter) {
                  style.padding.top + static_cast<float>(row) * (layout.item_height + style.spacing),
                  layout.item_width, layout.item_height};
 
-        // Simple culling
         if (item_rect.y + item_rect.height < scroll_offset_) {
             continue;
         }
@@ -314,10 +223,9 @@ void IconGrid::paint(Painter &painter) {
         auto is_selected = selected_indices_.contains(i);
         auto is_hovered = hovered_.has_value() && *hovered_ == i;
 
-        auto disp = display_icon_size();
-        theme.draw_icon_grid_item(painter, item_rect, model_->text_at(i),
-                                  model_->icon_at(i, disp, !scale_icons_), is_selected, is_hovered,
-                                  disp, scale_icons_);
+        theme.draw_icon_grid_item(painter, item_rect, model_->cell_text(i, 0),
+                                  model_->icon_at(i, 0, disp), is_selected, is_hovered, disp,
+                                  scale_icons_);
     }
 
     if (rubber_selecting_) {
@@ -377,13 +285,11 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
             on_back_requested();
             return true;
         }
-
         if (event.button == 0) {
             if (event.click_count == 2 && index && on_item_activated) {
                 on_item_activated(*index);
                 return true;
             }
-
             if (index) {
                 if (event.ctrl) {
                     toggle_selection(*index);
@@ -397,7 +303,6 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
                     selected_indices_.clear();
                 }
             }
-
             rubber_selecting_ = true;
             rubber_add_ = event.ctrl;
             rubber_start_ = p_scrolled;
@@ -419,11 +324,7 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
         } else {
             if (hovered_ != index) {
                 hovered_ = index;
-                if (hovered_) {
-                    set_tooltip(model_->tooltip_at(*hovered_));
-                } else {
-                    set_tooltip("");
-                }
+                set_tooltip(hovered_ ? model_->tooltip(*hovered_) : std::string{});
             }
         }
         if (window_) {
@@ -478,7 +379,7 @@ bool IconGrid::handle_key(KeyEvent const &event) {
     }
 
     auto layout = compute_layout();
-    auto count = model_->count();
+    auto count = model_->row_count();
     if (count == 0) {
         return false;
     }
@@ -488,14 +389,14 @@ bool IconGrid::handle_key(KeyEvent const &event) {
     switch (event.key) {
     case Key::Up:
         if (!new_cursor) {
-            new_cursor = 0;
+            new_cursor = size_t{0};
         } else if (*new_cursor >= layout.columns) {
             *new_cursor -= layout.columns;
         }
         break;
     case Key::Down:
         if (!new_cursor) {
-            new_cursor = 0;
+            new_cursor = size_t{0};
         } else {
             *new_cursor += layout.columns;
             if (*new_cursor >= count) {
@@ -505,20 +406,20 @@ bool IconGrid::handle_key(KeyEvent const &event) {
         break;
     case Key::Left:
         if (!new_cursor) {
-            new_cursor = 0;
+            new_cursor = size_t{0};
         } else if (*new_cursor > 0) {
             *new_cursor -= 1;
         }
         break;
     case Key::Right:
         if (!new_cursor) {
-            new_cursor = 0;
+            new_cursor = size_t{0};
         } else if (*new_cursor < count - 1) {
             *new_cursor += 1;
         }
         break;
     case Key::Home:
-        new_cursor = 0;
+        new_cursor = size_t{0};
         break;
     case Key::End:
         new_cursor = count - 1;
@@ -526,10 +427,10 @@ bool IconGrid::handle_key(KeyEvent const &event) {
     case Key::A:
         if (event.ctrl) {
             selected_indices_.clear();
-            for (size_t i = 0; i < count; ++i) {
+            for (auto i = size_t{0}; i < count; ++i) {
                 selected_indices_.insert(i);
             }
-            cursor_ = 0;
+            cursor_ = size_t{0};
             if (on_selection_changed) {
                 on_selection_changed(selected_indices_);
             }
@@ -596,10 +497,11 @@ IconGrid::LayoutInfo IconGrid::compute_layout() const {
     auto item_h = sample_size.height;
 
     auto available_w = rect_.width - style.padding.left - style.padding.right;
-    auto cols = std::max(size_t{1}, static_cast<size_t>(std::floor(std::max(0.0f, available_w + style.spacing) /
-                                                                   (item_w + style.spacing))));
+    auto cols = std::max(
+        size_t{1}, static_cast<size_t>(std::floor(std::max(0.0f, available_w + style.spacing) /
+                                                  (item_w + style.spacing))));
 
-    auto count = model_ ? model_->count() : 0;
+    auto count = model_ ? model_->row_count() : size_t{0};
     auto rows = (count + cols - 1) / cols;
 
     return {cols, rows, item_w, item_h};
@@ -624,7 +526,6 @@ std::optional<size_t> IconGrid::item_at(Point p) const {
         return std::nullopt;
     }
 
-    // Check if we are actually over the item (not in the spacing)
     auto item_x = static_cast<float>(col) * (layout.item_width + style.spacing);
     auto item_y = static_cast<float>(row) * (layout.item_height + style.spacing);
 
@@ -634,7 +535,7 @@ std::optional<size_t> IconGrid::item_at(Point p) const {
     }
 
     auto index = row * layout.columns + col;
-    if (index >= (model_ ? model_->count() : 0)) {
+    if (index >= (model_ ? model_->row_count() : size_t{0})) {
         return std::nullopt;
     }
 

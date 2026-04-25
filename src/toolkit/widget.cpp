@@ -14,11 +14,11 @@ void Widget::invalidate_layout() {
     state.layout_dirty = true;
     spdlog::trace("Widget layout invalidated: {}",
                   state.tooltip.empty() ? "anonymous" : state.tooltip);
-    if (window_) {
-        window_->request_redraw("layout");
-    }
     if (parent_) {
         parent_->invalidate_layout();
+    }
+    if (window_) {
+        window_->request_redraw("layout");
     }
 }
 
@@ -71,9 +71,7 @@ Widget &Widget::set_visible(bool v) {
         return *this;
     }
     state.visible = v;
-    if (window_) {
-        window_->request_redraw("property change (visible)");
-    }
+    invalidate_layout();
     return *this;
 }
 
@@ -145,14 +143,16 @@ bool Widget::handle_key_impl(KeyEvent const &event) {
 }
 
 Size Widget::measure_text(std::string_view text, float font_size, FontFamily font) const {
-    if (auto *p = detail::current_platform())
+    if (auto *p = detail::current_platform()) {
         return p->measure_text(text, font_size, font);
+    }
     return {};
 }
 
 Painter::FontMetrics Widget::font_metrics(float font_size, FontFamily font) const {
-    if (auto *p = detail::current_platform())
+    if (auto *p = detail::current_platform()) {
         return p->font_metrics(font_size, font);
+    }
     return {};
 }
 

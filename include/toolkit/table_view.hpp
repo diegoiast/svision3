@@ -3,64 +3,32 @@
 
 #pragma once
 
+#include "toolkit/item_model.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
 #include <memory>
+#include <optional>
 #include <set>
-#include <string>
-#include <string_view>
 #include <vector>
 
 namespace toolkit {
-
-class TableModel {
-  public:
-    virtual ~TableModel() = default;
-
-    virtual int row_count() const = 0;
-    virtual int column_count() const = 0;
-    virtual std::string_view header_text(int column) const = 0;
-    virtual std::string_view cell_text(int row, int column) const = 0;
-
-    std::function<void()> on_data_changed;
-};
-
-class StringTableModel : public TableModel {
-  public:
-    explicit StringTableModel(std::vector<std::string> headers,
-                              std::vector<std::vector<std::string>> rows = {});
-
-    int row_count() const override;
-    int column_count() const override;
-    std::string_view header_text(int column) const override;
-    std::string_view cell_text(int row, int column) const override;
-
-    void set_data(std::vector<std::string> headers, std::vector<std::vector<std::string>> rows);
-    void append_row(std::vector<std::string> row);
-    void remove_row(int index);
-
-  private:
-    std::vector<std::string> headers_;
-    std::vector<std::vector<std::string>> rows_;
-};
 
 enum class SortOrder { None, Ascending, Descending };
 
 class TableView : public Widget, public Fluent<TableView> {
   public:
-    explicit TableView(std::shared_ptr<TableModel> model);
+    explicit TableView(std::shared_ptr<ItemModel> model);
 
-    TableView &set_model(std::shared_ptr<TableModel> model);
-    std::shared_ptr<TableModel> model() const { return model_; }
+    TableView &set_model(std::shared_ptr<ItemModel> model);
+    std::shared_ptr<ItemModel> model() const { return model_; }
 
-    // Selection
-    int selected_row() const { return cursor_row_; }
-    std::set<int> const &selection() const { return selection_; }
-    TableView &set_selected_row(int row);
-    TableView &set_selection(std::set<int> rows);
+    std::optional<size_t> selected_row() const { return cursor_row_; }
+    std::set<size_t> const &selection() const { return selection_; }
+    TableView &set_selected_row(std::optional<size_t> row);
+    TableView &set_selection(std::set<size_t> rows);
     TableView &select_all();
     TableView &clear_selection();
-    bool is_selected(int row) const { return selection_.count(row) > 0; }
+    bool is_selected(size_t row) const { return selection_.count(row) > 0; }
 
     bool multi_select() const { return multi_select_; }
     TableView &set_multi_select(bool enabled);
@@ -68,15 +36,16 @@ class TableView : public Widget, public Fluent<TableView> {
     bool alternating_row_colors() const { return alternating_; }
     TableView &set_alternating_row_colors(bool enabled);
 
-    // Column sizing
+    bool show_header() const { return show_header_; }
+    TableView &set_show_header(bool show);
+
     TableView &set_column_width(int column, float width);
     float column_width(int column) const;
 
-    // Sorting
     int sort_column() const { return sort_column_; }
     SortOrder sort_order() const { return sort_order_; }
 
-    std::function<void(int row)> on_selection_changed;
+    std::function<void(std::optional<size_t> row)> on_selection_changed;
     std::function<void(int column, SortOrder order)> on_sort_requested;
 
     void auto_fit_columns();
@@ -94,28 +63,29 @@ class TableView : public Widget, public Fluent<TableView> {
     float total_content_height() const;
     float total_content_width() const;
     void clamp_scroll();
-    int row_at_y(float y) const;
+    std::optional<size_t> row_at_y(float y) const;
     int column_at_x(float x) const;
     int header_resize_hit(float x, float y) const;
-    void scroll_to_row(int row);
+    void scroll_to_row(size_t row);
     void select_range_from_anchor();
     void notify_selection();
     void ensure_column_widths();
 
     void rebuild_sort_index();
-    int model_row(int display_row) const;
+    size_t model_row(size_t display_row) const;
 
-    std::shared_ptr<TableModel> model_;
+    std::shared_ptr<ItemModel> model_;
     std::vector<float> column_widths_;
-    std::vector<int> sort_indices_;
-    std::set<int> selection_;
-    int anchor_row_ = -1;
-    int cursor_row_ = -1;
-    int hovered_row_ = -1;
+    std::vector<size_t> sort_indices_;
+    std::set<size_t> selection_;
+    std::optional<size_t> anchor_row_;
+    std::optional<size_t> cursor_row_;
+    std::optional<size_t> hovered_row_;
     float scroll_y_ = 0;
     float scroll_x_ = 0;
     bool alternating_ = false;
     bool multi_select_ = false;
+    bool show_header_ = true;
 
     int sort_column_ = -1;
     SortOrder sort_order_ = SortOrder::None;

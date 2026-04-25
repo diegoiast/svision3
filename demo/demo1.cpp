@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-&FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+// SPDX-&FileCopyrightText: l2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/application.hpp"
 #include "toolkit/button.hpp"
@@ -469,9 +469,6 @@ int main(int argc, char *argv[]) {
 
     // ── Tab: Icon View ────────────────────────────────────────────────────
     auto tab_icon_view = std::make_unique<toolkit::VBoxLayout>();
-    tab_icon_view->set_margins({20, 20, 20, 20});
-    tab_icon_view->set_spacing(10);
-
     auto file_dialog = std::make_unique<toolkit::FileDialogWidget>();
     auto file_dialog_ptr = file_dialog.get();
     file_dialog->set_current_path(std::getenv("HOME"));
@@ -492,7 +489,7 @@ int main(int argc, char *argv[]) {
     tab3->set_margins({20, 20, 20, 20});
     tab3->set_spacing(12);
 
-    auto songs_adapter = std::make_shared<toolkit::StringListAdapter>(beatlesSongs);
+    auto songs_adapter = std::make_shared<toolkit::StringListModel>(beatlesSongs);
 
     auto filter_adapter = std::make_shared<toolkit::FilterAdapter>(songs_adapter);
     filter_adapter->set_simulated_delay_ms(10);
@@ -537,10 +534,11 @@ int main(int argc, char *argv[]) {
     auto songs_list = std::make_unique<toolkit::ListView>(filter_adapter);
     songs_list->set_alternating_row_colors(true);
     songs_list->set_multi_select(true);
-    songs_list->on_selection_changed = [filter_adapter](int idx) {
-        if (idx >= 0) {
-            int src = filter_adapter->source_index(idx);
-            spdlog::info("Selected: [{}] {}", src, filter_adapter->text_at(idx));
+    songs_list->on_selection_changed = [filter_adapter](std::optional<size_t> idx) {
+        if (idx) {
+            auto src = filter_adapter->source_index(*idx);
+            spdlog::info("Selected: [{}] {}", src ? *src : SIZE_MAX,
+                         filter_adapter->cell_text(*idx, 0));
         }
     };
     tab3->add_widget(std::move(songs_list), 1);
@@ -556,18 +554,27 @@ int main(int argc, char *argv[]) {
         std::vector<std::string>{"Song", "Album", "Year", "Duration"}, beatlesSongsLength);
 
     auto table = std::make_unique<toolkit::TableView>(table_model);
+    auto *table_ptr = table.get();
     table->set_alternating_row_colors(true);
     table->set_multi_select(true);
     table->set_column_width(0, 220.0f);
     table->set_column_width(1, 140.0f);
     table->set_column_width(2, 60.0f);
     table->set_column_width(3, 80.0f);
-    table->on_selection_changed = [table_model](int row) {
-        if (row >= 0) {
-            spdlog::info("Table: {} - {}", table_model->cell_text(row, 0),
-                         table_model->cell_text(row, 1));
+    table->on_selection_changed = [table_model](std::optional<size_t> row) {
+        if (row) {
+            spdlog::info("Table: {} - {}", table_model->cell_text(*row, 0),
+                         table_model->cell_text(*row, 1));
         }
     };
+
+    auto table_toggle_row = std::make_unique<toolkit::HBoxLayout>();
+    auto header_toggle = std::make_unique<toolkit::Checkbox>("Show Header");
+    header_toggle->set_checked(true);
+    header_toggle->on_toggle = [table_ptr](bool checked) { table_ptr->set_show_header(checked); };
+    table_toggle_row->add_widget(std::move(header_toggle));
+    tab4->add_widget(std::move(table_toggle_row));
+
     tab4->add_widget(std::move(table), 1);
 
     tabs->add_tab("Table", std::move(tab4));
@@ -677,7 +684,6 @@ int main(int argc, char *argv[]) {
     auto tab6 = std::make_unique<toolkit::VBoxLayout>();
     tab6->set_margins({0, 0, 0, 0});
     tab6->set_spacing(0);
-
     auto make_plus = []() {
         auto b = std::make_unique<toolkit::Button>("+");
         b->set_flat(true);

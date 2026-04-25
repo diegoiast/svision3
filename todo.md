@@ -52,15 +52,15 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 37. [ ] Undo/redo framework.
 38. [ ] Signals/slots (beyond single std::function) - or alternative.
 39. [ ] Serialization (save/restore widget state).
-40. [*] Declarative UI support. - WIP.
+40. [ ] Declarative UI support. - WIP.
 41. [x] All setters should return a reference to self - for chainability.
-42. [x] Winwodws should have a Window::add<T> template that
+42. [x] Winwodws should have a `Window::add<T>` template that
         internally creates the shared ptr, and returns a reference.
 
 ## Platform – Not Yet Implemented
 
-1. [x] File dialogs (open/save) - implemented via [Native File Dialogs](https://github.com/mlabbe/nativefiledialog).
-1. [ ] Non-native file dialogs (open/save) - re-implement them in this toolkit.
+1. [x] File dialogs (open/save) - implemented via
+1. [ ] Non-native file dialogs (open/save) - re-implement them in this toolkit. - WIP, making this a widget.
 1. [ ] Message boxes / alerts.
 1. [ ] Multi-window.
 1. [ ] IME / input method support.
@@ -196,7 +196,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 4. [x] Icon support (image + text)
 5. [ ] Toggle buttton - on/off.
 6. [ ] Attach a menu (long click, or sub-button).
-7. [ ] Button group (mutually exclusive toggles)
+7. [ ] Button group (mutually exclusive toggles).
 
 ## LineInput Features [14/15]
 
@@ -271,6 +271,28 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 1. [ ] Editable / searchable mode
 1. [ ] Grouped items / separators
+
+## Theme plasma [0/12]
+
+1. Tabs:
+    1. Background of non-selected tabs shoiuld be darker.
+    2. Selected item background should "window".
+    3. No round corners.
+    4. Width of selected tab should be full tab.
+    5. Ideally - the sides of the tabs should be rounded.
+2. Progress bar:
+    1. Should have rounded border.
+3. Checkbox
+    1. When checked - background should be tint.
+4. Input
+    1. When selected - border should be tinted.
+    2. Hoever - border should be slightly tinted.
+5. Button
+    1. Hoever should have tinted border, but no background.
+6. Radio button
+    1. When selected - use tint background, black center
+7. Window
+    1. Default color should be darker.
 
 ## Testing [0/3]
 

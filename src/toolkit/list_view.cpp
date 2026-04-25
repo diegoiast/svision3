@@ -3,195 +3,17 @@
 
 #include "toolkit/list_view.hpp"
 #include "toolkit/application.hpp"
-#include "toolkit/stopwatch.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <algorithm>
-#include <cctype>
-#include <thread>
 
 namespace toolkit {
 
-StringListAdapter::StringListAdapter(std::vector<std::string> items) : items_(std::move(items)) {}
-
-// FIXME: this should be size_t right? Do we support negative indexes?
-std::string StringListAdapter::text_at(int index) const {
-    if (index < 0 || index >= static_cast<int>(items_.size())) {
-        return {};
-    }
-    return items_[index];
-}
-
-void StringListAdapter::set_items(std::vector<std::string> items) {
-    items_ = std::move(items);
-    if (on_data_changed) {
-        on_data_changed();
-    }
-}
-
-void StringListAdapter::append(std::string item) {
-    items_.push_back(std::move(item));
-    if (on_data_changed) {
-        on_data_changed();
-    }
-}
-
-// FIXME: this should be size_t right? Do we support negative indexes?
-void StringListAdapter::remove(int index) {
-    if (index >= 0 && index < static_cast<int>(items_.size())) {
-        items_.erase(items_.begin() + index);
-        if (on_data_changed) {
-            on_data_changed();
-        }
-    }
-}
-
-// ── FilterAdapter ────────────────────────────────────────────────────────────
-
-FilterAdapter::FilterAdapter(std::shared_ptr<ListAdapter> source) : source_(std::move(source)) {
-    rebuild_sync();
-    if (source_) {
-        source_->on_data_changed = [this] {
-            rebuild_sync();
-            if (on_data_changed) {
-                on_data_changed();
-            }
-        };
-    }
-}
-
-FilterAdapter::~FilterAdapter() { generation_->fetch_add(1); }
-
-std::string FilterAdapter::text_at(int index) const {
-    if (index < 0 || index >= static_cast<int>(indices_.size())) {
-        return {};
-    }
-    return source_->text_at(indices_[index]);
-}
-
-// FIXME: this should be an optional right? or error?
-int FilterAdapter::source_index(int filtered_index) const {
-    if (filtered_index < 0 || filtered_index >= static_cast<int>(indices_.size())) {
-        return -1;
-    }
-    return indices_[filtered_index];
-}
-
-void FilterAdapter::set_filter(std::string const &filter) {
-    filter_ = filter;
-    if (delay_per_item_ms_ > 0) {
-        rebuild_async();
-    } else {
-        rebuild_sync();
-        if (on_data_changed) {
-            on_data_changed();
-        }
-    }
-}
-
-// FIXME: this is bad, as this only works with ASCII.
-static bool contains_icase(std::string const &hay, std::string const &needle) {
-    if (needle.empty()) {
-        return true;
-    }
-    auto it = std::search(hay.begin(), hay.end(), needle.begin(), needle.end(), [](char a, char b) {
-        return std::tolower(static_cast<unsigned char>(a)) ==
-               std::tolower(static_cast<unsigned char>(b));
-    });
-    return it != hay.end();
-}
-
-void FilterAdapter::rebuild_sync() {
-    indices_.clear();
-    if (!source_) {
-        return;
-    }
-    auto n = source_->count();
-    for (auto i = 0; i < n; i++) {
-        if (contains_icase(source_->text_at(i), filter_)) {
-            indices_.push_back(i);
-        }
-    }
-}
-
-void FilterAdapter::rebuild_async() {
-    auto gen = generation_->fetch_add(1) + 1;
-
-    if (on_progress) {
-        on_progress(0.0f);
-    }
-
-    auto source = source_;
-    auto filter = filter_;
-    auto generation = generation_;
-    auto delay_ms = delay_per_item_ms_;
-    auto self = shared_from_this();
-
-    // FIXME: port to jthread.
-    std::thread([self, source, filter, generation, gen, delay_ms]() {
-        Stopwatch sw;
-        std::vector<int> result;
-
-        if (source) {
-            auto n = source->count();
-            auto last_percentage = -1;
-            // FIXME: this filter method is built in, we need to provide API to modify it
-            for (auto i = 0; i < n; i++) {
-                if (generation->load() != gen) {
-                    return;
-                }
-
-                if (contains_icase(source->text_at(i), filter)) {
-                    result.push_back(i);
-                }
-
-                auto percentage = (n > 0) ? ((i + 1) * 100 / n) : 100;
-                if (percentage != last_percentage) {
-                    auto progress = static_cast<float>(i + 1) / static_cast<float>(n);
-                    last_percentage = percentage;
-                    Application::post_to_main_thread([self, generation, gen, progress]() {
-                        if (generation->load() != gen) {
-                            return;
-                        }
-                        if (self->on_progress) {
-                            self->on_progress(progress);
-                        }
-                    });
-                }
-
-                if (delay_ms > 0) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-                }
-            }
-        }
-
-        if (generation->load() != gen) {
-            return;
-        }
-
-        auto elapsed = sw.elapsed_ms();
-        spdlog::info("Filter '{}': {} results in {:.2f} ms", filter, result.size(), elapsed);
-
-        Application::post_to_main_thread([self, generation, gen, result = std::move(result)]() {
-            if (generation->load() != gen) {
-                return;
-            }
-            self->indices_ = std::move(result);
-            if (self->on_progress) {
-                self->on_progress(-1.0f);
-            }
-            if (self->on_data_changed) {
-                self->on_data_changed();
-            }
-        });
-    }).detach();
-}
-
-ListView::ListView(std::shared_ptr<ListAdapter> adapter) {
-    adapter_ = std::move(adapter);
+ListView::ListView(std::shared_ptr<ItemModel> model) {
+    model_ = std::move(model);
     state.focusable = true;
-    if (adapter_) {
-        adapter_->on_data_changed = [this] {
+    if (model_) {
+        model_->on_data_changed = [this] {
             clamp_scroll();
             if (window()) {
                 window()->request_redraw("list selection");
@@ -200,14 +22,14 @@ ListView::ListView(std::shared_ptr<ListAdapter> adapter) {
     }
 }
 
-ListView &ListView::set_adapter(std::shared_ptr<ListAdapter> adapter) {
-    adapter_ = std::move(adapter);
+ListView &ListView::set_model(std::shared_ptr<ItemModel> model) {
+    model_ = std::move(model);
     selection_.clear();
-    anchor_ = -1;
-    cursor_ = -1;
+    anchor_ = std::nullopt;
+    cursor_ = std::nullopt;
     scroll_offset_ = 0;
-    if (adapter_) {
-        adapter_->on_data_changed = [this] {
+    if (model_) {
+        model_->on_data_changed = [this] {
             clamp_scroll();
             if (window()) {
                 window()->request_redraw("list selection");
@@ -217,62 +39,63 @@ ListView &ListView::set_adapter(std::shared_ptr<ListAdapter> adapter) {
     return *this;
 }
 
-ListView &ListView::set_selected(int index) {
-    if (!adapter_) {
+ListView &ListView::set_selected(std::optional<size_t> index) {
+    if (!model_) {
         return *this;
     }
-    auto n = adapter_->count();
-
-    if (index < 0 || index >= n) {
+    if (!index || *index >= model_->row_count()) {
         clear_selection();
         return *this;
     }
     selection_.clear();
-    selection_.insert(index);
+    selection_.insert(*index);
     anchor_ = index;
     cursor_ = index;
     notify_selection();
     return *this;
 }
 
-ListView &ListView::set_selection(std::set<int> indices) {
+ListView &ListView::set_selection(std::set<size_t> indices) {
     selection_ = std::move(indices);
     if (!selection_.empty()) {
         anchor_ = *selection_.begin();
         cursor_ = *selection_.rbegin();
     } else {
-        anchor_ = cursor_ = -1;
+        anchor_ = cursor_ = std::nullopt;
     }
     notify_selection();
     return *this;
 }
 
 ListView &ListView::select_all() {
-    if (!adapter_) {
+    if (!model_) {
         return *this;
     }
-    auto n = adapter_->count();
+    auto n = model_->row_count();
     selection_.clear();
-    for (auto i = 0; i < n; i++) {
+    for (auto i = size_t{0}; i < n; i++) {
         selection_.insert(i);
     }
-    anchor_ = 0;
-    cursor_ = n - 1;
+    anchor_ = size_t{0};
+    cursor_ = n > 0 ? std::optional<size_t>{n - 1} : std::nullopt;
     notify_selection();
     return *this;
 }
 
 ListView &ListView::clear_selection() {
     selection_.clear();
-    anchor_ = cursor_ = -1;
+    anchor_ = cursor_ = std::nullopt;
     notify_selection();
     return *this;
 }
 
 void ListView::select_range_from_anchor() {
+    if (!anchor_ || !cursor_) {
+        return;
+    }
     selection_.clear();
-    auto lo = std::min(anchor_, cursor_);
-    auto hi = std::max(anchor_, cursor_);
+    auto lo = std::min(*anchor_, *cursor_);
+    auto hi = std::max(*anchor_, *cursor_);
     for (auto i = lo; i <= hi; i++) {
         selection_.insert(i);
     }
@@ -284,7 +107,7 @@ void ListView::notify_selection() {
     }
 }
 
-void ListView::scroll_to(int index) {
+void ListView::scroll_to(size_t index) {
     auto const &palette = Theme::current().palette;
     auto bw = palette.border_width;
     auto ih = item_height();
@@ -308,10 +131,10 @@ float ListView::item_height() const {
 }
 
 float ListView::total_content_height() const {
-    if (!adapter_) {
+    if (!model_) {
         return 0;
     }
-    return item_height() * static_cast<float>(adapter_->count());
+    return item_height() * static_cast<float>(model_->row_count());
 }
 
 void ListView::clamp_scroll() {
@@ -321,46 +144,44 @@ void ListView::clamp_scroll() {
     auto content = total_content_height();
     auto max_scroll = std::max(0.0f, content - visible);
     scroll_offset_ = std::clamp(scroll_offset_, 0.0f, max_scroll);
+    this->window()->request_redraw("ListView::clamp_scroll");
 }
 
-int ListView::item_at_y(float y) const {
-    if (!adapter_) {
-        return -1;
+std::optional<size_t> ListView::item_at_y(float y) const {
+    if (!model_) {
+        return std::nullopt;
     }
-
     auto const &palette = Theme::current().palette;
     auto bw = palette.border_width;
     auto local_y = y - bw + scroll_offset_;
     if (local_y < 0) {
-        return -1;
+        return std::nullopt;
     }
-    auto idx = static_cast<int>(local_y / item_height());
-    if (idx < 0 || idx >= adapter_->count()) {
-        return -1;
+    auto idx = static_cast<size_t>(local_y / item_height());
+    if (idx >= model_->row_count()) {
+        return std::nullopt;
     }
     return idx;
 }
 
 void ListView::paint(Painter &painter) {
-    auto const &theme = Theme::current();  
+    auto const &theme = Theme::current();
     theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
 
-    if (!adapter_) {
+    if (!model_ || model_->row_count() == 0) {
         return;
     }
 
     auto const &style = theme.list_view;
     auto const &palette = theme.palette;
     auto ih = item_height();
-    auto fm = painter.font_metrics(palette.fonts.size);
-    auto n = adapter_->count();
+    auto n = model_->row_count();
     auto bw = palette.border_width;
     auto is_dark = palette.window.luma() < 0.5f;
     auto inner_w = rect_.width - bw * 2;
     auto inner_h = rect_.height - bw * 2;
-    auto first_visible = std::max(0, static_cast<int>(scroll_offset_ / ih));
-    auto last_visible = std::min(n - 1, static_cast<int>((scroll_offset_ + inner_h) / ih));
-    auto row_sel = palette.highlight;
+    auto first_visible = static_cast<size_t>(scroll_offset_ / ih);
+    auto last_visible = std::min(n - 1, static_cast<size_t>((scroll_offset_ + inner_h) / ih));
     auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
 
     auto body_clip = Rect{bw, bw, inner_w, inner_h};
@@ -369,10 +190,10 @@ void ListView::paint(Painter &painter) {
         auto iy = bw + ih * static_cast<float>(i) - scroll_offset_;
         auto item_rect = Rect{bw, iy, inner_w, ih};
         auto selected = is_selected(i);
-        auto hovered = (i == hovered_) && !selected;
+        auto hovered = (hovered_ == i) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
 
-        theme.draw_list_item(painter, item_rect, adapter_->text_at(i), {}, selected, hovered,
+        theme.draw_list_item(painter, item_rect, model_->cell_text(i, 0), {}, selected, hovered,
                              alt_row);
     }
     painter.pop_clip();
@@ -386,8 +207,9 @@ void ListView::paint(Painter &painter) {
         painter.fill_rounded_rect(sb, palette.text, 2.0f);
     }
 }
+
 bool ListView::handle_mouse(MouseEvent const &event) {
-    if (!adapter_) {
+    if (!model_) {
         return false;
     }
 
@@ -407,7 +229,7 @@ bool ListView::handle_mouse(MouseEvent const &event) {
             hovered_ = item_at_y(event.position.y);
             return true;
         }
-        hovered_ = -1;
+        hovered_ = std::nullopt;
         return false;
     }
 
@@ -416,28 +238,28 @@ bool ListView::handle_mouse(MouseEvent const &event) {
             return false;
         }
         auto idx = item_at_y(event.position.y);
-        if (idx < 0) {
+        if (!idx) {
             return false;
         }
 
         auto toggle_mod = event.super || event.ctrl;
 
-        if (multi_select_ && event.shift && anchor_ >= 0) {
+        if (multi_select_ && event.shift && anchor_) {
             cursor_ = idx;
             select_range_from_anchor();
             notify_selection();
         } else if (multi_select_ && toggle_mod) {
-            if (is_selected(idx)) {
-                selection_.erase(idx);
+            if (is_selected(*idx)) {
+                selection_.erase(*idx);
             } else {
-                selection_.insert(idx);
+                selection_.insert(*idx);
             }
             anchor_ = idx;
             cursor_ = idx;
             notify_selection();
         } else {
             selection_.clear();
-            selection_.insert(idx);
+            selection_.insert(*idx);
             anchor_ = idx;
             cursor_ = idx;
             notify_selection();
@@ -449,20 +271,20 @@ bool ListView::handle_mouse(MouseEvent const &event) {
 }
 
 bool ListView::handle_key(KeyEvent const &event) {
-    if (!is_focused() || !adapter_ || event.type != KeyEvent::Type::Press) {
+    if (!is_focused() || !model_ || event.type != KeyEvent::Type::Press) {
         return false;
     }
 
-    auto n = adapter_->count();
+    auto n = model_->row_count();
     if (n == 0) {
         return false;
     }
 
     switch (event.key) {
     case Key::Down: {
-        auto next = std::min((cursor_ < 0 ? 0 : cursor_ + 1), n - 1);
+        auto next = cursor_ ? std::min(*cursor_ + 1, n - 1) : size_t{0};
         if (multi_select_ && event.shift) {
-            if (anchor_ < 0) {
+            if (!anchor_) {
                 anchor_ = next;
             }
             cursor_ = next;
@@ -470,14 +292,14 @@ bool ListView::handle_key(KeyEvent const &event) {
         } else {
             set_selected(next);
         }
-        scroll_to(cursor_);
+        scroll_to(*cursor_);
         notify_selection();
         return true;
     }
     case Key::Up: {
-        auto next = std::max((cursor_ < 0 ? 0 : cursor_ - 1), 0);
+        auto next = (cursor_ && *cursor_ > 0) ? *cursor_ - 1 : size_t{0};
         if (multi_select_ && event.shift) {
-            if (anchor_ < 0) {
+            if (!anchor_) {
                 anchor_ = next;
             }
             cursor_ = next;
@@ -485,40 +307,40 @@ bool ListView::handle_key(KeyEvent const &event) {
         } else {
             set_selected(next);
         }
-        scroll_to(cursor_);
+        scroll_to(*cursor_);
         notify_selection();
         return true;
     }
     case Key::Home: {
         if (multi_select_ && event.shift) {
-            if (anchor_ < 0) {
-                anchor_ = 0;
+            if (!anchor_) {
+                anchor_ = size_t{0};
             }
-            cursor_ = 0;
+            cursor_ = size_t{0};
             select_range_from_anchor();
             notify_selection();
         } else {
-            set_selected(0);
+            set_selected(size_t{0});
         }
         scroll_to(0);
         return true;
     }
     case Key::End: {
+        auto last = n - 1;
         if (multi_select_ && event.shift) {
-            if (anchor_ < 0) {
-                anchor_ = n - 1;
+            if (!anchor_) {
+                anchor_ = last;
             }
-            cursor_ = n - 1;
+            cursor_ = last;
             select_range_from_anchor();
             notify_selection();
         } else {
-            set_selected(n - 1);
+            set_selected(last);
         }
-        scroll_to(n - 1);
+        scroll_to(last);
         return true;
     }
     default:
-        // Just to keep the compiler happy
         break;
     }
 
@@ -532,7 +354,7 @@ bool ListView::handle_key(KeyEvent const &event) {
 
 Size ListView::size_hint() const {
     auto item_measured_height = item_height();
-    // FIXME what is this 8 here...?
+    // FIXME: what is this 8 here...?
     auto hz = item_measured_height * 8;
     return {0, hz};
 }

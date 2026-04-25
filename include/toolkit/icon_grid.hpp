@@ -3,81 +3,21 @@
 
 #pragma once
 
-#include "toolkit/image_loader.hpp"
+#include "toolkit/item_model.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
 #include <set>
-#include <string>
-#include <vector>
 
 namespace toolkit {
 
-class IconGridModel {
-  public:
-    virtual ~IconGridModel() = default;
-    virtual size_t count() const = 0;
-    virtual std::string text_at(size_t index) const = 0;
-    virtual std::string tooltip_at(size_t index) const { return text_at(index); }
-    virtual Icon icon_at(size_t index, int size, bool snap) const = 0;
-
-    std::function<void()> on_data_changed;
-};
-
-class SimpleIconGridModel : public IconGridModel {
-  public:
-    struct Item {
-        std::string text;
-        std::string tooltip;
-        Icon icon;
-    };
-
-    explicit SimpleIconGridModel(std::vector<Item> items = {});
-
-    size_t count() const override { return items_.size(); }
-    std::string text_at(size_t index) const override;
-    std::string tooltip_at(size_t index) const override;
-    Icon icon_at(size_t index, int size, bool snap) const override;
-
-    void set_items(std::vector<Item> items);
-    void append(Item item);
-
-  private:
-    std::vector<Item> items_;
-};
-
-struct StandardIconItem {
-    std::string text;
-    std::string tooltip;
-    std::string icon_name;
-    std::string icon_category;
-    mutable Icon cached_icon;
-    mutable int cached_size = -1;
-};
-
-class StandardIconModel : public IconGridModel {
-  public:
-    explicit StandardIconModel(std::vector<StandardIconItem> items = {});
-
-    size_t count() const override { return items_.size(); }
-    std::string text_at(size_t index) const override;
-    std::string tooltip_at(size_t index) const override;
-    Icon icon_at(size_t index, int size, bool snap) const override;
-
-    void set_items(std::vector<StandardIconItem> items);
-    void append(StandardIconItem item);
-
-  private:
-    std::vector<StandardIconItem> items_;
-};
-
 class IconGrid : public Widget {
   public:
-    explicit IconGrid(std::shared_ptr<IconGridModel> model);
+    explicit IconGrid(std::shared_ptr<ItemModel> model);
 
-    IconGrid &set_model(std::shared_ptr<IconGridModel> model);
-    std::shared_ptr<IconGridModel> model() const { return model_; }
+    IconGrid &set_model(std::shared_ptr<ItemModel> model);
+    std::shared_ptr<ItemModel> model() const { return model_; }
 
     IconGrid &set_icon_size(int size);
     int icon_size() const { return icon_size_; }
@@ -119,7 +59,7 @@ class IconGrid : public Widget {
     void clamp_scroll();
     void scroll_to(size_t index);
 
-    std::shared_ptr<IconGridModel> model_;
+    std::shared_ptr<ItemModel> model_;
     int icon_size_ = 48;
     bool scale_icons_ = false;
     std::optional<size_t> cursor_;

@@ -487,7 +487,7 @@ void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_v
                                Icon const &icon, bool selected, bool hovered,
                                bool alternate) const {
     auto const &style = list_view;
-    Color bg;
+    auto bg = palette.base;
 
     auto is_dark = palette.window.luma() < 0.5f;
     auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
@@ -498,8 +498,6 @@ void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_v
         bg = Color::lerp(alt_color, palette.highlight, 0.5);
     } else if (alternate) {
         bg = alt_color;
-    } else {
-        bg = palette.base;
     }
 
     painter.fill_rect(rect, bg);

@@ -438,11 +438,11 @@ inline Element<toolkit::LineInput> line_input(std::string_view placeholder = "")
         std::make_unique<toolkit::LineInput>(std::string(placeholder)));
 }
 
-inline Element<toolkit::ListView> list_view(std::shared_ptr<toolkit::ListAdapter> model) {
+inline Element<toolkit::ListView> list_view(std::shared_ptr<toolkit::ItemModel> model) {
     return Element<toolkit::ListView>(std::make_unique<toolkit::ListView>(model));
 }
 
-inline Element<toolkit::TableView> table_view(std::shared_ptr<toolkit::TableModel> model) {
+inline Element<toolkit::TableView> table_view(std::shared_ptr<toolkit::ItemModel> model) {
     return Element<toolkit::TableView>(std::make_unique<toolkit::TableView>(model));
 }
 
@@ -471,7 +471,7 @@ inline Element<toolkit::Combobox> combobox(std::vector<std::string> items) {
     return Element<toolkit::Combobox>(std::make_unique<toolkit::Combobox>(std::move(items)));
 }
 
-inline Element<toolkit::IconGrid> icon_grid(std::shared_ptr<toolkit::IconGridModel> model) {
+inline Element<toolkit::IconGrid> icon_grid(std::shared_ptr<toolkit::ItemModel> model) {
     return Element<toolkit::IconGrid>(std::make_unique<toolkit::IconGrid>(model));
 }
 

@@ -59,6 +59,7 @@ class Widget {
         return p.x >= 0 && p.x <= rect_.width && p.y >= 0 && p.y <= rect_.height;
     }
 
+    // Re-layouts widgets, and parent. Then redraws main window.
     void invalidate_layout();
 
     virtual Widget &set_layout_dirty(bool dirty);

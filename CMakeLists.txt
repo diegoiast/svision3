@@ -50,6 +50,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/label.cpp
     src/toolkit/progress_bar.cpp
     src/toolkit/tab_widget.cpp
+    src/toolkit/item_model.cpp
     src/toolkit/list_view.cpp
     src/toolkit/icon_grid.cpp
     src/toolkit/file_dialog_widget.cpp

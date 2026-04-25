@@ -3,129 +3,129 @@
 
 using namespace toolkit;
 
-static std::shared_ptr<StringListAdapter> make_adapter(int n = 5) {
+static std::shared_ptr<StringListModel> make_model(int n = 5) {
     std::vector<std::string> items;
     for (int i = 0; i < n; i++) {
         items.push_back("Item " + std::to_string(i));
     }
-    return std::make_shared<StringListAdapter>(std::move(items));
+    return std::make_shared<StringListModel>(std::move(items));
 }
 
 TEST_CASE("ListView default state", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
-    REQUIRE(lv.get_selected_index() == -1);
-    REQUIRE(lv.get_selection().empty());
+    auto model = make_model();
+    ListView lv(model);
+    REQUIRE(!lv.selected_index());
+    REQUIRE(lv.selection().empty());
     REQUIRE(lv.is_focusable() == true);
     REQUIRE(lv.get_multi_select() == false);
     REQUIRE(lv.alternating_row_colors() == false);
 }
 
 TEST_CASE("ListView set_selected", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
-    lv.set_selected(2);
-    REQUIRE(lv.get_selected_index() == 2);
+    auto model = make_model();
+    ListView lv(model);
+    lv.set_selected(size_t{2});
+    REQUIRE(lv.selected_index() == size_t{2});
     REQUIRE(lv.is_selected(2) == true);
     REQUIRE(lv.is_selected(0) == false);
-    REQUIRE(lv.get_selection().size() == 1);
+    REQUIRE(lv.selection().size() == 1);
 }
 
 TEST_CASE("ListView set_selected clears previous", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
-    lv.set_selected(0);
-    lv.set_selected(3);
-    REQUIRE(lv.get_selection().size() == 1);
+    auto model = make_model();
+    ListView lv(model);
+    lv.set_selected(size_t{0});
+    lv.set_selected(size_t{3});
+    REQUIRE(lv.selection().size() == 1);
     REQUIRE(lv.is_selected(0) == false);
     REQUIRE(lv.is_selected(3) == true);
 }
 
-TEST_CASE("ListView set_selected out of range clears", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
-    lv.set_selected(2);
-    lv.set_selected(-1);
-    REQUIRE(lv.get_selection().empty());
-    REQUIRE(lv.get_selected_index() == -1);
+TEST_CASE("ListView set_selected nullopt clears", "[listview]") {
+    auto model = make_model();
+    ListView lv(model);
+    lv.set_selected(size_t{2});
+    lv.set_selected(std::nullopt);
+    REQUIRE(lv.selection().empty());
+    REQUIRE(!lv.selected_index());
 }
 
 TEST_CASE("ListView clear_selection", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
-    lv.set_selected(1);
+    auto model = make_model();
+    ListView lv(model);
+    lv.set_selected(size_t{1});
     lv.clear_selection();
-    REQUIRE(lv.get_selection().empty());
-    REQUIRE(lv.get_selected_index() == -1);
+    REQUIRE(lv.selection().empty());
+    REQUIRE(!lv.selected_index());
 }
 
 TEST_CASE("ListView select_all", "[listview]") {
-    auto adapter = make_adapter(3);
-    ListView lv(adapter);
+    auto model = make_model(3);
+    ListView lv(model);
     lv.select_all();
-    REQUIRE(lv.get_selection().size() == 3);
+    REQUIRE(lv.selection().size() == 3);
     REQUIRE(lv.is_selected(0));
     REQUIRE(lv.is_selected(1));
     REQUIRE(lv.is_selected(2));
 }
 
 TEST_CASE("ListView set_selection with explicit set", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
+    auto model = make_model();
+    ListView lv(model);
     lv.set_selection({1, 3});
-    REQUIRE(lv.get_selection().size() == 2);
+    REQUIRE(lv.selection().size() == 2);
     REQUIRE(lv.is_selected(1));
     REQUIRE(lv.is_selected(3));
     REQUIRE_FALSE(lv.is_selected(0));
 }
 
 TEST_CASE("ListView multi_select toggle", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
+    auto model = make_model();
+    ListView lv(model);
     REQUIRE(lv.get_multi_select() == false);
     lv.set_multi_select(true);
     REQUIRE(lv.get_multi_select() == true);
 }
 
 TEST_CASE("ListView alternating_row_colors toggle", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
+    auto model = make_model();
+    ListView lv(model);
     REQUIRE(lv.alternating_row_colors() == false);
     lv.set_alternating_row_colors(true);
     REQUIRE(lv.alternating_row_colors() == true);
 }
 
 TEST_CASE("ListView on_selection_changed fires", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
-    int notified = -1;
-    lv.on_selection_changed = [&](int idx) { notified = idx; };
-    lv.set_selected(3);
-    REQUIRE(notified == 3);
+    auto model = make_model();
+    ListView lv(model);
+    std::optional<size_t> notified;
+    lv.on_selection_changed = [&](std::optional<size_t> idx) { notified = idx; };
+    lv.set_selected(size_t{3});
+    REQUIRE(notified == size_t{3});
 }
 
-TEST_CASE("ListView set_adapter resets state", "[listview]") {
-    auto adapter1 = make_adapter(3);
-    auto adapter2 = make_adapter(5);
-    ListView lv(adapter1);
-    lv.set_selected(2);
-    lv.set_adapter(adapter2);
-    REQUIRE(lv.get_selected_index() == -1);
-    REQUIRE(lv.get_selection().empty());
+TEST_CASE("ListView set_model resets state", "[listview]") {
+    auto model1 = make_model(3);
+    auto model2 = make_model(5);
+    ListView lv(model1);
+    lv.set_selected(size_t{2});
+    lv.set_model(model2);
+    REQUIRE(!lv.selected_index());
+    REQUIRE(lv.selection().empty());
 }
 
-TEST_CASE("ListView with null adapter", "[listview]") {
+TEST_CASE("ListView with null model", "[listview]") {
     ListView lv(nullptr);
-    REQUIRE(lv.get_selected_index() == -1);
-    lv.set_selected(0);
-    REQUIRE(lv.get_selected_index() == -1);
+    REQUIRE(!lv.selected_index());
+    lv.set_selected(size_t{0});
+    REQUIRE(!lv.selected_index());
     lv.select_all();
-    REQUIRE(lv.get_selection().empty());
+    REQUIRE(lv.selection().empty());
 }
 
 TEST_CASE("ListView relative coordinates", "[listview]") {
-    auto adapter = make_adapter();
-    ListView lv(adapter);
+    auto model = make_model();
+    ListView lv(model);
     lv.set_rect({100, 100, 200, 200});
 
     MouseEvent e{};
