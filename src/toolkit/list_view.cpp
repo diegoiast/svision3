@@ -340,6 +340,40 @@ bool ListView::handle_key(KeyEvent const &event) {
         scroll_to(last);
         return true;
     }
+    case Key::PageDown: {
+        auto bw = Theme::current().palette.border_width;
+        auto page = std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
+        auto next = cursor_ ? std::min(*cursor_ + page, n - 1) : size_t{0};
+        if (multi_select_ && event.shift) {
+            if (!anchor_) {
+                anchor_ = next;
+            }
+            cursor_ = next;
+            select_range_from_anchor();
+        } else {
+            set_selected(next);
+        }
+        scroll_to(*cursor_);
+        notify_selection();
+        return true;
+    }
+    case Key::PageUp: {
+        auto bw = Theme::current().palette.border_width;
+        auto page = std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
+        auto next = (cursor_ && *cursor_ >= page) ? *cursor_ - page : size_t{0};
+        if (multi_select_ && event.shift) {
+            if (!anchor_) {
+                anchor_ = next;
+            }
+            cursor_ = next;
+            select_range_from_anchor();
+        } else {
+            set_selected(next);
+        }
+        scroll_to(*cursor_);
+        notify_selection();
+        return true;
+    }
     default:
         break;
     }

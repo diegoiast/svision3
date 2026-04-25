@@ -291,6 +291,9 @@ void TableView::clamp_scroll() {
 
     scroll_y_ = std::clamp(scroll_y_, 0.0f, max_y);
     scroll_x_ = std::clamp(scroll_x_, 0.0f, max_x);
+    if (window()) {
+        window()->request_redraw("TableView::clamp_scroll");
+    }
 }
 
 std::optional<size_t> TableView::row_at_y(float y) const {
@@ -549,6 +552,11 @@ bool TableView::handle_mouse(MouseEvent const &event) {
             return false;
         }
 
+        if (event.button == 3 && on_back_requested) {
+            on_back_requested();
+            return true;
+        }
+
         auto hh = header_height();
         if (event.position.y < hh) {
             return true;
@@ -579,6 +587,9 @@ bool TableView::handle_mouse(MouseEvent const &event) {
             anchor_row_ = row;
             cursor_row_ = row;
             notify_selection();
+        }
+        if (event.click_count >= 2 && on_item_activated) {
+            on_item_activated(model_row(*row));
         }
         return true;
     }
@@ -622,6 +633,7 @@ bool TableView::handle_key(KeyEvent const &event) {
         return false;
     }
 
+    // FIXME: convert to switch
     if (event.key == Key::Down) {
         auto next = cursor_row_ ? std::min(*cursor_row_ + 1, n - 1) : size_t{0};
         if (multi_select_ && event.shift) {
@@ -677,6 +689,45 @@ bool TableView::handle_key(KeyEvent const &event) {
             set_selected_row(last);
         }
         scroll_to_row(last);
+        return true;
+    } else if (event.key == Key::PageDown) {
+        auto bw = Theme::current().palette.border_width;
+        auto page =
+            std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / row_height()));
+        auto next = cursor_row_ ? std::min(*cursor_row_ + page, n - 1) : size_t{0};
+        if (multi_select_ && event.shift) {
+            if (!anchor_row_) {
+                anchor_row_ = next;
+            }
+            cursor_row_ = next;
+            select_range_from_anchor();
+            notify_selection();
+        } else {
+            set_selected_row(next);
+        }
+        scroll_to_row(*cursor_row_);
+        return true;
+    } else if (event.key == Key::PageUp) {
+        auto bw = Theme::current().palette.border_width;
+        auto page =
+            std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / row_height()));
+        auto next = (cursor_row_ && *cursor_row_ >= page) ? *cursor_row_ - page : size_t{0};
+        if (multi_select_ && event.shift) {
+            if (!anchor_row_) {
+                anchor_row_ = next;
+            }
+            cursor_row_ = next;
+            select_range_from_anchor();
+            notify_selection();
+        } else {
+            set_selected_row(next);
+        }
+        scroll_to_row(*cursor_row_);
+        return true;
+    }
+
+    if (event.key == Key::Enter && cursor_row_ && on_item_activated) {
+        on_item_activated(model_row(*cursor_row_));
         return true;
     }
 

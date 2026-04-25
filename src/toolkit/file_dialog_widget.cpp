@@ -249,6 +249,31 @@ void FileDialogWidget::setup_ui() {
     table_view_->set_visible(false);
     table_view_->set_show_header(false);
     table_view_->auto_fit_columns();
+    table_view_->on_item_activated = [this](size_t index) {
+        auto items = scan_directory(current_path_, sort_order_, dirs_first_, show_hidden_);
+        if (index >= items.size()) {
+            return;
+        }
+        auto &item = items[index];
+        if (item.is_dir) {
+            current_path_ =
+                (current_path_ == "/") ? "/" + item.text : current_path_ + "/" + item.text;
+            load_directory();
+        } else {
+            path_input_->set_text(item.text);
+            if (on_ok) {
+                on_ok();
+            }
+        }
+    };
+    table_view_->on_selection_changed = [this](std::optional<size_t> idx) {
+        if (idx) {
+            auto items = scan_directory(current_path_, sort_order_, dirs_first_, show_hidden_);
+            if (*idx < items.size() && !items[*idx].is_dir) {
+                path_input_->set_text(items[*idx].text);
+            }
+        }
+    };
 
     icon_grid_->on_item_activated = [this](size_t index) {
         auto items = scan_directory(current_path_, sort_order_, dirs_first_, show_hidden_);
@@ -277,6 +302,7 @@ void FileDialogWidget::setup_ui() {
         }
     };
     icon_grid_->on_back_requested = [this]() { up_button_->on_click(); };
+    table_view_->on_back_requested = [this]() { up_button_->on_click(); };
 
     content_->add_widget(std::move(grid), 1);
     content_->add_widget(std::move(table), 1);

@@ -47,6 +47,8 @@ class TableView : public Widget, public Fluent<TableView> {
 
     std::function<void(std::optional<size_t> row)> on_selection_changed;
     std::function<void(int column, SortOrder order)> on_sort_requested;
+    std::function<void(size_t row)> on_item_activated;
+    std::function<void()> on_back_requested;
 
     void auto_fit_columns();
     void auto_fit_column(int column);
