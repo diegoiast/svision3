@@ -24,6 +24,12 @@ class TextRasterizer {
 
     virtual RasterizedText rasterize(std::string_view text, float font_size, float scale,
                                      FontFamily font = FontFamily::System) = 0;
+
+    // FIXME: those functions seem very similar. We could merge them
+    // FIXME: Maybe cache the font metrics, instead of computing them?
+    // FIXME: all platforms (win32, cairo) create a font and delete on each call
+    //        It would be cool to tell the metric which font to use so they would
+    //        cache.
     virtual Size measure(std::string_view text, float font_size,
                          FontFamily font = FontFamily::System) = 0;
     virtual Painter::FontMetrics metrics(float font_size,
