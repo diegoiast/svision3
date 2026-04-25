@@ -206,7 +206,7 @@ auto beatlesSongs = std::vector<std::string>{
     "Yellow Submarine",
     "Yer Blues",
     "Yes It Is",
-    "YesterdaybeatlesSongsLength",
+    "Yesterday",
     "You Can't Do That",
     "You Know My Name (Look Up the Number)",
     "You Like Me Too Much",

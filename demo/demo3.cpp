@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     auto table_model = std::make_shared<toolkit::StringTableModel>(
         std::vector<std::string>{"Song", "Album", "Year", "Duration"}, beatlesSongsLength);
 
-    auto songs_adapter = std::make_shared<toolkit::StringListAdapter>(beatlesSongs);
+    auto songs_adapter = std::make_shared<toolkit::StringListModel>(beatlesSongs);
     auto filter_adapter = std::make_shared<toolkit::FilterAdapter>(songs_adapter);
     auto email_stats_label = ui::label("Empty");
     auto filter_progress = ui::progress_bar();
