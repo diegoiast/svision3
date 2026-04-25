@@ -1,5 +1,5 @@
-#include "Win32OpenGlRenderingBackend.hpp"
 #include "win32_platform.hpp"
+#include "Win32OpenGlRenderingBackend.hpp"
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
@@ -331,10 +331,13 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         int button = 0;
         if (msg == WM_LBUTTONDOWN) {
             button = 0;
-        } else if (msg == WM_RBUTTONDOWN)
+        } else if (msg == WM_RBUTTONDOWN) {
             button = 1;
-        else if (msg == WM_MBUTTONDOWN) button = 2;
-        else if (msg == WM_XBUTTONDOWN) button = (GET_XBUTTON_WPARAM(wp) == XBUTTON1) ? 3 : 4;
+        } else if (msg == WM_MBUTTONDOWN) {
+            button = 2;
+        } else if (msg == WM_XBUTTONDOWN) {
+            button = (GET_XBUTTON_WPARAM(wp) == XBUTTON1) ? 3 : 4;
+        }
 
         int clicks = detect_click_count(data, button, mx, my, GetMessageTime());
         MouseEvent e{};
@@ -358,10 +361,15 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         int mx = static_cast<int>(static_cast<short>(LOWORD(lp)));
         int my = static_cast<int>(static_cast<short>(HIWORD(lp)));
         int button = 0;
-        if (msg == WM_LBUTTONUP) button = 0;
-        else if (msg == WM_RBUTTONUP) button = 1;
-        else if (msg == WM_MBUTTONUP) button = 2;
-        else if (msg == WM_XBUTTONUP) button = (GET_XBUTTON_WPARAM(wp) == XBUTTON1) ? 3 : 4;
+        if (msg == WM_LBUTTONUP) {
+            button = 0;
+        } else if (msg == WM_RBUTTONUP) {
+            button = 1;
+        } else if (msg == WM_MBUTTONUP) {
+            button = 2;
+        } else if (msg == WM_XBUTTONUP) {
+            button = (GET_XBUTTON_WPARAM(wp) == XBUTTON1) ? 3 : 4;
+        }
 
         MouseEvent e{};
         e.type = MouseEvent::Type::Release;
@@ -506,6 +514,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 Win32PlatformApplication::Win32PlatformApplication() {
     enable_dpi_awareness();
     s_win32_app = this;
+    set_rasterizer(&app_rasterizer_);
     hinstance = GetModuleHandleW(nullptr);
     main_thread_id = GetCurrentThreadId();
 
@@ -886,9 +895,10 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point loc
     backend_->render_to_buffer(app_, piw, pih, scale, bits, [&](Painter &p) {
         auto fm = p.font_metrics(font_sz);
         Rect r{0, 0, w, h};
-        p.fill_rounded_rect(r, style.background, style.corner_radius);
-        p.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
-        p.draw_text(text, {pad, pad + fm.ascent}, style.text, font_sz);
+        p.fill_rounded_rect(r, palette.tooltip, palette.corner_radius);
+        // p.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
+        // p.draw_text(text, {pad, pad + fm.ascent}, style.text, font_sz);
+        p.draw_text(text, {pad, pad + fm.ascent}, palette.text, palette.fonts.size);
     });
 
     POINT pt_pos = {sx, sy};

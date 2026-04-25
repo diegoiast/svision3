@@ -471,7 +471,11 @@ int main(int argc, char *argv[]) {
     auto tab_icon_view = std::make_unique<toolkit::VBoxLayout>();
     auto file_dialog = std::make_unique<toolkit::FileDialogWidget>();
     auto file_dialog_ptr = file_dialog.get();
-    file_dialog->set_current_path(std::getenv("HOME"));
+    const char *home = std::getenv("HOME");
+    if (!home) {
+        home = std::getenv("USERPROFILE");
+    }
+    file_dialog->set_current_path(home ? home : ".");
 
     tab_icon_view->add_widget(std::move(file_dialog), 1);
     tabs->add_tab("Icon View", std::move(tab_icon_view));

@@ -40,7 +40,7 @@ class Win32OpenGlRenderingBackend : public RenderingBackend {
         ReleaseDC(hwnd_, hdc);
     }
 
-    void paint(Window *win, PlatformWindow *window, PlatformApplication *, int lw, int lh) {
+    void paint(Window *win, PlatformWindow *window, PlatformApplication *, int lw, int lh) override {
         auto win_plat = static_cast<Win32PlatformWindow *>(window);
         auto scale = get_window_scale(win_plat->hwnd);
         auto pw = static_cast<int>(std::ceil(lw * scale));
@@ -106,6 +106,18 @@ class Win32GDIRenderingBackend : public RenderingBackend {
         DeleteObject(hbm);
         DeleteDC(mem_dc);
         ReleaseDC(nullptr, screen_dc);
+    }
+
+    void paint(Window *win, PlatformWindow *window, PlatformApplication *, int lw, int lh) override {
+        auto win_plat = static_cast<Win32PlatformWindow *>(window);
+        auto scale = get_window_scale(win_plat->hwnd);
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(win_plat->hwnd, &ps);
+        {
+            GDIPainter painter(hdc, scale);
+            win->handle_paint(painter);
+        }
+        EndPaint(win_plat->hwnd, &ps);
     }
 };
 
