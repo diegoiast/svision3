@@ -922,28 +922,34 @@ Size BaseTheme::measure_label(std::string_view text, float font_size) const {
 }
 
 Size BaseTheme::measure_button(std::string_view text, Icon const &icon) const {
-    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
+    auto *p = detail::current_platform();
+    auto fm = p->font_metrics(palette.fonts.size);
+    auto text_w = p->measure_text(text, palette.fonts.size).width;
     auto icon_w = 0.0f;
     if (icon) {
         icon_w = static_cast<float>(icon->width);
     }
     auto total_w = text_w + (icon ? icon_w + 4.0f : 0.0f);
     auto w = total_w + button.padding.left + button.padding.right;
-    auto h = palette.fonts.size + button.padding.top + button.padding.bottom;
+    auto h = fm.height + button.padding.top + button.padding.bottom;
     return {w, h};
 }
 
 Size BaseTheme::measure_checkbox(std::string_view text) const {
-    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
+    auto *p = detail::current_platform();
+    auto fm = p->font_metrics(palette.fonts.size);
+    auto text_w = p->measure_text(text, palette.fonts.size).width;
     auto w = checkbox.box_size + checkbox.spacing + text_w;
-    auto h = std::max(checkbox.box_size, palette.fonts.size);
+    auto h = std::max(checkbox.box_size, fm.height);
     return Size{w, h};
 }
 
 Size BaseTheme::measure_radio_button(std::string_view text) const {
-    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
+    auto *p = detail::current_platform();
+    auto fm = p->font_metrics(palette.fonts.size);
+    auto text_w = p->measure_text(text, palette.fonts.size).width;
     auto w = radio.box_size + radio.spacing + text_w;
-    auto h = std::max(radio.box_size, palette.fonts.size);
+    auto h = std::max(radio.box_size, fm.height);
     return Size{w, h};
 }
 
@@ -963,15 +969,16 @@ Size BaseTheme::measure_menu_item(std::string_view text, Icon const &icon,
     if (!shortcut.empty()) {
         w += menu.item_padding + p->measure_text(shortcut, palette.fonts.size).width;
     }
-    auto h = palette.fonts.size + menu.item_padding * 2;
+    auto h = p->font_metrics(palette.fonts.size).height + menu.item_padding * 2;
     return {w, h};
 }
 
 float BaseTheme::menu_separator_height() const { return 8.0f; }
 Size BaseTheme::measure_tab(std::string_view text) const {
-    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
+    auto *p = detail::current_platform();
+    auto text_w = p->measure_text(text, palette.fonts.size).width;
     auto w = text_w + tab_widget.tab_padding_h * 2;
-    auto h = palette.fonts.size + tab_widget.tab_padding_v * 2;
+    auto h = p->font_metrics(palette.fonts.size).height + tab_widget.tab_padding_v * 2;
     return {w, h};
 }
 float BaseTheme::list_item_height() const { return 24.0f; }

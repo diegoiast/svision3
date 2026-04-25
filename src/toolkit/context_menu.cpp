@@ -17,8 +17,8 @@ ContextMenu::ContextMenu(std::vector<MenuItem> items) : items_(std::move(items))
     };
 }
 
-static auto menu_total_height(std::vector<MenuItem> const &items, float item_h, float sep_h)
-    -> float {
+static auto menu_total_height(std::vector<MenuItem> const &items, float item_h,
+                              float sep_h) -> float {
     auto h = 0.0f;
 
     for (auto const &item : items) {
@@ -38,17 +38,21 @@ void ContextMenu::show(Window *win, Point position) {
     auto const &palette = theme.palette;
     auto max_w = 0.0f;
 
-    item_height_ = palette.fonts.size + style.item_padding * 2.0f + 4.0f;
+    item_height_ = detail::current_platform()->font_metrics(palette.fonts.size).height +
+                   style.item_padding * 2.0f;
     for (auto const &item : items_) {
         if (item.type == MenuItem::Type::Separator) {
             continue;
         }
-        auto w = detail::current_platform()->measure_text(item.command->name(), palette.fonts.size).width;
+        auto w = detail::current_platform()
+                     ->measure_text(item.command->name(), palette.fonts.size)
+                     .width;
         max_w = std::max(max_w, w);
     }
 
+    // FIXME: what is this extra 20.0f padding?
     auto width = max_w + style.padding.left + style.padding.right + 20.0f;
-    auto height = menu_total_height(items_, item_height_, separator_height_) + 4.0f;
+    auto height = menu_total_height(items_, item_height_, separator_height_);
     auto win_size = window_->size();
     auto x = position.x;
     auto y = position.y;

@@ -84,7 +84,7 @@ void Menu::show(Window *win, Point position) {
     auto max_name_w = 0.0f;
     auto max_shortcut_w = 0.0f;
 
-    item_height_ = palette.fonts.size + style.item_padding * 2.0f + 4.0f;
+    item_height_ = detail::current_platform()->font_metrics(palette.fonts.size).height + style.item_padding * 2.0f + 4.0f;
     for (auto const &item : items_) {
         if (item.type == MenuItem::Type::Separator) {
             continue;

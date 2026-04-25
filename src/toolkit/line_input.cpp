@@ -278,7 +278,6 @@ void LineInput::paint(Painter &painter) {
         bg = theme.palette.error;
     }
 
-
     ensure_cursor_visible(painter);
 
     auto d_text = password_mode_ ? get_masked_text(text_) : text_;
@@ -777,9 +776,8 @@ void LineInput::show_context_menu(Point pos) {
 Size LineInput::size_hint() const {
     auto const &style = Theme::current().line_input;
     auto const &palette = Theme::current().palette;
-
-    // FIXME: what is 8.0f this constant?
-    auto h = palette.fonts.size + style.padding.top + style.padding.bottom + 8.0f;
+    auto fm = font_metrics(palette.fonts.size);
+    auto h = fm.height + style.padding.top + style.padding.bottom;
     return {150.0f, h};
 }
 

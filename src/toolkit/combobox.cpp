@@ -38,7 +38,8 @@ auto Combobox::selected_text() const -> std::string {
 auto Combobox::dropdown_item_height() const -> float {
     auto const &theme = Theme::current();
     auto const &style = Theme::current().combobox;
-    return theme.palette.fonts.size + style.item_padding * 2.0f;
+    auto fm = font_metrics(theme.palette.fonts.size);
+    return fm.height + style.item_padding * 2.0f;
 }
 
 auto Combobox::dropdown_bounds() const -> Rect {
