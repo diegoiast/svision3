@@ -182,7 +182,10 @@ Icon Application::load_icon(std::string_view icon_name, int size, std::string_vi
     auto icon = impl_->icon_provider->load(icon_name, size, context);
     if (icon) {
         impl_->icon_cache[key] = icon;
+    } else {
+        spdlog::error("Failed loading {} size {}", icon_name, size);
     }
+
     return icon;
 }
 

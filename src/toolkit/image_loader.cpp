@@ -6,8 +6,9 @@
 
 #include "toolkit/image_loader.hpp"
 #include <algorithm>
-#include <cmath>
 #include <fstream>
+#include <spdlog/fmt/fmt.h>
+#include <spdlog/spdlog.h>
 #include <sstream>
 
 namespace toolkit {
@@ -17,6 +18,7 @@ auto ImageLoader::load(std::string_view path) -> Icon {
     auto *data = stbi_load(std::string(path).c_str(), &w, &h, &c, STBI_rgb_alpha);
 
     if (!data) {
+        spdlog::error("stb: failed image {} ", path);
         return nullptr;
     }
 
@@ -74,11 +76,12 @@ auto XdgImageLoader::theme_name() const -> std::string_view { return current_the
 
 auto XdgImageLoader::load_theme(std::string_view theme_name) -> std::optional<IconTheme> {
     for (const auto &base_dir : xdg_dirs) {
-        auto theme_path = base_dir / "icons" / std::string(theme_name) / "index.theme";
+        auto theme_path = base_dir / "icons" / std::filesystem::path(theme_name) / "index.theme";
         if (std::filesystem::exists(theme_path)) {
             return parse_index_theme(theme_path.string());
         }
-        auto local_path = std::filesystem::path("themes") / std::string(theme_name) / "index.theme";
+        auto local_path =
+            std::filesystem::path("themes") / std::filesystem::path(theme_name) / "index.theme";
         if (std::filesystem::exists(local_path)) {
             auto t = parse_index_theme(local_path.string());
             if (t) {
@@ -196,8 +199,8 @@ auto XdgImageLoader::parse_index_theme(std::string_view path) -> std::optional<I
     return t;
 }
 
-auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::string_view context)
-    -> std::optional<std::string> {
+auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size,
+                                    std::string_view context) -> std::optional<std::string> {
     if (!theme) {
         return std::nullopt;
     }

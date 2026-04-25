@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/icon_grid.hpp"
-#include "toolkit/application.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <cmath>
@@ -222,10 +221,10 @@ void IconGrid::paint(Painter &painter) {
 
         auto is_selected = selected_indices_.contains(i);
         auto is_hovered = hovered_.has_value() && *hovered_ == i;
+        auto icon = model_->icon_at(i, 0, disp);
 
-        theme.draw_icon_grid_item(painter, item_rect, model_->cell_text(i, 0),
-                                  model_->icon_at(i, 0, disp), is_selected, is_hovered, disp,
-                                  scale_icons_);
+        theme.draw_icon_grid_item(painter, item_rect, model_->cell_text(i, 0), icon, is_selected,
+                                  is_hovered, disp, scale_icons_);
     }
 
     if (rubber_selecting_) {
