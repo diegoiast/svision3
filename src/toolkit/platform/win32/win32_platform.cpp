@@ -561,12 +561,12 @@ float Win32PlatformApplication::scale_factor() const {
 SystemFonts Win32PlatformApplication::system_fonts() const {
     NONCLIENTMETRICSW ncm = {sizeof(NONCLIENTMETRICSW)};
     if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0)) {
-        float scale = scale_factor();
-        float size = static_cast<float>(std::abs(ncm.lfMessageFont.lfHeight)) / scale;
+        float dpi = static_cast<float>(get_system_dpi());
+        // 72 = points per inch (typographic constant); see https://en.wikipedia.org/wiki/Point_(typography)
+        float size = static_cast<float>(std::abs(ncm.lfMessageFont.lfHeight)) * 72.0f / dpi;
         return {wide_to_utf8(ncm.lfMessageFont.lfFaceName), "Consolas", size};
     }
-    // 12pt at 96 DPI = 16px
-    return {"Segoe UI", "Consolas", 16.0f};
+    return {"Segoe UI", "Consolas", 9.0f};
 }
 
 std::unique_ptr<PlatformWindow> Win32PlatformApplication::create_window(std::string_view title,
