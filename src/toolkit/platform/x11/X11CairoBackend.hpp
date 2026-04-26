@@ -25,13 +25,13 @@ class X11CairoBackend : public RenderingBackend {
 
     std::string_view name() const override { return "Cairo"; }
 
-    void render_to_buffer(PlatformApplication *, int w, int h, float scale, void *dst,
+    void render_to_buffer(PlatformApplication *pApp, int w, int h, float scale, void *dst,
                           std::function<void(Painter &)> fn) override {
         cairo_surface_t *surf = cairo_image_surface_create_for_data(
             static_cast<unsigned char *>(dst), CAIRO_FORMAT_ARGB32, w, h, w * 4);
         cairo_t *cr = cairo_create(surf);
         cairo_scale(cr, scale, scale);
-        CairoPainter painter(cr);
+        CairoPainter painter(cr, pApp->rasterizer());
         fn(painter);
         cairo_surface_flush(surf);
         cairo_destroy(cr);
@@ -101,8 +101,12 @@ class X11CairoBackend : public RenderingBackend {
         }
 
         cairo_t *cr = cairo_create(cairo_surface_);
+        cairo_font_options_t *fo = cairo_font_options_create();
+        cairo_surface_get_font_options(x11_surface_, fo);
+        cairo_set_font_options(cr, fo);
+        cairo_font_options_destroy(fo);
         cairo_scale(cr, scale, scale);
-        CairoPainter painter(cr);
+        CairoPainter painter(cr, x11app->rasterizer());
         owner->handle_paint(painter);
         cairo_surface_flush(cairo_surface_);
         cairo_destroy(cr);

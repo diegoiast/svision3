@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
 #pragma once
 
 #include "toolkit/painter.hpp"
 #include "toolkit/painters/gl_painter.hpp"
+#include "toolkit/text_rasterizer.hpp"
 
 #ifdef TOOLKIT_HAS_CAIRO
 struct _cairo;
@@ -13,7 +17,7 @@ class Window;
 
 class CairoPainter : public Painter {
   public:
-    explicit CairoPainter(cairo_t *cr);
+    explicit CairoPainter(cairo_t *cr, TextRasterizer *rasterizer = nullptr);
 
     void push_clip(Rect const &rect) override;
     void pop_clip() override;
@@ -37,10 +41,6 @@ class CairoPainter : public Painter {
                    TextOrientation orientation = TextOrientation::Horizontal) override;
     void draw_image(ImageData const &image, Point position) override;
     void draw_image_scaled(ImageData const &image, Rect const &dest) override;
-
-    Size measure_text(std::string_view text, float font_size,
-                   FontFamily font = FontFamily::System) override;
-    FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) override;
 
     std::string_view name() const override { return "Cairo"; }
 

@@ -19,13 +19,13 @@ class WaylandCairoBackend : public RenderingBackend {
 
     std::string_view name() const override { return "Cairo"; }
 
-    void render_to_buffer(PlatformApplication *, int w, int h, float scale, void *dst,
+    void render_to_buffer(PlatformApplication *pApp, int w, int h, float scale, void *dst,
                           std::function<void(Painter &)> fn) override {
         cairo_surface_t *surf = cairo_image_surface_create_for_data(
             static_cast<unsigned char *>(dst), CAIRO_FORMAT_ARGB32, w, h, w * 4);
         cairo_t *cr = cairo_create(surf);
         cairo_scale(cr, scale, scale);
-        CairoPainter painter(cr);
+        CairoPainter painter(cr, pApp->rasterizer());
         fn(painter);
         cairo_surface_flush(surf);
         cairo_destroy(cr);
@@ -91,9 +91,14 @@ class WaylandCairoBackend : public RenderingBackend {
                 cairo_image_surface_create_for_data(static_cast<unsigned char *>(window->shm_data),
                                                     CAIRO_FORMAT_ARGB32, pw, ph, stride);
             cairo_t *cr = cairo_create(cs);
+            cairo_font_options_t *fo = cairo_font_options_create();
+            cairo_font_options_set_antialias(fo, CAIRO_ANTIALIAS_GRAY);
+            cairo_font_options_set_hint_style(fo, CAIRO_HINT_STYLE_SLIGHT);
+            cairo_set_font_options(cr, fo);
+            cairo_font_options_destroy(fo);
             cairo_scale(cr, static_cast<double>(window->scale), static_cast<double>(window->scale));
 
-            CairoPainter painter(cr);
+            CairoPainter painter(cr, pApp->rasterizer());
             owner->handle_paint(painter);
 
             cairo_surface_flush(cs);
