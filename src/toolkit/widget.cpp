@@ -117,6 +117,7 @@ void Widget::draw(Painter &painter) {
     if (!is_visible()) {
         return;
     }
+    // FIXME: this translation should be in calling parent, no?
     painter.push_clip(rect_);
     painter.push_translation({rect_.x, rect_.y});
     if (background_color_) {

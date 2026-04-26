@@ -119,7 +119,6 @@ class Widget {
 
     virtual bool trigger_mnemonic(char /*key*/) { return false; }
     virtual void collect_mnemonics(std::vector<Widget *> &out) { (void)out; }
-
     virtual void for_each_child(std::function<void(Widget *)> const &callback) { (void)callback; }
 
     static bool dispatch_mouse_event(Widget *w, MouseEvent const &event);
@@ -127,6 +126,10 @@ class Widget {
     virtual void set_window(Window *w) { window_ = w; }
     Window *window() const { return window_; }
 
+    // FIXME: this calls the platform->rasterizer. I wonder how can we improve
+    // FIXME: in practice Platform and Painter should have the same rasterizer
+    //        - but in practice this may differ. We should choose the rasterizer
+    //        from the painter.
     Size measure_text(std::string_view text, float font_size,
                       FontFamily font = FontFamily::System) const;
     Painter::FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) const;

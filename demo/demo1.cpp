@@ -800,6 +800,7 @@ int main(int argc, char *argv[]) {
 
     window->set_root(std::move(root));
     window->resize_to_fit();
+    window->relayout();
 
     if (!screenshot_path.empty()) {
         bool ok = window->save_to_png(screenshot_path);

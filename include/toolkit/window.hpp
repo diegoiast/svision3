@@ -62,6 +62,7 @@ class Window {
     void handle_mouse(MouseEvent const &event);
     void handle_key(KeyEvent const &event);
     void handle_resize(Size new_size);
+    void relayout();
 
     Window &resize_to_fit();
 

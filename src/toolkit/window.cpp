@@ -645,6 +645,13 @@ void Window::handle_resize(Size new_size) {
     }
 }
 
+void Window::relayout() {
+    if (root_) {
+        root_->set_rect({0, 0, size_.width, size_.height});
+        request_redraw();
+    }
+}
+
 Window &Window::resize_to_fit() {
     if (!root_) {
         return *this;
