@@ -17,6 +17,7 @@ class Painter {
     explicit Painter(TextRasterizer *rasterizer = nullptr) : rasterizer_(rasterizer) {}
     virtual ~Painter() = default;
 
+    // FIXME: this should be in the rasterizer, not in the painter
     struct FontMetrics {
         float ascent = 0;
         float descent = 0;
@@ -54,12 +55,12 @@ class Painter {
                            TextOrientation orientation = TextOrientation::Horizontal) = 0;
     virtual void draw_image(ImageData const &image, Point position) = 0;
     virtual void draw_image_scaled(ImageData const &image, Rect const &dest) = 0;
-
-    virtual Size measure_text(std::string_view text, float font_size = 14.0f,
-                           FontFamily font = FontFamily::System) = 0;
-    virtual FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) = 0;
-
     virtual std::string_view name() const = 0;
+
+    Size measure_text(std::string_view text, float font_size = 14.0f,
+                           FontFamily font = FontFamily::System);
+    FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System);
+
 
     // FIXME: draw_filled_frame - this should be removed and use the version from the theme
     void draw_filled_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
@@ -94,12 +95,6 @@ class MockPainter : public Painter {
                    TextOrientation) override {}
     void draw_image(ImageData const &, Point) override {}
     void draw_image_scaled(ImageData const &, Rect const &) override {}
-    Size measure_text(std::string_view text, float font_size, FontFamily) override {
-        return {static_cast<float>(text.size()) * font_size * 0.6f, font_size + 2.0f};
-    }
-    FontMetrics font_metrics(float font_size, FontFamily) override {
-        return {font_size * 0.8f, font_size * 0.2f, font_size};
-    }
     std::string_view name() const override { return "mock"; }
 };
 

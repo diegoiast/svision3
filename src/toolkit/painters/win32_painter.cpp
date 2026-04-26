@@ -19,6 +19,8 @@
 
 #include <cmath>
 #include <cstring>
+#include <optional>
+#include <unordered_map>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <vector>
@@ -53,6 +55,14 @@ static Gdiplus::Color to_gdiplus_color(Color const &c) {
 
 struct Win32TextRasterizer::Impl {
     HDC hdc = nullptr;
+
+    struct MetricsCache {
+        float font_size = -1.0f;
+        FontFamily family = FontFamily::System;
+        Painter::FontMetrics metrics{};
+    };
+    std::optional<MetricsCache> cached_metrics;
+    std::unordered_map<std::string, Size> measure_cache;
 
     HFONT create_font(float font_size, float scale = 1.0f, FontFamily family = FontFamily::System) {
         auto const &t = Theme::current();
@@ -156,11 +166,19 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
 }
 
 Size Win32TextRasterizer::measure(std::string_view text, float font_size, FontFamily font) {
-    auto wtext = to_wide(text);
-    if (wtext.empty()) {
+    if (text.empty()) {
         return {0, 0};
     }
 
+    auto cache_key = std::string(text) + '\0'
+                   + std::to_string(font_size) + '\0'
+                   + (font == FontFamily::Monospace ? '1' : '0');
+    auto it = impl_->measure_cache.find(cache_key);
+    if (it != impl_->measure_cache.end()) {
+        return it->second;
+    }
+
+    auto wtext = to_wide(text);
     HFONT hfont = impl_->create_font(font_size, 1.0f, font);
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
@@ -170,10 +188,18 @@ Size Win32TextRasterizer::measure(std::string_view text, float font_size, FontFa
     SelectObject(impl_->hdc, old_font);
     DeleteObject(hfont);
 
-    return {static_cast<float>(sz.cx), static_cast<float>(sz.cy)};
+    auto result = Size{static_cast<float>(sz.cx), static_cast<float>(sz.cy)};
+    impl_->measure_cache.emplace(std::move(cache_key), result);
+    return result;
 }
 
 Painter::FontMetrics Win32TextRasterizer::metrics(float font_size, FontFamily font) {
+    if (impl_->cached_metrics.has_value() &&
+        impl_->cached_metrics->font_size == font_size &&
+        impl_->cached_metrics->family == font) {
+        return impl_->cached_metrics->metrics;
+    }
+
     HFONT hfont = impl_->create_font(font_size, 1.0f, font);
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
@@ -185,7 +211,9 @@ Painter::FontMetrics Win32TextRasterizer::metrics(float font_size, FontFamily fo
 
     float ascent = static_cast<float>(tm.tmAscent);
     float descent = static_cast<float>(tm.tmDescent);
-    return {ascent, descent, ascent + descent};
+    auto result = Painter::FontMetrics{ascent, descent, ascent + descent};
+    impl_->cached_metrics = {font_size, font, result};
+    return result;
 }
 
 // ── GDIPainter ───────────────────────────────────────────────────────────────
@@ -217,11 +245,11 @@ struct GDIPainter::Impl {
     }
 };
 
-GDIPainter::GDIPainter(void *hdc, float scale)
-    : impl_(std::make_unique<Impl>(static_cast<HDC>(hdc), scale)) {}
+GDIPainter::GDIPainter(void *hdc, float scale, TextRasterizer *rasterizer)
+    : Painter(rasterizer), impl_(std::make_unique<Impl>(static_cast<HDC>(hdc), scale)) {}
 
-GDIPainter::GDIPainter(Gdiplus::Graphics *g, float scale)
-    : impl_(std::make_unique<Impl>(g, scale)) {}
+GDIPainter::GDIPainter(Gdiplus::Graphics *g, float scale, TextRasterizer *rasterizer)
+    : Painter(rasterizer), impl_(std::make_unique<Impl>(g, scale)) {}
 
 GDIPainter::~GDIPainter() {}
 
@@ -340,46 +368,41 @@ void GDIPainter::draw_circle(Point center, float radius, Color const &c, float l
 
 void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
                            FontFamily family, TextOrientation orientation) {
-    auto wtext = to_wide(text);
-    if (wtext.empty()) {
+    if (!rasterizer_ || text.empty()) {
         return;
     }
+    auto rast = rasterizer_->rasterize(text, font_size, impl_->scale, family);
+    if (rast.pixels.empty()) {
+        return;
+    }
+    ImageData img;
+    img.pixels = std::move(rast.pixels);
+    img.width = rast.width;
+    img.height = rast.height;
 
-    auto const &t = Theme::current();
-    std::string face_name =
-        (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
-    auto wface = to_wide(face_name);
-
-    Gdiplus::Font font(wface.c_str(), font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-    Gdiplus::SolidBrush brush(to_gdiplus_color(c));
-
-    Gdiplus::FontFamily ff(wface.c_str());
-    float em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
-    float asc = static_cast<float>(ff.GetCellAscent(Gdiplus::FontStyleRegular));
-    float ascent_pts = std::floor((asc * font_size) / em);
-
-    Gdiplus::GraphicsState state = impl_->graphics->Save();
-    impl_->graphics->TranslateTransform(pos.x, pos.y);
-    if (orientation == TextOrientation::VerticalCCW) {
-        impl_->graphics->RotateTransform(-90.0f);
-    } else if (orientation == TextOrientation::VerticalCW) {
-        impl_->graphics->RotateTransform(90.0f);
+    // colorize: the rasterizer produces white-on-black alpha mask, apply the requested color
+    for (int i = 0; i < img.width * img.height; ++i) {
+        float a = img.pixels[i * 4 + 3] / 255.0f;
+        img.pixels[i * 4 + 0] = static_cast<uint8_t>(c.r * 255 * a);
+        img.pixels[i * 4 + 1] = static_cast<uint8_t>(c.g * 255 * a);
+        img.pixels[i * 4 + 2] = static_cast<uint8_t>(c.b * 255 * a);
+        img.pixels[i * 4 + 3] = static_cast<uint8_t>(c.a * 255 * a);
     }
 
-    Gdiplus::PointF origin(0, -ascent_pts);
-    Gdiplus::StringFormat format(Gdiplus::StringFormat::GenericTypographic());
-    format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
-
-    impl_->graphics->DrawString(wtext.c_str(), -1, &font, origin, &format, &brush);
-    impl_->graphics->Restore(state);
-}
-
-Size GDIPainter::measure_text(std::string_view text, float font_size, FontFamily family) {
-    return measure_text_gdiplus(text, font_size, family);
-}
-
-Painter::FontMetrics GDIPainter::font_metrics(float font_size, FontFamily family) {
-    return font_metrics_gdiplus(font_size, family);
+    auto draw_at = Point{pos.x, pos.y - rast.ascent};
+    if (orientation == TextOrientation::Horizontal) {
+        draw_image(img, draw_at);
+    } else {
+        Gdiplus::GraphicsState state = impl_->graphics->Save();
+        impl_->graphics->TranslateTransform(pos.x, pos.y);
+        if (orientation == TextOrientation::VerticalCCW) {
+            impl_->graphics->RotateTransform(-90.0f);
+        } else {
+            impl_->graphics->RotateTransform(90.0f);
+        }
+        draw_image(img, {0, -rast.ascent});
+        impl_->graphics->Restore(state);
+    }
 }
 
 void GDIPainter::draw_image(ImageData const &image, Point position) {
@@ -416,46 +439,6 @@ void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     impl_->graphics->DrawImage(&bmp, dest.x, dest.y, dest.width, dest.height);
 }
 
-Size GDIPainter::measure_text_gdiplus(std::string_view text, float font_size, FontFamily family) {
-    auto wtext = to_wide(text);
-    if (wtext.empty()) {
-        return {0, 0};
-    }
-    auto const &t = Theme::current();
-    std::string face_name =
-        (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
-    auto wface = to_wide(face_name);
-    Gdiplus::Font font(wface.c_str(), font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-    Gdiplus::RectF layoutRect(0, 0, 10000, 10000);
-    Gdiplus::RectF boundRect;
-
-    Gdiplus::StringFormat format(Gdiplus::StringFormat::GenericTypographic());
-    format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
-
-    HDC screen_dc = GetDC(nullptr);
-    {
-        Gdiplus::Graphics graphics(screen_dc);
-        graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
-        graphics.MeasureString(wtext.c_str(), -1, &font, layoutRect, &format, &boundRect);
-    }
-    ReleaseDC(nullptr, screen_dc);
-    return {boundRect.Width, font_metrics_gdiplus(font_size, family).height + 1.0f};
-}
-
-Painter::FontMetrics GDIPainter::font_metrics_gdiplus(float font_size, FontFamily family) {
-    auto const &t = Theme::current();
-    std::string face_name =
-        (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
-    auto wface = to_wide(face_name);
-    Gdiplus::FontFamily ff(wface.c_str());
-    float em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
-    float asc = static_cast<float>(ff.GetCellAscent(Gdiplus::FontStyleRegular));
-    float desc = static_cast<float>(ff.GetCellDescent(Gdiplus::FontStyleRegular));
-    float line = static_cast<float>(ff.GetLineSpacing(Gdiplus::FontStyleRegular));
-
-    float scale = font_size / em;
-    return {asc * scale, desc * scale, (asc + desc) * scale};
-}
 
 static int GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
     UINT num = 0;

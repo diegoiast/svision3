@@ -1,7 +1,6 @@
 #pragma once
 
 #include "toolkit/painter.hpp"
-#include "toolkit/text_rasterizer.hpp"
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -37,10 +36,6 @@ class GLPainter : public Painter {
                    TextOrientation orientation = TextOrientation::Horizontal) override;
     void draw_image(ImageData const &image, Point position) override;
     void draw_image_scaled(ImageData const &image, Rect const &dest) override;
-
-    Size measure_text(std::string_view text, float font_size,
-                   FontFamily font = FontFamily::System) override;
-    FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) override;
 
     std::string_view name() const override { return "OpenGL"; }
 

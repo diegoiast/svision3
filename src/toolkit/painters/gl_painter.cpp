@@ -15,6 +15,7 @@
 #endif
 
 #include "toolkit/painters/gl_painter.hpp"
+#include "toolkit/text_rasterizer.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -354,14 +355,6 @@ void GLPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
 
     glDisable(GL_TEXTURE_2D);
     glDeleteTextures(1, &tex);
-}
-
-Size GLPainter::measure_text(std::string_view text, float font_size, FontFamily font) {
-    return rasterizer_->measure(text, font_size, font);
-}
-
-GLPainter::FontMetrics GLPainter::font_metrics(float font_size, FontFamily font) {
-    return rasterizer_->metrics(font_size, font);
 }
 
 void GLPainter::set_color(Color const &c) { glColor4f(c.r, c.g, c.b, c.a); }

@@ -21,11 +21,7 @@
 #include <cmath>
 #include <objidl.h>
 #include <spdlog/spdlog.h>
-
-#ifdef TOOLKIT_HAS_CAIRO
-#include "toolkit/painters/cairo_painter.hpp"
-#include <cairo.h>
-#endif
+#include "toolkit/stopwatch.hpp"
 
 namespace toolkit {
 
@@ -184,26 +180,8 @@ static int detect_click_count(Win32PlatformApplication::WindowData &data, int bu
     return data.click_count;
 }
 
-#ifndef TOOLKIT_HAS_CAIRO
-static void paint_window_gdiplus(HWND hwnd, Window *win, HDC hdc, float scale, int pw, int ph) {
-    HDC mem_dc = CreateCompatibleDC(hdc);
-    HBITMAP hbm = CreateCompatibleBitmap(hdc, pw, ph);
-    HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
 
-    {
-        GDIPainter painter(mem_dc, scale);
-        win->handle_paint(painter);
-    }
-
-    BitBlt(hdc, 0, 0, pw, ph, mem_dc, 0, 0, SRCCOPY);
-
-    SelectObject(mem_dc, old_bm);
-    DeleteObject(hbm);
-    DeleteDC(mem_dc);
-}
-#endif
-
-static void paint_window(HWND hwnd, Window *win) {
+void Win32PlatformApplication::paint_window(HWND hwnd, Window *win) {
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
     float scale = get_window_scale(hwnd);
@@ -217,7 +195,9 @@ static void paint_window(HWND hwnd, Window *win) {
     int ph = static_cast<int>(std::ceil(lh * scale));
 
     auto *win_plat = static_cast<Win32PlatformWindow *>(win->platform_window());
+
     if (win_plat->hglrc) {
+        // FIXME: does this code belogns here?
         wglMakeCurrent(hdc, win_plat->hglrc);
         glViewport(0, 0, pw, ph);
         glMatrixMode(GL_PROJECTION);
@@ -241,27 +221,20 @@ static void paint_window(HWND hwnd, Window *win) {
         return;
     }
 
-#ifdef TOOLKIT_HAS_CAIRO
-    cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
-    cairo_t *cr = cairo_create(surface);
-    cairo_scale(cr, scale, scale);
-    CairoPainter painter(cr);
-    win->handle_paint(painter);
-    cairo_surface_flush(surface);
-    unsigned char *data = cairo_image_surface_get_data(surface);
-    BITMAPINFO bmi = {};
-    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    bmi.bmiHeader.biWidth = pw;
-    bmi.bmiHeader.biHeight = -ph;
-    bmi.bmiHeader.biPlanes = 1;
-    bmi.bmiHeader.biBitCount = 32;
-    bmi.bmiHeader.biCompression = BI_RGB;
-    SetDIBitsToDevice(hdc, 0, 0, pw, ph, 0, 0, 0, ph, data, &bmi, DIB_RGB_COLORS);
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);
-#else
-    paint_window_gdiplus(hwnd, win, hdc, scale, pw, ph);
-#endif
+    HDC mem_dc = CreateCompatibleDC(hdc);
+    HBITMAP hbm = CreateCompatibleBitmap(hdc, pw, ph);
+    HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
+
+    {
+        ScopedTimer t("win32::paint_window [GDI+]");
+        GDIPainter painter(mem_dc, scale, &win_plat->rasterizer_);
+        win->handle_paint(painter);
+    }
+
+    BitBlt(hdc, 0, 0, pw, ph, mem_dc, 0, 0, SRCCOPY);
+    SelectObject(mem_dc, old_bm);
+    DeleteObject(hbm);
+    DeleteDC(mem_dc);
     EndPaint(hwnd, &ps);
 }
 
@@ -285,7 +258,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     switch (msg) {
     case WM_PAINT:
-        paint_window(hwnd, win);
+        Win32PlatformApplication::paint_window(hwnd, win);
         return 0;
     case WM_ERASEBKGND:
         return 1;
@@ -295,7 +268,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         float nh = static_cast<float>(HIWORD(lp)) / scale;
         if (nw != win->size().width || nh != win->size().height) {
             win->handle_resize({nw, nh});
-            paint_window(hwnd, win);
+            Win32PlatformApplication::paint_window(hwnd, win);
         }
         return 0;
     }

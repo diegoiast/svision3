@@ -3,6 +3,8 @@
 
 #include "toolkit/painter.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/text_rasterizer.hpp"
+
 #include <cmath>
 
 namespace toolkit {
@@ -69,5 +71,20 @@ float Painter::snap_to_pixel(float val, float scale) {
     }
     return std::floor(val * scale + 0.5f) / scale;
 }
+
+Size Painter::measure_text(std::string_view text, float font_size, FontFamily family) {
+    if (!rasterizer_ || text.empty()) {
+        return {0, 0};
+    }
+    return rasterizer_->measure(text, font_size, family);
+}
+
+Painter::FontMetrics Painter::font_metrics(float font_size, FontFamily family) {
+    if (rasterizer_) {
+        return rasterizer_->metrics(font_size, family);
+    }
+    return {};
+}
+
 
 } // namespace toolkit

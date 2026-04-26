@@ -1,6 +1,7 @@
 #pragma once
 
 #include "toolkit/painters/gl_painter.hpp"
+#include "toolkit/text_rasterizer.hpp"
 #include <memory>
 #include <string>
 
@@ -30,8 +31,8 @@ class Win32TextRasterizer : public TextRasterizer {
 
 class GDIPainter : public Painter {
   public:
-    explicit GDIPainter(void *hdc, float scale = 1.0f);
-    GDIPainter(Gdiplus::Graphics *g, float scale); // Internal use
+    explicit GDIPainter(void *hdc, float scale = 1.0f, TextRasterizer *rasterizer = nullptr);
+    GDIPainter(Gdiplus::Graphics *g, float scale, TextRasterizer *rasterizer = nullptr); // Internal use
     ~GDIPainter() override;
     void push_clip(Rect const &rect) override;
     void pop_clip() override;
@@ -54,15 +55,7 @@ class GDIPainter : public Painter {
                    TextOrientation orientation = TextOrientation::Horizontal) override;
     void draw_image(ImageData const &image, Point position) override;
     void draw_image_scaled(ImageData const &image, Rect const &dest) override;
-    Size measure_text(std::string_view text, float font_size,
-                      FontFamily font = FontFamily::System) override;
-    FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) override;
 
-    // FIXME: remove this and use the rusterizer
-    static Size measure_text_gdiplus(std::string_view text, float font_size,
-                                     FontFamily font = FontFamily::System);
-    // FIXME: remove this and use the rusterizer
-    static FontMetrics font_metrics_gdiplus(float font_size, FontFamily font = FontFamily::System);
     static bool save_to_png(Window *window, std::string const &path);
 
     std::string_view name() const override { return "GDI+"; }

@@ -65,6 +65,7 @@ class Win32PlatformApplication : public PlatformApplication {
     static constexpr wchar_t kTooltipClassName[] = L"TKTooltip";
     static constexpr UINT WM_TK_INVOKE = WM_APP + 1;
 
+    static void paint_window(HWND hwnd, Window *win);
   private:
     Win32TextRasterizer app_rasterizer_;
 };
