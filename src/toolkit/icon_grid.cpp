@@ -2,9 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/icon_grid.hpp"
+#include "toolkit/stopwatch.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <cmath>
+#include <spdlog/spdlog.h>
 
 namespace toolkit {
 
@@ -203,6 +205,11 @@ void IconGrid::paint(Painter &painter) {
     painter.push_translation({bw, bw - scroll_offset_});
 
     auto disp = display_icon_size();
+    auto stats_enabled = window_ && window_->is_statistics_logging_enabled();
+    auto t_icon = 0.0, t_text = 0.0;
+    auto visible_count = size_t{0};
+    auto sw = Stopwatch{};
+
     for (auto i = size_t{0}; i < count; ++i) {
         auto col = i % layout.columns;
         auto row = i / layout.columns;
@@ -219,12 +226,31 @@ void IconGrid::paint(Painter &painter) {
             break;
         }
 
+        ++visible_count;
         auto is_selected = selected_indices_.contains(i);
         auto is_hovered = hovered_.has_value() && *hovered_ == i;
-        auto icon = model_->icon_at(i, 0, disp);
 
+        if (stats_enabled) {
+            sw.reset();
+        }
+        auto icon = model_->icon_at(i, 0, disp);
+        if (stats_enabled) {
+            t_icon += sw.elapsed_ms();
+        }
+
+        if (stats_enabled) {
+            sw.reset();
+        }
         theme.draw_icon_grid_item(painter, item_rect, model_->cell_text(i, 0), icon, is_selected,
                                   is_hovered, disp, scale_icons_);
+        if (stats_enabled) {
+            t_text += sw.elapsed_ms();
+        }
+    }
+
+    if (stats_enabled) {
+        spdlog::info("IconGrid::paint items={} visible={} icon={:.2f}ms text={:.2f}ms", count,
+                     visible_count, t_icon, t_text);
     }
 
     if (rubber_selecting_) {

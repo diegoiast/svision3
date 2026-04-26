@@ -225,11 +225,8 @@ void Win32PlatformApplication::paint_window(HWND hwnd, Window *win) {
     HBITMAP hbm = CreateCompatibleBitmap(hdc, pw, ph);
     HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
 
-    {
-        ScopedTimer t("win32::paint_window [GDI+]");
-        GDIPainter painter(mem_dc, scale, &win_plat->rasterizer_);
-        win->handle_paint(painter);
-    }
+    GDIPainter painter(mem_dc, scale, &win_plat->rasterizer_);
+    win->handle_paint(painter);
 
     BitBlt(hdc, 0, 0, pw, ph, mem_dc, 0, 0, SRCCOPY);
     SelectObject(mem_dc, old_bm);
