@@ -22,6 +22,11 @@ namespace toolkit {
 
 namespace {
 
+struct Spacer : Widget {
+    void paint(Painter &) override {}
+    bool handle_mouse(MouseEvent const &) override { return false; }
+};
+
 struct DirItem {
     std::string text;
     std::string icon_name;
@@ -146,24 +151,33 @@ void FileDialogWidget::setup_ui() {
 
     toolbar_->add_widget(std::make_unique<Label>("Look in:"));
 
-    std::vector<std::string> drives = {"/"};
+    std::vector<std::string> drives;
 #if defined(_WIN32)
     if (GetLogicalDrives() > 0) {
         for (char letter = 'A'; letter <= 'Z'; letter++) {
-            auto drive_letter = std::string{} + letter + ":\\";
-            auto drive_type = GetDriveTypeA(drive_letter.c_str());
-            if (drive_type != DRIVE_NO_ROOT_DIR) {
-                drives.push_back(drive_letter);
+            auto drive_root = std::string{} + letter + ":\\";
+            if (GetDriveTypeA(drive_root.c_str()) != DRIVE_NO_ROOT_DIR) {
+                drives.push_back(std::string{} + letter + ":");
             }
         }
     }
+#else
+    drives.push_back("/");
 #endif
 
     auto combo = std::make_unique<Combobox>(drives);
     combo->set_selected(0);
     drive_combo_ = combo.get();
-    drive_combo_->set_enabled(false);
-    toolbar_->add_widget(std::move(combo), 1);
+    drive_combo_->on_change = [this](int) {
+        auto text = drive_combo_->selected_text();
+#if defined(_WIN32)
+        set_current_path(text + "\\");
+#else
+        set_current_path(text);
+#endif
+    };
+    toolbar_->add_widget(std::move(combo));
+    toolbar_->add_widget(std::make_unique<Spacer>(), 1);
 
     auto up_btn = std::make_unique<Button>("");
     up_btn->set_tooltip("Up One Level");
