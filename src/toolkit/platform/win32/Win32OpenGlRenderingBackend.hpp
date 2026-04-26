@@ -27,7 +27,8 @@ float get_window_scale(HWND hwnd);
 
 class Win32OpenGlRenderingBackend : public RenderingBackend {
   public:
-    Win32OpenGlRenderingBackend(HWND hwnd, HGLRC hglrc) : hwnd_(hwnd), hglrc_(hglrc) {}
+    Win32OpenGlRenderingBackend(HWND hwnd, HGLRC hglrc, TextRasterizer *rasterizer)
+        : hwnd_(hwnd), hglrc_(hglrc), rasterizer_(rasterizer) {}
 
     std::string_view name() const override { return "OpenGL"; }
 
@@ -35,7 +36,7 @@ class Win32OpenGlRenderingBackend : public RenderingBackend {
                           std::function<void(Painter &)> fn) override {
         HDC hdc = GetDC(hwnd_);
         wglMakeCurrent(hdc, hglrc_);
-        gl_render_to_buffer(w, h, scale, &rasterizer_, dst, fn);
+        gl_render_to_buffer(w, h, scale, rasterizer_, dst, fn);
         wglMakeCurrent(nullptr, nullptr);
         ReleaseDC(hwnd_, hdc);
     }
@@ -64,7 +65,7 @@ class Win32OpenGlRenderingBackend : public RenderingBackend {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        GLPainter painter(static_cast<float>(lh), scale, &rasterizer_);
+        GLPainter painter(static_cast<float>(lh), scale, rasterizer_);
         win->handle_paint(painter);
 
         glFlush();
@@ -76,11 +77,13 @@ class Win32OpenGlRenderingBackend : public RenderingBackend {
   private:
     HWND hwnd_;
     HGLRC hglrc_;
-    Win32TextRasterizer rasterizer_;
+    TextRasterizer *rasterizer_;
 };
 
 class Win32GDIRenderingBackend : public RenderingBackend {
   public:
+    explicit Win32GDIRenderingBackend(TextRasterizer *rasterizer) : rasterizer_(rasterizer) {}
+
     std::string_view name() const override { return "GDI+"; }
 
     void render_to_buffer(PlatformApplication *, int w, int h, float scale, void *dst,
@@ -98,7 +101,7 @@ class Win32GDIRenderingBackend : public RenderingBackend {
         HBITMAP hbm = CreateDIBSection(mem_dc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
         HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
         {
-            GDIPainter painter(mem_dc, scale);
+            GDIPainter painter(mem_dc, scale, rasterizer_);
             fn(painter);
         }
         std::memcpy(dst, bits, static_cast<size_t>(w) * h * 4);
@@ -114,11 +117,14 @@ class Win32GDIRenderingBackend : public RenderingBackend {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(win_plat->hwnd, &ps);
         {
-            GDIPainter painter(hdc, scale);
+            GDIPainter painter(hdc, scale, rasterizer_);
             win->handle_paint(painter);
         }
         EndPaint(win_plat->hwnd, &ps);
     }
+
+  private:
+    TextRasterizer *rasterizer_;
 };
 
 } // namespace toolkit

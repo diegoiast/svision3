@@ -677,9 +677,9 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
         ReleaseDC(hwnd, hdc);
     }
     if (hglrc) {
-        backend_ = std::make_unique<Win32OpenGlRenderingBackend>(hwnd, hglrc);
+        backend_ = std::make_unique<Win32OpenGlRenderingBackend>(hwnd, hglrc, &rasterizer_);
     } else {
-        backend_ = std::make_unique<Win32GDIRenderingBackend>();
+        backend_ = std::make_unique<Win32GDIRenderingBackend>(&rasterizer_);
     }
 }
 
@@ -892,11 +892,7 @@ void Win32PlatformWindow::hide_tooltip_window() {
 }
 
 bool Win32PlatformWindow::save_to_png(std::string const &path) {
-#ifdef TOOLKIT_HAS_CAIRO
-    return cairo_save_to_png(owner_, path);
-#else
     return GDIPainter::save_to_png(owner_, path);
-#endif
 }
 
 float Win32PlatformWindow::scale_factor() const { return get_window_scale(hwnd); }

@@ -477,7 +477,8 @@ bool GDIPainter::save_to_png(Window *window, std::string const &path) {
     Gdiplus::Graphics g(&bitmap);
     g.Clear(Gdiplus::Color(255, 255, 255, 255));
 
-    GDIPainter painter(&g, scale);
+    Win32TextRasterizer rasterizer;
+    GDIPainter painter(&g, scale, &rasterizer);
     window->handle_paint(painter);
 
     CLSID pngClsid;
