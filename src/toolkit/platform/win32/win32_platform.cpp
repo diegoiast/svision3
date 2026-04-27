@@ -565,6 +565,35 @@ int Win32PlatformApplication::run() {
     return static_cast<int>(msg.wParam);
 }
 
+void Win32PlatformApplication::run_until(std::function<bool()> should_exit) {
+    while (!should_exit()) {
+        MSG msg;
+        while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
+            if (msg.message == WM_QUIT) {
+                PostQuitMessage(static_cast<int>(msg.wParam));
+                return;
+            }
+            if (msg.message == WM_TK_INVOKE && msg.hwnd == nullptr) {
+                std::vector<std::function<void()>> fns;
+                {
+                    std::lock_guard lock(posted_mutex);
+                    fns.swap(posted_fns);
+                }
+                for (auto &fn : fns) {
+                    fn();
+                }
+                continue;
+            }
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+        if (should_exit()) {
+            break;
+        }
+        MsgWaitForMultipleObjectsEx(0, nullptr, 10, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+    }
+}
+
 void Win32PlatformApplication::quit() { PostQuitMessage(0); }
 
 void Win32PlatformApplication::post_to_main_thread(std::function<void()> fn) {
@@ -691,6 +720,11 @@ Win32PlatformWindow::~Win32PlatformWindow() {
         } else {
             ++it;
         }
+    }
+    if (modal_parent_hwnd) {
+        EnableWindow(modal_parent_hwnd, TRUE);
+        SetForegroundWindow(modal_parent_hwnd);
+        modal_parent_hwnd = nullptr;
     }
     if (hwnd) {
         if (hglrc) {
@@ -889,6 +923,13 @@ void Win32PlatformWindow::hide_tooltip_window() {
     if (tooltip_hwnd) {
         ShowWindow(tooltip_hwnd, SW_HIDE);
     }
+}
+
+void Win32PlatformWindow::set_modal_for(PlatformWindow *parent) {
+    auto *p = static_cast<Win32PlatformWindow *>(parent);
+    modal_parent_hwnd = p->hwnd;
+    SetWindowLongPtrW(hwnd, GWLP_HWNDPARENT, reinterpret_cast<LONG_PTR>(p->hwnd));
+    EnableWindow(p->hwnd, FALSE);
 }
 
 bool Win32PlatformWindow::save_to_png(std::string const &path) {

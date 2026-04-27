@@ -25,6 +25,7 @@ class Win32PlatformApplication : public PlatformApplication {
     std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
                                                   Window *owner) override;
     int run() override;
+    void run_until(std::function<bool()> should_exit) override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;
     std::string clipboard_get_text() override;
@@ -88,6 +89,7 @@ class Win32PlatformWindow : public PlatformWindow {
     void set_cursor(CursorShape shape) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
+    void set_modal_for(PlatformWindow *parent) override;
     bool save_to_png(std::string const &path) override;
     float scale_factor() const override;
     std::string_view painter_name() const override;
@@ -95,6 +97,7 @@ class Win32PlatformWindow : public PlatformWindow {
     Win32PlatformApplication *app_;
     Window *owner_;
     HWND hwnd = nullptr;
+    HWND modal_parent_hwnd = nullptr;
     HWND tooltip_hwnd = nullptr;
     HGLRC hglrc = nullptr;
     HCURSOR arrow_cursor = nullptr, ibeam_cursor = nullptr;
