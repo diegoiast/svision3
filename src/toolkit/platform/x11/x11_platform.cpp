@@ -80,6 +80,7 @@ struct X11PlatformApplication::Impl {
     std::string clipboard_content;
     ::Window clipboard_owner_window = 0L;
     bool opengl_requested = false;
+    ::Window modal_xwindow = 0L;
 };
 
 struct X11PlatformWindow::Impl {
@@ -90,6 +91,8 @@ struct X11PlatformWindow::Impl {
     std::unique_ptr<RenderingBackend> backend;
 
     bool needs_redraw = false;
+    bool is_modal = false;
+    bool has_input_grab = false;
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -516,6 +519,8 @@ static void process_pending_events(X11PlatformApplication::Impl *d) {
         if (xw == 0L) {
             continue;
         }
+        if (d->modal_xwindow != 0L && xw != d->modal_xwindow)
+            continue;
         auto it = d->window_map.find(xw);
         if (it != d->window_map.end()) {
             dispatch_x11_event(d, xw, it->second, ev);
@@ -605,105 +610,103 @@ std::unique_ptr<PlatformWindow> X11PlatformApplication::create_window(std::strin
     return std::make_unique<X11PlatformWindow>(this, title, size, owner);
 }
 
+// Runs one iteration of the event loop. Returns false when the loop should stop.
+static bool x11_run_iteration(X11PlatformApplication::Impl *d) {
+    if (d->window_map.empty()) {
+        d->running = false;
+        return false;
+    }
+
+    // 1. Process timers and posted functions.
+    std::vector<std::function<void()>> to_call;
+    {
+        auto const now = std::chrono::steady_clock::now();
+        for (auto it = d->timers.begin(); it != d->timers.end();) {
+            if (now >= it->next_fire) {
+                to_call.push_back(it->callback);
+                if (it->repeats) {
+                    it->next_fire =
+                        now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                  std::chrono::duration<float>(it->interval_sec));
+                    ++it;
+                } else {
+                    it = d->timers.erase(it);
+                }
+            } else {
+                ++it;
+            }
+        }
+    }
+    {
+        std::lock_guard lock(d->posted_mutex);
+        for (auto &fn : d->posted_fns)
+            to_call.push_back(std::move(fn));
+        d->posted_fns.clear();
+    }
+    for (auto const &fn : to_call)
+        fn();
+
+    // 2. Redraw windows that need it.
+    {
+        std::vector<X11PlatformWindow *> active_windows;
+        for (auto &pair : d->window_map)
+            active_windows.push_back(
+                static_cast<X11PlatformWindow *>(pair.second.owner->platform_window()));
+        for (auto *plat : active_windows) {
+            if (d->window_map.count(plat->impl_->xwindow) && plat->impl_->needs_redraw)
+                plat->do_paint();
+        }
+    }
+
+    if (!d->running)
+        return false;
+
+    // 3. Calculate poll timeout from next timer.
+    int timeout_ms = -1;
+    if (!d->timers.empty()) {
+        auto const now = std::chrono::steady_clock::now();
+        for (auto const &t : d->timers) {
+            auto const ms =
+                std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now).count();
+            int const wait_ms = ms < 0 ? 0 : static_cast<int>(ms);
+            if (timeout_ms < 0 || wait_ms < timeout_ms)
+                timeout_ms = wait_ms;
+        }
+    }
+
+    // 4. Poll for events.
+    struct pollfd fds[2];
+    fds[0] = {ConnectionNumber(d->display), POLLIN, 0};
+    fds[1] = {d->wakeup_pipe[0], POLLIN, 0};
+
+    if (XPending(d->display))
+        timeout_ms = 0;
+
+    XFlush(d->display);
+    poll(fds, 2, timeout_ms);
+
+    if (fds[1].revents & POLLIN) {
+        char buf[64];
+        while (::read(d->wakeup_pipe[0], buf, sizeof(buf)) > 0) {
+        }
+    }
+
+    // 5. Dispatch events.
+    process_pending_events(d);
+    return d->running;
+}
+
 int X11PlatformApplication::run() {
     auto *d = impl_.get();
     d->running = true;
     spdlog::info("Starting run loop (X11)");
-    while (d->running) {
-        if (d->window_map.empty()) {
-            d->running = false;
-            break;
-        }
-
-        // 1. Process timers and collect callbacks in a to_call vector.
-        std::vector<std::function<void()>> to_call;
-        {
-            auto const now = std::chrono::steady_clock::now();
-            for (auto it = d->timers.begin(); it != d->timers.end();) {
-                if (now >= it->next_fire) {
-                    to_call.push_back(it->callback);
-                    if (it->repeats) {
-                        it->next_fire =
-                            now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                      std::chrono::duration<float>(it->interval_sec));
-                        ++it;
-                    } else {
-                        it = d->timers.erase(it);
-                    }
-                } else {
-                    ++it;
-                }
-            }
-        }
-        // Include posted functions from other threads.
-        {
-            std::lock_guard lock(d->posted_mutex);
-            for (auto &fn : d->posted_fns) {
-                to_call.push_back(std::move(fn));
-            }
-            d->posted_fns.clear();
-        }
-
-        // 2. Execute those callbacks.
-        for (auto const &fn : to_call) {
-            fn();
-        }
-
-        // 3. Handle redrawing for all windows that have needs_redraw set to true.
-        {
-            std::vector<X11PlatformWindow *> active_windows;
-            for (auto &pair : d->window_map) {
-                active_windows.push_back(
-                    static_cast<X11PlatformWindow *>(pair.second.owner->platform_window()));
-            }
-            for (auto *plat : active_windows) {
-                if (d->window_map.count(plat->impl_->xwindow) && plat->impl_->needs_redraw) {
-                    plat->do_paint();
-                }
-            }
-        }
-
-        if (!d->running) {
-            break;
-        }
-
-        // 4. Calculate the poll timeout based on the next timer.
-        int timeout_ms = -1;
-        if (!d->timers.empty()) {
-            auto const now = std::chrono::steady_clock::now();
-            for (auto const &t : d->timers) {
-                auto const ms =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now)
-                        .count();
-                int const wait_ms = ms < 0 ? 0 : static_cast<int>(ms);
-                if (timeout_ms < 0 || wait_ms < timeout_ms) {
-                    timeout_ms = wait_ms;
-                }
-            }
-        }
-
-        // 5. Poll for events.
-        struct pollfd fds[2];
-        fds[0] = {ConnectionNumber(d->display), POLLIN, 0};
-        fds[1] = {d->wakeup_pipe[0], POLLIN, 0};
-
-        if (XPending(d->display)) {
-            timeout_ms = 0;
-        }
-
-        XFlush(d->display);
-        poll(fds, 2, timeout_ms);
-
-        if (fds[1].revents & POLLIN) {
-            char buf[64];
-            while (::read(d->wakeup_pipe[0], buf, sizeof(buf)) > 0) {
-            }
-        }
-
-        // 6. Dispatch/process events.
-        process_pending_events(d);
-    }
+    while (x11_run_iteration(d)) {}
     return 0;
+}
+
+void X11PlatformApplication::run_until(std::function<bool()> should_exit) {
+    auto *d = impl_.get();
+    while (!should_exit() && x11_run_iteration(d)) {}
 }
 
 void X11PlatformApplication::quit() { impl_->running = false; }
@@ -889,17 +892,54 @@ void X11PlatformWindow::cleanup_resources() {
         w->tooltip_xwindow = 0L;
     }
 
+    if (w->has_input_grab) {
+        XUngrabPointer(d->display, CurrentTime);
+        XUngrabKeyboard(d->display, CurrentTime);
+        w->has_input_grab = false;
+    }
+
+    if (d->modal_xwindow == w->xwindow)
+        d->modal_xwindow = 0L;
+
     XDestroyWindow(d->display, w->xwindow);
     w->xwindow = 0L;
 }
 
 void X11PlatformWindow::show() {
-    XMapRaised(static_cast<Display *>(app_->impl_->display), impl_->xwindow);
+    auto *display = static_cast<Display *>(app_->impl_->display);
+    XMapRaised(display, impl_->xwindow);
     // Force first paint immediately after mapping to avoid blink
     if (impl_->needs_redraw) {
         do_paint();
     }
-    XFlush(static_cast<Display *>(app_->impl_->display));
+    XFlush(display);
+
+    if (impl_->is_modal && !impl_->has_input_grab) {
+        XGrabPointer(display, impl_->xwindow, True,
+                     ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ButtonMotionMask,
+                     GrabModeAsync, GrabModeAsync, 0L, 0L, CurrentTime);
+        XGrabKeyboard(display, impl_->xwindow, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+        impl_->has_input_grab = true;
+    }
+}
+
+void X11PlatformWindow::set_modal_for(PlatformWindow *parent) {
+    auto *d = app_->impl_.get();
+    auto *p = static_cast<X11PlatformWindow *>(parent);
+    XSetTransientForHint(d->display, impl_->xwindow, p->impl_->xwindow);
+
+    Atom net_wm_state = XInternAtom(d->display, "_NET_WM_STATE", False);
+    Atom net_wm_modal = XInternAtom(d->display, "_NET_WM_STATE_MODAL", False);
+    XChangeProperty(d->display, impl_->xwindow, net_wm_state, XA_ATOM, 32, PropModeReplace,
+                    reinterpret_cast<unsigned char *>(&net_wm_modal), 1);
+
+    Atom net_wm_window_type = XInternAtom(d->display, "_NET_WM_WINDOW_TYPE", False);
+    Atom net_wm_window_type_dialog = XInternAtom(d->display, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+    XChangeProperty(d->display, impl_->xwindow, net_wm_window_type, XA_ATOM, 32, PropModeReplace,
+                    reinterpret_cast<unsigned char *>(&net_wm_window_type_dialog), 1);
+
+    impl_->is_modal = true;
+    app_->impl_->modal_xwindow = impl_->xwindow;
 }
 
 void X11PlatformWindow::close() { cleanup_resources(); }

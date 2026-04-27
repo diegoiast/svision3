@@ -30,6 +30,7 @@ class DummyPlatformApplication : public PlatformApplication {
     std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
                                                   Window *owner) override;
     int run() override { return 0; }
+    void run_until(std::function<bool()>) override {}
     void quit() override {}
     void post_to_main_thread(std::function<void()> fn) override { fn(); }
     std::string clipboard_get_text() override { return ""; }

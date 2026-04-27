@@ -47,6 +47,7 @@ class PlatformWindow {
     virtual void set_cursor(CursorShape shape) = 0;
     virtual void show_tooltip_window(std::string const &text, Point pos) = 0;
     virtual void hide_tooltip_window() = 0;
+    virtual void set_modal_for(PlatformWindow *parent) {}
 
     // FIXME: remove this function, and return a pure image, saving should be done by the
     //        application using proper APIs
@@ -62,6 +63,7 @@ class PlatformApplication {
     virtual std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
                                                           Window *owner) = 0;
     virtual int run() = 0;
+    virtual void run_until(std::function<bool()> should_exit) = 0;
     virtual void quit() = 0;
     virtual void post_to_main_thread(std::function<void()> fn) = 0;
     virtual std::string clipboard_get_text() = 0;

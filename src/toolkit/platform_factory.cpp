@@ -151,6 +151,9 @@ Window *Application::create_window(std::string_view title, Size size) {
 }
 
 int Application::run() { return impl_->platform->run(); }
+void Application::run_until(std::function<bool()> should_exit) {
+    impl_->platform->run_until(std::move(should_exit));
+}
 void Application::quit() { impl_->platform->quit(); }
 
 std::string_view Application::platform_name() const { return impl_->platform->name(); }

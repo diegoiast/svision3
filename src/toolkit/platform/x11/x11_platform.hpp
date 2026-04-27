@@ -15,6 +15,7 @@ class X11PlatformApplication : public PlatformApplication {
     std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
                                                   Window *owner) override;
     int run() override;
+    void run_until(std::function<bool()> should_exit) override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;
     std::string clipboard_get_text() override;
@@ -49,6 +50,7 @@ class X11PlatformWindow : public PlatformWindow {
     void set_cursor(CursorShape shape) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
+    void set_modal_for(PlatformWindow *parent) override;
     bool save_to_png(std::string const &path) override;
     float scale_factor() const override;
     std::string_view painter_name() const;

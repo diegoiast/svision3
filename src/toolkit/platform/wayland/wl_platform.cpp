@@ -4,10 +4,12 @@
 #include "toolkit/window.hpp"
 #include <cstring>
 
+#include "cursor-shape-v1-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
 #include "toolkit/painters/cairo_painter.hpp"
 #include "viewporter-client-protocol.h"
 #include "xdg-decoration-client-protocol.h"
+#include "xdg-dialog-v1-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 
 #include <EGL/egl.h>
@@ -230,10 +232,35 @@ static const char *cursor_name_for(CursorShape shape) {
     }
 }
 
-static void apply_cursor(WaylandPlatformApplication *app, const char *name) {
-    if (!app->cursor_theme || !app->pointer || !app->cursor_surface) {
+static wp_cursor_shape_device_v1_shape cursor_shape_for(CursorShape shape) {
+    switch (shape) {
+    case CursorShape::IBeam:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT;
+    case CursorShape::Hand:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER;
+    case CursorShape::NotAllowed:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NOT_ALLOWED;
+    case CursorShape::ResizeEW:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE;
+    case CursorShape::Arrow:
+    default:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+    }
+}
+
+static void apply_cursor(WaylandPlatformApplication *app, CursorShape shape) {
+    if (!app->pointer) {
         return;
     }
+    if (app->cursor_shape_device) {
+        wp_cursor_shape_device_v1_set_shape(app->cursor_shape_device, app->pointer_enter_serial,
+                                            cursor_shape_for(shape));
+        return;
+    }
+    if (!app->cursor_theme || !app->cursor_surface) {
+        return;
+    }
+    const char *name = cursor_name_for(shape);
     wl_cursor *cursor = wl_cursor_theme_get_cursor(app->cursor_theme, name);
     if (!cursor || cursor->image_count == 0) {
         return;
@@ -287,6 +314,12 @@ static void registry_global(void *data, wl_registry *reg, uint32_t name, const c
     } else if (strcmp(iface, "zxdg_decoration_manager_v1") == 0) {
         app->decoration_manager = static_cast<zxdg_decoration_manager_v1 *>(
             wl_registry_bind(reg, name, &zxdg_decoration_manager_v1_interface, 1));
+    } else if (strcmp(iface, "xdg_wm_dialog_v1") == 0) {
+        app->wm_dialog = static_cast<xdg_wm_dialog_v1 *>(
+            wl_registry_bind(reg, name, &xdg_wm_dialog_v1_interface, 1));
+    } else if (strcmp(iface, "wp_cursor_shape_manager_v1") == 0) {
+        app->cursor_shape_manager = static_cast<wp_cursor_shape_manager_v1 *>(
+            wl_registry_bind(reg, name, &wp_cursor_shape_manager_v1_interface, 1));
     }
 }
 
@@ -297,6 +330,10 @@ static void seat_capabilities(void *data, wl_seat *seat, uint32_t caps) {
     if ((caps & WL_SEAT_CAPABILITY_POINTER) && !app->pointer) {
         app->pointer = wl_seat_get_pointer(seat);
         wl_pointer_add_listener(app->pointer, &pointer_listener, app);
+        if (app->cursor_shape_manager && !app->cursor_shape_device) {
+            app->cursor_shape_device =
+                wp_cursor_shape_manager_v1_get_pointer(app->cursor_shape_manager, app->pointer);
+        }
     }
     if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !app->keyboard) {
         app->keyboard = wl_seat_get_keyboard(seat);
@@ -310,11 +347,16 @@ static void pointer_enter(void *data, wl_pointer *, uint32_t serial, wl_surface 
                           wl_fixed_t sx, wl_fixed_t sy) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
     app->pointer_enter_serial = serial;
-    app->pointer_focus = find_window(app, surf);
+    auto *win = find_window(app, surf);
+    if (app->modal_window && win != app->modal_window) {
+        app->pointer_focus = nullptr;
+        return;
+    }
+    app->pointer_focus = win;
     app->pointer_x = static_cast<float>(wl_fixed_to_double(sx));
     app->pointer_y = static_cast<float>(wl_fixed_to_double(sy));
     if (app->pointer_focus) {
-        apply_cursor(app, cursor_name_for(app->pointer_focus->current_cursor));
+        apply_cursor(app, app->pointer_focus->current_cursor);
     }
 }
 
@@ -328,6 +370,9 @@ static void pointer_motion(void *data, wl_pointer *, uint32_t, wl_fixed_t sx, wl
     app->pointer_x = static_cast<float>(wl_fixed_to_double(sx));
     app->pointer_y = static_cast<float>(wl_fixed_to_double(sy));
     if (!app->pointer_focus) {
+        return;
+    }
+    if (app->modal_window && app->pointer_focus != app->modal_window) {
         return;
     }
     MouseEvent e{};
@@ -348,6 +393,9 @@ static void pointer_button(void *data, wl_pointer *, uint32_t, uint32_t time, ui
                            uint32_t state) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
     if (!app->pointer_focus) {
+        return;
+    }
+    if (app->modal_window && app->pointer_focus != app->modal_window) {
         return;
     }
     int btn = 0;
@@ -397,6 +445,9 @@ static void pointer_button(void *data, wl_pointer *, uint32_t, uint32_t time, ui
 static void pointer_axis(void *data, wl_pointer *, uint32_t, uint32_t axis, wl_fixed_t value) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
     if (!app->pointer_focus) {
+        return;
+    }
+    if (app->modal_window && app->pointer_focus != app->modal_window) {
         return;
     }
     MouseEvent e{};
@@ -470,6 +521,9 @@ static void keyboard_leave(void *data, wl_keyboard *, uint32_t, wl_surface *) {
 
 static void process_key(WaylandPlatformApplication *app, uint32_t key) {
     if (!app->keyboard_focus || !app->xkb_st) {
+        return;
+    }
+    if (app->modal_window && app->keyboard_focus != app->modal_window) {
         return;
     }
     uint32_t keycode = key + 8;
@@ -743,7 +797,17 @@ WaylandPlatformApplication::WaylandPlatformApplication() {
         }
     }
 
-    cursor_theme = wl_cursor_theme_load(nullptr, 24, shm);
+    int cursor_size = 24;
+    if (const char *env_size = std::getenv("XCURSOR_SIZE")) {
+        int s = std::atoi(env_size);
+        if (s > 0) {
+            cursor_size = s;
+        }
+    } else {
+        cursor_size = static_cast<int>(24.0f * output_scale);
+    }
+    const char *cursor_theme_name = std::getenv("XCURSOR_THEME");
+    cursor_theme = wl_cursor_theme_load(cursor_theme_name, cursor_size, shm);
     if (compositor) {
         cursor_surface = wl_compositor_create_surface(compositor);
     }
@@ -789,6 +853,15 @@ WaylandPlatformApplication::~WaylandPlatformApplication() {
     if (seat) {
         wl_seat_destroy(seat);
     }
+    if (cursor_shape_device) {
+        wp_cursor_shape_device_v1_destroy(cursor_shape_device);
+    }
+    if (cursor_shape_manager) {
+        wp_cursor_shape_manager_v1_destroy(cursor_shape_manager);
+    }
+    if (wm_dialog) {
+        xdg_wm_dialog_v1_destroy(wm_dialog);
+    }
     if (decoration_manager) {
         zxdg_decoration_manager_v1_destroy(decoration_manager);
     }
@@ -832,95 +905,103 @@ WaylandPlatformApplication::create_window(std::string_view title, Size size, Win
     return std::make_unique<WaylandPlatformWindow>(this, title, size, owner);
 }
 
+// Runs one iteration of the Wayland event loop. Returns false when the loop should stop.
+static bool wl_run_iteration(WaylandPlatformApplication *app) {
+    // 1. Process timers and posted functions.
+    std::vector<std::function<void()>> to_call;
+    {
+        auto now = std::chrono::steady_clock::now();
+        for (auto it = app->timers.begin(); it != app->timers.end();) {
+            if (now >= it->next_fire) {
+                to_call.push_back(it->callback);
+                if (it->repeats) {
+                    it->next_fire =
+                        now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                  std::chrono::duration<float>(it->interval_sec));
+                    ++it;
+                } else {
+                    it = app->timers.erase(it);
+                }
+            } else {
+                ++it;
+            }
+        }
+    }
+    {
+        std::lock_guard lock(app->posted_mutex);
+        for (auto &fn : app->posted_fns) {
+            to_call.push_back(std::move(fn));
+        }
+        app->posted_fns.clear();
+    }
+    for (auto &fn : to_call) {
+        fn();
+    }
+
+    // 2. Redraw windows that need it.
+    for (auto *win : app->windows) {
+        if (win->configured && win->needs_redraw && !win->frame_cb) {
+            win->do_paint();
+        }
+    }
+
+    // 3. Flush the display.
+    wl_display_flush(app->display);
+
+    // 4. Calculate poll timeout from next timer.
+    int timeout_ms = -1;
+    if (!app->timers.empty()) {
+        auto now = std::chrono::steady_clock::now();
+        for (auto &t : app->timers) {
+            auto ms =
+                std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now).count();
+            if (ms < 0) {
+                ms = 0;
+            }
+            if (timeout_ms < 0 || ms < timeout_ms) {
+                timeout_ms = static_cast<int>(ms);
+            }
+        }
+    }
+
+    // 5. Poll for events.
+    int wl_fd = wl_display_get_fd(app->display);
+    struct pollfd fds[2];
+    fds[0] = {wl_fd, POLLIN, 0};
+    fds[1] = {app->wakeup_pipe[0], POLLIN, 0};
+    poll(fds, 2, timeout_ms);
+
+    if (fds[1].revents & POLLIN) {
+        char buf[64];
+        while (::read(app->wakeup_pipe[0], buf, sizeof(buf)) > 0) {
+        }
+    }
+
+    // 6. Dispatch events.
+    if (fds[0].revents & POLLIN) {
+        wl_display_dispatch(app->display);
+    } else {
+        wl_display_dispatch_pending(app->display);
+    }
+
+    if (app->windows.empty()) {
+        app->running = false;
+    }
+
+    return app->running;
+}
+
 int WaylandPlatformApplication::run() {
     running = true;
     spdlog::info("Starting run loop (Wayland)");
-    int wl_fd = wl_display_get_fd(display);
-
-    while (running) {
-        // 1. Process timers and collect callbacks in a to_call vector
-        std::vector<std::function<void()>> to_call;
-        {
-            auto now = std::chrono::steady_clock::now();
-            for (auto it = timers.begin(); it != timers.end();) {
-                if (now >= it->next_fire) {
-                    to_call.push_back(it->callback);
-                    if (it->repeats) {
-                        it->next_fire =
-                            now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                      std::chrono::duration<float>(it->interval_sec));
-                        ++it;
-                    } else {
-                        it = timers.erase(it);
-                    }
-                } else {
-                    ++it;
-                }
-            }
-        }
-        {
-            std::lock_guard lock(posted_mutex);
-            for (auto &fn : posted_fns) {
-                to_call.push_back(std::move(fn));
-            }
-            posted_fns.clear();
-        }
-
-        // 2. Execute those callbacks
-        for (auto &fn : to_call) {
-            fn();
-        }
-
-        // 3. Handle redrawing for all windows that have needs_redraw set to true
-        for (auto *win : windows) {
-            if (win->configured && win->needs_redraw && !win->frame_cb) {
-                win->do_paint();
-            }
-        }
-
-        // 4. Flush the display
-        wl_display_flush(display);
-
-        // 5. Calculate the poll timeout based on the next timer
-        int timeout_ms = -1;
-        if (!timers.empty()) {
-            auto now = std::chrono::steady_clock::now();
-            for (auto &t : timers) {
-                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now)
-                              .count();
-                if (ms < 0) {
-                    ms = 0;
-                }
-                if (timeout_ms < 0 || ms < timeout_ms) {
-                    timeout_ms = static_cast<int>(ms);
-                }
-            }
-        }
-
-        // 6. Poll for events
-        struct pollfd fds[2];
-        fds[0] = {wl_fd, POLLIN, 0};
-        fds[1] = {wakeup_pipe[0], POLLIN, 0};
-        poll(fds, 2, timeout_ms);
-
-        if (fds[1].revents & POLLIN) {
-            char buf[64];
-            while (::read(wakeup_pipe[0], buf, sizeof(buf)) > 0) {
-            }
-        }
-
-        // 7. Dispatch events
-        if (fds[0].revents & POLLIN) {
-            wl_display_dispatch(display);
-        } else {
-            wl_display_dispatch_pending(display);
-        }
-
-        if (windows.empty()) {
-            running = false;
-        }
+    while (wl_run_iteration(this)) {
     }
     return 0;
+}
+
+void WaylandPlatformApplication::run_until(std::function<bool()> should_exit) {
+    while (!should_exit() && wl_run_iteration(this)) {
+    }
 }
 
 void WaylandPlatformApplication::quit() { running = false; }
@@ -1012,6 +1093,9 @@ WaylandPlatformWindow::~WaylandPlatformWindow() {
     if (shm_fd >= 0) {
         ::close(shm_fd);
     }
+    if (xdg_dialog) {
+        xdg_dialog_v1_destroy(xdg_dialog);
+    }
     if (toplevel) {
         xdg_toplevel_destroy(toplevel);
     }
@@ -1053,6 +1137,43 @@ void WaylandPlatformWindow::close() {
     if (app_->keyboard_focus == this) {
         app_->keyboard_focus = nullptr;
     }
+    if (app_->modal_window == this) {
+        app_->modal_window = nullptr;
+        app_->modal_parent = nullptr;
+    }
+    if (frame_cb) {
+        wl_callback_destroy(frame_cb);
+        frame_cb = nullptr;
+    }
+    if (xdg_dialog) {
+        xdg_dialog_v1_destroy(xdg_dialog);
+        xdg_dialog = nullptr;
+    }
+    if (toplevel_decoration) {
+        zxdg_toplevel_decoration_v1_destroy(toplevel_decoration);
+        toplevel_decoration = nullptr;
+    }
+    if (toplevel) {
+        xdg_toplevel_destroy(toplevel);
+        toplevel = nullptr;
+    }
+    if (fractional_scale) {
+        wp_fractional_scale_v1_destroy(fractional_scale);
+        fractional_scale = nullptr;
+    }
+    if (viewport) {
+        wp_viewport_destroy(viewport);
+        viewport = nullptr;
+    }
+    if (xdg_surf) {
+        xdg_surface_destroy(xdg_surf);
+        xdg_surf = nullptr;
+    }
+    if (surface) {
+        wl_surface_destroy(surface);
+        surface = nullptr;
+    }
+    wl_display_flush(app_->display);
 }
 
 void WaylandPlatformWindow::minimize() {
@@ -1114,8 +1235,11 @@ void WaylandPlatformWindow::stop_timer(int timer_id) {
 }
 
 void WaylandPlatformWindow::set_cursor(CursorShape shape) {
+    if (current_cursor == shape) {
+        return;
+    }
     current_cursor = shape;
-    apply_cursor(app_, cursor_name_for(shape));
+    apply_cursor(app_, shape);
 }
 
 void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
@@ -1170,6 +1294,19 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
     wl_surface_commit(tooltip_data->surface);
     wl_display_roundtrip(app_->display);
     needs_redraw = true;
+}
+
+void WaylandPlatformWindow::set_modal_for(PlatformWindow *parent) {
+    auto *p = static_cast<WaylandPlatformWindow *>(parent);
+    if (toplevel && p && p->toplevel) {
+        xdg_toplevel_set_parent(toplevel, p->toplevel);
+    }
+    if (app_->wm_dialog && toplevel && !xdg_dialog) {
+        xdg_dialog = xdg_wm_dialog_v1_get_xdg_dialog(app_->wm_dialog, toplevel);
+        xdg_dialog_v1_set_modal(xdg_dialog);
+    }
+    app_->modal_window = this;
+    app_->modal_parent = p;
 }
 
 void WaylandPlatformWindow::hide_tooltip_window() {

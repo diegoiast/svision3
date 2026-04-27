@@ -35,6 +35,10 @@ struct wp_viewporter;
 struct wp_viewport;
 struct zxdg_decoration_manager_v1;
 struct zxdg_toplevel_decoration_v1;
+struct xdg_wm_dialog_v1;
+struct xdg_dialog_v1;
+struct wp_cursor_shape_manager_v1;
+struct wp_cursor_shape_device_v1;
 
 namespace toolkit {
 
@@ -47,6 +51,7 @@ class WaylandPlatformApplication : public PlatformApplication {
     std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
                                                   Window *owner) override;
     int run() override;
+    void run_until(std::function<bool()> should_exit) override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;
     std::string clipboard_get_text() override;
@@ -66,6 +71,9 @@ class WaylandPlatformApplication : public PlatformApplication {
     wp_fractional_scale_manager_v1 *fractional_scale_manager = nullptr;
     wp_viewporter *viewporter = nullptr;
     zxdg_decoration_manager_v1 *decoration_manager = nullptr;
+    xdg_wm_dialog_v1 *wm_dialog = nullptr;
+    wp_cursor_shape_manager_v1 *cursor_shape_manager = nullptr;
+    wp_cursor_shape_device_v1 *cursor_shape_device = nullptr;
     wl_cursor_theme *cursor_theme = nullptr;
     wl_surface *cursor_surface = nullptr;
     wl_data_device_manager *data_device_manager = nullptr;
@@ -78,6 +86,8 @@ class WaylandPlatformApplication : public PlatformApplication {
     std::vector<WaylandPlatformWindow *> windows;
     WaylandPlatformWindow *pointer_focus = nullptr;
     WaylandPlatformWindow *keyboard_focus = nullptr;
+    WaylandPlatformWindow *modal_window = nullptr;
+    WaylandPlatformWindow *modal_parent = nullptr;
     float pointer_x = 0, pointer_y = 0;
     uint32_t pointer_enter_serial = 0;
 
@@ -137,6 +147,7 @@ class WaylandPlatformWindow : public PlatformWindow {
     void set_cursor(CursorShape shape) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
+    void set_modal_for(PlatformWindow *parent) override;
     bool save_to_png(std::string const &path) override;
     float scale_factor() const override;
     std::string_view painter_name() const override { return backend->name(); };
@@ -156,6 +167,7 @@ class WaylandPlatformWindow : public PlatformWindow {
     wp_fractional_scale_v1 *fractional_scale = nullptr;
     wp_viewport *viewport = nullptr;
     zxdg_toplevel_decoration_v1 *toplevel_decoration = nullptr;
+    xdg_dialog_v1 *xdg_dialog = nullptr;
     float scale = 1.0f;
     bool configured = false;
     bool needs_redraw = true;

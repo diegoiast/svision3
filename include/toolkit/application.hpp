@@ -25,6 +25,7 @@ class Application {
 
     Window *create_window(std::string_view title, Size size);
     int run();
+    void run_until(std::function<bool()> should_exit);
     void quit();
 
     std::string_view platform_name() const;

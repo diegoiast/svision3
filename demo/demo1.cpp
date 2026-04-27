@@ -25,6 +25,7 @@
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/toolbar.hpp"
 #include "toolkit/tree_view.hpp"
+#include "toolkit/message_box.hpp"
 #include "toolkit/window.hpp"
 #include <fstream>
 #include <iterator>
@@ -138,7 +139,12 @@ int main(int argc, char *argv[]) {
     edit_menu->add_action("Copy", [] { spdlog::info("Menu: Copy"); });
     edit_menu->add_action("Paste", [] { spdlog::info("Menu: Paste"); });
 
-    menubar->add_menu("&Help")->add_action("About", [] { spdlog::info("Menu: About"); });
+    menubar->add_menu("&Help")->add_action("About", [window] {
+        auto result = toolkit::MessageBox::information(window, "About Demo",
+                                                      "svision3 demo application.\n\nA cross-platform UI toolkit.")
+                          .get();
+        spdlog::info("About dialog closed (result={})", static_cast<int>(result));
+    });
 
     // Add shortcuts to the window globally so they are always active
     window->add_command(new_cmd);

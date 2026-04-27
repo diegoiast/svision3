@@ -64,6 +64,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/context_menu.cpp
     src/toolkit/menu.cpp
     src/toolkit/menubar.cpp
+    src/toolkit/message_box.cpp
     src/toolkit/layout.cpp
     src/toolkit/theme.cpp
     src/toolkit/theme_base.cpp
@@ -129,6 +130,9 @@ elseif(UNIX)
         set(FRACTIONAL_SCALE_XML ${WAYLAND_PROTOCOLS_DIR}/staging/fractional-scale/fractional-scale-v1.xml)
         set(VIEWPORTER_XML ${WAYLAND_PROTOCOLS_DIR}/stable/viewporter/viewporter.xml)
         set(XDG_DECORATION_XML ${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml)
+        set(XDG_DIALOG_XML ${WAYLAND_PROTOCOLS_DIR}/staging/xdg-dialog/xdg-dialog-v1.xml)
+        set(CURSOR_SHAPE_XML ${WAYLAND_PROTOCOLS_DIR}/staging/cursor-shape/cursor-shape-v1.xml)
+        set(TABLET_XML ${WAYLAND_PROTOCOLS_DIR}/unstable/tablet/tablet-unstable-v2.xml)
         set(WL_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/wayland-gen)
         file(MAKE_DIRECTORY ${WL_GEN_DIR})
 
@@ -185,6 +189,39 @@ elseif(UNIX)
             DEPENDS ${XDG_DECORATION_XML}
         )
 
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/xdg-dialog-v1-client-protocol.h
+            COMMAND ${WAYLAND_SCANNER} client-header
+                    ${XDG_DIALOG_XML} ${WL_GEN_DIR}/xdg-dialog-v1-client-protocol.h
+            DEPENDS ${XDG_DIALOG_XML}
+        )
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/xdg-dialog-v1-protocol.c
+            COMMAND ${WAYLAND_SCANNER} private-code
+                    ${XDG_DIALOG_XML} ${WL_GEN_DIR}/xdg-dialog-v1-protocol.c
+            DEPENDS ${XDG_DIALOG_XML}
+        )
+
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/cursor-shape-v1-client-protocol.h
+            COMMAND ${WAYLAND_SCANNER} client-header
+                    ${CURSOR_SHAPE_XML} ${WL_GEN_DIR}/cursor-shape-v1-client-protocol.h
+            DEPENDS ${CURSOR_SHAPE_XML}
+        )
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/cursor-shape-v1-protocol.c
+            COMMAND ${WAYLAND_SCANNER} private-code
+                    ${CURSOR_SHAPE_XML} ${WL_GEN_DIR}/cursor-shape-v1-protocol.c
+            DEPENDS ${CURSOR_SHAPE_XML}
+        )
+
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/tablet-unstable-v2-protocol.c
+            COMMAND ${WAYLAND_SCANNER} private-code
+                    ${TABLET_XML} ${WL_GEN_DIR}/tablet-unstable-v2-protocol.c
+            DEPENDS ${TABLET_XML}
+        )
+
         list(APPEND TOOLKIT_SOURCES
             src/toolkit/platform/wayland/wl_platform.cpp
             ${WL_GEN_DIR}/xdg-shell-protocol.c
@@ -195,6 +232,11 @@ elseif(UNIX)
             ${WL_GEN_DIR}/viewporter-client-protocol.h
             ${WL_GEN_DIR}/xdg-decoration-protocol.c
             ${WL_GEN_DIR}/xdg-decoration-client-protocol.h
+            ${WL_GEN_DIR}/xdg-dialog-v1-protocol.c
+            ${WL_GEN_DIR}/xdg-dialog-v1-client-protocol.h
+            ${WL_GEN_DIR}/cursor-shape-v1-protocol.c
+            ${WL_GEN_DIR}/cursor-shape-v1-client-protocol.h
+            ${WL_GEN_DIR}/tablet-unstable-v2-protocol.c
         )
     endif()
 
