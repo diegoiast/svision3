@@ -368,31 +368,73 @@ void GDIPainter::draw_circle(Point center, float radius, Color const &c, float l
 
 void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
                            FontFamily family, TextOrientation orientation) {
-    if (!rasterizer_ || text.empty()) {
+    if (text.empty()) {
         return;
     }
-    auto rast = rasterizer_->rasterize(text, font_size, impl_->scale, family);
-    if (rast.pixels.empty()) {
+    auto wtext = to_wide(text);
+    if (wtext.empty()) {
         return;
     }
-    ImageData img;
-    img.pixels = std::move(rast.pixels);
-    img.width = rast.width;
-    img.height = rast.height;
 
-    // colorize: the rasterizer produces white-on-black alpha mask, apply the requested color
-    for (int i = 0; i < img.width * img.height; ++i) {
-        float a = img.pixels[i * 4 + 3] / 255.0f;
-        img.pixels[i * 4 + 0] = static_cast<uint8_t>(c.r * 255 * a);
-        img.pixels[i * 4 + 1] = static_cast<uint8_t>(c.g * 255 * a);
-        img.pixels[i * 4 + 2] = static_cast<uint8_t>(c.b * 255 * a);
-        img.pixels[i * 4 + 3] = static_cast<uint8_t>(c.a * 255 * a);
-    }
+    auto const &t = Theme::current();
+    auto const &face =
+        (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
+    auto wface = to_wide(face);
 
-    auto draw_at = Point{pos.x, pos.y - rast.ascent};
-    if (orientation == TextOrientation::Horizontal) {
-        draw_image(img, draw_at);
+    // Build the GDI+ font at font_size logical pixels (UnitPixel).
+    // With ScaleTransform(scale) active, GDI+ renders this as font_size*scale physical pixels —
+    // identical to what the rasterizer produces, with no manual bitmap scaling needed.
+    Gdiplus::FontFamily ff(wface.c_str());
+    Gdiplus::Font font(&ff, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    Gdiplus::SolidBrush brush(to_gdiplus_color(c));
+
+    // Use the rasterizer's metrics ascent so that draw_text aligns with the baseline_y
+    // that layout code computes via painter.font_metrics() — both come from the same GDI path.
+    // Fall back to GDI+ family metrics only when no rasterizer is available.
+    float ascent = 0.0f;
+    if (rasterizer_) {
+        ascent = rasterizer_->metrics(font_size, family).ascent;
     } else {
+        auto em = static_cast<float>(ff.GetEmHeight(Gdiplus::FontStyleRegular));
+        ascent = font_size * static_cast<float>(ff.GetCellAscent(Gdiplus::FontStyleRegular)) / em;
+    }
+
+    // DrawString places the origin at the top-left of the layout box; pos.y is the baseline.
+    if (orientation == TextOrientation::Horizontal) {
+        Gdiplus::PointF draw_at(pos.x, pos.y - ascent);
+        impl_->graphics->DrawString(wtext.c_str(), -1, &font, draw_at, &brush);
+    } else {
+        // Rotating the GDI+ context before DrawString disables ClearType (subpixel layout
+        // is undefined after rotation), producing pixelated greyscale-AA text.
+        // Instead, rasterize the text horizontally (full ClearType quality), colorize the
+        // resulting bitmap, then draw it rotated.  At exactly ±90° the pixel mapping is
+        // 1-to-1 so there are no interpolation artifacts from the rotation itself.
+        if (!rasterizer_) {
+            return;
+        }
+        auto rast = rasterizer_->rasterize(text, font_size, impl_->scale, family);
+        if (rast.pixels.empty()) {
+            return;
+        }
+
+        // Colorize: rasterizer produces white-on-black alpha mask.
+        auto pixels = std::move(rast.pixels);
+        for (int i = 0; i < rast.width * rast.height; ++i) {
+            float a = pixels[i * 4 + 3] / 255.0f;
+            pixels[i * 4 + 0] = static_cast<uint8_t>(c.b * 255 * a); // GDI+ BGRA
+            pixels[i * 4 + 1] = static_cast<uint8_t>(c.g * 255 * a);
+            pixels[i * 4 + 2] = static_cast<uint8_t>(c.r * 255 * a);
+            pixels[i * 4 + 3] = static_cast<uint8_t>(c.a * 255 * a);
+        }
+
+        Gdiplus::Bitmap bmp(rast.width, rast.height, rast.width * 4, PixelFormat32bppARGB,
+                            pixels.data());
+
+        // Physical bitmap → logical dimensions so ScaleTransform maps back to exact pixels.
+        float lw = rast.width / impl_->scale;
+        float lh = rast.height / impl_->scale;
+        float la = rast.ascent; // ascent is already logical (divided by scale in rasterize)
+
         Gdiplus::GraphicsState state = impl_->graphics->Save();
         impl_->graphics->TranslateTransform(pos.x, pos.y);
         if (orientation == TextOrientation::VerticalCCW) {
@@ -400,7 +442,7 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
         } else {
             impl_->graphics->RotateTransform(90.0f);
         }
-        draw_image(img, {0, -rast.ascent});
+        impl_->graphics->DrawImage(&bmp, 0.0f, -la, lw, lh);
         impl_->graphics->Restore(state);
     }
 }
