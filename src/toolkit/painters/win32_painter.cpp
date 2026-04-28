@@ -193,26 +193,27 @@ Size Win32TextRasterizer::measure(std::string_view text, float font_size, FontFa
     return result;
 }
 
-Painter::FontMetrics Win32TextRasterizer::metrics(float font_size, FontFamily font) {
-    if (impl_->cached_metrics.has_value() &&
-        impl_->cached_metrics->font_size == font_size &&
-        impl_->cached_metrics->family == font) {
+Painter::FontMetrics Win32TextRasterizer::metrics(float font_size, FontFamily family) {
+    if (impl_->cached_metrics.has_value() && impl_->cached_metrics->font_size == font_size &&
+        impl_->cached_metrics->family == family) {
         return impl_->cached_metrics->metrics;
     }
 
-    HFONT hfont = impl_->create_font(font_size, 1.0f, font);
-    HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
+    auto const &t = Theme::current();
+    std::string face_name =
+        (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
+    auto wface = to_wide(face_name);
 
-    TEXTMETRICW tm;
-    GetTextMetricsW(impl_->hdc, &tm);
+    Gdiplus::FontFamily ff(wface.c_str());
+    Gdiplus::FontStyle style = Gdiplus::FontStyleRegular;
 
-    SelectObject(impl_->hdc, old_font);
-    DeleteObject(hfont);
+    float em_height = static_cast<float>(ff.GetEmHeight(style));
+    float ascent = font_size * static_cast<float>(ff.GetCellAscent(style)) / em_height;
+    float descent = font_size * static_cast<float>(ff.GetCellDescent(style)) / em_height;
+    float line_spacing = font_size * static_cast<float>(ff.GetLineSpacing(style)) / em_height;
 
-    float ascent = static_cast<float>(tm.tmAscent);
-    float descent = static_cast<float>(tm.tmDescent);
-    auto result = Painter::FontMetrics{ascent, descent, ascent + descent};
-    impl_->cached_metrics = {font_size, font, result};
+    auto result = Painter::FontMetrics{ascent, descent, line_spacing};
+    impl_->cached_metrics = {font_size, family, result};
     return result;
 }
 
@@ -254,9 +255,14 @@ GDIPainter::GDIPainter(Gdiplus::Graphics *g, float scale, TextRasterizer *raster
 GDIPainter::~GDIPainter() {}
 
 void GDIPainter::push_clip(Rect const &r) {
+    float s = impl_->scale;
+    float x = std::floor(r.x * s) / s;
+    float y = std::floor(r.y * s) / s;
+    float w = std::ceil((r.x + r.width) * s) / s - x;
+    float h = std::ceil((r.y + r.height) * s) / s - y;
+
     impl_->state_stack.push_back(impl_->graphics->Save());
-    impl_->graphics->SetClip(Gdiplus::RectF(r.x, r.y, r.width, r.height),
-                             Gdiplus::CombineModeIntersect);
+    impl_->graphics->SetClip(Gdiplus::RectF(x, y, w, h), Gdiplus::CombineModeIntersect);
 }
 
 void GDIPainter::pop_clip() {
@@ -267,8 +273,12 @@ void GDIPainter::pop_clip() {
 }
 
 void GDIPainter::push_translation(Point p) {
+    float s = impl_->scale;
+    float x = std::floor(p.x * s + 0.5f) / s;
+    float y = std::floor(p.y * s + 0.5f) / s;
+
     impl_->state_stack.push_back(impl_->graphics->Save());
-    impl_->graphics->TranslateTransform(p.x, p.y);
+    impl_->graphics->TranslateTransform(x, y);
 }
 
 void GDIPainter::pop_translation() {
@@ -317,8 +327,8 @@ void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
     float s = impl_->scale;
     float fx = std::floor(r.x * s);
     float fy = std::floor(r.y * s);
-    float fw = std::floor((r.x + r.width) * s) - fx;
-    float fh = std::floor((r.y + r.height) * s) - fy;
+    float lx = std::ceil((r.x + r.width) * s);
+    float ly = std::ceil((r.y + r.height) * s);
     float slw = std::max(1.0f, std::round(lw * s));
 
     Gdiplus::SmoothingMode old = impl_->graphics->GetSmoothingMode();
@@ -327,11 +337,9 @@ void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
     Gdiplus::Pen pen(to_gdiplus_color(c), slw / s);
     apply_line_style(pen, impl_->line_style, slw / s);
 
-    // GDI+ DrawRectangle(x, y, w, h) draws from x to x+w.
-    // In SmoothingModeNone, this colors floor(w)+1 pixels.
-    // To get N pixels, we must pass N-1 to GDI+.
-    float dw = (fw - 1.0f) / s;
-    float dh = (fh - 1.0f) / s;
+    // To color pixels from fx to lx-1 (inclusive), width must be (lx-1) - fx.
+    float dw = (lx - fx - 1.0f) / s;
+    float dh = (ly - fy - 1.0f) / s;
     if (dw < 0) dw = 0;
     if (dh < 0) dh = 0;
 
@@ -372,13 +380,14 @@ void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, flo
 
     float fx = std::floor(r.x * s);
     float fy = std::floor(r.y * s);
-    float lx = std::ceil((r.x + r.width) * s) - 1.0f;
-    float ly = std::ceil((r.y + r.height) * s) - 1.0f;
+    float lx = std::ceil((r.x + r.width) * s);
+    float ly = std::ceil((r.y + r.height) * s);
 
+    // For anti-aliased rounded rects, we center the stroke on the outer pixel edge
     float x = (fx + 0.5f) / s;
     float y = (fy + 0.5f) / s;
-    float w = (lx - fx) / s;
-    float h = (ly - fy) / s;
+    float w = (lx - fx - 1.0f) / s;
+    float h = (ly - fy - 1.0f) / s;
 
     Gdiplus::GraphicsPath path;
     float d = rad * 2;
@@ -436,8 +445,8 @@ void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
 
 void GDIPainter::fill_circle(Point center, float radius, Color const &c) {
     float s = impl_->scale;
-    float cx = std::floor(center.x * s) / s;
-    float cy = std::floor(center.y * s) / s;
+    float cx = std::round(center.x * s) / s;
+    float cy = std::round(center.y * s) / s;
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
     impl_->graphics->FillEllipse(&brush, cx - radius, cy - radius, radius * 2, radius * 2);
 }
@@ -446,18 +455,13 @@ void GDIPainter::draw_circle(Point center, float radius, Color const &c, float l
     float s = impl_->scale;
     float slw = std::max(1.0f, std::round(lw * s)) / s;
 
-    float cx = (std::floor(center.x * s) + 0.5f) / s;
-    float cy = (std::floor(center.y * s) + 0.5f) / s;
+    float cx = std::round(center.x * s) / s;
+    float cy = std::round(center.y * s) / s;
 
     Gdiplus::Pen pen(to_gdiplus_color(c), slw);
     apply_line_style(pen, impl_->line_style, slw);
     impl_->graphics->DrawEllipse(&pen, cx - radius, cy - radius, radius * 2, radius * 2);
 }
-
-
-
-
-
 
 void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
                            FontFamily family, TextOrientation orientation) {
@@ -481,6 +485,11 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
     Gdiplus::Font font(&ff, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
 
+    // GenericTypographic removes GDI+'s default internal margins.
+    Gdiplus::StringFormat format(Gdiplus::StringFormat::GenericTypographic());
+    format.SetFormatFlags(format.GetFormatFlags() | Gdiplus::StringFormatFlagsNoFitBlackBox |
+                          Gdiplus::StringFormatFlagsMeasureTrailingSpaces);
+
     // Use the rasterizer's metrics ascent so that draw_text aligns with the baseline_y
     // that layout code computes via painter.font_metrics() — both come from the same GDI path.
     // Fall back to GDI+ family metrics only when no rasterizer is available.
@@ -495,7 +504,7 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
     // DrawString places the origin at the top-left of the layout box; pos.y is the baseline.
     if (orientation == TextOrientation::Horizontal) {
         Gdiplus::PointF draw_at(pos.x, pos.y - ascent);
-        impl_->graphics->DrawString(wtext.c_str(), -1, &font, draw_at, &brush);
+        impl_->graphics->DrawString(wtext.c_str(), -1, &font, draw_at, &format, &brush);
     } else {
         // Rotating the GDI+ context before DrawString disables ClearType (subpixel layout
         // is undefined after rotation), producing pixelated greyscale-AA text.
