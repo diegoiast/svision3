@@ -298,14 +298,46 @@ static void apply_line_style(Gdiplus::Pen &pen, Painter::LineStyle style, float 
 }
 
 void GDIPainter::fill_rect(Rect const &r, Color const &c) {
+    float s = impl_->scale;
+    float x = std::floor(r.x * s) / s;
+    float y = std::floor(r.y * s) / s;
+    float w = std::ceil((r.x + r.width) * s) / s - x;
+    float h = std::ceil((r.y + r.height) * s) / s - y;
+
+    Gdiplus::SmoothingMode old = impl_->graphics->GetSmoothingMode();
+    impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
+
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
-    impl_->graphics->FillRectangle(&brush, r.x, r.y, r.width, r.height);
+    impl_->graphics->FillRectangle(&brush, x, y, w, h);
+
+    impl_->graphics->SetSmoothingMode(old);
 }
 
 void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
-    Gdiplus::Pen pen(to_gdiplus_color(c), lw);
-    apply_line_style(pen, impl_->line_style, lw);
-    impl_->graphics->DrawRectangle(&pen, r.x, r.y, r.width, r.height);
+    float s = impl_->scale;
+    float fx = std::floor(r.x * s);
+    float fy = std::floor(r.y * s);
+    float fw = std::floor((r.x + r.width) * s) - fx;
+    float fh = std::floor((r.y + r.height) * s) - fy;
+    float slw = std::max(1.0f, std::round(lw * s));
+
+    Gdiplus::SmoothingMode old = impl_->graphics->GetSmoothingMode();
+    impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
+
+    Gdiplus::Pen pen(to_gdiplus_color(c), slw / s);
+    apply_line_style(pen, impl_->line_style, slw / s);
+
+    // GDI+ DrawRectangle(x, y, w, h) draws from x to x+w.
+    // In SmoothingModeNone, this colors floor(w)+1 pixels.
+    // To get N pixels, we must pass N-1 to GDI+.
+    float dw = (fw - 1.0f) / s;
+    float dh = (fh - 1.0f) / s;
+    if (dw < 0) dw = 0;
+    if (dh < 0) dh = 0;
+
+    impl_->graphics->DrawRectangle(&pen, fx / s, fy / s, dw, dh);
+
+    impl_->graphics->SetSmoothingMode(old);
 }
 
 void GDIPainter::fill_rounded_rect(Rect const &r, Color const &c, float rad) {
@@ -313,12 +345,18 @@ void GDIPainter::fill_rounded_rect(Rect const &r, Color const &c, float rad) {
         fill_rect(r, c);
         return;
     }
+    float s = impl_->scale;
+    float x = std::floor(r.x * s) / s;
+    float y = std::floor(r.y * s) / s;
+    float w = std::ceil((r.x + r.width) * s) / s - x;
+    float h = std::ceil((r.y + r.height) * s) / s - y;
+
     Gdiplus::GraphicsPath path;
     float d = rad * 2;
-    path.AddArc(r.x, r.y, d, d, 180, 90);
-    path.AddArc(r.x + r.width - d, r.y, d, d, 270, 90);
-    path.AddArc(r.x + r.width - d, r.y + r.height - d, d, d, 0, 90);
-    path.AddArc(r.x, r.y + r.height - d, d, d, 90, 90);
+    path.AddArc(x, y, d, d, 180, 90);
+    path.AddArc(x + w - d, y, d, d, 270, 90);
+    path.AddArc(x + w - d, y + h - d, d, d, 0, 90);
+    path.AddArc(x, y + h - d, d, d, 90, 90);
     path.CloseFigure();
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
     impl_->graphics->FillPath(&brush, &path);
@@ -329,42 +367,97 @@ void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, flo
         draw_rect(r, c, lw);
         return;
     }
+    float s = impl_->scale;
+    float slw = std::max(1.0f, std::round(lw * s)) / s;
+
+    float fx = std::floor(r.x * s);
+    float fy = std::floor(r.y * s);
+    float lx = std::ceil((r.x + r.width) * s) - 1.0f;
+    float ly = std::ceil((r.y + r.height) * s) - 1.0f;
+
+    float x = (fx + 0.5f) / s;
+    float y = (fy + 0.5f) / s;
+    float w = (lx - fx) / s;
+    float h = (ly - fy) / s;
+
     Gdiplus::GraphicsPath path;
     float d = rad * 2;
-    path.AddArc(r.x, r.y, d, d, 180, 90);
-    path.AddArc(r.x + r.width - d, r.y, d, d, 270, 90);
-    path.AddArc(r.x + r.width - d, r.y + r.height - d, d, d, 0, 90);
-    path.AddArc(r.x, r.y + r.height - d, d, d, 90, 90);
+    path.AddArc(x, y, d, d, 180, 90);
+    path.AddArc(x + w - d, y, d, d, 270, 90);
+    path.AddArc(x + w - d, y + h - d, d, d, 0, 90);
+    path.AddArc(x, y + h - d, d, d, 90, 90);
     path.CloseFigure();
-    Gdiplus::Pen pen(to_gdiplus_color(c), lw);
-    apply_line_style(pen, impl_->line_style, lw);
+    Gdiplus::Pen pen(to_gdiplus_color(c), slw);
+    apply_line_style(pen, impl_->line_style, slw);
     impl_->graphics->DrawPath(&pen, &path);
 }
 
 void GDIPainter::fill_triangle(Point a, Point b, Point c, Color const &color) {
-    Gdiplus::PointF pts[3] = {{a.x, a.y}, {b.x, b.y}, {c.x, c.y}};
+    float s = impl_->scale;
+    auto snap = [s](Point p) {
+        return Gdiplus::PointF(std::floor(p.x * s) / s, std::floor(p.y * s) / s);
+    };
+    Gdiplus::PointF pts[3] = {snap(a), snap(b), snap(c)};
     Gdiplus::SolidBrush brush(to_gdiplus_color(color));
     impl_->graphics->FillPolygon(&brush, pts, 3);
 }
 
 void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
-    Gdiplus::Pen pen(to_gdiplus_color(c), lw);
-    apply_line_style(pen, impl_->line_style, lw);
-    impl_->graphics->DrawLine(&pen, a.x, a.y, b.x, b.y);
+    float s = impl_->scale;
+    float slw = std::max(1.0f, std::round(lw * s)) / s;
+
+    bool axis_aligned = (std::abs(a.x - b.x) < 0.001f || std::abs(a.y - b.y) < 0.001f);
+    Gdiplus::SmoothingMode old = impl_->graphics->GetSmoothingMode();
+    if (axis_aligned) {
+        impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
+    }
+
+    float x1, y1, x2, y2;
+    if (axis_aligned) {
+        x1 = std::floor(a.x * s) / s;
+        y1 = std::floor(a.y * s) / s;
+        x2 = std::floor(b.x * s) / s;
+        y2 = std::floor(b.y * s) / s;
+    } else {
+        x1 = (std::floor(a.x * s) + 0.5f) / s;
+        y1 = (std::floor(a.y * s) + 0.5f) / s;
+        x2 = (std::floor(b.x * s) + 0.5f) / s;
+        y2 = (std::floor(b.y * s) + 0.5f) / s;
+    }
+
+    Gdiplus::Pen pen(to_gdiplus_color(c), slw);
+    apply_line_style(pen, impl_->line_style, slw);
+    impl_->graphics->DrawLine(&pen, x1, y1, x2, y2);
+
+    if (axis_aligned) {
+        impl_->graphics->SetSmoothingMode(old);
+    }
 }
 
 void GDIPainter::fill_circle(Point center, float radius, Color const &c) {
+    float s = impl_->scale;
+    float cx = std::floor(center.x * s) / s;
+    float cy = std::floor(center.y * s) / s;
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
-    impl_->graphics->FillEllipse(&brush, center.x - radius, center.y - radius, radius * 2,
-                                 radius * 2);
+    impl_->graphics->FillEllipse(&brush, cx - radius, cy - radius, radius * 2, radius * 2);
 }
 
 void GDIPainter::draw_circle(Point center, float radius, Color const &c, float lw) {
-    Gdiplus::Pen pen(to_gdiplus_color(c), lw);
-    apply_line_style(pen, impl_->line_style, lw);
-    impl_->graphics->DrawEllipse(&pen, center.x - radius, center.y - radius, radius * 2,
-                                 radius * 2);
+    float s = impl_->scale;
+    float slw = std::max(1.0f, std::round(lw * s)) / s;
+
+    float cx = (std::floor(center.x * s) + 0.5f) / s;
+    float cy = (std::floor(center.y * s) + 0.5f) / s;
+
+    Gdiplus::Pen pen(to_gdiplus_color(c), slw);
+    apply_line_style(pen, impl_->line_style, slw);
+    impl_->graphics->DrawEllipse(&pen, cx - radius, cy - radius, radius * 2, radius * 2);
 }
+
+
+
+
+
 
 void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
                            FontFamily family, TextOrientation orientation) {
@@ -453,6 +546,10 @@ void GDIPainter::draw_image(ImageData const &image, Point position) {
         return;
     }
 
+    float s = impl_->scale;
+    float x = std::floor(position.x * s) / s;
+    float y = std::floor(position.y * s) / s;
+
     Gdiplus::Bitmap bmp(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
                         (BYTE *)image.pixels.data());
     if (bmp.GetLastStatus() != Gdiplus::Ok) {
@@ -460,7 +557,7 @@ void GDIPainter::draw_image(ImageData const &image, Point position) {
                       (int)bmp.GetLastStatus());
         return;
     }
-    impl_->graphics->DrawImage(&bmp, position.x, position.y, static_cast<float>(image.width),
+    impl_->graphics->DrawImage(&bmp, x, y, static_cast<float>(image.width),
                                static_cast<float>(image.height));
 }
 
@@ -471,6 +568,13 @@ void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
             image.width, image.height, dest.width, dest.height);
         return;
     }
+
+    float s = impl_->scale;
+    float x = std::floor(dest.x * s) / s;
+    float y = std::floor(dest.y * s) / s;
+    float w = std::ceil((dest.x + dest.width) * s) / s - x;
+    float h = std::ceil((dest.y + dest.height) * s) / s - y;
+
     Gdiplus::Bitmap bmp(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
                         (BYTE *)image.pixels.data());
     if (bmp.GetLastStatus() != Gdiplus::Ok) {
@@ -478,7 +582,16 @@ void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
                       (int)bmp.GetLastStatus());
         return;
     }
-    impl_->graphics->DrawImage(&bmp, dest.x, dest.y, dest.width, dest.height);
+
+    Gdiplus::SmoothingMode old_s = impl_->graphics->GetSmoothingMode();
+    Gdiplus::InterpolationMode old_i = impl_->graphics->GetInterpolationMode();
+    impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
+    impl_->graphics->SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
+
+    impl_->graphics->DrawImage(&bmp, x, y, w, h);
+
+    impl_->graphics->SetSmoothingMode(old_s);
+    impl_->graphics->SetInterpolationMode(old_i);
 }
 
 
