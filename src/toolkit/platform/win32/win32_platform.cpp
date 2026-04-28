@@ -464,9 +464,15 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         DestroyWindow(hwnd);
         return 0;
     case WM_DESTROY: {
-        bool managed = (app->window_map.find(hwnd) != app->window_map.end());
-        if (managed) {
-            app->window_map.erase(hwnd);
+        auto it = app->window_map.find(hwnd);
+        if (it != app->window_map.end()) {
+            auto *plat_win = static_cast<Win32PlatformWindow *>(it->second.owner->platform_window());
+            if (plat_win && plat_win->modal_parent_hwnd) {
+                EnableWindow(plat_win->modal_parent_hwnd, TRUE);
+                SetForegroundWindow(plat_win->modal_parent_hwnd);
+                plat_win->modal_parent_hwnd = nullptr;
+            }
+            app->window_map.erase(it);
         }
         if (app->window_map.empty()) {
             PostQuitMessage(0);
@@ -752,6 +758,11 @@ void Win32PlatformWindow::show() {
 }
 
 void Win32PlatformWindow::close() {
+    if (modal_parent_hwnd) {
+        EnableWindow(modal_parent_hwnd, TRUE);
+        SetForegroundWindow(modal_parent_hwnd);
+        modal_parent_hwnd = nullptr;
+    }
     if (hwnd) {
         DestroyWindow(hwnd);
         hwnd = nullptr;
