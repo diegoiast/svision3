@@ -206,9 +206,8 @@ void GLPainter::draw_line(Point a, Point b, Color const &c, float lw) {
 void GLPainter::fill_circle(Point center, float radius, Color const &c) {
     glDisable(GL_LINE_STIPPLE);
     set_color(c);
-    glEnable(GL_POLYGON_SMOOTH);
-    glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
-    int seg = 24;
+
+    int seg = 64;
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(center.x, center.y);
     for (int i = 0; i <= seg; i++) {
@@ -216,7 +215,17 @@ void GLPainter::fill_circle(Point center, float radius, Color const &c) {
         glVertex2f(center.x + radius * cosf(a), center.y + radius * sinf(a));
     }
     glEnd();
-    glDisable(GL_POLYGON_SMOOTH);
+
+    // Draw smoothed outline to hide jagged edges
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    glLineWidth(1.0f);
+    glBegin(GL_LINE_LOOP);
+    for (int i = 0; i < seg; i++) {
+        float a = 2.0f * (float)M_PI * i / seg;
+        glVertex2f(center.x + radius * cosf(a), center.y + radius * sinf(a));
+    }
+    glEnd();
 }
 
 void GLPainter::draw_circle(Point center, float radius, Color const &c, float lw) {
@@ -225,7 +234,7 @@ void GLPainter::draw_circle(Point center, float radius, Color const &c, float lw
     apply_line_style();
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-    int seg = 24;
+    int seg = 64;
     glBegin(GL_LINE_LOOP);
     for (int i = 0; i < seg; i++) {
         float a = 2.0f * (float)M_PI * i / seg;
