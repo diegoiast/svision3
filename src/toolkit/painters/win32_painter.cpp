@@ -274,8 +274,8 @@ void GDIPainter::pop_clip() {
 
 void GDIPainter::push_translation(Point p) {
     float s = impl_->scale;
-    float x = std::floor(p.x * s + 0.5f) / s;
-    float y = std::floor(p.y * s + 0.5f) / s;
+    float x = std::round(p.x * s) / s;
+    float y = std::round(p.y * s) / s;
 
     impl_->state_stack.push_back(impl_->graphics->Save());
     impl_->graphics->TranslateTransform(x, y);
@@ -383,9 +383,9 @@ void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, flo
     float lx = std::ceil((r.x + r.width) * s);
     float ly = std::ceil((r.y + r.height) * s);
 
-    // For anti-aliased rounded rects, we center the stroke on the outer pixel edge
-    float x = (fx + 0.5f) / s;
-    float y = (fy + 0.5f) / s;
+    // Physical pixel edges
+    float x = fx / s;
+    float y = fy / s;
     float w = (lx - fx - 1.0f) / s;
     float h = (ly - fy - 1.0f) / s;
 
@@ -422,17 +422,10 @@ void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     }
 
     float x1, y1, x2, y2;
-    if (axis_aligned) {
-        x1 = std::floor(a.x * s) / s;
-        y1 = std::floor(a.y * s) / s;
-        x2 = std::floor(b.x * s) / s;
-        y2 = std::floor(b.y * s) / s;
-    } else {
-        x1 = (std::floor(a.x * s) + 0.5f) / s;
-        y1 = (std::floor(a.y * s) + 0.5f) / s;
-        x2 = (std::floor(b.x * s) + 0.5f) / s;
-        y2 = (std::floor(b.y * s) + 0.5f) / s;
-    }
+    x1 = std::floor(a.x * s) / s;
+    y1 = std::floor(a.y * s) / s;
+    x2 = std::floor(b.x * s) / s;
+    y2 = std::floor(b.y * s) / s;
 
     Gdiplus::Pen pen(to_gdiplus_color(c), slw);
     apply_line_style(pen, impl_->line_style, slw);

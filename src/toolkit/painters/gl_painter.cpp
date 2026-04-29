@@ -27,7 +27,6 @@ namespace toolkit {
 
 static std::vector<std::pair<float, float>> rounded_rect_verts(float x, float y, float w, float h,
                                                                float rad, int seg = 8) {
-    // FIXME: hardcoded values: what are these 3.0f and 2.0f?
     std::vector<std::pair<float, float>> pts;
     for (int i = 0; i <= seg; i++) {
         float a = (float)M_PI + (float)M_PI / 2.0f * i / seg;

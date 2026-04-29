@@ -865,7 +865,7 @@ void BaseTheme::draw_focus_ring(Painter &painter, Rect const &rect, float corner
     Color ring = palette.border;
     ring.a = 0.5f;
     auto lw = 2.0f;
-    auto inset = lw / 2.0f + 0.5f;
+    auto inset = lw / 2.0f;
     auto r = rect.inset(inset);
     auto dash_len = 2.0f;
     auto gap_len = 2.0f;
