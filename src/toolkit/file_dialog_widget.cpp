@@ -83,6 +83,7 @@ std::vector<DirItem> scan_directory(std::string const &path_str, FileDialogWidge
 
 FileDialogWidget::FileDialogWidget() {
     model_ = std::make_shared<StandardIconModel>();
+    state.non_focus_input = true;
 #if defined(_WIN32)
     current_path_ = "C:\\";
 #else
@@ -118,6 +119,24 @@ FileDialogWidget &FileDialogWidget::set_show_hidden(bool show_hidden) {
 void FileDialogWidget::set_current_path(std::string path) {
     current_path_ = std::move(path);
     load_directory();
+}
+
+std::string FileDialogWidget::selected_path() const {
+    return (std::filesystem::path(current_path_) / path_input_->text()).string();
+}
+
+void FileDialogWidget::set_ok_label(std::string_view label) {
+    ok_button_->set_text(std::string{label});
+}
+
+bool FileDialogWidget::handle_key(KeyEvent const &event) {
+    if (event.type == KeyEvent::Type::Press && event.key == Key::Escape) {
+        if (on_cancel) {
+            Application::post_to_main_thread(on_cancel);
+        }
+        return true;
+    }
+    return VBoxLayout::handle_key(event);
 }
 
 void FileDialogWidget::load_directory() {

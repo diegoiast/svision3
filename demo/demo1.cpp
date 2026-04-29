@@ -5,6 +5,7 @@
 #include "toolkit/button.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
+#include "toolkit/file_dialog.hpp"
 #include "toolkit/file_dialog_widget.hpp"
 #include "toolkit/icon_grid.hpp"
 #include "toolkit/image_loader.hpp"
@@ -79,20 +80,35 @@ int main(int argc, char *argv[]) {
                      "    return 0;\n"
                      "}\n");
 
-    auto open_action = [editor] {
-        NFD_Init();
-        nfdu8char_t *out_path = nullptr;
-        nfdresult_t result = NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
-        if (result == NFD_OKAY && out_path) {
-            std::ifstream f(out_path);
-            if (f) {
-                std::string contents((std::istreambuf_iterator<char>(f)),
-                                     std::istreambuf_iterator<char>());
-                editor->set_text(contents);
+    auto *use_native_cb = new toolkit::Checkbox("Use native dialogs");
+    use_native_cb->set_checked(true);
+
+    auto open_action = [editor, use_native_cb, window] {
+        if (use_native_cb->checked()) {
+            NFD_Init();
+            nfdu8char_t *out_path = nullptr;
+            nfdresult_t result = NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
+            if (result == NFD_OKAY && out_path) {
+                std::ifstream f(out_path);
+                if (f) {
+                    std::string contents((std::istreambuf_iterator<char>(f)),
+                                         std::istreambuf_iterator<char>());
+                    editor->set_text(contents);
+                }
+                NFD_FreePathU8(out_path);
             }
-            NFD_FreePathU8(out_path);
+            NFD_Quit();
+        } else {
+            auto path = toolkit::FileDialog::open(window, "Open File");
+            if (path) {
+                std::ifstream f(*path);
+                if (f) {
+                    std::string contents((std::istreambuf_iterator<char>(f)),
+                                         std::istreambuf_iterator<char>());
+                    editor->set_text(contents);
+                }
+            }
         }
-        NFD_Quit();
     };
 
     // ── MenuBar ─────────────────────────────────────────────────────────
@@ -602,6 +618,8 @@ int main(int argc, char *argv[]) {
     open_btn->on_click = open_action;
     editor_toolbar->add_widget(std::move(open_btn));
 
+    editor_toolbar->add_widget(std::unique_ptr<toolkit::Checkbox>(use_native_cb));
+
     auto toolbar_spacer = std::make_unique<toolkit::Label>("");
     editor_toolbar->add_widget(std::move(toolbar_spacer), 1);
 
@@ -754,6 +772,7 @@ int main(int argc, char *argv[]) {
     tab6->add_widget(std::move(south_tabs), 0);
 
     tabs->add_tab("Tabs", std::move(tab6));
+    tabs_ptr->set_current(6); // Editor tab
 
     root->add_widget(std::move(tabs), 1);
 

@@ -30,6 +30,10 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
     std::function<void()> on_new;
 
     void set_current_path(std::string path);
+    std::string selected_path() const;
+    void set_ok_label(std::string_view label);
+
+    bool handle_key(KeyEvent const &event) override;
 
     FileDialogWidget &set_sort_order(SortOrder order);
     SortOrder sort_order() const { return sort_order_; }
