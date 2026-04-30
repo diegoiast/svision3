@@ -50,7 +50,7 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
     void setup_ui();
     void load_directory();
 
-    enum class ViewMode { List, Icons };
+    enum class ViewMode { List, Icons, Details };
     ViewMode view_mode_ = ViewMode::Icons;
 
     std::string current_path_;
@@ -58,6 +58,7 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
     bool dirs_first_ = true;
     bool show_hidden_ = false;
     std::shared_ptr<StandardIconModel> model_;
+    std::shared_ptr<ItemModel> details_model_;
 
     std::unique_ptr<HBoxLayout> toolbar_;
     std::unique_ptr<VBoxLayout> content_;
@@ -70,8 +71,11 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
     Button *new_button_ = nullptr;
     Button *list_view_btn_ = nullptr;
     Button *icon_view_btn_ = nullptr;
+    Button *details_view_btn_ = nullptr;
+
     IconGrid *icon_grid_ = nullptr;
-    TableView *table_view_ = nullptr; // Added TableView pointer
+    TableView *table_view_ = nullptr;
+    TableView *table_view_details_ = nullptr;
     Button *cancel_button_ = nullptr;
     Button *ok_button_ = nullptr;
 };
