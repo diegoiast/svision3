@@ -67,10 +67,8 @@ inline constexpr const char *mailMessageNew = "mail-message-new";
 inline constexpr const char *mailReplyAll = "mail-reply-all";
 inline constexpr const char *mailReplySender = "mail-reply-sender";
 inline constexpr const char *mailSend = "mail-send";
-} // namespace IconActions
 
 // Are not strictly in the docs, but in actual themes
-namespace IconActions {
 inline constexpr const char *documentExport = "document-export.png";
 inline constexpr const char *documentImport = "document-import.png";
 inline constexpr const char *documentNew = "document-new.png";
