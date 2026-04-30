@@ -73,7 +73,9 @@ void VBoxLayout::apply_layout() {
             continue;
         }
         if (item.stretch == 0) {
-            fixed_height += item.widget->size_hint().height;
+            auto mins = item.widget->min_size();
+            auto maxs = item.widget->max_size();
+            fixed_height += clamp_dim(item.widget->size_hint().height, mins.height, maxs.height);
         } else {
             total_stretch += item.stretch;
         }
@@ -319,7 +321,9 @@ void HBoxLayout::apply_layout() {
             continue;
         }
         if (item.stretch == 0) {
-            fixed_width += item.widget->size_hint().width;
+            auto mins = item.widget->min_size();
+            auto maxs = item.widget->max_size();
+            fixed_width += clamp_dim(item.widget->size_hint().width, mins.width, maxs.width);
         } else {
             total_stretch += item.stretch;
         }
