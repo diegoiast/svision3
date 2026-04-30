@@ -452,6 +452,11 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_KILLFOCUS:
         win->hide_tooltip();
         return 0;
+    case WM_ACTIVATE:
+        if (LOWORD(wp) == WA_INACTIVE) {
+            win->hide_tooltip();
+        }
+        break;
     case WM_DPICHANGED: {
         auto *suggested = reinterpret_cast<RECT *>(lp);
         SetWindowPos(hwnd, nullptr, suggested->left, suggested->top,

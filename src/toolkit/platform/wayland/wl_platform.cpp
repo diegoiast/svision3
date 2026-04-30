@@ -686,11 +686,26 @@ static void xdg_surface_configure(void *data, xdg_surface *surf, uint32_t serial
     win->needs_redraw = true;
 }
 
-static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_t h, wl_array *) {
+static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_t h,
+                                   wl_array *states) {
     auto *win = static_cast<WaylandPlatformWindow *>(data);
     if (w > 0 && h > 0) {
         win->pending_width = w;
         win->pending_height = h;
+    }
+    auto activated = false;
+    if (states) {
+        auto *first = static_cast<uint32_t *>(states->data);
+        auto count = states->size / sizeof(uint32_t);
+        for (size_t i = 0; i < count; ++i) {
+            if (first[i] == XDG_TOPLEVEL_STATE_ACTIVATED) {
+                activated = true;
+                break;
+            }
+        }
+    }
+    if (!activated && win->owner_) {
+        win->owner_->hide_tooltip();
     }
 }
 

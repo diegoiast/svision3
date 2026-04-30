@@ -365,6 +365,10 @@ void Window::focus_next(bool reverse) {
 void Window::handle_mouse(MouseEvent const &event) {
     auto needs_redraw = false;
 
+    if (event.type == MouseEvent::Type::Press) {
+        hide_tooltip();
+    }
+
     if (!popups_.empty()) {
         for (int i = static_cast<int>(popups_.size()) - 1; i >= 0; --i) {
             auto &popup = popups_[i];
@@ -516,10 +520,6 @@ void Window::handle_mouse(MouseEvent const &event) {
             }
         }
         update_tooltip(under, event.position);
-    }
-
-    if (event.type == MouseEvent::Type::Press) {
-        hide_tooltip();
     }
 
     if (hovered_widget_) {
