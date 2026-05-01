@@ -513,7 +513,9 @@ void FileDialogWidget::setup_ui() {
     auto path_in = std::make_unique<LineInput>();
     path_input_ = path_in.get();
     path_input_->on_submit = [this](std::string const &, LineInput &) {
-        if (on_ok) on_ok();
+        if (on_ok) {
+            on_ok();
+        }
     };
     name_row->add_widget(std::move(path_in), 1);
 
@@ -521,7 +523,9 @@ void FileDialogWidget::setup_ui() {
     ok_button_ = open_btn.get();
     ok_button_->set_min_size(button_min);
     ok_button_->on_click = [this] {
-        if (on_ok) on_ok();
+        if (on_ok) {
+            on_ok();
+        }
     };
     name_row->add_widget(std::move(open_btn), 0);
     bottom_controls_->add_widget(std::move(name_row));
@@ -541,7 +545,9 @@ void FileDialogWidget::setup_ui() {
     cancel_button_ = cancel_btn.get();
     cancel_button_->set_min_size(button_min);
     cancel_button_->on_click = [this] {
-        if (on_cancel) on_cancel();
+        if (on_cancel) {
+            on_cancel();
+        }
     };
     type_row->add_widget(std::move(cancel_btn), 0);
     bottom_controls_->add_widget(std::move(type_row));

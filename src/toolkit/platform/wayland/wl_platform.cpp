@@ -1263,6 +1263,9 @@ void WaylandPlatformWindow::set_cursor(CursorShape shape) {
 }
 
 void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
+    if (!xdg_surf || !configured) {
+        return;
+    }
     if (tooltip_data && tooltip_data->text == text) {
         return;
     }

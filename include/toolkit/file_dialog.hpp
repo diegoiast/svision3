@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <future>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -13,13 +14,13 @@ class Window;
 
 class FileDialog {
   public:
-    static std::optional<std::string> open(Window *parent,
-                                           std::string_view title = "Open File",
-                                           std::string_view start_path = "");
+    using Result = std::future<std::optional<std::string>>;
 
-    static std::optional<std::string> save(Window *parent,
-                                           std::string_view title = "Save File",
-                                           std::string_view start_path = "");
+    static Result open(Window *parent, std::string_view title = "Open File",
+                       std::string_view start_path = "");
+
+    static Result save(Window *parent, std::string_view title = "Save File",
+                       std::string_view start_path = "");
 };
 
 } // namespace toolkit

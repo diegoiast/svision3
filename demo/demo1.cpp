@@ -99,7 +99,11 @@ int main(int argc, char *argv[]) {
             }
             NFD_Quit();
         } else {
-            auto path = toolkit::FileDialog::open(window, "Open File");
+            auto fut = toolkit::FileDialog::open(window, "Open File");
+            toolkit::Application::instance().run_until([&fut] {
+                return fut.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+            });
+            auto path = fut.get();
             if (path) {
                 std::ifstream f(*path);
                 if (f) {
