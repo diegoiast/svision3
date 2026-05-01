@@ -494,7 +494,12 @@ static void keyboard_keymap(void *data, wl_keyboard *, uint32_t format, int32_t 
 
 static void keyboard_enter(void *data, wl_keyboard *, uint32_t, wl_surface *surf, wl_array *) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
-    app->keyboard_focus = find_window(app, surf);
+    auto *win = find_window(app, surf);
+    if (app->modal_window && win != app->modal_window) {
+        app->keyboard_focus = nullptr;
+        return;
+    }
+    app->keyboard_focus = win;
 }
 
 static void stop_keyboard_repeat(WaylandPlatformApplication *app) {
@@ -1322,6 +1327,12 @@ void WaylandPlatformWindow::set_modal_for(PlatformWindow *parent) {
     }
     app_->modal_window = this;
     app_->modal_parent = p;
+    if (app_->keyboard_focus && app_->keyboard_focus != this) {
+        app_->keyboard_focus = nullptr;
+    }
+    if (app_->pointer_focus && app_->pointer_focus != this) {
+        app_->pointer_focus = nullptr;
+    }
 }
 
 void WaylandPlatformWindow::hide_tooltip_window() {
