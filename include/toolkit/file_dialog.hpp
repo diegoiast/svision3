@@ -3,7 +3,8 @@
 
 #pragma once
 
-#include <future>
+#include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -14,12 +15,25 @@ class Window;
 
 class FileDialog {
   public:
-    using Result = std::future<std::optional<std::string>>;
+    using Result = std::optional<std::string>;
+    using Callback = std::function<void(Result)>;
 
-    static Result open(Window *parent, std::string_view title = "Open File",
+    class Future {
+      public:
+        explicit Future(std::shared_ptr<Callback> cb) : callback_(std::move(cb)) {}
+        Future &then(Callback cb) {
+            *callback_ = std::move(cb);
+            return *this;
+        }
+
+      private:
+        std::shared_ptr<Callback> callback_;
+    };
+
+    static Future open(Window *parent, std::string_view title = "Open File",
                        std::string_view start_path = "");
 
-    static Result save(Window *parent, std::string_view title = "Save File",
+    static Future save(Window *parent, std::string_view title = "Save File",
                        std::string_view start_path = "");
 };
 

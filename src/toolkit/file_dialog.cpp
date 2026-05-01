@@ -10,10 +10,10 @@
 
 namespace toolkit {
 
-static FileDialog::Result show_dialog(Window *parent, std::string_view title,
+static FileDialog::Future show_dialog(Window *parent, std::string_view title,
                                       std::string_view start_path, std::string_view ok_label) {
-    auto promise = std::make_shared<std::promise<std::optional<std::string>>>();
-    auto future = promise->get_future();
+    auto callback = std::make_shared<FileDialog::Callback>();
+    auto settled = std::make_shared<bool>(false);
     auto win = Application::instance().create_window(std::string{title}, {700, 500});
     auto widget = std::make_unique<FileDialogWidget>();
     auto fdp = widget.get();
@@ -28,13 +28,26 @@ static FileDialog::Result show_dialog(Window *parent, std::string_view title,
         fdp->set_current_path(home ? home : ".");
     }
     fdp->set_ok_label(ok_label);
-    fdp->on_ok = [promise, fdp, win] {
-        promise->set_value(fdp->selected_path());
+    fdp->on_ok = [callback, settled, fdp, win] {
+        if (*settled) {
+            return;
+        }
+        *settled = true;
+        auto path = fdp->selected_path();
         win->close();
+        if (*callback) {
+            (*callback)(std::move(path));
+        }
     };
-    fdp->on_cancel = [promise, win] {
-        promise->set_value(std::nullopt);
+    fdp->on_cancel = [callback, settled, win] {
+        if (*settled) {
+            return;
+        }
+        *settled = true;
         win->close();
+        if (*callback) {
+            (*callback)(std::nullopt);
+        }
     };
 
     win->set_root(std::move(widget));
@@ -42,15 +55,15 @@ static FileDialog::Result show_dialog(Window *parent, std::string_view title,
         win->platform_window()->set_modal_for(parent->platform_window());
     }
     win->show();
-    return future;
+    return FileDialog::Future{callback};
 }
 
-FileDialog::Result FileDialog::open(Window *parent, std::string_view title,
+FileDialog::Future FileDialog::open(Window *parent, std::string_view title,
                                     std::string_view start_path) {
     return show_dialog(parent, title, start_path, "Open");
 }
 
-FileDialog::Result FileDialog::save(Window *parent, std::string_view title,
+FileDialog::Future FileDialog::save(Window *parent, std::string_view title,
                                     std::string_view start_path) {
     return show_dialog(parent, title, start_path, "Save");
 }

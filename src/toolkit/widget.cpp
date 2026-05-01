@@ -145,6 +145,8 @@ bool Widget::handle_key_impl(KeyEvent const &event) {
 
 Size Widget::measure_text(std::string_view text, float font_size, FontFamily font) const {
     if (auto *p = detail::current_platform()) {
+        // FIXME: use the painter or something? I see rasterizer is usef from the painter and
+        // platform
         return p->measure_text(text, font_size, font);
     }
     return {};

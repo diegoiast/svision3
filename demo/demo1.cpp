@@ -15,6 +15,7 @@
 #include "toolkit/list_view.hpp"
 #include "toolkit/menu.hpp"
 #include "toolkit/menubar.hpp"
+#include "toolkit/message_box.hpp"
 #include "toolkit/progress_bar.hpp"
 #include "toolkit/radio_button.hpp"
 #include "toolkit/slider.hpp"
@@ -26,7 +27,6 @@
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/toolbar.hpp"
 #include "toolkit/tree_view.hpp"
-#include "toolkit/message_box.hpp"
 #include "toolkit/window.hpp"
 #include <fstream>
 #include <iterator>
@@ -99,19 +99,16 @@ int main(int argc, char *argv[]) {
             }
             NFD_Quit();
         } else {
-            auto fut = toolkit::FileDialog::open(window, "Open File");
-            toolkit::Application::instance().run_until([&fut] {
-                return fut.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-            });
-            auto path = fut.get();
-            if (path) {
-                std::ifstream f(*path);
-                if (f) {
-                    std::string contents((std::istreambuf_iterator<char>(f)),
-                                         std::istreambuf_iterator<char>());
-                    editor->set_text(contents);
+            toolkit::FileDialog::open(window, "Open File").then([editor](auto path) {
+                if (path) {
+                    std::ifstream f(*path);
+                    if (f) {
+                        std::string contents((std::istreambuf_iterator<char>(f)),
+                                             std::istreambuf_iterator<char>());
+                        editor->set_text(contents);
+                    }
                 }
-            }
+            });
         }
     };
 
@@ -160,10 +157,11 @@ int main(int argc, char *argv[]) {
     edit_menu->add_action("Paste", [] { spdlog::info("Menu: Paste"); });
 
     menubar->add_menu("&Help")->add_action("About", [window] {
-        auto result = toolkit::MessageBox::information(window, "About Demo",
-                                                      "svision3 demo application.\n\nA cross-platform UI toolkit.")
-                          .get();
-        spdlog::info("About dialog closed (result={})", static_cast<int>(result));
+        auto result =
+            toolkit::MessageBox::information(
+                window, "About Demo", "svision3 demo application.\n\nA cross-platform UI toolkit.")
+                .get();
+        spdlog::info("About dia`d (result={})", static_cast<int>(result));
     });
 
     // Add shortcuts to the window globally so they are always active
