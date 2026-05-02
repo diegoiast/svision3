@@ -26,36 +26,37 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 11. [x] OpenGL rendering backend on Linux/Windows blurry fonts.
 12. [ ] OpenGl artifacts - specially on buttons on Plasma.
 13. [x] Cairo has blurry fonts.
-14. [ ] OpenGL uses cairo for painting text. Should use stb_ttf or semething.
+14. [ ] OpenGL uses cairo for painting text. Should use stb_ttf or something.
 15. [x] Command interfaces for menus/toolbars and app shortcuts.
 16. [x] Backends have open/cairo/whatevre backed in. We need to separate them.
 17. [x] Paintings inside widgets should start at (0,0) not position at window.
-18. [ ] Scroll size - detect at runtime.
-19. [ ] Natural scrolling - detect at runtime.
-20. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
 21. [ ] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
 22. [ ] Shortcuts per platform. Functions to read shortcuts per platform on runtime.
-23. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
 24. [x] Generic timer system (start_timer / stop_timer)
 25. [x] Popup/overlay mechanism (used by Combobox)
 26. [x] Painter helpers (draw_frame, draw_focus_ring, fill_circle, etc.)
 27. [x] Font metrics for consistent text positioning
 28. [x] Clipping (push_clip / pop_clip).
 29. [x] Screenshot / save_to_png.
-30. [ ] Resource / asset management.
-31. [ ] Logging levels configurable at runtime.
 32. [x] Clipboard (copy/paste, all platforms).
 33. [ ] Drag and drop.
 34. [ ] Font selection / custom fonts.
 35. [ ] Image loading / rendering.
 36. [ ] Animation framework (transitions, easing).
 37. [ ] Undo/redo framework.
-38. [ ] Signals/slots (beyond single std::function) - or alternative.
 39. [ ] Serialization (save/restore widget state).
 40. [ ] Declarative UI support. - WIP.
 41. [x] All setters should return a reference to self - for chainability.
 42. [x] Winwodws should have a `Window::add<T>` template that
         internally creates the shared ptr, and returns a reference.
+38. [ ] Signals/slots (beyond single std::function) - or alternative.
+31. [ ] Logging levels configurable at runtime.
+18. [ ] Scroll size - detect at runtime.
+19. [ ] Natural scrolling - detect at runtime.
+20. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
+43. [ ] Implement font caching for measurements.
+30. [ ] Resource / asset management.
+23. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
 
 ## Platform – Not Yet Implemented
 
@@ -104,9 +105,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 29. [ ] GroupBox / Frame.
 30. [ ] Splitter.
 31. [ ] Image widget.
-32. [ ] Markdown label using litehtml+(markdown processor for C++).
 33. [ ] Markdown tooltip.
-34. [ ] Undo/redo system (text area + linuedit).
+34. [ ] Undo/redo system (text area + LineInput).
 35. [ ] Client side decorations with theme.
 36. [ ] Proper filter API for listview and table view.
 37. [ ] MainWindow with docking widgets on the sides.
@@ -141,7 +141,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 10. [ ] Tint support.
 11. [ ] Scrollbar theming (overlay vs classic per theme).
 12. [ ] Focus ring styling per theme.
-13. [x] XDG Icon theme support.
+13. [x] XDG Icon theme support (PNG).
+14. [ ] SVG XDG icon theme support.
 14. [ ] Simplify and minimize the theme structs.
 15. [ ] Theme should be in application, then window then widget, in all but app - optional.
 16. [ ] Load theme from config file (which theme?).
@@ -151,11 +152,54 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ### Windows 11 Theme
 
-1. Fix
+1. Use for reference Notepad and Paint.
+2. Palette is the palette of background window. Not foreground (should be blueish)
+3. Tabs:
+    1. Should be rounded.
+    2. No accent.
+    3. Active tab should have the color of window background.
+    4. Backgroun + non-active tabs should be darker.
+    5. Separation of non-active tabs is just a line.
+4. Menus:
+    1. Popup menus should be rounded.
+5. Buttons:
+    1. Rounded 2px radius
+6. Radio buttons
+    1. Active: center is white, and filled with accent.
+7. Fonts (not really a theme... but...)
+    1. Fonts are too small. Claude says:
+    ```
+    Found it. In draw_text, rast.width/height are in physical pixels (rasterized at scale), but
+    draw_image passes them as logical units to GDI+ — which then multiplies by ScaleTransform(scale)
+    again. The text is rendered at scale² the intended size, gets clipped by widget bounds, and
+    appears smaller than expected.
+    The fix: draw the physical-pixel bitmap at width/scale × height/scale logical so the
+    ScaleTransform maps it back to exactly the right physical pixels.
+    ```
+8.  Frames of objects are not the same. Button has a lighter border than line.
+
 
 ### Plasma theme
 
-1. TODO
+1. Tabs:
+    1. Background of non-selected tabs shoiuld be darker.
+    2. Selected item background should "window".
+    3. No round corners.
+    4. Width of selected tab should be full tab.
+    5. Ideally - the sides of the tabs should be rounded.
+2. Progress bar:
+    1. Should have rounded border.
+3. Checkbox
+    1. When checked - background should be tint.
+4. Input
+    1. When selected - border should be tinted.
+    2. Hoever - border should be slightly tinted.
+5. Button
+    1. Hoever should have tinted border, but no background.
+6. Radio button
+    1. When selected - use tint background, black center
+7. Window
+    1. Default color should be darker.
 
 ### Gnome theme
 
@@ -266,33 +310,12 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 3. [ ] Selectable text for checkbox.
 4. [ ] Rich text / markup.
 5. [ ] Buddy support - when clicking a label, mark the buddy active.
+6. [ ] Markdown label using litehtml+(markdown processor for C++).
 
 ## Combobox Features [0/2]
 
 1. [ ] Editable / searchable mode
 1. [ ] Grouped items / separators
-
-## Theme plasma [0/12]
-
-1. Tabs:
-    1. Background of non-selected tabs shoiuld be darker.
-    2. Selected item background should "window".
-    3. No round corners.
-    4. Width of selected tab should be full tab.
-    5. Ideally - the sides of the tabs should be rounded.
-2. Progress bar:
-    1. Should have rounded border.
-3. Checkbox
-    1. When checked - background should be tint.
-4. Input
-    1. When selected - border should be tinted.
-    2. Hoever - border should be slightly tinted.
-5. Button
-    1. Hoever should have tinted border, but no background.
-6. Radio button
-    1. When selected - use tint background, black center
-7. Window
-    1. Default color should be darker.
 
 ## Testing [0/3]
 
