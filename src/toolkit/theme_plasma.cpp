@@ -8,7 +8,6 @@ namespace toolkit {
 
 Plasma6Theme::Plasma6Theme(Palette p) : BaseTheme(std::move(p)) {
     name = "Plasma 6";
-    button.padding = {9, 18, 9, 18};
     slider.handle_size = 20.0f;
     slider.groove_thickness = 6.0f;
     focus_ring_margin = 2.0f;

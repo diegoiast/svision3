@@ -17,12 +17,12 @@ namespace toolkit {
 
 // FIXME: remove this style
 struct ButtonStyle {
-    Margins padding = {8, 16, 8, 16};
+    Margins padding = {6, 16, 6, 16};
 };
 
 // FIXME: remove this style
 struct LineInputStyle {
-    Margins padding = {4, 8, 4, 8};
+    Margins padding = {6, 8, 6, 8};
 };
 
 // FIXME: remove this style
@@ -45,7 +45,7 @@ struct MenuStyle {
 
 // FIXME: remove this style
 struct MenuBarStyle {
-    Margins padding = {4, 8, 4, 8};
+    Margins padding = {6, 8, 6, 8};
 };
 
 // FIXME: remove this style
@@ -92,12 +92,12 @@ struct SliderStyle {
 // FIXME: remove this style
 struct TooltipStyle {
     float delay_sec = 0.6f;
-    float padding = 5.0f;
+    float padding = 4.0f;
 };
 
 struct LayoutStyle {
-    Margins margins = {8, 8, 8, 8};
-    float spacing = 8.0f;
+    Margins margins = {4, 4, 4, 4};
+    float spacing = 4.0f;
 };
 
 struct Palette {
@@ -176,10 +176,8 @@ class Theme {
     // FIXME: this should be in the platform code. Not here.
     static ThemeStyle detect_system_style();
 
-    // FIXME: how about move this to the enum? or something?
     static const char *style_name(ThemeStyle style);
 
-    // FIXME: how about move this to the enum? or something?
     static Palette default_palette(ThemeStyle style, ColorScheme scheme = ColorScheme::Light);
 
     // Primitive Drawing Methods

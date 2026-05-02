@@ -16,7 +16,6 @@ class MaterialTheme : public BaseTheme {
   public:
     explicit MaterialTheme(Palette p) : BaseTheme(std::move(p)) {
         name = "Material";
-        button.padding = {10, 24, 10, 24};
         menu.padding = {4, 4, 4, 4};
         menubar.padding = {4, 12, 4, 12};
         slider.handle_size = 18.0f;
@@ -33,7 +32,6 @@ class GnomeTheme : public BaseTheme {
         name = "GNOME";
         bool dark = palette.window.luma() < 0.5f;
         Color btn_bg = dark ? palette.window.lighten(0.04f) : palette.window.darken(0.03f);
-        button.padding = {8, 20, 8, 20};
 
         slider.handle_size = 22.0f;
         slider.groove_thickness = 6.0f;
