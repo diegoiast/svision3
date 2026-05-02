@@ -54,11 +54,10 @@ static std::string format_size(std::uintmax_t bytes) {
 }
 
 static std::string format_mtime(std::filesystem::file_time_type t) {
-    auto sys = std::chrono::file_clock::to_sys(t);
-    auto tt = std::chrono::system_clock::to_time_t(sys);
-    char buf[32];
-    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", std::localtime(&tt));
-    return buf;
+    auto sys = std::chrono::clock_cast<std::chrono::system_clock>(t);
+
+    return std::format("{:%Y-%m-%d %H:%M}",
+        std::chrono::zoned_time{std::chrono::current_zone(), sys});
 }
 
 class DirDetailsModel : public ItemModel {
