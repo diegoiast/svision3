@@ -6,7 +6,6 @@
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
 #include "toolkit/file_dialog.hpp"
-#include "toolkit/file_dialog_widget.hpp"
 #include "toolkit/icon_grid.hpp"
 #include "toolkit/image_loader.hpp"
 #include "toolkit/label.hpp"
@@ -491,27 +490,6 @@ int main(int argc, char *argv[]) {
 
     tabs->add_tab("Grid", std::move(tab_grid));
 
-    // ── Tab: Icon View ────────────────────────────────────────────────────
-    auto tab_icon_view = std::make_unique<toolkit::VBoxLayout>();
-    auto file_dialog = std::make_unique<toolkit::FileDialogWidget>();
-    auto file_dialog_ptr = file_dialog.get();
-    const char *home = std::getenv("HOME");
-    if (!home) {
-        home = std::getenv("USERPROFILE");
-    }
-    file_dialog->set_current_path(home ? home : ".");
-
-    tab_icon_view->add_widget(std::move(file_dialog), 1);
-    tabs->add_tab("Icon View", std::move(tab_icon_view));
-
-    auto b = std::make_unique<toolkit::Button>("Menu");
-    b->set_flat(true);
-    b->set_background_color(toolkit::Color::rgb(0.9f, 0.75f, 0.6f));
-    b->set_flat(true);
-    b->set_focusable(false);
-    b->set_padding({2, 8, 2, 8});
-    tabs->set_leading_widget(std::move(b));
-
     // ── Tab: Songs ─────────────────────────────────────────────────────
     auto tab3 = std::make_unique<toolkit::VBoxLayout>();
     tab3->set_margins({20, 20, 20, 20});
@@ -774,7 +752,7 @@ int main(int argc, char *argv[]) {
     tab6->add_widget(std::move(south_tabs), 0);
 
     tabs->add_tab("Tabs", std::move(tab6));
-    tabs_ptr->set_current(6); // Editor tab
+    tabs_ptr->set_current(5); // Editor tab
 
     root->add_widget(std::move(tabs), 1);
 
