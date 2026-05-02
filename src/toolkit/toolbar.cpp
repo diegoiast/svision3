@@ -4,6 +4,7 @@
 #include "toolkit/toolbar.hpp"
 #include "toolkit/button.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/window.hpp"
 
 namespace toolkit {
 
@@ -80,7 +81,13 @@ void Toolbar::add_separator() { layout_->add_widget(std::make_unique<ToolbarSepa
 
 void Toolbar::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    Theme::current().draw_toolbar(painter, rect);
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = false,
+        .enabled       = true,
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    Theme::current().draw_toolbar(painter, rect, wstate);
     layout_->draw(painter);
 }
 

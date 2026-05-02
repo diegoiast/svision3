@@ -365,7 +365,13 @@ void TableView::scroll_to_row(size_t row) {
 
 void TableView::paint(Painter &painter) {
     auto const &theme = Theme::current();
-    theme.draw_table_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    theme.draw_table_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
 
     if (!model_) {
         return;

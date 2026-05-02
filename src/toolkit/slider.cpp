@@ -114,11 +114,14 @@ void Slider::paint(Painter &painter) {
     auto range = max_ - min_;
     auto normalized_value = (range > 0) ? (value_ - min_) / range : 0.0f;
 
-    // FIXME: add support for these states
-    auto hovered = false;
-    auto pressed = false;
-    Theme::current().draw_slider(painter, rect, normalized_value, horizontal, hovered, pressed,
-                                 is_focused(), is_enabled());
+    // FIXME: add support for hovered/pressed interaction states
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    Theme::current().draw_slider(painter, rect, normalized_value, horizontal, wstate);
 }
 
 bool Slider::handle_mouse(MouseEvent const &event) {

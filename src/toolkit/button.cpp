@@ -152,8 +152,14 @@ Widget &Button::set_visible(bool v) {
 
 void Button::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    Theme::current().draw_button(painter, rect, display_text_, icon_, state_handler_.button_state,
-                                 is_focused(), is_enabled(), flat_, background_color_);
+    auto wstate = WidgetState{
+        .interaction   = state_handler_.button_state,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    Theme::current().draw_button(painter, rect, display_text_, icon_, wstate, flat_,
+                                 background_color_);
 }
 
 bool Button::trigger_mnemonic(char key) {

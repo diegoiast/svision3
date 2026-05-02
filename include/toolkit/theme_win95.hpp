@@ -18,7 +18,7 @@ class Win95Theme : public BaseTheme {
                         bool alternate) const override;
 
     void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
-                           bool enabled) const override;
+                           WidgetState const &state) const override;
 };
 
 } // namespace toolkit

@@ -41,8 +41,13 @@ RadioButton::RadioButton(std::string text, RadioGroup &group)
 
 void RadioButton::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    Theme::current().draw_radio_button(painter, rect, text_, selected_,
-                                       state_handler_.button_state, is_focused(), is_enabled());
+    auto wstate = WidgetState{
+        .interaction   = state_handler_.button_state,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    Theme::current().draw_radio_button(painter, rect, text_, selected_, wstate);
 }
 
 bool RadioButton::handle_mouse(MouseEvent const &event) {

@@ -41,11 +41,11 @@ class GnomeTheme : public BaseTheme {
     }
 
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
-                  bool hovered, bool enabled, TabOrientation orientation, bool has_close,
+                  WidgetState const &state, TabOrientation orientation, bool has_close,
                   bool hovered_close) const override {
         auto old_radius = palette.tab_radius;
         const_cast<Palette &>(palette).tab_radius = 6.0f;
-        BaseTheme::draw_tab(painter, rect.inset(2.0f), text, active, hovered, enabled, orientation,
+        BaseTheme::draw_tab(painter, rect.inset(2.0f), text, active, state, orientation,
                             has_close, hovered_close);
         const_cast<Palette &>(palette).tab_radius = old_radius;
     }

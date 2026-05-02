@@ -62,8 +62,13 @@ void Checkbox::toggle() {
 
 void Checkbox::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    Theme::current().draw_checkbox(painter, rect, text_, state_, state_handler_.button_state,
-                                   is_focused(), is_enabled());
+    auto wstate = WidgetState{
+        .interaction   = state_handler_.button_state,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    Theme::current().draw_checkbox(painter, rect, text_, state_, wstate);
 }
 
 bool Checkbox::handle_mouse(MouseEvent const &event) {

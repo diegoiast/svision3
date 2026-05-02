@@ -253,7 +253,13 @@ void TreeView::paint(Painter &painter) {
     auto indent = style.indent;
     auto item_padding_h = style.item_padding_h;
 
-    theme.draw_tree_background(painter, {0, 0, rect_.width, rect_.height}, false);
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    theme.draw_tree_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
 
     painter.push_clip({0, 0, rect_.width, rect_.height});
 

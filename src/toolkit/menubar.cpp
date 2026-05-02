@@ -45,8 +45,13 @@ int MenuBar::find_menu(std::string_view title) const {
 
 void MenuBar::paint(Painter &painter) {
     auto const &theme = Theme::current();
-
-    theme.draw_menubar_background(painter, rect_);
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = false,
+        .enabled       = true,
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    theme.draw_menubar_background(painter, rect_, wstate);
 
     auto x = 0.0f;
 

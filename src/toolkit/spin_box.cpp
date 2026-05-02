@@ -154,8 +154,14 @@ void SpinBox::paint(Painter &painter) {
             std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() % 1000 < 500;
     }
 
-    theme.draw_spinbox(painter, rect, text_, cursor_pos, sel_start_pos, sel_end_pos, is_focused(),
-                       is_enabled(), hovered_zone_ == HitZone::Up, pressed_zone_ == HitZone::Up,
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    theme.draw_spinbox(painter, rect, text_, cursor_pos, sel_start_pos, sel_end_pos, wstate,
+                       hovered_zone_ == HitZone::Up, pressed_zone_ == HitZone::Up,
                        hovered_zone_ == HitZone::Down, pressed_zone_ == HitZone::Down,
                        cursor_visible);
 }

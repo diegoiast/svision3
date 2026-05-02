@@ -30,4 +30,13 @@ class ButtonStateHandler {
     bool on_keyboard(const KeyEvent &event);
 };
 
+// Captures the full drawing state of a widget — passed to every Theme::draw_* method
+// so themes have one consistent view of interaction, focus, enabled and window state.
+struct WidgetState {
+    ButtonState interaction   = ButtonState::Normal;
+    bool        focused       = false;
+    bool        enabled       = true;
+    bool        window_active = true;
+};
+
 } // namespace toolkit

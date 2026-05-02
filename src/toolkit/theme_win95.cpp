@@ -102,9 +102,10 @@ void Win95Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_
 }
 
 void Win95Theme::draw_progress_bar(Painter &painter, Rect const &rect, float progress,
-                                  bool enabled) const {
+                                   WidgetState const &state) const {
     auto const chunk_width = 8.0f;
     auto const chunk_gap = 2.0f;
+    auto enabled = state.enabled;
 
     auto bg = enabled ? palette.window : palette.window.darken(0.1f);
     auto fill_c = enabled ? palette.accent : palette.accent.darken(0.2f);

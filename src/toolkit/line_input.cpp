@@ -288,8 +288,14 @@ void LineInput::paint(Painter &painter) {
             std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() % 1000 < 500;
     }
 
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = !read_only_,
+        .window_active = window_ ? window_->is_active() : true,
+    };
     theme.draw_line_input(painter, rect, d_text, placeholder_, static_cast<int>(cursor_pos_),
-                          sel_start_pos, sel_end_pos, is_focused(), !read_only_, password_mode_,
+                          sel_start_pos, sel_end_pos, wstate, password_mode_,
                           scroll_offset_, bg, cursor_visible);
 
     paint_buttons(painter);
@@ -298,7 +304,7 @@ void LineInput::paint(Painter &painter) {
 // FIXME: move this to use the theme paint buttons primitives
 void LineInput::paint_buttons(Painter &painter) {
     auto const &palette = Theme::current().palette;
-    bool clear_visible = !text_.empty() && !read_only_;
+    auto clear_visible = !text_.empty() && !read_only_;
     if (clear_visible || is_password_field_) {
         auto const &style = Theme::current().line_input;
 

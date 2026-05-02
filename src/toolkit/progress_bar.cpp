@@ -1,4 +1,5 @@
 #include "toolkit/progress_bar.hpp"
+#include "toolkit/button_state.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <algorithm>
@@ -20,7 +21,13 @@ void ProgressBar::set_value(float v) {
 
 void ProgressBar::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    Theme::current().draw_progress_bar(painter, rect, value_, is_enabled());
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    Theme::current().draw_progress_bar(painter, rect, value_, wstate);
 }
 
 Size ProgressBar::size_hint() const {

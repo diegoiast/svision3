@@ -391,9 +391,15 @@ void TextEdit::paint(Painter &painter) {
     auto sel_end_line = has_selection() ? se.line : -1;
     auto sel_end_col = has_selection() ? se.col : -1;
 
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
     theme.draw_text_edit(painter, local_rect, lines_, cursor_.line, cursor_.col, sel_start_line,
                          sel_start_col, sel_end_line, sel_end_col, first, lh, gw, scroll_x_,
-                         scroll_y_, is_focused(), is_enabled(), cursor_blink_time_);
+                         scroll_y_, wstate, cursor_blink_time_);
 }
 
 // ── Mouse ───────────────────────────────────────────────────────────────────

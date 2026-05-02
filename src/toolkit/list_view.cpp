@@ -166,7 +166,13 @@ std::optional<size_t> ListView::item_at_y(float y) const {
 
 void ListView::paint(Painter &painter) {
     auto const &theme = Theme::current();
-    theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
 
     if (!model_ || model_->row_count() == 0) {
         return;

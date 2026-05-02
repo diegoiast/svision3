@@ -188,7 +188,13 @@ void IconGrid::paint(Painter &painter) {
     auto const &theme = Theme::current();
     auto const &style = theme.icon_grid;
     auto const &palette = theme.palette;
-    theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, is_focused());
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
 
     auto layout = compute_layout();
     auto count = model_->row_count();

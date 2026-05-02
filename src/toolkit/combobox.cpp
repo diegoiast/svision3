@@ -123,7 +123,13 @@ void Combobox::close_dropdown() {
 
 void Combobox::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    Theme::current().draw_combobox(painter, rect, selected_text(), is_focused(), open_);
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = is_focused(),
+        .enabled       = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    Theme::current().draw_combobox(painter, rect, selected_text(), wstate, open_);
 }
 
 void Combobox::paint_dropdown(Painter &painter) {

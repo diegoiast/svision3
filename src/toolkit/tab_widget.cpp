@@ -461,7 +461,13 @@ void TabWidget::paint(Painter &painter) {
         }
     }
 
-    Theme::current().draw_tab_bar_background(painter, {bar_x, bar_y, bar_w, bar_h});
+    auto wstate = WidgetState{
+        .interaction   = ButtonState::Normal,
+        .focused       = false,
+        .enabled       = true,
+        .window_active = window_ ? window_->is_active() : true,
+    };
+    Theme::current().draw_tab_bar_background(painter, {bar_x, bar_y, bar_w, bar_h}, wstate);
 
     auto paint_tab = [&](int i, float draw_x, float draw_y) {
         auto size = tab_size(i);
@@ -471,7 +477,13 @@ void TabWidget::paint(Painter &painter) {
         auto hovered = (i == hovered_tab_ && !active);
         auto hovered_close = (i == hovered_close_);
 
-        Theme::current().draw_tab(painter, tab_rect, tabs_[i].title, active, hovered, true,
+        auto tab_state = WidgetState{
+            .interaction   = hovered ? ButtonState::Hovered : ButtonState::Normal,
+            .focused       = false,
+            .enabled       = true,
+            .window_active = window_ ? window_->is_active() : true,
+        };
+        Theme::current().draw_tab(painter, tab_rect, tabs_[i].title, active, tab_state,
                                   orientation_, true, hovered_close);
     };
 
