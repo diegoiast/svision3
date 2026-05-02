@@ -258,9 +258,13 @@ void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::strin
 void BaseTheme::draw_menubar_background(Painter &painter, Rect const &rect) const {
     // FIXME: do we want a different background for menubar?
     painter.fill_rect(rect, palette.window);
-    auto border_c = palette.window;
-    painter.draw_line({rect.x, rect.height - 1.0f}, {rect.x + rect.width, rect.height - 1.0f},
-                      border_c, 1.0f);
+    if (palette.chrome_lines) {
+        // FIXME do not modify theme colors
+        auto bg = palette.window;
+        auto border_c = bg.darken(0.08f);
+        painter.draw_line({rect.x, rect.height - 1.0f}, {rect.x + rect.width, rect.height - 1.0f},
+                          border_c, 1.0f);
+    }
 }
 
 void BaseTheme::draw_menu_background(Painter &painter, Rect const &rect) const {
@@ -495,6 +499,7 @@ void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_v
     if (selected) {
         bg = palette.highlight;
     } else if (hovered) {
+        // FIXME: don't compute colors. Use colors from palette.
         bg = Color::lerp(alt_color, palette.highlight, 0.5);
     } else if (alternate) {
         bg = alt_color;
@@ -672,7 +677,7 @@ void BaseTheme::draw_toolbar(Painter &painter, Rect const &rect) const {
         painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, palette.highlight, 1.0f);
         painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
                           {rect.x + rect.width, rect.y + rect.height - 1.0f}, palette.shadow, 1.0f);
-    } else {
+    } else if (palette.chrome_lines) {
         auto border_c = palette.window.darken(0.15f);
         painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
                           {rect.x + rect.width, rect.y + rect.height - 1.0f}, border_c, 1.0f);

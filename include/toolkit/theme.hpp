@@ -146,6 +146,8 @@ struct Palette {
     float border_width = 1.0f;
     float tab_radius = 0.0f;
     bool beveled = false;
+    // When false, no separator line is drawn below the menubar or toolbar (e.g. Win11)
+    bool chrome_lines = true;
 
     // FIXME: this should be platform dependent, read from desktop configuration
     SystemFonts fonts;
