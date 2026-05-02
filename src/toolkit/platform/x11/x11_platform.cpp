@@ -450,8 +450,12 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
             win->close();
         }
         break;
+    case FocusIn:
+        win->handle_activate(true);
+        break;
     case FocusOut:
         win->hide_tooltip();
+        win->handle_activate(false);
         break;
     default:
         break;

@@ -276,9 +276,9 @@ void Window::handle_paint(Painter &painter) {
 
     auto const &style = Theme::current();
     auto const &palette = style.palette;
-    painter.fill_rect({0, 0, size_.width, size_.height}, palette.window);
-
+    auto bg = is_active_ ? palette.window : palette.window_inactive.value_or(palette.window);
     auto repaint_start = std::chrono::steady_clock::now();
+    painter.fill_rect({0, 0, size_.width, size_.height}, bg);
 
     if (root_) {
         root_->draw(painter);
@@ -643,6 +643,14 @@ void Window::handle_resize(Size new_size) {
     if (root_) {
         root_->set_rect({0, 0, size_.width, size_.height});
     }
+}
+
+void Window::handle_activate(bool active) {
+    if (is_active_ == active) {
+        return;
+    }
+    is_active_ = active;
+    request_redraw("window activate");
 }
 
 void Window::relayout() {

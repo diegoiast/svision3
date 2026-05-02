@@ -709,8 +709,11 @@ static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_
             }
         }
     }
-    if (!activated && win->owner_) {
-        win->owner_->hide_tooltip();
+    if (win->owner_) {
+        if (!activated) {
+            win->owner_->hide_tooltip();
+        }
+        win->owner_->handle_activate(activated);
     }
 }
 

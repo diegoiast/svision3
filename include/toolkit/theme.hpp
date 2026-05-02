@@ -103,6 +103,9 @@ struct LayoutStyle {
 struct Palette {
     // Main background for windows
     Color window;
+
+    std::optional<Color> window_inactive;
+
     // Background for input widgets/lists
     Color base;
     // Alternate background for lists

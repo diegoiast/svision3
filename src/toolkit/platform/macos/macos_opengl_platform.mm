@@ -127,8 +127,14 @@ class CoreTextRasterizer : public TextRasterizer {
     if (mx.height > 0 && cr.size.height > mx.height) cr.size.height = mx.height;
     return [sender frameRectForContentRect:cr].size;
 }
+- (void)windowDidBecomeKey:(NSNotification *)n {
+    if (self.owner) self.owner->handle_activate(true);
+}
 - (void)windowDidResignKey:(NSNotification *)n {
-    if (self.owner) self.owner->hide_tooltip();
+    if (self.owner) {
+        self.owner->hide_tooltip();
+        self.owner->handle_activate(false);
+    }
 }
 @end
 

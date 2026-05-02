@@ -455,6 +455,9 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_ACTIVATE:
         if (LOWORD(wp) == WA_INACTIVE) {
             win->hide_tooltip();
+            win->handle_activate(false);
+        } else {
+            win->handle_activate(true);
         }
         break;
     case WM_DPICHANGED: {

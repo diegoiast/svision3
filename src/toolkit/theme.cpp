@@ -36,6 +36,7 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
     switch (scheme) {
     case ColorScheme::Light:
         p.window = Color::from_argb(0xFFF2F2F7);
+        p.window_inactive = Color::from_argb(0xFFF3F3F3);
         p.base = Color::from_argb(0xFFFFFFFF);
         p.alternate = Color::from_argb(0xFFF9F9FB);
         p.text = Color::from_argb(0xFF000000);
@@ -82,11 +83,14 @@ static void palette_macos(Palette &p, ColorScheme scheme) {
 static void palette_win11(Palette &p, ColorScheme scheme) {
     auto windows_blue = Color::from_argb(0xFF0078D4);
     p.tab_radius = 4.0f;
+    p.corner_radius = 4.0f;
     p.chrome_lines = false;
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::from_argb(0xFFF3F3F3);
+        p.window = Color::from_rgb(0xEEF4F9);
+        p.window_inactive = Color::from_rgb(0xF3F3F3);
+        //p.window = Color::from_argb(0xFFEDEDED);
         p.base = Color::from_argb(0xFFFFFFFF);
         p.alternate = Color::from_argb(0xFFF9F9F9);
         p.text = Color::from_argb(0xFF000000);

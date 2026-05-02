@@ -62,6 +62,8 @@ class Window {
     void handle_mouse(MouseEvent const &event);
     void handle_key(KeyEvent const &event);
     void handle_resize(Size new_size);
+    void handle_activate(bool active);
+    bool is_active() const { return is_active_; }
     void relayout();
 
     Window &resize_to_fit();
@@ -118,6 +120,7 @@ class Window {
     std::unique_ptr<Widget> root_;
     std::vector<std::unique_ptr<Widget>> widgets_;
     std::vector<Command::Ptr> global_commands_;
+    bool is_active_ = true;
     Widget *focused_widget_ = nullptr;
     Widget *saved_focus_ = nullptr;
     std::vector<Popup> popups_;

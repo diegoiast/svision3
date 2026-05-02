@@ -210,8 +210,14 @@ class CoreGraphicsPainter : public Painter {
     if (mx.height > 0 && cr.size.height > mx.height) cr.size.height = mx.height;
     return [sender frameRectForContentRect:cr].size;
 }
+- (void)windowDidBecomeKey:(NSNotification *)notification {
+    if (self.owner) self.owner->handle_activate(true);
+}
 - (void)windowDidResignKey:(NSNotification *)notification {
-    if (self.owner) self.owner->hide_tooltip();
+    if (self.owner) {
+        self.owner->hide_tooltip();
+        self.owner->handle_activate(false);
+    }
 }
 @end
 
