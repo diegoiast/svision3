@@ -11,6 +11,7 @@ Win11Theme::Win11Theme(Palette p) : BaseTheme(std::move(p)) {
     focus_ring_margin = 3.0f;
     focus_ring_corner_radius = 4.0f;
     tab_widget.indicator_weight = 2.0f;
+    palette.corner_radius = 9.0f;
 }
 
 void Win11Theme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
