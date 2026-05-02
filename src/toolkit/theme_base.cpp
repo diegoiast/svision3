@@ -533,16 +533,20 @@ void BaseTheme::draw_icon_grid_item(Painter &painter, Rect const &rect, std::str
     auto icon_area_x = rect.x + (rect.width - static_cast<float>(icon_size)) / 2.0f;
     auto icon_area_y = rect.y + 4.0f;
     if (icon) {
-        if (scale) {
+        // Scale if explicitly requested, or whenever the actual icon dimensions
+        // don't match the requested cell size — this handles both the scale-down
+        // case (e.g. only a 48 px variant is available but 32 px was asked for,
+        // which would otherwise bleed outside the cell) and the scale-up case
+        // (e.g. only a 16 px variant is available but 48 px was asked for,
+        // which would otherwise render as a tiny icon in a large empty cell).
+        auto size_mismatch = icon->width != icon_size || icon->height != icon_size;
+        if (scale || size_mismatch) {
             painter.draw_image_scaled(*icon,
                                       {icon_area_x, icon_area_y, static_cast<float>(icon_size),
                                        static_cast<float>(icon_size)});
         } else {
-            auto icon_x = icon_area_x +
-                          (static_cast<float>(icon_size) - static_cast<float>(icon->width)) / 2.0f;
-            auto icon_y = icon_area_y +
-                          (static_cast<float>(icon_size) - static_cast<float>(icon->height)) / 2.0f;
-            painter.draw_image(*icon, {icon_x, icon_y});
+            // Exact match: draw at natural size (centering offset is zero).
+            painter.draw_image(*icon, {icon_area_x, icon_area_y});
         }
     }
 

@@ -442,5 +442,6 @@ add_executable(tests
     tests/test_catalog.cpp
     tests/test_db.cpp
     tests/test_image_loader.cpp
+    tests/test_icon_grid.cpp
 )
 target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)

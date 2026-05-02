@@ -32,6 +32,7 @@ class IconGrid : public Widget {
     IconGrid &select_range(size_t from, size_t to);
     IconGrid &select_in_rect(Rect const &r);
     Rect rubber_selection_rect() const;
+    int display_icon_size() const;
 
     std::function<void(std::set<size_t> const &indices)> on_selection_changed;
     std::function<void(size_t index)> on_item_activated;
@@ -52,7 +53,6 @@ class IconGrid : public Widget {
         float item_height;
     };
 
-    int display_icon_size() const;
     LayoutInfo compute_layout() const;
     std::optional<size_t> item_at(Point p) const;
     size_t first_visible_item() const;
