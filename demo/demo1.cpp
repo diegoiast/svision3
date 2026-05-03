@@ -5,6 +5,7 @@
 #include "toolkit/button.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
+#include "toolkit/directory_dialog.hpp"
 #include "toolkit/file_dialog.hpp"
 #include "toolkit/icon_grid.hpp"
 #include "toolkit/image_loader.hpp"
@@ -605,6 +606,23 @@ int main(int argc, char *argv[]) {
     save_btn->set_tooltip("Save the file (Ctrl+S)");
     save_btn->on_click = save_action;
     editor_toolbar->add_widget(std::move(save_btn));
+
+    auto choose_dir_btn = std::make_unique<toolkit::Button>("Choose Directory...");
+    choose_dir_btn->set_tooltip("Choose a directory");
+    choose_dir_btn->on_click = [use_native_cb, window] {
+        toolkit::DirectoryDialog(window)
+            .title("Choose Directory")
+            .use_native(use_native_cb->checked())
+            .choose()
+            .then([](auto path) {
+                if (path) {
+                    spdlog::info("Directory chosen: {}", *path);
+                } else {
+                    spdlog::info("Directory dialog cancelled");
+                }
+            });
+    };
+    editor_toolbar->add_widget(std::move(choose_dir_btn));
 
     editor_toolbar->add_widget(std::unique_ptr<toolkit::Checkbox>(use_native_cb));
 

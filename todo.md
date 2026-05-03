@@ -30,38 +30,38 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 15. [x] Command interfaces for menus/toolbars and app shortcuts.
 16. [x] Backends have open/cairo/whatevre backed in. We need to separate them.
 17. [x] Paintings inside widgets should start at (0,0) not position at window.
-21. [ ] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
-22. [ ] Shortcuts per platform. Functions to read shortcuts per platform on runtime.
-24. [x] Generic timer system (start_timer / stop_timer)
-25. [x] Popup/overlay mechanism (used by Combobox)
-26. [x] Painter helpers (draw_frame, draw_focus_ring, fill_circle, etc.)
-27. [x] Font metrics for consistent text positioning
-28. [x] Clipping (push_clip / pop_clip).
-29. [x] Screenshot / save_to_png.
-32. [x] Clipboard (copy/paste, all platforms).
-33. [ ] Drag and drop.
-34. [ ] Font selection / custom fonts.
-35. [ ] Image loading / rendering.
-36. [ ] Animation framework (transitions, easing).
-37. [ ] Undo/redo framework.
-39. [ ] Serialization (save/restore widget state).
-40. [ ] Declarative UI support. - WIP.
-41. [x] All setters should return a reference to self - for chainability.
-42. [x] Winwodws should have a `Window::add<T>` template that
+18. [ ] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
+19. [ ] Shortcuts per platform. Functions to read shortcuts per platform on runtime.
+20. [x] Generic timer system (start_timer / stop_timer)
+21. [x] Popup/overlay mechanism (used by Combobox)
+22. [x] Painter helpers (draw_frame, draw_focus_ring, fill_circle, etc.)
+23. [x] Font metrics for consistent text positioning
+24. [x] Clipping (push_clip / pop_clip).
+25. [x] Screenshot / save_to_png.
+26. [x] Clipboard (copy/paste, all platforms).
+27. [ ] Drag and drop.
+28. [ ] Font selection / custom fonts.
+29. [ ] Image loading / rendering.
+30. [ ] Animation framework (transitions, easing).
+31. [ ] Undo/redo framework.
+32. [ ] Serialization (save/restore widget state).
+33. [ ] Declarative UI support. - WIP.
+34. [x] All setters should return a reference to self - for chainability.
+35. [x] Winwodws should have a `Window::add<T>` template that
         internally creates the shared ptr, and returns a reference.
-38. [ ] Signals/slots (beyond single std::function) - or alternative.
-31. [ ] Logging levels configurable at runtime.
-18. [ ] Scroll size - detect at runtime.
-19. [ ] Natural scrolling - detect at runtime.
-20. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
-43. [ ] Implement font caching for measurements.
-30. [ ] Resource / asset management.
-23. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
+36. [ ] Signals/slots (beyond single std::function) - or alternative.
+37. [ ] Logging levels configurable at runtime.
+38. [ ] Scroll size - detect at runtime.
+39. [ ] Natural scrolling - detect at runtime.
+40. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
+41. [ ] Implement font caching for measurements.
+42. [ ] Resource / asset management.
+43. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
 
 ## Platform – Not Yet Implemented
 
-1. [x] File dialogs (open/save) - implemented via
-1. [ ] Non-native file dialogs (open/save) - re-implement them in this toolkit. - WIP, making this a widget.
+1. [x] File dialogs (open/save) - implemented via NFD internally
+1. [x] Non-native file dialogs (open/save) - re-implement them in this toolkit.
 1. [ ] Message boxes / alerts.
 1. [ ] Multi-window.
 1. [ ] IME / input method support.
@@ -100,17 +100,17 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 24. [x] Toolbar + images.
 25. [x] Icon grid (tooltips, selection, rubber band)
 26. [ ] Toolbar + custom widgets.
-27. [ ] Dialog (modal/modeles).
+27. [x] Dialog (modal/modeles).
 28. [ ] StatusBar.
 29. [ ] GroupBox / Frame.
 30. [ ] Splitter.
 31. [ ] Image widget.
-33. [ ] Markdown tooltip.
-34. [ ] Undo/redo system (text area + LineInput).
-35. [ ] Client side decorations with theme.
-36. [ ] Proper filter API for listview and table view.
-37. [ ] MainWindow with docking widgets on the sides.
-38. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
+32. [ ] Markdown tooltip.
+33. [ ] Undo/redo system (text area + LineInput).
+34. [ ] Client side decorations with theme.
+35. [ ] Proper filter API for listview and table view.
+36. [ ] MainWindow with docking widgets on the sides.
+37. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
 
 ## Layout System [6/12]
 
@@ -143,12 +143,12 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 12. [ ] Focus ring styling per theme.
 13. [x] XDG Icon theme support (PNG).
 14. [ ] SVG XDG icon theme support.
-14. [ ] Simplify and minimize the theme structs.
-15. [ ] Theme should be in application, then window then widget, in all but app - optional.
-16. [ ] Load theme from config file (which theme?).
-17. [x] Themes should not be an enum, but virtual classes.
-18. [x] Draw premetives from theme.
-19. [ ] Ring focus using theme.
+15. [ ] Simplify and minimize the theme structs.
+16. [ ] Theme should be in application, then window then widget, in all but app - optional.
+17. [ ] Load theme from config file (which theme?).
+18. [x] Themes should not be an enum, but virtual classes.
+19. [x] Draw premetives from theme.
+20. [ ] Ring focus using theme.
 
 ### Windows 11 Theme
 
@@ -169,7 +169,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
     2. Circle should be bigger
 7. Fonts (not really a theme... but...)
     1. Fonts are too small. Claude says:
-    ```
+
+    ```text
     Found it. In draw_text, rast.width/height are in physical pixels (rasterized at scale), but
     draw_image passes them as logical units to GDI+ — which then multiplies by ScaleTransform(scale)
     again. The text is rendered at scale² the intended size, gets clipped by widget bounds, and
@@ -177,13 +178,13 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
     The fix: draw the physical-pixel bitmap at width/scale × height/scale logical so the
     ScaleTransform maps it back to exactly the right physical pixels.
     ```
-8.  Frames of objects are not the same. Button has a lighter border than line.
 
+8. Frames of objects are not the same. Button has a lighter border than line.
 
 ### Plasma theme
 
 1. Tabs:
-    1. Background of non-selected tabs shoiuld be darker.
+    1. Background of non-selected tabs should be darker.
     2. Selected item background should "window".
     3. No round corners.
     4. Width of selected tab should be full tab.
