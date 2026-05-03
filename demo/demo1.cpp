@@ -29,7 +29,6 @@
 #include "toolkit/window.hpp"
 #include <fstream>
 #include <iterator>
-#include <nfd.h>
 #include <regex>
 #include <set>
 
@@ -83,35 +82,20 @@ int main(int argc, char *argv[]) {
     use_native_cb->set_checked(true);
 
     auto open_action = [editor, use_native_cb, window] {
-        if (use_native_cb->checked()) {
-            NFD_Init();
-            nfdu8char_t *out_path = nullptr;
-            nfdresult_t result = NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
-            if (result == NFD_OKAY && out_path) {
-                std::ifstream f(out_path);
-                if (f) {
-                    std::string contents((std::istreambuf_iterator<char>(f)),
-                                         std::istreambuf_iterator<char>());
-                    editor->set_text(contents);
-                }
-                NFD_FreePathU8(out_path);
-            }
-            NFD_Quit();
-        } else {
-            toolkit::FileDialog(window)
-                .title("Open File")
-                .open()
-                .then([editor](auto path) {
-                    if (path) {
-                        std::ifstream f(*path);
-                        if (f) {
-                            std::string contents((std::istreambuf_iterator<char>(f)),
-                                                 std::istreambuf_iterator<char>());
-                            editor->set_text(contents);
-                        }
+        toolkit::FileDialog(window)
+            .title("Open File")
+            .use_native(use_native_cb->checked())
+            .open()
+            .then([editor](auto path) {
+                if (path) {
+                    std::ifstream f(*path);
+                    if (f) {
+                        std::string contents((std::istreambuf_iterator<char>(f)),
+                                             std::istreambuf_iterator<char>());
+                        editor->set_text(contents);
                     }
-                });
-        }
+                }
+            });
     };
 
     // ── MenuBar ─────────────────────────────────────────────────────────
@@ -125,37 +109,26 @@ int main(int argc, char *argv[]) {
 
     auto open_menu_cmd = toolkit::Command::create("Open...", open_action);
     open_menu_cmd->set_shortcut("F3");
+    open_menu_cmd->set_icon(XDG::IconActions::documentOpen);
     file_menu->add_action(open_menu_cmd);
 
     auto save_action = [editor, use_native_cb, window] {
-        if (use_native_cb->checked()) {
-            NFD_Init();
-            nfdu8char_t *out_path = nullptr;
-            nfdresult_t result = NFD_SaveDialogU8(&out_path, nullptr, 0, nullptr, nullptr);
-            if (result == NFD_OKAY && out_path) {
-                std::ofstream f(out_path);
-                if (f) {
-                    f << editor->text();
-                }
-                NFD_FreePathU8(out_path);
-            }
-            NFD_Quit();
-        } else {
-            toolkit::FileDialog(window)
-                .title("Save File")
-                .save()
-                .then([editor](auto path) {
-                    if (path) {
-                        std::ofstream f(*path);
-                        if (f) {
-                            f << editor->text();
-                        }
+        toolkit::FileDialog(window)
+            .title("Save File")
+            .use_native(use_native_cb->checked())
+            .save()
+            .then([editor](auto path) {
+                if (path) {
+                    std::ofstream f(*path);
+                    if (f) {
+                        f << editor->text();
                     }
-                });
-        }
+                }
+            });
     };
     auto save_cmd = toolkit::Command::create("Save As...", save_action);
     save_cmd->set_shortcut("Std+S");
+    save_cmd->set_icon(XDG::IconActions::documentSaveAs);
     file_menu->add_action(save_cmd);
 
     file_menu->add_separator();
@@ -627,6 +600,11 @@ int main(int argc, char *argv[]) {
     open_btn->set_tooltip("Open a text file (F3)");
     open_btn->on_click = open_action;
     editor_toolbar->add_widget(std::move(open_btn));
+
+    auto save_btn = std::make_unique<toolkit::Button>("Save As...");
+    save_btn->set_tooltip("Save the file (Ctrl+S)");
+    save_btn->on_click = save_action;
+    editor_toolbar->add_widget(std::move(save_btn));
 
     editor_toolbar->add_widget(std::unique_ptr<toolkit::Checkbox>(use_native_cb));
 

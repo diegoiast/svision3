@@ -43,18 +43,21 @@ class FileDialog {
     FileDialog &default_name(std::string_view name);
     FileDialog &file_must_exist(bool v = true);
     FileDialog &add_filter(std::string_view label, std::string_view pattern);
+    FileDialog &use_native(bool v = true);
 
     Future open();
     Future save();
 
   private:
     Future show(std::string_view ok_label);
+    Future show_native(bool is_save);
 
     Window *parent_;
     std::string title_;
     std::string start_path_;
     std::string default_name_;
     bool file_must_exist_ = false;
+    bool use_native_ = false;
     std::vector<Filter> filters_;
 };
 

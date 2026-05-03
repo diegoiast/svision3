@@ -404,6 +404,9 @@ elseif(UNIX)
     target_include_directories(nfd PRIVATE ${DBUS_INCLUDE_DIRS})
 endif()
 
+# file_dialog.cpp uses NFD directly, so the toolkit itself needs it.
+target_link_libraries(toolkit PRIVATE nfd)
+
 add_executable(sqlite_viewer tools/sqlite_viewer.cpp)
 set_target_properties(sqlite_viewer PROPERTIES WIN32_EXECUTABLE ON)
 if(WIN32)
