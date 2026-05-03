@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace toolkit {
 
@@ -17,6 +18,11 @@ class FileDialog {
   public:
     using Result = std::optional<std::string>;
     using Callback = std::function<void(Result)>;
+
+    struct Filter {
+        std::string label;   // e.g. "C++ Files"
+        std::string pattern; // e.g. "*.cpp *.hpp"
+    };
 
     class Future {
       public:
@@ -30,11 +36,26 @@ class FileDialog {
         std::shared_ptr<Callback> callback_;
     };
 
-    static Future open(Window *parent, std::string_view title = "Open File",
-                       std::string_view start_path = "");
+    explicit FileDialog(Window *parent);
 
-    static Future save(Window *parent, std::string_view title = "Save File",
-                       std::string_view start_path = "");
+    FileDialog &title(std::string_view t);
+    FileDialog &start_path(std::string_view path);
+    FileDialog &default_name(std::string_view name);
+    FileDialog &file_must_exist(bool v = true);
+    FileDialog &add_filter(std::string_view label, std::string_view pattern);
+
+    Future open();
+    Future save();
+
+  private:
+    Future show(std::string_view ok_label);
+
+    Window *parent_;
+    std::string title_;
+    std::string start_path_;
+    std::string default_name_;
+    bool file_must_exist_ = false;
+    std::vector<Filter> filters_;
 };
 
 } // namespace toolkit

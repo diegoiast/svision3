@@ -205,9 +205,18 @@ FileDialogWidget &FileDialogWidget::set_show_hidden(bool show_hidden) {
     return *this;
 }
 
+FileDialogWidget &FileDialogWidget::set_file_must_exist(bool must_exist) {
+    file_must_exist_ = must_exist;
+    return *this;
+}
+
 void FileDialogWidget::set_current_path(std::string path) {
     current_path_ = std::move(path);
     load_directory();
+}
+
+void FileDialogWidget::set_filename(std::string_view name) {
+    path_input_->set_text(std::string{name});
 }
 
 std::string FileDialogWidget::selected_path() const {
@@ -512,6 +521,9 @@ void FileDialogWidget::setup_ui() {
     auto path_in = std::make_unique<LineInput>();
     path_input_ = path_in.get();
     path_input_->on_submit = [this](std::string const &, LineInput &) {
+        if (file_must_exist_ && !std::filesystem::exists(selected_path())) {
+            return;
+        }
         if (on_ok) {
             on_ok();
         }
@@ -522,6 +534,9 @@ void FileDialogWidget::setup_ui() {
     ok_button_ = open_btn.get();
     ok_button_->set_min_size(button_min);
     ok_button_->on_click = [this] {
+        if (file_must_exist_ && !std::filesystem::exists(selected_path())) {
+            return;
+        }
         if (on_ok) {
             on_ok();
         }

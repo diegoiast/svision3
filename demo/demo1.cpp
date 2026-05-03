@@ -98,16 +98,19 @@ int main(int argc, char *argv[]) {
             }
             NFD_Quit();
         } else {
-            toolkit::FileDialog::open(window, "Open File").then([editor](auto path) {
-                if (path) {
-                    std::ifstream f(*path);
-                    if (f) {
-                        std::string contents((std::istreambuf_iterator<char>(f)),
-                                             std::istreambuf_iterator<char>());
-                        editor->set_text(contents);
+            toolkit::FileDialog(window)
+                .title("Open File")
+                .open()
+                .then([editor](auto path) {
+                    if (path) {
+                        std::ifstream f(*path);
+                        if (f) {
+                            std::string contents((std::istreambuf_iterator<char>(f)),
+                                                 std::istreambuf_iterator<char>());
+                            editor->set_text(contents);
+                        }
                     }
-                }
-            });
+                });
         }
     };
 
@@ -124,7 +127,34 @@ int main(int argc, char *argv[]) {
     open_menu_cmd->set_shortcut("F3");
     file_menu->add_action(open_menu_cmd);
 
-    auto save_cmd = toolkit::Command::create("Save", [] { spdlog::info("Menu: Save"); });
+    auto save_action = [editor, use_native_cb, window] {
+        if (use_native_cb->checked()) {
+            NFD_Init();
+            nfdu8char_t *out_path = nullptr;
+            nfdresult_t result = NFD_SaveDialogU8(&out_path, nullptr, 0, nullptr, nullptr);
+            if (result == NFD_OKAY && out_path) {
+                std::ofstream f(out_path);
+                if (f) {
+                    f << editor->text();
+                }
+                NFD_FreePathU8(out_path);
+            }
+            NFD_Quit();
+        } else {
+            toolkit::FileDialog(window)
+                .title("Save File")
+                .save()
+                .then([editor](auto path) {
+                    if (path) {
+                        std::ofstream f(*path);
+                        if (f) {
+                            f << editor->text();
+                        }
+                    }
+                });
+        }
+    };
+    auto save_cmd = toolkit::Command::create("Save As...", save_action);
     save_cmd->set_shortcut("Std+S");
     file_menu->add_action(save_cmd);
 

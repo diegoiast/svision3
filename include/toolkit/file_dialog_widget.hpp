@@ -30,6 +30,7 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
     std::function<void()> on_new;
 
     void set_current_path(std::string path);
+    void set_filename(std::string_view name);
     std::string selected_path() const;
     void set_ok_label(std::string_view label);
 
@@ -44,6 +45,9 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
     FileDialogWidget &set_show_hidden(bool show_hidden);
     bool show_hidden() const { return show_hidden_; }
 
+    FileDialogWidget &set_file_must_exist(bool must_exist);
+    bool file_must_exist() const { return file_must_exist_; }
+
     IconGrid *icon_grid() const { return icon_grid_; }
 
   private:
@@ -57,6 +61,7 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
     SortOrder sort_order_ = SortOrder::Name;
     bool dirs_first_ = true;
     bool show_hidden_ = false;
+    bool file_must_exist_ = false;
     std::shared_ptr<StandardIconModel> model_;
     std::shared_ptr<ItemModel> details_model_;
 

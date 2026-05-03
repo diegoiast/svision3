@@ -10,16 +10,56 @@
 
 namespace toolkit {
 
-static FileDialog::Future show_dialog(Window *parent, std::string_view title,
-                                      std::string_view start_path, std::string_view ok_label) {
-    auto callback = std::make_shared<FileDialog::Callback>();
-    auto settled = std::make_shared<bool>(false);
-    auto win = Application::instance().create_window(std::string{title}, {700, 500});
-    auto widget = std::make_unique<FileDialogWidget>();
-    auto fdp = widget.get();
+FileDialog::FileDialog(Window *parent) : parent_(parent) {}
 
-    if (!start_path.empty()) {
-        fdp->set_current_path(std::string{start_path});
+FileDialog &FileDialog::title(std::string_view t) {
+    title_ = t;
+    return *this;
+}
+
+FileDialog &FileDialog::start_path(std::string_view path) {
+    start_path_ = path;
+    return *this;
+}
+
+FileDialog &FileDialog::default_name(std::string_view name) {
+    default_name_ = name;
+    return *this;
+}
+
+FileDialog &FileDialog::file_must_exist(bool v) {
+    file_must_exist_ = v;
+    return *this;
+}
+
+FileDialog &FileDialog::add_filter(std::string_view label, std::string_view pattern) {
+    filters_.push_back({std::string{label}, std::string{pattern}});
+    return *this;
+}
+
+FileDialog::Future FileDialog::open() {
+    if (title_.empty()) {
+        title_ = "Open File";
+    }
+    return show("Open");
+}
+
+FileDialog::Future FileDialog::save() {
+    if (title_.empty()) {
+        title_ = "Save File";
+    }
+    return show("Save");
+}
+
+FileDialog::Future FileDialog::show(std::string_view ok_label) {
+    auto callback = std::make_shared<Callback>();
+    auto settled  = std::make_shared<bool>(false);
+    auto win      = Application::instance().create_window(title_, {700, 500});
+    auto widget   = std::make_unique<FileDialogWidget>();
+    auto fdp      = widget.get();
+
+    if (!start_path_.empty()) {
+        fdp->set_current_path(start_path_);
     } else {
         auto home = std::getenv("HOME");
         if (!home) {
@@ -27,7 +67,14 @@ static FileDialog::Future show_dialog(Window *parent, std::string_view title,
         }
         fdp->set_current_path(home ? home : ".");
     }
+
     fdp->set_ok_label(ok_label);
+    fdp->set_file_must_exist(file_must_exist_);
+
+    if (!default_name_.empty()) {
+        fdp->set_filename(default_name_);
+    }
+
     fdp->on_ok = [callback, settled, fdp, win] {
         if (*settled) {
             return;
@@ -51,21 +98,11 @@ static FileDialog::Future show_dialog(Window *parent, std::string_view title,
     };
 
     win->set_root(std::move(widget));
-    if (parent && parent->platform_window()) {
-        win->platform_window()->set_modal_for(parent->platform_window());
+    if (parent_ && parent_->platform_window()) {
+        win->platform_window()->set_modal_for(parent_->platform_window());
     }
     win->show();
-    return FileDialog::Future{callback};
-}
-
-FileDialog::Future FileDialog::open(Window *parent, std::string_view title,
-                                    std::string_view start_path) {
-    return show_dialog(parent, title, start_path, "Open");
-}
-
-FileDialog::Future FileDialog::save(Window *parent, std::string_view title,
-                                    std::string_view start_path) {
-    return show_dialog(parent, title, start_path, "Save");
+    return Future{callback};
 }
 
 } // namespace toolkit
