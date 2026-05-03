@@ -10,8 +10,11 @@ Win11Theme::Win11Theme(Palette p) : BaseTheme(std::move(p)) {
     name = "Windows 11";
     focus_ring_margin = 3.0f;
     focus_ring_corner_radius = 4.0f;
-    tab_widget.indicator_weight = 2.0f;
     palette.corner_radius = 9.0f;
+
+    button.padding = { 5, 20, 5, 20 };
+    tab_widget.indicator_weight = {};
+    radio.accent_fill = true;
 }
 
 void Win11Theme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,

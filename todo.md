@@ -152,20 +152,21 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ### Windows 11 Theme
 
-1. Use for reference Notepad and Paint.
-2. Palette is the palette of background window. Not foreground (should be blueish)
+1. [ ] Use for reference Notepad and Paint.
+2. [x] Palette is the palette of background window. Not foreground (should be blueish)
 3. Tabs:
-    1. Should be rounded.
-    2. No accent.
-    3. Active tab should have the color of window background.
-    4. Backgroun + non-active tabs should be darker.
-    5. Separation of non-active tabs is just a line.
+    1. [ ] Bottom part should be rounded.
+    2. [x] ~~No accent.~~
+    3. [ ] Active tab should have the color of window background.
+    4. [x] ~~Backgroun + non-active tabs should be darker.~~
+    5. [x] Separation of non-active tabs is just a line.
 4. Menus:
     1. Popup menus should be rounded.
 5. Buttons:
-    1. Rounded 2px radius
+    1. [x] Rounded 2px radius
 6. Radio buttons
     1. Active: center is white, and filled with accent.
+    2. Circle should be bigger
 7. Fonts (not really a theme... but...)
     1. Fonts are too small. Claude says:
     ```

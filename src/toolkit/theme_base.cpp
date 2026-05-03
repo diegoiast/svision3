@@ -135,10 +135,13 @@ void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::strin
         state.interaction == ButtonState::Hovered || state.interaction == ButtonState::ClickedInside;
     auto pressed = state.interaction == ButtonState::ClickedInside;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto r = style.box_size / 2.0f;
-    auto center = Point{rect.x + r, rect.height / 2.0f};
-    auto text_x = rect.x + style.box_size + style.spacing;
-    auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+    // Use the full row height for the circle so it is 100 % of the widget height.
+    // Center X accounts for the radius; center Y must include rect.y so the circle
+    // stays correctly placed when the widget is not at the top of its parent.
+    auto r = rect.height / 2.0f;
+    auto center = Point{rect.x + r, rect.y + rect.height / 2.0f};
+    auto text_x = rect.x + rect.height + style.spacing;
+    auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
     auto border = focused ? palette.accent : palette.border;
     auto bg = palette.base;
     if (enabled) {
@@ -151,13 +154,33 @@ void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::strin
         }
     }
 
-    painter.fill_circle(center, r, bg);
-    painter.draw_circle(center, r, border, palette.border_width);
-    if (palette.beveled) {
-        painter.draw_circle(center, r - 1.0f, palette.shadow, 1.0f);
-    }
-    if (checked) {
-        painter.fill_circle(center, r * 0.45f, palette.text);
+    // FillEllipse fills up to the boundary; DrawEllipse centers the stroke on it
+    // (half inside, half outside).  Shrink the fill by half the border width so
+    // the fill sits cleanly inside the outline with no gap or bleed.
+    auto hw = palette.border_width * 0.5f;
+    if (style.accent_fill) {
+        // Windows 11 style: checked = accent fill + accent ring + base-color dot.
+        // Unchecked = normal background fill with the standard border.
+        auto fill_color = checked ? palette.accent : bg;
+        auto ring_color = checked ? palette.accent : border;
+        painter.fill_circle(center, r - hw, fill_color);
+        painter.draw_circle(center, r - hw, ring_color, palette.border_width);
+        if (palette.beveled && !checked) {
+            painter.draw_circle(center, r - hw - 1.0f, palette.shadow, 1.0f);
+        }
+        if (checked) {
+            painter.fill_circle(center, (r - hw) * 0.45f, palette.base);
+        }
+    } else {
+        // Classic style: normal background fill, border ring, accent dot when checked.
+        painter.fill_circle(center, r - hw, bg);
+        painter.draw_circle(center, r - hw, border, palette.border_width);
+        if (palette.beveled) {
+            painter.draw_circle(center, r - hw - 1.0f, palette.shadow, 1.0f);
+        }
+        if (checked) {
+            painter.fill_circle(center, (r - hw) * 0.45f, palette.accent);
+        }
     }
     auto text_c = enabled ? palette.text : palette.text_disabled;
     painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
@@ -403,6 +426,7 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
     auto hovered = state.interaction == ButtonState::Hovered;
     auto bg = state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
     auto text_c = state.enabled ? palette.text : palette.text_disabled;
+
     if (active) {
         bg = palette.base;
     } else {
@@ -976,8 +1000,9 @@ Size BaseTheme::measure_radio_button(std::string_view text) const {
     auto *p = detail::current_platform();
     auto fm = p->font_metrics(palette.fonts.size);
     auto text_w = p->measure_text(text, palette.fonts.size).width;
-    auto w = radio.box_size + radio.spacing + text_w;
-    auto h = std::max(radio.box_size, fm.height);
+    // Circle diameter equals the row height (fm.height); text follows after spacing.
+    auto h = fm.height;
+    auto w = h + radio.spacing + text_w;
     return Size{w, h};
 }
 

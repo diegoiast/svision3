@@ -29,6 +29,9 @@ struct LineInputStyle {
 struct ToggleStyle {
     float box_size = 16.0f;
     float spacing = 6.0f;
+    // When true: checked state uses accent fill + base-color dot (Windows 11 style).
+    // When false: checked state uses a border-color ring with an accent dot (classic style).
+    bool accent_fill = false;
 };
 
 // FIXME: remove this style
