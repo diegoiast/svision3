@@ -295,6 +295,20 @@ void FileDialogWidget::setup_ui() {
     toolbar_->add_widget(std::move(combo));
     toolbar_->add_widget(std::make_unique<Spacer>(), 1);
 
+    auto home_btn = std::make_unique<Button>("");
+    home_btn->set_tooltip("Go to Home");
+    home_btn->set_icon(app.load_icon("go-home", 16, "actions"));
+    home_btn->on_click = [this]() {
+        auto home = std::getenv("HOME");
+        if (!home) {
+            home = std::getenv("USERPROFILE");
+        }
+        if (home) {
+            set_current_path(home);
+        }
+    };
+    toolbar_->add_widget(std::move(home_btn));
+
     auto up_btn = std::make_unique<Button>("");
     up_btn->set_tooltip("Up One Level");
     up_btn->set_icon(app.load_icon("go-up", 16, "actions"));
