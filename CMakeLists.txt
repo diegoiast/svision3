@@ -15,7 +15,7 @@ else()
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" OFF)
 endif()
 
-if (HAS_CAIRO)
+if(TOOLKIT_WITH_CAIRO)
     find_package(cairo REQUIRED)
     add_definitions(-DTOOLKIT_HAS_CAIRO)
 endif()
@@ -70,7 +70,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/painters/gl_offscreen.cpp
 )
 
-if(HAS_CAIRO)
+if(TOOLKIT_WITH_CAIRO)
     list(APPEND TOOLKIT_SOURCES src/toolkit/painters/cairo_painter.cpp)
 endif()
 
@@ -82,7 +82,7 @@ if(APPLE)
         src/toolkit/platform/macos/macos_native_platform.mm
         src/toolkit/platform/macos/macos_opengl_platform.mm
     )
-    if(TOOLKIT_USE_CAIRO)
+    if(TOOLKIT_WITH_CAIRO)
         list(APPEND TOOLKIT_SOURCES
             src/toolkit/platform/macos/macos_cairo_platform.mm)
     endif()
@@ -93,6 +93,7 @@ elseif(WIN32)
     )
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
+    find_package(OpenGL REQUIRED)
     list(APPEND TOOLKIT_SOURCES
         src/toolkit/platform/linux_utils.cpp
     )
@@ -240,7 +241,7 @@ target_include_directories(toolkit PUBLIC include PRIVATE src)
 target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
 target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus stb::stb)
 
-if(HAS_CAIRO)
+if(TOOLKIT_WITH_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)
 endif()
 
