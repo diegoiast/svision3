@@ -1,8 +1,11 @@
 #include "declarative.hpp"
 #include "nfd.h"
 #include "toolkit/application.hpp"
+#include "toolkit/directory_dialog.hpp"
+#include "toolkit/file_dialog.hpp"
 #include "toolkit/image_loader.hpp"
 #include "toolkit/line_input.hpp"
+#include "toolkit/message_box.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/xdg_icons.hpp"
@@ -61,6 +64,9 @@ int main(int argc, char *argv[]) {
     });
 
     auto editor = ui::text_edit(EDITOR_DEFAULT_TEXT);
+    auto use_native_cb = ui::checkbox("Use native dialogs").checked(true);
+    auto use_native_cb_ptr = use_native_cb.get();
+
     auto table_model = std::make_shared<toolkit::StringTableModel>(
         std::vector<std::string>{"Song", "Album", "Year", "Duration"}, beatlesSongsLength);
 
@@ -362,12 +368,46 @@ int main(int argc, char *argv[]) {
                                                })))
                              .add(iconGrid, ui::expand);
                      }())
-            .add_tab("Editor", ui::vbox()
-                                   .add(ui::hbox()
-                                            .margins(ui::no_margins())
-                                            .add(ui::button("Open...").on_click(open_action))
-                                            .add(ui::spacer(), ui::expand))
-                                   .add(editor, ui::expand))
+            .add_tab(
+                "Editor",
+                ui::vbox()
+                    .add(ui::hbox()
+                             .margins(ui::no_margins())
+                             .spacing(8)
+                             .add(ui::button("Open...").on_click(open_action))
+                             .add(ui::button("Save As...")
+                                      .on_click([&window, editor_ptr = editor.get(),
+                                                 use_native_cb_ptr]() {
+                                          toolkit::FileDialog(window)
+                                              .title("Save File")
+                                              .use_native(use_native_cb_ptr->checked())
+                                              .save()
+                                              .then([editor_ptr](auto path) {
+                                                  if (path) {
+                                                      std::ofstream f(*path);
+                                                      if (f) {
+                                                          f << editor_ptr->text();
+                                                      }
+                                                  }
+                                              });
+                                      }))
+                             .add(ui::button("Choose Directory...")
+                                      .on_click([&window, use_native_cb_ptr]() {
+                                          toolkit::DirectoryDialog(window)
+                                              .title("Choose Directory")
+                                              .use_native(use_native_cb_ptr->checked())
+                                              .choose()
+                                              .then([](auto path) {
+                                                  if (path) {
+                                                      spdlog::info("Directory chosen: {}", *path);
+                                                  } else {
+                                                      spdlog::info("Directory dialog cancelled");
+                                                  }
+                                              });
+                                      }))
+                             .add(use_native_cb)
+                             .add(ui::spacer(), ui::expand))
+                    .add(editor, ui::expand))
             .add_tab("Tree", ui::vbox().add(ui::tree_view(tree_model).alternate_row_colors(true),
                                             ui::expand))
             .add_tab(
@@ -480,8 +520,16 @@ int main(int argc, char *argv[]) {
                                    .action("Cut", [] { spdlog::info("Menu: Cut"); })
                                    .action("Copy", [] { spdlog::info("Menu: Copy"); })
                                    .action("Paste", [] { spdlog::info("Menu: Paste"); }))
-                     .add_menu(
-                         ui::menu("&Help").action("About", [] { spdlog::info("Menu: About"); })))
+                     .add_menu(ui::menu("&Help").action("About",
+                                                        [&window] {
+                                                            toolkit::MessageBox(window)
+                                                                .title("About SVision3")
+                                                                .message(
+                                                                    "SVision3 declarative API demo "
+                                                                    "application.\n\nA "
+                                                                    "cross-platform UI toolkit.")
+                                                                .show();
+                                                        })))
             .add(ui::toolbar()
                      .command("OK", [] { spdlog::info("Toolbar: OK"); })
                      .command(exit_cmd)
