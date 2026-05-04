@@ -57,13 +57,14 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 41. [ ] Implement font caching for measurements.
 42. [ ] Resource / asset management.
 43. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
+44. [ ] Set window icon.
 
 ## Platform – Not Yet Implemented
 
 1. [x] File dialogs (open/save) - implemented via NFD internally
 1. [x] Non-native file dialogs (open/save) - re-implement them in this toolkit.
-1. [ ] Message boxes / alerts.
-1. [ ] Multi-window.
+1. [x] Message boxes / alerts.
+1. [x] Multi-window.
 1. [ ] IME / input method support.
 1. [ ] RTL / bidirectional text.
 1. [ ] Accessibility (screen readers).
