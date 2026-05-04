@@ -56,7 +56,7 @@ class DirListModel : public ItemModel {
         case 1: {
             auto sys = std::chrono::clock_cast<std::chrono::system_clock>(items_[row].mtime);
             return std::format("{:%Y-%m-%d %H:%M}",
-                std::chrono::zoned_time{std::chrono::current_zone(), sys});
+                               std::chrono::zoned_time{std::chrono::current_zone(), sys});
         }
         default:
             return {};
@@ -112,13 +112,16 @@ static void collapse_all_nodes(std::vector<TreeNode> &nodes) {
     }
 }
 
-static bool expand_path_in_tree(std::vector<TreeNode> &nodes, std::string const &target_path, std::string current_prefix = "") {
+static bool expand_path_in_tree(std::vector<TreeNode> &nodes, std::string const &target_path,
+                                std::string current_prefix = "") {
     for (auto &node : nodes) {
 #if defined(_WIN32)
-        auto node_path = current_prefix.empty() ? node.text + "\\" : current_prefix + node.text + "\\";
+        auto node_path =
+            current_prefix.empty() ? node.text + "\\" : current_prefix + node.text + "\\";
         auto test_path = current_prefix.empty() ? node.text : current_prefix + node.text;
 #else
-        auto node_path = current_prefix.empty() ? "/" + node.text : current_prefix + "/" + node.text;
+        auto node_path =
+            current_prefix.empty() ? "/" + node.text : current_prefix + "/" + node.text;
         auto test_path = node_path;
 #endif
 
@@ -135,9 +138,10 @@ static bool expand_path_in_tree(std::vector<TreeNode> &nodes, std::string const 
     return false;
 }
 
-static std::vector<TreeNode> build_tree_nodes(std::string const &path, int depth = 0, bool show_hidden = false) {
+static std::vector<TreeNode> build_tree_nodes(std::string const &path, int depth = 0,
+                                              bool show_hidden = false) {
     auto nodes = std::vector<TreeNode>{};
-    if (depth > 3) {  // Limit recursion depth
+    if (depth > 3) { // Limit recursion depth
         return nodes;
     }
 
@@ -279,8 +283,7 @@ class DirChooserWidget : public VBoxLayout {
 
         auto tree_btn = std::make_unique<Button>("");
         tree_btn->set_tooltip("Tree View");
-        tree_btn->set_icon(
-            Application::instance().load_icon("view-list-tree", 16, "actions"));
+        tree_btn->set_icon(Application::instance().load_icon("view-list-tree", 16, "actions"));
         tree_btn->on_click = [this] { set_view_mode(ViewMode::Tree); };
         toolbar->add_widget(std::move(tree_btn));
 
@@ -334,10 +337,13 @@ class DirChooserWidget : public VBoxLayout {
         table_view_details_->set_alternating_row_colors(true);
         table_view_details_->set_column_width(0, 700.0f);
         table_view_details_->set_column_width(1, 300.0f);
-        table_view_details_->on_item_activated = [this](size_t index) { activate_directory(index); };
+        table_view_details_->on_item_activated = [this](size_t index) {
+            activate_directory(index);
+        };
         table_view_details_->on_back_requested = [this]() { navigate_up(); };
 
-        auto tree = std::make_unique<TreeView>(std::make_shared<SimpleTreeModel>(std::vector<TreeNode>{}));
+        auto tree =
+            std::make_unique<TreeView>(std::make_shared<SimpleTreeModel>(std::vector<TreeNode>{}));
         tree_view_ = tree.get();
         tree_view_->set_visible(false);
 
@@ -405,9 +411,8 @@ class DirChooserWidget : public VBoxLayout {
         if (index >= model_->items().size()) {
             return;
         }
-        current_path_ =
-            (current_path_ == "/") ? "/" + model_->items()[index].text
-                                   : current_path_ + "/" + model_->items()[index].text;
+        current_path_ = (current_path_ == "/") ? "/" + model_->items()[index].text
+                                               : current_path_ + "/" + model_->items()[index].text;
         load_directory();
     }
 
@@ -455,10 +460,10 @@ class DirChooserWidget : public VBoxLayout {
                 try {
                     auto mtime = std::filesystem::last_write_time(entry.path());
                     items.push_back({name, XDG::IconMimeTypes::inodeDirectory,
-                                   XDG::IconContexts::places, mtime});
+                                     XDG::IconContexts::places, mtime});
                 } catch (...) {
                     items.push_back({name, XDG::IconMimeTypes::inodeDirectory,
-                                   XDG::IconContexts::places, std::filesystem::file_time_type()});
+                                     XDG::IconContexts::places, std::filesystem::file_time_type()});
                 }
             }
         } catch (...) {
@@ -520,9 +525,7 @@ DirectoryDialog &DirectoryDialog::use_native(bool v) {
     return *this;
 }
 
-DirectoryDialog::Future DirectoryDialog::choose() {
-    return show(use_native_);
-}
+DirectoryDialog::Future DirectoryDialog::choose() { return show(use_native_); }
 
 DirectoryDialog::Future DirectoryDialog::show(bool use_native) {
     if (use_native) {
@@ -587,6 +590,8 @@ DirectoryDialog::Future DirectoryDialog::show_toolkit() {
         win->platform_window()->set_modal_for(parent->platform_window());
     }
     win->show();
+    win->resize_to_fit();
+    win->relayout();
 
     return Future{callback};
 }
