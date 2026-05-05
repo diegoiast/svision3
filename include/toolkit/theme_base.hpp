@@ -47,6 +47,8 @@ class BaseTheme : public Theme {
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                   WidgetState const &state, TabOrientation orientation, bool has_close,
                   bool hovered_close) const override;
+    void draw_list_item_background(Painter &painter, Rect const &rect, bool selected,
+                                   bool hovered, bool alternate) const override;
     void draw_list_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                         bool selected, bool hovered, bool alternate) const override;
     void draw_list_background(Painter &painter, Rect const &rect,

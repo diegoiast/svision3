@@ -58,6 +58,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 42. [ ] Resource / asset management.
 43. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
 44. [ ] Set window icon.
+45. [ ] Inject synthetic events to the event loop (emulated keyboard, or mouse).
 
 ## Platform – Not Yet Implemented
 
@@ -85,33 +86,31 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 8. [x] Combobox (dropdown, keyboard nav, selection).
 9. [x] ProgressBar (themed, value 0-1).
 10. [x] TabWidget (tab bar, close button, drag reorder).
-11. [x] ListView: MVC (ListAdapter / StringListAdapter / FilterAdapter).
-12. [ ] ListView: display widgets instead of simple text.
-13. [x] SpinBox (int value, min/max/step, arrow buttons).
-14. [ ] SpinBox: auto repeat (use regular buttons?)
-15. [x] Tooltip.
-16. [x] Slider (horizontal, vertical, range).
-17. [ ] ScrollBar / ScrollArea.
-18. [ ] ScrollBar: API for theme/app to tell widgets "have an inline scrollbar" or external.
-19. [x] TextArea (multi-line input).
-20. [x] TreeView.
-21. [x] TableView / DataGrid.
-22. [x] MenuBar / Menu / ContextMenu.
-23. [x] Toolbar.
-24. [x] Toolbar + images.
-25. [x] Icon grid (tooltips, selection, rubber band)
-26. [ ] Toolbar + custom widgets.
-27. [x] Dialog (modal/modeles).
-28. [ ] StatusBar.
-29. [ ] GroupBox / Frame.
-30. [ ] Splitter.
-31. [ ] Image widget.
-32. [ ] Markdown tooltip.
-33. [ ] Undo/redo system (text area + LineInput).
-34. [ ] Client side decorations with theme.
-35. [ ] Proper filter API for listview and table view.
-36. [ ] MainWindow with docking widgets on the sides.
-37. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
+11. [x] SpinBox (int value, min/max/step, arrow buttons).
+12. [ ] SpinBox: auto repeat (use regular buttons?)
+13. [x] Tooltip.
+14. [x] Slider (horizontal, vertical, range).
+15. [ ] ScrollBar / ScrollArea.
+16. [ ] ScrollBar: API for theme/app to tell widgets "have an inline scrollbar" or external.
+17. [x] TextArea (multi-line input).
+18. [x] TreeView.
+19. [x] TableView / DataGrid.
+20. [x] MenuBar / Menu / ContextMenu.
+21. [x] Toolbar.
+22. [x] Toolbar + images.
+23. [x] Icon grid (tooltips, selection, rubber band)
+24. [ ] Toolbar + custom widgets.
+25. [x] Dialog (modal/modeles).
+26. [ ] StatusBar.
+27. [ ] GroupBox / Frame.
+28. [ ] Splitter.
+29. [ ] Image widget.
+30. [ ] Markdown tooltip.
+31. [ ] Undo/redo system (text area + LineInput).
+32. [ ] Client side decorations with theme.
+33. [ ] Proper filter API for listview and table view.
+34. [ ] MainWindow with docking widgets on the sides.
+35. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
 
 ## Layout System [6/12]
 
@@ -279,12 +278,12 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 3. [x] on_tab_close callback.
 4. [x] Drag-to-reorder tabs.
 5. [x] Dragged tab renders on top of siblings.
-6. [ ] Separate TabHeader from TabWidget (standalone tab bar widget).
-7. [x] TabHeader placement: North, South, East, West.
-8. [x] Support for south/west east.
-9. [x] Support for trailing/leading button.
-10. [x] Tab bar overflow (scroll when too many tabs).
-11. [ ] Tabs can have several icons at the title
+6. [x] TabHeader placement: North, South, East, West.
+7. [x] Support for south/west east.
+8. [x] Support for trailing/leading button.
+9. [x] Tab bar overflow (scroll when too many tabs).
+10. [ ] Tabs can have several icons at the title
+11. [ ] Separate TabHeader from TabWidget (standalone tab bar widget).
 
 ## ListView Features [15/17]
 
@@ -296,15 +295,16 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 6. [x] Scroll wheel support
 7. [x] Keyboard navigation (Up/Down/Home/End) with auto-scroll
 8. [x] Overlay scrollbar
-9. [x] Focus ring
-10. [x] on_selection_changed callback
-11. [x] Virtual rendering (only visible items drawn)
-12. [x] Alternating row colors (boolean toggle)
-13. [x] Multi-selection (Shift+Click range, Shift+Arrow, Cmd+A)
-14. [x] Selection API (selection(), set_selection(), select_all(), clear_selection())
-15. [x] Column headers: TableView.
-16. [ ] Drag to reorder items.
-17. [ ] Inline editing.
+9. [x] on_selection_changed callback
+10. [x] Virtual rendering (only visible items drawn)
+11. [x] Alternating row colors (boolean toggle)
+12. [x] Multi-selection (Shift+Click range, Shift+Arrow, Cmd+A)
+13. [x] Selection API (selection(), set_selection(), select_all(), clear_selection()).
+14. [x] Column headers: TableView.
+15. [x] ListView: MVC (ListAdapter / StringListAdapter / FilterAdapter).
+16. [x] ListView: display widgets instead of simple text.
+17. [ ] Drag to reorder items.
+18. [ ] Inline editing.
 
 ## Label Features [1/5]
 

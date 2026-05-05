@@ -14,9 +14,10 @@ ListView::ListView(std::shared_ptr<ItemModel> model) {
     state.focusable = true;
     if (model_) {
         model_->on_data_changed = [this] {
+            sync_widget_windows();
             clamp_scroll();
             if (window()) {
-                window()->request_redraw("list selection");
+                window()->request_redraw("list data changed");
             }
         };
     }
@@ -27,16 +28,24 @@ ListView &ListView::set_model(std::shared_ptr<ItemModel> model) {
     selection_.clear();
     anchor_ = std::nullopt;
     cursor_ = std::nullopt;
+    pressed_widget_row_ = std::nullopt;
     scroll_offset_ = 0;
     if (model_) {
         model_->on_data_changed = [this] {
+            sync_widget_windows();
             clamp_scroll();
             if (window()) {
-                window()->request_redraw("list selection");
+                window()->request_redraw("list data changed");
             }
         };
     }
+    sync_widget_windows();
     return *this;
+}
+
+void ListView::set_window(Window *w) {
+    Widget::set_window(w);
+    sync_widget_windows();
 }
 
 ListView &ListView::set_selected(std::optional<size_t> index) {
@@ -110,10 +119,20 @@ void ListView::notify_selection() {
 void ListView::scroll_to(size_t index) {
     auto const &palette = Theme::current().palette;
     auto bw = palette.border_width;
-    auto ih = item_height();
-    auto top = ih * static_cast<float>(index);
-    auto bottom = top + ih;
     auto visible_h = rect_.height - bw * 2;
+
+    float top, bottom;
+    auto *wm = dynamic_cast<WidgetItemModel *>(model_.get());
+    if (wm) {
+        top = wm->row_top(index);
+        auto *w = wm->widget_at(index);
+        bottom = top + (w ? w->size_hint().height : 0.0f);
+    } else {
+        auto ih = item_height();
+        top = ih * static_cast<float>(index);
+        bottom = top + ih;
+    }
+
     if (bottom > scroll_offset_ + visible_h) {
         scroll_offset_ = bottom - visible_h;
     }
@@ -134,6 +153,10 @@ float ListView::total_content_height() const {
     if (!model_) {
         return 0;
     }
+    auto *wm = dynamic_cast<WidgetItemModel *>(model_.get());
+    if (wm) {
+        return wm->total_height();
+    }
     return item_height() * static_cast<float>(model_->row_count());
 }
 
@@ -153,15 +176,124 @@ std::optional<size_t> ListView::item_at_y(float y) const {
     }
     auto const &palette = Theme::current().palette;
     auto bw = palette.border_width;
-    auto local_y = y - bw + scroll_offset_;
-    if (local_y < 0) {
+    auto content_y = y - bw + scroll_offset_;
+    if (content_y < 0) {
         return std::nullopt;
     }
-    auto idx = static_cast<size_t>(local_y / item_height());
+
+    auto *wm = dynamic_cast<WidgetItemModel *>(model_.get());
+    if (wm) {
+        auto const &tops = wm->row_tops();
+        if (tops.empty()) {
+            return std::nullopt;
+        }
+        // Binary search: find last row whose top <= content_y.
+        auto it = std::upper_bound(tops.begin(), tops.end(), content_y);
+        if (it == tops.begin()) {
+            return std::nullopt;
+        }
+        --it;
+        auto idx = static_cast<size_t>(std::distance(tops.begin(), it));
+        auto *w = const_cast<WidgetItemModel *>(wm)->widget_at(idx);
+        float row_h = w ? w->size_hint().height : 0.0f;
+        if (content_y >= tops[idx] + row_h) {
+            return std::nullopt;
+        }
+        return idx;
+    }
+
+    auto idx = static_cast<size_t>(content_y / item_height());
     if (idx >= model_->row_count()) {
         return std::nullopt;
     }
     return idx;
+}
+
+void ListView::sync_widget_windows() {
+    auto *wm = dynamic_cast<WidgetItemModel *>(model_.get());
+    if (!wm) {
+        return;
+    }
+    for (size_t i = 0; i < wm->row_count(); i++) {
+        if (auto *w = wm->widget_at(i)) {
+            w->set_window(window_);
+        }
+    }
+}
+
+bool ListView::dispatch_to_widget(size_t row, MouseEvent event) {
+    auto *wm = dynamic_cast<WidgetItemModel *>(model_.get());
+    if (!wm) {
+        return false;
+    }
+    auto *w = wm->widget_at(row);
+    if (!w) {
+        return false;
+    }
+    auto bw = Theme::current().palette.border_width;
+    event.position.x -= bw;
+    event.position.y -= (bw + wm->row_top(row) - scroll_offset_);
+    return w->handle_mouse(event);
+}
+
+void ListView::paint_text_items(Painter &painter) {
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
+    auto ih = item_height();
+    auto n = model_->row_count();
+    auto bw = palette.border_width;
+    auto inner_w = rect_.width - bw * 2;
+    auto inner_h = rect_.height - bw * 2;
+    auto first_visible = static_cast<size_t>(scroll_offset_ / ih);
+    auto last_visible = std::min(n - 1, static_cast<size_t>((scroll_offset_ + inner_h) / ih));
+
+    auto body_clip = Rect{bw, bw, inner_w, inner_h};
+    painter.push_clip(body_clip);
+    for (auto i = first_visible; i <= last_visible; i++) {
+        auto iy = bw + ih * static_cast<float>(i) - scroll_offset_;
+        auto item_rect = Rect{bw, iy, inner_w, ih};
+        auto selected = is_selected(i);
+        auto hovered = (hovered_ == i) && !selected;
+        auto alt_row = alternating_ && (i % 2 == 1);
+
+        theme.draw_list_item(painter, item_rect, model_->cell_text(i, 0), {}, selected, hovered,
+                             alt_row);
+    }
+    painter.pop_clip();
+}
+
+void ListView::paint_widget_items(Painter &painter, WidgetItemModel *wm) {
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
+    auto bw = palette.border_width;
+    auto inner_w = rect_.width - bw * 2;
+    auto inner_h = rect_.height - bw * 2;
+    auto n = wm->row_count();
+
+    auto body_clip = Rect{bw, bw, inner_w, inner_h};
+    painter.push_clip(body_clip);
+    for (size_t i = 0; i < n; i++) {
+        auto *w = wm->widget_at(i);
+        if (!w) {
+            continue;
+        }
+        auto row_h = w->size_hint().height;
+        auto row_y = bw + wm->row_top(i) - scroll_offset_;
+
+        if (row_y + row_h < bw || row_y > bw + inner_h) {
+            continue;
+        }
+
+        auto item_rect = Rect{bw, row_y, inner_w, row_h};
+        auto selected = is_selected(i);
+        auto hovered = (hovered_ == i) && !selected;
+        auto alt_row = alternating_ && (i % 2 == 1);
+        theme.draw_list_item_background(painter, item_rect, selected, hovered, alt_row);
+
+        w->set_rect(item_rect);
+        w->draw(painter);
+    }
+    painter.pop_clip();
 }
 
 void ListView::paint(Painter &painter) {
@@ -178,32 +310,16 @@ void ListView::paint(Painter &painter) {
         return;
     }
 
-    auto const &style = theme.list_view;
-    auto const &palette = theme.palette;
-    auto ih = item_height();
-    auto n = model_->row_count();
-    auto bw = palette.border_width;
-    auto is_dark = palette.window.luma() < 0.5f;
-    auto inner_w = rect_.width - bw * 2;
-    auto inner_h = rect_.height - bw * 2;
-    auto first_visible = static_cast<size_t>(scroll_offset_ / ih);
-    auto last_visible = std::min(n - 1, static_cast<size_t>((scroll_offset_ + inner_h) / ih));
-    auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
-
-    auto body_clip = Rect{bw, bw, inner_w, inner_h};
-    painter.push_clip(body_clip);
-    for (auto i = first_visible; i <= last_visible; i++) {
-        auto iy = bw + ih * static_cast<float>(i) - scroll_offset_;
-        auto item_rect = Rect{bw, iy, inner_w, ih};
-        auto selected = is_selected(i);
-        auto hovered = (hovered_ == i) && !selected;
-        auto alt_row = alternating_ && (i % 2 == 1);
-
-        theme.draw_list_item(painter, item_rect, model_->cell_text(i, 0), {}, selected, hovered,
-                             alt_row);
+    auto *wm = dynamic_cast<WidgetItemModel *>(model_.get());
+    if (wm) {
+        paint_widget_items(painter, wm);
+    } else {
+        paint_text_items(painter);
     }
-    painter.pop_clip();
 
+    auto const &palette = theme.palette;
+    auto bw = palette.border_width;
+    auto inner_h = rect_.height - bw * 2;
     auto content_h = total_content_height();
     if (content_h > inner_h) {
         auto bar_h = std::max(20.0f, inner_h * (inner_h / content_h));
@@ -232,10 +348,48 @@ bool ListView::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Move) {
         if (local_rect.contains(event.position)) {
-            hovered_ = item_at_y(event.position.y);
+            auto new_hovered = item_at_y(event.position.y);
+            if (new_hovered != hovered_) {
+                if (hovered_) {
+                    auto leave_event = event;
+                    leave_event.type = MouseEvent::Type::Leave;
+                    dispatch_to_widget(*hovered_, leave_event);
+                }
+                hovered_ = new_hovered;
+            }
+            if (hovered_) {
+                dispatch_to_widget(*hovered_, event);
+            }
             return true;
         }
-        hovered_ = std::nullopt;
+        if (hovered_) {
+            auto leave_event = event;
+            leave_event.type = MouseEvent::Type::Leave;
+            dispatch_to_widget(*hovered_, leave_event);
+            hovered_ = std::nullopt;
+        }
+        return false;
+    }
+
+    if (event.type == MouseEvent::Type::Leave) {
+        if (hovered_) {
+            auto leave_event = event;
+            leave_event.type = MouseEvent::Type::Leave;
+            dispatch_to_widget(*hovered_, leave_event);
+            hovered_ = std::nullopt;
+        }
+        return true;
+    }
+
+    if (event.type == MouseEvent::Type::Release) {
+        if (pressed_widget_row_) {
+            dispatch_to_widget(*pressed_widget_row_, event);
+            pressed_widget_row_ = std::nullopt;
+            if (window_) {
+                window_->request_redraw("list widget release");
+            }
+            return true;
+        }
         return false;
     }
 
@@ -246,6 +400,17 @@ bool ListView::handle_mouse(MouseEvent const &event) {
         auto idx = item_at_y(event.position.y);
         if (!idx) {
             return false;
+        }
+
+        auto *wm = dynamic_cast<WidgetItemModel *>(model_.get());
+        if (wm) {
+            cursor_ = idx;
+            pressed_widget_row_ = idx;
+            dispatch_to_widget(*idx, event);
+            if (window_) {
+                window_->request_redraw("list widget press");
+            }
+            return true;
         }
 
         auto toggle_mod = event.super || event.ctrl;
@@ -384,6 +549,16 @@ bool ListView::handle_key(KeyEvent const &event) {
         break;
     }
 
+    // For widget rows, route non-navigation keys to the widget at cursor_.
+    auto *wm = dynamic_cast<WidgetItemModel *>(model_.get());
+    if (wm && cursor_) {
+        if (auto *w = wm->widget_at(*cursor_)) {
+            if (w->handle_key(event)) {
+                return true;
+            }
+        }
+    }
+
     if (multi_select_ && event.text == "a" && (event.super || event.ctrl)) {
         select_all();
         return true;
@@ -397,6 +572,33 @@ Size ListView::size_hint() const {
     // FIXME: what is this 8 here...?
     auto hz = item_measured_height * 8;
     return {0, hz};
+}
+
+void ListView::for_each_child(std::function<void(Widget *)> const &callback) {
+    auto *wm = dynamic_cast<WidgetItemModel *>(model_.get());
+    if (!wm) {
+        return;
+    }
+
+    auto const &palette = Theme::current().palette;
+    auto bw = palette.border_width;
+    auto inner_h = rect_.height - bw * 2;
+
+    for (size_t i = 0; i < wm->row_count(); i++) {
+        auto *w = wm->widget_at(i);
+        if (!w) {
+            continue;
+        }
+
+        auto row_h = w->size_hint().height;
+        auto row_y = bw + wm->row_top(i) - scroll_offset_;
+
+        if (row_y + row_h < bw || row_y > bw + inner_h) {
+            continue;
+        }
+
+        callback(w);
+    }
 }
 
 } // namespace toolkit

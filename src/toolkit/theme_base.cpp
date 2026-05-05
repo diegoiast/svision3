@@ -522,10 +522,8 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
     }
 }
 
-void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
-                               Icon const &icon, bool selected, bool hovered,
-                               bool alternate) const {
-    auto const &style = list_view;
+void BaseTheme::draw_list_item_background(Painter &painter, Rect const &rect, bool selected,
+                                          bool hovered, bool alternate) const {
     auto bg = palette.base;
 
     auto is_dark = palette.window.luma() < 0.5f;
@@ -541,6 +539,13 @@ void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_v
     }
 
     painter.fill_rect(rect, bg);
+}
+
+void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
+                               Icon const &icon, bool selected, bool hovered,
+                               bool alternate) const {
+    auto const &style = list_view;
+    draw_list_item_background(painter, rect, selected, hovered, alternate);
 
     auto fm = painter.font_metrics(palette.fonts.size);
     auto text_x = rect.x + style.item_padding_h;

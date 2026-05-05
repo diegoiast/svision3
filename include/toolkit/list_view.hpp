@@ -9,8 +9,43 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <vector>
 
 namespace toolkit {
+
+// Concrete WidgetItemModel that owns its widgets.
+// add()       — O(1) incremental offset update, then notifies.
+// set_items() — O(n) full rebuild, then notifies.
+class WidgetListModel : public WidgetItemModel {
+  public:
+    size_t row_count() const override { return items_.size(); }
+    Widget *widget_at(size_t row) override {
+        return row < items_.size() ? items_[row].get() : nullptr;
+    }
+
+    WidgetListModel &add(std::unique_ptr<Widget> w) {
+        append_offset(w->size_hint().height);
+        items_.push_back(std::move(w));
+        if (on_data_changed) {
+            on_data_changed();
+        }
+        return *this;
+    }
+
+    WidgetListModel &set_items(std::vector<std::unique_ptr<Widget>> widgets) {
+        items_ = std::move(widgets);
+        rebuild_offsets();
+        if (on_data_changed) {
+            on_data_changed();
+        }
+        return *this;
+    }
+
+    Widget *at(size_t i) { return i < items_.size() ? items_[i].get() : nullptr; }
+
+  private:
+    std::vector<std::unique_ptr<Widget>> items_;
+};
 
 class ListView : public Widget {
   public:
@@ -45,6 +80,8 @@ class ListView : public Widget {
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
+    void set_window(Window *w) override;
+    void for_each_child(std::function<void(Widget *)> const &callback) override;
 
   private:
     float item_height() const;
@@ -55,11 +92,18 @@ class ListView : public Widget {
     void select_range_from_anchor();
     void notify_selection();
 
+    // Widget-model support
+    void sync_widget_windows();
+    bool dispatch_to_widget(size_t row, MouseEvent event);
+    void paint_text_items(Painter &painter);
+    void paint_widget_items(Painter &painter, WidgetItemModel *wm);
+
     std::shared_ptr<ItemModel> model_;
     std::set<size_t> selection_;
     std::optional<size_t> anchor_;
     std::optional<size_t> cursor_;
     std::optional<size_t> hovered_;
+    std::optional<size_t> pressed_widget_row_;
     float scroll_offset_ = 0;
 
     bool alternating_ = false;

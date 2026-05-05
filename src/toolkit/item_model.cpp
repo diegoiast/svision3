@@ -4,6 +4,7 @@
 #include "toolkit/item_model.hpp"
 #include "toolkit/application.hpp"
 #include "toolkit/stopwatch.hpp"
+#include "toolkit/widget.hpp"
 #include <algorithm>
 #include <cctype>
 #include <thread>
@@ -293,6 +294,19 @@ void FilterAdapter::rebuild_async() {
             }
         });
     }).detach();
+}
+
+void WidgetItemModel::rebuild_offsets() {
+    auto n = row_count();
+    row_tops_.resize(n);
+    float y = 0;
+    for (size_t i = 0; i < n; i++) {
+        row_tops_[i] = y;
+        if (auto *w = widget_at(i)) {
+            y += w->size_hint().height;
+        }
+    }
+    total_height_ = y;
 }
 
 } // namespace toolkit

@@ -13,6 +13,8 @@
 
 namespace toolkit {
 
+class Widget;
+
 class ItemModel {
   public:
     virtual ~ItemModel() = default;
@@ -114,6 +116,40 @@ class FilterAdapter : public ItemModel, public std::enable_shared_from_this<Filt
     std::vector<size_t> indices_;
     std::shared_ptr<std::atomic<int>> generation_ = std::make_shared<std::atomic<int>>(0);
     int delay_per_item_ms_ = 0;
+};
+
+// A model whose rows are represented by widgets rather than plain text.
+// Maintains a prefix-sum cache of row Y offsets so lookups are O(1) and
+// hit-testing is O(log n). Subclasses call append_offset() on each add (O(1))
+// or rebuild_offsets() when doing bulk changes (O(n)).
+// Use WidgetListModel (list_view.hpp) for the common ownership pattern.
+class WidgetItemModel : public ItemModel {
+  public:
+    virtual Widget *widget_at(size_t row) = 0;
+    std::string cell_text(size_t, size_t) const override { return {}; }
+
+    // Top Y of row i in content space (O(1)).
+    float row_top(size_t row) const {
+        return row < row_tops_.size() ? row_tops_[row] : total_height_;
+    }
+    float total_height() const { return total_height_; }
+    // Raw prefix-sum array — used by ListView for binary search in item_at_y().
+    std::vector<float> const &row_tops() const { return row_tops_; }
+
+  protected:
+    // Full O(n) rebuild — call after bulk changes. Defined in item_model.cpp
+    // because it calls widget_at() which needs the full Widget type.
+    void rebuild_offsets();
+
+    // O(1) incremental append — call before inserting one item at the end.
+    void append_offset(float height) {
+        row_tops_.push_back(total_height_);
+        total_height_ += height;
+    }
+
+  private:
+    std::vector<float> row_tops_;
+    float total_height_ = 0.0f;
 };
 
 } // namespace toolkit

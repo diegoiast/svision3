@@ -221,6 +221,8 @@ class Theme {
     virtual void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                           WidgetState const &state, TabOrientation orientation,
                           bool has_close = false, bool hovered_close = false) const = 0;
+    virtual void draw_list_item_background(Painter &painter, Rect const &rect, bool selected,
+                                           bool hovered, bool alternate) const = 0;
     virtual void draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
                                 Icon const &icon, bool selected, bool hovered,
                                 bool alternate) const = 0;

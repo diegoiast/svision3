@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-&FileCopyrightText: l2026 Diego Iastrubni <diegoiast@gmail.com>
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/application.hpp"
 #include "toolkit/button.hpp"
@@ -713,6 +713,47 @@ int main(int argc, char *argv[]) {
     tab_tree->add_widget(std::move(tree), 1);
 
     tabs->add_tab("Tree", std::move(tab_tree));
+
+    // ── Tab: Widget List ────────────────────────────────────────────────
+    auto tab_wlist = std::make_unique<toolkit::VBoxLayout>();
+    tab_wlist->set_margins({10, 10, 10, 10});
+    tab_wlist->set_spacing(8);
+
+    auto widget_model = std::make_shared<toolkit::WidgetListModel>();
+
+    for (int i = 0; i < 20; i++) {
+        auto cb = std::make_unique<toolkit::Checkbox>(fmt::format("Option {}", i + 1));
+        cb->on_toggle = [i](bool checked) {
+            spdlog::info("Option {} {}", i + 1, checked ? "checked" : "unchecked");
+        };
+        widget_model->add(std::move(cb));
+    }
+
+    auto mid_btn = std::make_unique<toolkit::Button>("Do Something");
+    mid_btn->set_flat(true);
+    mid_btn->on_click = [] { spdlog::info("Middle button clicked"); };
+    widget_model->add(std::move(mid_btn));
+
+    std::vector<std::string> combo_items = {
+        "Option A", "Option B", "Option C", "Option D", "Option E",
+    };
+    auto mid_combo = std::make_unique<toolkit::Combobox>(combo_items);
+    mid_combo->on_change = [](int index) { spdlog::info("Combo box changed to index {}", index); };
+    widget_model->add(std::move(mid_combo));
+
+    for (int i = 20; i < 70; i++) {
+        auto cb = std::make_unique<toolkit::Checkbox>(fmt::format("Option {}", i + 1));
+        cb->on_toggle = [i](bool checked) {
+            spdlog::info("Option {} {}", i + 1, checked ? "checked" : "unchecked");
+        };
+        widget_model->add(std::move(cb));
+    }
+
+    auto widget_list = std::make_unique<toolkit::ListView>(widget_model);
+    widget_list->set_alternating_row_colors(true);
+    tab_wlist->add_widget(std::move(widget_list), 1);
+
+    tabs->add_tab("Widgets", std::move(tab_wlist));
 
     // ── Tab: Tabs (Orientations) ────────────────────────────────────────
     auto tab6 = std::make_unique<toolkit::VBoxLayout>();
