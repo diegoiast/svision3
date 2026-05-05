@@ -1,6 +1,5 @@
 #include "toolkit/combobox.hpp"
 #include "toolkit/platform.hpp"
-#include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/window.hpp"
@@ -20,7 +19,7 @@ TEST_CASE("Combobox interaction with virtual window", "[combobox]") {
 
     Window win("Test", {800, 600});
     auto cb_ptr = std::make_unique<Combobox>(std::vector<std::string>{"One", "Two", "Three"});
-    auto* cb = cb_ptr.get();
+    auto *cb = cb_ptr.get();
     cb->set_rect({10, 10, 200, 30});
     win.add_widget(std::move(cb_ptr));
 
@@ -35,15 +34,10 @@ TEST_CASE("Combobox interaction with virtual window", "[combobox]") {
     win.handle_mouse(me);
     REQUIRE(win.has_popup() == true);
 
-    // Dropdown is at (10, 40, 200, height)
-    // font_size=14, item_padding=4 -> item_h=22
-    // One: [40, 62)
-    // Two: [62, 84)
-    // Three: [84, 106)
-    
-    me.position = {20, 73}; // Should hit "Two"
+    // Fonts on dummy platform are 8x16
+    me.position = {20, 20 + 16 * 2}; // Should hit "Two"
     win.handle_mouse(me);
-    
+
     REQUIRE(cb->selected() == 1);
     REQUIRE(cb->selected_text() == "Two");
     REQUIRE(win.has_popup() == false);
@@ -59,11 +53,11 @@ TEST_CASE("Combobox interaction with virtual window", "[combobox]") {
     // Navigate with keys
     ke.key = Key::Down;
     win.handle_key(ke); // Should go to "Three" (idx 2)
-    
+
     // Select with Enter
     ke.key = Key::Enter;
     win.handle_key(ke);
-    
+
     REQUIRE(cb->selected() == 2);
     REQUIRE(cb->selected_text() == "Three");
     REQUIRE(win.has_popup() == false);

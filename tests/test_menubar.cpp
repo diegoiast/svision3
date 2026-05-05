@@ -1,11 +1,12 @@
 #include "toolkit/layout.hpp"
 #include "toolkit/menubar.hpp"
-#include "toolkit/platform/dummy_platform.hpp"
+// #include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/window.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <spdlog/spdlog.h>
+#include <toolkit/text_rasterizer.hpp>
 
 using namespace toolkit;
 
@@ -16,49 +17,43 @@ TEST_CASE("MenuBar interaction", "[menubar]") {
     auto root = std::make_unique<VBoxLayout>();
     auto menubar = std::make_unique<MenuBar>();
 
-    bool action1_called = false;
+    int action_called = 0;
     auto file_menu = menubar->add_menu("File");
-    file_menu->add_action("New", [&]() { action1_called = true; });
-    file_menu->add_action("Exit", []() {});
+    file_menu->add_action("New", [&]() { action_called = 10; });
+    file_menu->add_action("Exit", [&]() { action_called = 20; });
 
-    menubar->add_menu("Help")->add_action("About", []() {});
+    menubar->add_menu("Help")->add_action("About", [&]() { action_called = 30; });
 
     root->add_widget(std::move(menubar));
     win.set_root(std::move(root));
     win.handle_resize({800, 600});
 
     // Manually paint to trigger layout
-    MockPainter painter;
+    MockPainter painter(new DummyRasterizer);
     win.handle_paint(painter);
 
     // Initially no popup
     REQUIRE(win.has_popup() == false);
 
-    // Click on "File" menu
+    // Font simulation on dummy platform is "8x16" no padding between latters/lines
+    // Click on "File" menu, this is hitting the middle of the "l"
     MouseEvent me{};
     me.type = MouseEvent::Type::Press;
-    me.position = {20, 10};
-    spdlog::info("Simulating click at (20, 10)");
+    me.position = {18, 10};
+    spdlog::info("Simulating click at (18, 10)");
     win.handle_mouse(me);
 
     // Should open "File" menu popup
     REQUIRE(win.has_popup() == true);
 
-    // Click on "New" inside the popup
-    // Popup position for the first menu is typically (0, menubar_height)
-    // In MockPainter, fm.height = font_size = 14.
-    // MenuBar height is fm.height + padding.top + padding.bottom = 14 + 6 + 6 = 26.
-    // MenuItem height in Menu is style.font_size + style.item_padding * 2.0f + 4.0f = 14 + 2*4 + 4
-    // = 26. Popup starts at (0, 26). Items inside popup start at y=2. So "New" is at y=[28,
-    // 26+2+26] = [28, 54].
-    me.position = {20, 40};
-    spdlog::info("Simulating press at (20, 40) for New action");
+    me.position = {18, 18};
+    spdlog::info("Simulating press at (18, 18) for New action");
     win.handle_mouse(me);
 
     me.type = MouseEvent::Type::Release;
-    spdlog::info("Simulating release at (20, 40) for New action");
+    spdlog::info("Simulating release at (18, 18) for New action");
     win.handle_mouse(me);
 
-    REQUIRE(action1_called == true);
+    REQUIRE(action_called == 10);
     REQUIRE(win.has_popup() == false);
 }

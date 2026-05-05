@@ -1,6 +1,5 @@
 #include "toolkit/context_menu.hpp"
 #include "toolkit/platform.hpp"
-#include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/window.hpp"
@@ -27,27 +26,21 @@ TEST_CASE("ContextMenu interaction", "[contextmenu]") {
     menu.show(&win, {100, 100});
     REQUIRE(win.has_popup() == true);
 
-    // Test mouse selection
-    // item_h = 14 + 4*2 + 4 = 26
-    // Action 1: y=[0, 26) relative to popup origin
-    // Sep: y=[26, 33) (sep_h = 7)
-    // Action 2: y=[33, 59)
-
     MouseEvent me{};
     me.type = MouseEvent::Type::Press;
 
     // Click Action 2
-    // Popup is at (100, 100). We need to click at (100+some_x, 100+40)
-    me.position = {150, 145};
+    // Popup is at (100, 100). We need to click at (3 letters on, 2 line down, middle of line)
+    me.position = {100 + 3 * 8, 100 + 8 * 2 + 4};
     win.handle_mouse(me);
 
     me.type = MouseEvent::Type::Release;
-    me.position = {150, 145};
+    // me.position = {100 + 3 * 8, 100 + 8};
     win.handle_mouse(me);
 
+    REQUIRE(win.has_popup() == false); // Closed after click
     REQUIRE(action2_called == true);
     REQUIRE(action1_called == false);
-    REQUIRE(win.has_popup() == false); // Closed after click
 
     // Show again and test keyboard
     menu.show(&win, {100, 100});

@@ -32,8 +32,31 @@ class TextRasterizer {
     //        cache.
     virtual Size measure(std::string_view text, float font_size,
                          FontFamily font = FontFamily::System) = 0;
-    virtual Painter::FontMetrics metrics(float font_size,
-                                         FontFamily font = FontFamily::System) = 0;
+    virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) = 0;
+};
+
+class DummyRasterizer : public TextRasterizer {
+  public:
+    virtual RasterizedText rasterize(std::string_view t, float font_size, float scale,
+                                     FontFamily f) {
+        auto r = RasterizedText{};
+        auto m = measure(t, font_size, f);
+        r.width = m.width;
+        r.height = m.height;
+        r.ascent = 0;
+        return r;
+    };
+
+    virtual Size measure(std::string_view text, float font_size,
+                         FontFamily font = FontFamily::System) {
+        auto x = 8.0f;
+        auto y = 16.0f;
+        return {x * text.size(), y};
+    };
+
+    virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) {
+        return {0, 0, 0};
+    };
 };
 
 } // namespace toolkit

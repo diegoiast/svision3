@@ -1010,7 +1010,9 @@ Size BaseTheme::measure_radio_button(std::string_view text) const {
 }
 
 Size BaseTheme::measure_menubar_item(std::string_view text) const {
-    auto text_w = detail::current_platform()->measure_text(text, palette.fonts.size).width;
+    // FIXME: using platform to measure text
+    auto p = detail::current_platform();
+    auto text_w = p->measure_text(text, palette.fonts.size).width;
     return {text_w + menubar.padding.left + menubar.padding.right, 0};
 }
 

@@ -58,9 +58,8 @@ class Painter {
     virtual std::string_view name() const = 0;
 
     Size measure_text(std::string_view text, float font_size = 14.0f,
-                           FontFamily font = FontFamily::System);
+                      FontFamily font = FontFamily::System);
     FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System);
-
 
     // FIXME: draw_filled_frame - this should be removed and use the version from the theme
     void draw_filled_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
@@ -78,6 +77,7 @@ class Painter {
 // Used for testing
 class MockPainter : public Painter {
   public:
+    MockPainter(TextRasterizer *r = nullptr) { rasterizer_ = r; }
     void push_clip(Rect const &) override {}
     void pop_clip() override {}
     void push_translation(Point) override {}
