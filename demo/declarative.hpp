@@ -68,8 +68,19 @@ template <typename T> struct Element {
         return std::move(*this);
     }
     Element checked(bool c = true) {
-        static_assert(std::is_same_v<T, toolkit::Checkbox>, "checked only works on Checkbox");
-        w->set_checked(c);
+        if constexpr (std::is_same_v<T, toolkit::Checkbox> || std::is_same_v<T, toolkit::Button>) {
+            w->set_checked(c);
+        } else {
+            static_assert(std::is_same_v<T, void>, "checked only works on Checkbox or Button");
+        }
+        return std::move(*this);
+    }
+    Element checkable(bool c = true) {
+        if constexpr (std::is_same_v<T, toolkit::Button>) {
+            w->set_checkable(c);
+        } else {
+            static_assert(std::is_same_v<T, void>, "checkable only works on Button");
+        }
         return std::move(*this);
     }
     Element tri_state(bool b) {

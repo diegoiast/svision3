@@ -153,10 +153,11 @@ Widget &Button::set_visible(bool v) {
 void Button::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto wstate = WidgetState{
-        .interaction   = state_handler_.button_state,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = state_handler_.button_state,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
+        .checked = checked_,
     };
     Theme::current().draw_button(painter, rect, display_text_, icon_, wstate, flat_,
                                  background_color_);
@@ -167,6 +168,9 @@ bool Button::trigger_mnemonic(char key) {
         return false;
     }
     if (mnemonic_key_ && mnemonic_key_ == key) {
+        if (checkable_) {
+            set_checked(!checked_);
+        }
         if (on_click) {
             on_click();
         }
@@ -177,6 +181,24 @@ bool Button::trigger_mnemonic(char key) {
 
 Button &Button::set_flat(bool f) {
     flat_ = f;
+    return *this;
+}
+
+Button &Button::set_checkable(bool c) {
+    checkable_ = c;
+    return *this;
+}
+
+Button &Button::set_checked(bool c) {
+    if (checked_ != c) {
+        checked_ = c;
+        if (on_toggle) {
+            on_toggle(checked_);
+        }
+        if (window_) {
+            window_->request_redraw("button checked changed");
+        }
+    }
     return *this;
 }
 
@@ -191,6 +213,9 @@ bool Button::handle_key(KeyEvent const &event) {
         return false;
     }
     if (event.key == Key::Enter || (!event.text.empty() && event.text[0] == ' ')) {
+        if (checkable_) {
+            set_checked(!checked_);
+        }
         if (on_click) {
             on_click();
         }
@@ -236,8 +261,13 @@ bool Button::handle_mouse(MouseEvent const &event) {
             auto fire_click = should_fire_click();
             stop_auto_repeat();
             state_handler_.on_mouse_click(event);
-            if (fire_click && on_click && !auto_repeat_) {
-                on_click();
+            if (fire_click && !auto_repeat_) {
+                if (checkable_) {
+                    set_checked(!checked_);
+                }
+                if (on_click) {
+                    on_click();
+                }
             }
         }
         return inside;

@@ -40,6 +40,11 @@ class Button : public Widget, public Fluent<Button> {
     Button& set_flat(bool f);
     bool is_flat() const { return flat_; }
 
+    Button &set_checkable(bool c);
+    bool is_checkable() const { return checkable_; }
+    Button &set_checked(bool c);
+    bool is_checked() const { return checked_; }
+
     void set_auto_repeat(bool ar, float delay = 0.5f, float interval = 0.4f) {
         auto_repeat_ = ar;
         auto_repeat_delay_ = delay;
@@ -55,6 +60,7 @@ class Button : public Widget, public Fluent<Button> {
     bool is_pressed() const { return state_handler_.button_state == ButtonState::ClickedInside; }
 
     std::function<void()> on_click;
+    std::function<void(bool)> on_toggle;
 
   private:
     void start_auto_repeat_delay();
@@ -67,6 +73,8 @@ class Button : public Widget, public Fluent<Button> {
     int mnemonic_index_ = -1;
     char mnemonic_key_ = 0;
     bool flat_ = false;
+    bool checkable_ = false;
+    bool checked_ = false;
     bool auto_repeat_ = false;
     float auto_repeat_delay_ = 0.5f;
     float auto_repeat_interval_ = 0.4f;

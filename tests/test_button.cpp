@@ -247,3 +247,73 @@ TEST_CASE("Button drag outside then release does not fire on_click", "[button]")
     b.handle_mouse(release_outside);
     REQUIRE(click_count == 0);
 }
+
+TEST_CASE("Button checkable/checked state", "[button]") {
+    Button b("Toggle");
+    REQUIRE(b.is_checkable() == false);
+    REQUIRE(b.is_checked() == false);
+
+    b.set_checkable(true);
+    REQUIRE(b.is_checkable() == true);
+
+    bool toggled = false;
+    b.on_toggle = [&](bool c) { toggled = c; };
+
+    b.set_checked(true);
+    REQUIRE(b.is_checked() == true);
+    REQUIRE(toggled == true);
+
+    b.set_checked(false);
+    REQUIRE(b.is_checked() == false);
+    REQUIRE(toggled == false);
+}
+
+TEST_CASE("Button toggle on click", "[button]") {
+    Button b("Toggle");
+    b.set_checkable(true);
+    b.set_rect({0, 0, 100, 30});
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.position = {50, 15};
+    b.handle_mouse(press);
+
+    MouseEvent release{};
+    release.type = MouseEvent::Type::Release;
+    release.position = {50, 15};
+    b.handle_mouse(release);
+
+    REQUIRE(b.is_checked() == true);
+
+    b.handle_mouse(press);
+    b.handle_mouse(release);
+    REQUIRE(b.is_checked() == false);
+}
+
+TEST_CASE("Button toggle on mnemonic", "[button]") {
+    Button b("&Toggle");
+    b.set_checkable(true);
+
+    b.trigger_mnemonic('t');
+    REQUIRE(b.is_checked() == true);
+
+    b.trigger_mnemonic('t');
+    REQUIRE(b.is_checked() == false);
+}
+
+TEST_CASE("Button toggle on key", "[button]") {
+    Button b("Toggle");
+    b.set_checkable(true);
+
+    KeyEvent enter{};
+    enter.type = KeyEvent::Type::Press;
+    enter.key = Key::Enter;
+    b.handle_key(enter);
+    REQUIRE(b.is_checked() == true);
+
+    KeyEvent space{};
+    space.type = KeyEvent::Type::Press;
+    space.text = " ";
+    b.handle_key(space);
+    REQUIRE(b.is_checked() == false);
+}

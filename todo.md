@@ -210,7 +210,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ### Material
 
-1. Fix
+1. Tree:
+    Lines are not properly aligned.
 
 ### macOS
 
@@ -241,7 +242,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 2. [x] Flat display (borders on hover only).
 3. [x] Auto repeat.
 4. [x] Icon support (image + text)
-5. [ ] Toggle buttton - on/off.
+5. [x] Toggle buttton - on/off.
 6. [ ] Attach a menu (long click, or sub-button).
 7. [ ] Button group (mutually exclusive toggles).
 

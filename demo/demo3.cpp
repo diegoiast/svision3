@@ -285,6 +285,9 @@ int main(int argc, char *argv[]) {
                             .add(
                                 ui::button("Auto repeat").auto_repeat(true).on_click(repeat_action))
                             .add(ui::button("Open").icon(open_icon).on_click(open_action))
+                            .add(ui::button("Toggle me").checkable(true).on_toggle([](bool checked) {
+                                spdlog::info("Button toggled (declarative): {}", checked);
+                            }))
                             .add(repeat_label);
                     }())
                     .add(ui::label(platformText)))

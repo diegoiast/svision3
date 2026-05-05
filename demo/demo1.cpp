@@ -281,6 +281,12 @@ int main(int argc, char *argv[]) {
     }
     open_icon_btn->set_tooltip("Open file");
 
+    auto toggle_btn = std::make_unique<toolkit::Button>("Toggle me");
+    toggle_btn->set_checkable(true);
+    toggle_btn->on_toggle = [](bool checked) {
+        spdlog::info("Button toggled: {}", checked);
+    };
+
     autoclick_cmd->set_execute_func(repeat_action);
     autoclick_cmd->set_shortcut("F4");
     autoclick_cmd->set_tooltip("Press F4");
@@ -288,6 +294,7 @@ int main(int argc, char *argv[]) {
 
     repeat_row->add_widget(std::move(repeat_btn));
     repeat_row->add_widget(std::move(open_icon_btn));
+    repeat_row->add_widget(std::move(toggle_btn));
     repeat_row->add_widget(std::move(repeat_label), 1);
     tab_main->add_widget(std::move(repeat_row));
 

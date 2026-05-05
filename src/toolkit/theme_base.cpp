@@ -30,10 +30,13 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
                             std::optional<Color> background) const {
 
     auto hovered = state.interaction == ButtonState::Hovered || state.interaction == ButtonState::ClickedInside;
-    auto pressed = state.interaction == ButtonState::ClickedInside;
+    auto pressed = state.interaction == ButtonState::ClickedInside || state.checked;
     auto focused = state.focused;
     auto enabled = state.enabled;
-    auto border_c = (focused || hovered || pressed) ? palette.accent : palette.border;
+    auto border_c = (focused || hovered || (pressed && !state.checked)) ? palette.accent : palette.border;
+    if (state.checked) {
+        border_c = palette.accent;
+    }
     auto text_c = enabled ? palette.text : palette.text_disabled;
     auto text_offset = (palette.beveled && pressed && enabled) ? 1.0f : 0.0f;
     auto fm = painter.font_metrics(palette.fonts.size);
