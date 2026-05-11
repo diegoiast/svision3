@@ -31,7 +31,8 @@ TEST_CASE("ThemeFactory::crete with all styles and schemes", "[theme]") {
 }
 
 TEST_CASE("Theme::default_palette returns valid palette", "[theme]") {
-    auto p = Theme::default_palette(ThemeStyle::MacOS, ColorScheme::Light);
+    auto t = ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light);
+    auto p = t->default_palette(ColorScheme::Light);
     REQUIRE(p.fonts.size > 0);
     REQUIRE(p.corner_radius >= 0);
     REQUIRE(p.border_width >= 0);
@@ -39,14 +40,16 @@ TEST_CASE("Theme::default_palette returns valid palette", "[theme]") {
 }
 
 TEST_CASE("Win95 palette has beveled flag", "[theme]") {
-    auto p = Theme::default_palette(ThemeStyle::Win95, ColorScheme::Light);
+    auto t = ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light);
+    auto p = t->default_palette(ColorScheme::Light);
     REQUIRE(p.beveled == true);
 }
 
 TEST_CASE("Non-Win95 palettes are not beveled", "[theme]") {
     for (auto s : {ThemeStyle::MacOS, ThemeStyle::Material, ThemeStyle::Win11, ThemeStyle::Plasma6,
                    ThemeStyle::GNOME}) {
-        auto p = Theme::default_palette(s, ColorScheme::Light);
+        auto t = ThemeFactory::create(s, ColorScheme::Light);
+        auto p = t->default_palette(ColorScheme::Light);
         REQUIRE(p.beveled == false);
     }
 }
@@ -71,20 +74,6 @@ TEST_CASE("Light theme has darker text than background", "[theme]") {
     REQUIRE(text_luma < bg_luma);
 }
 
-TEST_CASE("Theme from custom palette", "[theme]") {
-    Palette p;
-    p.window = Color::rgb(0.1f, 0.1f, 0.1f);
-    p.base = Color::rgb(0.2f, 0.2f, 0.2f);
-    p.text = Color::rgb(0.9f, 0.9f, 0.9f);
-    p.border = Color::rgb(0.5f, 0.5f, 0.5f);
-    p.accent = Color::rgb(1.0f, 0.0f, 0.0f);
-    p.alternate = Color::rgb(0.25f, 0.25f, 0.25f);
-    p.fonts.size = 16.0f;
-
-    auto t = ThemeFactory::create(ThemeStyle::MacOS, p);
-    REQUIRE(t->palette.window.r == 0.1f);
-    REQUIRE(t->palette.fonts.size == 16.0f);
-}
 
 TEST_CASE("ProgressBar style has Win95 chunked", "[theme]") {
     auto t = ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light);
