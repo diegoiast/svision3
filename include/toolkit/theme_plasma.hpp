@@ -9,7 +9,13 @@ namespace toolkit {
 
 class Plasma6Theme : public BaseTheme {
   public:
-    explicit Plasma6Theme(Palette p);
+    static Palette default_palette(ColorScheme scheme,
+                                   std::optional<Color> accent);
+
+    explicit Plasma6Theme(ColorScheme scheme = ColorScheme::Light,
+                        std::optional<Palette> p = std::nullopt);
+
+    Palette default_palette(ColorScheme scheme) const override;
 
     void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
                         bool has_children, bool expanded, bool selected, bool hovered,

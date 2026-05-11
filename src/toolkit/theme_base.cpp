@@ -12,17 +12,55 @@
 
 namespace toolkit {
 
-BaseTheme::BaseTheme(Palette p) {
-    this->palette = std::move(p);
-    if (palette.fonts.size == 0 && palette.fonts.size > 0) {
-        palette.fonts.size = palette.fonts.size;
+BaseTheme::BaseTheme(ColorScheme scheme, std::optional<Palette> p) {
+    if (p) {
+        this->palette = std::move(*p);
+        if (palette.fonts.size <= 0) {
+            palette.fonts.size = 14.0f;
+        }
+        if (palette.fonts.system.empty()) {
+            palette.fonts.system = "sans-serif";
+        }
+        if (palette.fonts.monospace.empty()) {
+            palette.fonts.monospace = "monospace";
+        }
     }
+    // When p is nullopt, derived class constructors initialize palette
+    // in their own body where virtual dispatch calls their default_palette.
 
     // Initialize backward compatibility members
     name = "Base";
     style = ThemeStyle::Material;
     layout.margins = {8, 8, 8, 8};
     layout.spacing = 8.0f;
+}
+
+Palette BaseTheme::default_palette(ColorScheme scheme) const {
+    Palette p;
+    Theme::init_fonts(p);
+    // Default to Material-like colors
+    auto primary = Color::from_rgb(0x6750A4);
+    p.corner_radius = 4.0f;
+
+    switch (scheme) {
+    case ColorScheme::Light:
+        p.window = Color::from_rgb(0xFFFBFE);
+        p.base = Color::from_rgb(0xFFFFFF);
+        p.text = Color::from_rgb(0x1C1B1F);
+        p.highlight = primary;
+        p.highlighted_text = Color::from_rgb(0xFFFFFF);
+        p.accent = primary;
+        break;
+    case ColorScheme::Dark:
+        p.window = Color::from_rgb(0x1C1B1F);
+        p.base = Color::from_rgb(0x1C1B1F);
+        p.text = Color::from_rgb(0xE6E1E5);
+        p.highlight = primary;
+        p.highlighted_text = Color::from_rgb(0xFFFFFF);
+        p.accent = primary;
+        break;
+    }
+    return p;
 }
 
 void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view text,

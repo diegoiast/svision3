@@ -9,11 +9,13 @@ namespace toolkit {
 
 class MacOSTheme : public BaseTheme {
   public:
-    explicit MacOSTheme(Palette p) : BaseTheme(std::move(p)) {
-        name = "macOS";
-        focus_ring_margin = 2.0f;
-        focus_ring_corner_radius = 4.0f;
-    }
+    static Palette default_palette(ColorScheme scheme,
+                                   std::optional<Color> accent);
+
+    explicit MacOSTheme(ColorScheme scheme = ColorScheme::Light,
+                        std::optional<Palette> p = std::nullopt);
+
+    Palette default_palette(ColorScheme scheme) const override;
 };
 
 } // namespace toolkit
