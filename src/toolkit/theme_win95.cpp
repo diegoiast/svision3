@@ -8,11 +8,68 @@
 
 namespace toolkit {
 
-Win95Theme::Win95Theme(Palette p) : BaseTheme(std::move(p)) {
+Win95Theme::Win95Theme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme(scheme, std::move(p)) {
+    if (!p) {
+        palette = this->default_palette(scheme);
+    }
     name = "Windows 95";
     focus_ring_margin = 0.0f;
     focus_ring_corner_radius = 0.0f;
     focus_ring_line_style = Painter::LineStyle::Dotted;
+}
+
+Palette Win95Theme::default_palette(ColorScheme scheme) const {
+    Palette p;
+    Theme::init_fonts(p);
+    Color windows95_color = Color::from_argb(0xFF000080);
+    p.beveled = true;
+    p.progress_bar_height = 20;
+
+    switch (scheme) {
+    case ColorScheme::Light:
+        p.window = Color::from_argb(0xFFC0C0C0);
+        p.base = Color::from_argb(0xFFFFFFFF);
+        p.alternate = Color::from_argb(0xFFC0C0C0);
+        p.text = Color::from_argb(0xFF000000);
+        p.text_disabled = Color::from_argb(0xFF808080);
+        p.placeholder = Color::from_argb(0xFF808080);
+        p.highlight = windows95_color;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFF808080);
+        p.accent = windows95_color;
+        p.link = windows95_color;
+        p.shadow = Color::from_argb(0xFF404040);
+        p.dark_shadow = Color::from_argb(0xFF000000);
+        p.background_pressed = Color::from_argb(0xFFB0B0B0);
+        p.background_hovered = Color::from_argb(0xFFB8B8B8);
+        p.tooltip = Color::from_argb(0xFFFFFFE1);
+        p.success = Color::from_argb(0xFF008000);
+        p.warning = Color::from_argb(0xFFFF8000);
+        p.error = Color::from_argb(0xFF800000);
+        break;
+    case ColorScheme::Dark:
+        p.window = Color::from_argb(0xFF000000);
+        p.base = Color::from_argb(0xFF202020);
+        p.alternate = Color::from_argb(0xFF303030);
+        p.text = Color::from_argb(0xFFFFFFFF);
+        p.text_disabled = Color::from_argb(0xFF808080);
+        p.placeholder = Color::from_argb(0xFF808080);
+        p.highlight = windows95_color;
+        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
+        p.border = Color::from_argb(0xFF404040);
+        p.accent = windows95_color;
+        p.link = windows95_color;
+        p.shadow = Color::from_argb(0xFF000000);
+        p.dark_shadow = Color::from_argb(0xFF000000);
+        p.background_pressed = windows95_color;
+        p.background_hovered = Color::from_argb(0xFF303030);
+        p.tooltip = Color::from_argb(0xFFFFFFE1);
+        p.success = Color::from_argb(0xFF008000);
+        p.warning = Color::from_argb(0xFFFF8000);
+        p.error = Color::from_argb(0xFF800000);
+        break;
+    }
+    return p;
 }
 
 void Win95Theme::draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const {

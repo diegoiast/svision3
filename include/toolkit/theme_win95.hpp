@@ -9,7 +9,13 @@ namespace toolkit {
 
 class Win95Theme : public BaseTheme {
   public:
-    explicit Win95Theme(Palette p);
+    static Palette default_palette(ColorScheme scheme,
+                                   std::optional<Color> accent);
+
+    explicit Win95Theme(ColorScheme scheme = ColorScheme::Light,
+                        std::optional<Palette> p = std::nullopt);
+
+    Palette default_palette(ColorScheme scheme) const override;
 
     void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const override;
 

@@ -66,6 +66,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/layout.cpp
     src/toolkit/theme.cpp
     src/toolkit/theme_base.cpp
+    src/toolkit/theme_macos.cpp
     src/toolkit/theme_factory.cpp
     src/toolkit/theme_plasma.cpp
     src/toolkit/theme_win11.cpp

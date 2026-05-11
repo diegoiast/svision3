@@ -9,7 +9,10 @@ namespace toolkit {
 
 class BaseTheme : public Theme {
   public:
-    explicit BaseTheme(Palette p);
+    explicit BaseTheme(ColorScheme scheme = ColorScheme::Light,
+                       std::optional<Palette> p = std::nullopt);
+
+    Palette default_palette(ColorScheme scheme) const override;
 
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                      WidgetState const &state, bool flat,
@@ -59,16 +62,15 @@ class BaseTheme : public Theme {
     void draw_tree_background(Painter &painter, Rect const &rect,
                               WidgetState const &state) const override;
     void draw_icon_grid_item(Painter &painter, Rect const &rect, std::string_view text,
-                             Icon const &icon, bool selected, bool hovered,
-                             int icon_size, bool scale) const override;
+                             Icon const &icon, bool selected, bool hovered, int icon_size,
+                             bool scale) const override;
     void draw_combobox(Painter &painter, Rect const &rect, std::string_view text,
                        WidgetState const &state, bool open) const override;
     void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
                             bool hovered) const override;
 
     void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const override;
-    void draw_toolbar(Painter &painter, Rect const &rect,
-                      WidgetState const &state) const override;
+    void draw_toolbar(Painter &painter, Rect const &rect, WidgetState const &state) const override;
     void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text, int cursor_pos,
                       int selection_start, int selection_end, WidgetState const &state,
                       bool hovered_up, bool pressed_up, bool hovered_down, bool pressed_down,

@@ -160,14 +160,17 @@ struct Palette {
 
     float auto_repeat_delay = 0.5f;
     float auto_repeat_interval = 0.4f;
+
+    // Set the accent color of the palette
+    void set_accent(Color color) { accent = color; }
 };
 
 enum class ColorScheme { Light, Dark };
 
 // FIXME: not ideal.
-inline constexpr int theme_style_count = 6;
+inline constexpr int theme_style_count = 7;
 
-enum class ThemeStyle { MacOS, Material, Win11, Win95, Plasma6, GNOME };
+enum class ThemeStyle { System, MacOS, Material, Win11, Win95, Plasma6, GNOME };
 
 class Painter;
 
@@ -186,8 +189,12 @@ class Theme {
 
     static const char *style_name(ThemeStyle style);
 
-    static Palette default_palette(ThemeStyle style, ColorScheme scheme = ColorScheme::Light);
+    virtual Palette default_palette(ColorScheme scheme) const = 0;
 
+  protected:
+    static void init_fonts(Palette &p);
+
+  public:
     // Primitive Drawing Methods
     virtual void draw_button(Painter &painter, Rect const &rect, std::string_view text,
                              Icon const &icon, WidgetState const &state, bool flat,
@@ -234,8 +241,8 @@ class Theme {
     virtual void draw_tree_background(Painter &painter, Rect const &rect,
                                       WidgetState const &state) const = 0;
     virtual void draw_icon_grid_item(Painter &painter, Rect const &rect, std::string_view text,
-                                     Icon const &icon, bool selected, bool hovered,
-                                     int icon_size, bool scale) const = 0;
+                                     Icon const &icon, bool selected, bool hovered, int icon_size,
+                                     bool scale) const = 0;
     virtual void draw_combobox(Painter &painter, Rect const &rect, std::string_view text,
                                WidgetState const &state, bool open) const = 0;
     virtual void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
@@ -245,9 +252,9 @@ class Theme {
                               WidgetState const &state) const = 0;
     virtual void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text,
                               int cursor_pos, int selection_start, int selection_end,
-                              WidgetState const &state,
-                              bool hovered_up, bool pressed_up, bool hovered_down,
-                              bool pressed_down, bool cursor_visible = true) const = 0;
+                              WidgetState const &state, bool hovered_up, bool pressed_up,
+                              bool hovered_down, bool pressed_down,
+                              bool cursor_visible = true) const = 0;
     virtual void draw_text_edit(Painter &painter, Rect const &rect,
                                 std::span<std::string const> lines, int cursor_line, int cursor_col,
                                 int selection_start_line, int selection_start_col,

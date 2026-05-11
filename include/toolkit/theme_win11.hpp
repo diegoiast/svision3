@@ -9,7 +9,13 @@ namespace toolkit {
 
 class Win11Theme : public BaseTheme {
   public:
-    explicit Win11Theme(Palette p);
+    static Palette default_palette(ColorScheme scheme,
+                                   std::optional<Color> accent);
+
+    explicit Win11Theme(ColorScheme scheme = ColorScheme::Light,
+                        std::optional<Palette> p = std::nullopt);
+
+    Palette default_palette(ColorScheme scheme) const override;
 
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
                            bool active, bool show_mnemonics, int mnemonic_index) const override;
