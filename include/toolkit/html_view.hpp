@@ -23,6 +23,7 @@ class HtmlView : public Widget {
 
     void set_html(std::string const &html, std::string const &base_url = "");
     void set_markdown(std::string const &markdown);
+    void set_css(std::string light_css, std::string dark_css = {});
     std::string const &html() const { return html_; }
 
     std::function<void(std::string const &)> on_link_click;
@@ -38,10 +39,14 @@ class HtmlView : public Widget {
     friend class LitehtmlContainer;
     std::string html_;
     std::string base_url_;
+    std::string markdown_;
+    std::string markdown_css_light_;
+    std::string markdown_css_dark_;
     CursorShape cursor_shape_ = CursorShape::Arrow;
     std::unique_ptr<LitehtmlContainer> container_;
     std::shared_ptr<litehtml::document> document_;
 
+    void load_html_(std::string html, std::string base_url);
     void relayout();
 };
 

@@ -42,6 +42,7 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     void collect_focusables(std::vector<Widget *> &out) override;
     void collect_mnemonics(std::vector<Widget *> &out) override;
     void for_each_child(std::function<void(Widget *)> const &callback) override;
+    void on_theme_changed() override;
 
   private:
     struct Tab {

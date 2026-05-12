@@ -363,15 +363,22 @@ HtmlView::HtmlView() : container_(std::make_unique<LitehtmlContainer>(this)) {}
 
 HtmlView::~HtmlView() = default;
 
-void HtmlView::set_html(std::string const &html, std::string const &base_url) {
-    html_ = html;
-    base_url_ = base_url;
+void HtmlView::load_html_(std::string html, std::string base_url) {
+    html_ = std::move(html);
+    base_url_ = std::move(base_url);
     document_ = litehtml::document::createFromString(html_.c_str(), container_.get());
     relayout();
     invalidate_layout();
 }
 
+void HtmlView::set_html(std::string const &html, std::string const &base_url) {
+    markdown_ = {};
+    load_html_(html, base_url);
+}
+
 void HtmlView::set_markdown(std::string const &markdown) {
+    markdown_ = markdown;
+
     std::string body;
     auto append = [](const MD_CHAR *text, MD_SIZE size, void *userdata) {
         static_cast<std::string *>(userdata)->append(text, size);
@@ -380,10 +387,32 @@ void HtmlView::set_markdown(std::string const &markdown) {
             MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_TABLES, 0);
 
     auto const &pal = Theme::current().palette;
-    set_html(fmt::format(MARKDOWN_PAGE, fmt::arg("bg", css_color(pal.window)),
-                         fmt::arg("fg", css_color(pal.text)),
-                         fmt::arg("link", css_color(Color::rgb(0.0f, 0.4f, 0.8f))),
-                         fmt::arg("body", body)));
+    if (!markdown_css_light_.empty()) {
+        auto lum = 0.299f * pal.window.r + 0.587f * pal.window.g + 0.114f * pal.window.b;
+        auto const &css =
+            (lum < 0.5f && !markdown_css_dark_.empty()) ? markdown_css_dark_ : markdown_css_light_;
+        // html/body background matches the theme window colour so there is no
+        // white bleed outside the .markdown-body div (e.g. below short content).
+        auto page = std::string("<!DOCTYPE html><html><head><style>html,body{margin:0;padding:0;background:") +
+                    css_color(pal.window) + "}" +
+                    css + "</style></head><body><div class=\"markdown-body\">" + body +
+                    "</div></body></html>";
+        load_html_(std::move(page), {});
+    } else {
+        load_html_(fmt::format(MARKDOWN_PAGE, fmt::arg("bg", css_color(pal.window)),
+                               fmt::arg("fg", css_color(pal.text)),
+                               fmt::arg("link", css_color(Color::rgb(0.0f, 0.4f, 0.8f))),
+                               fmt::arg("body", body)),
+                   {});
+    }
+}
+
+void HtmlView::set_css(std::string light_css, std::string dark_css) {
+    markdown_css_light_ = std::move(light_css);
+    markdown_css_dark_ = std::move(dark_css);
+    if (!markdown_.empty()) {
+        set_markdown(markdown_);
+    }
 }
 
 void HtmlView::relayout() {
@@ -456,7 +485,12 @@ Size HtmlView::size_hint() const {
 
 void HtmlView::on_theme_changed() {
     Widget::on_theme_changed();
-    if (document_) {
+    if (!markdown_.empty()) {
+        set_markdown(markdown_);
+        if (window_) {
+            window_->request_redraw("markdown theme changed");
+        }
+    } else if (document_) {
         relayout();
     }
 }
