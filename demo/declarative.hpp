@@ -15,10 +15,12 @@
 #include "toolkit/spin_box.hpp"
 #include "toolkit/tab_widget.hpp"
 
+#include <toolkit/html_view.hpp>
 #include <toolkit/icon_grid.hpp>
 #include <toolkit/list_view.hpp>
 #include <toolkit/menu.hpp>
 #include <toolkit/menubar.hpp>
+#include <toolkit/scroll_area.hpp>
 #include <toolkit/table_view.hpp>
 #include <toolkit/text_edit.hpp>
 #include <toolkit/toolbar.hpp>
@@ -114,6 +116,15 @@ template <typename T> struct Element {
 
     Element on_toggle(std::function<void(bool)> f) {
         w->on_toggle = std::move(f);
+        return std::move(*this);
+    }
+
+    Element on_link_click(std::function<void(std::string const &)> f) {
+        if constexpr (std::is_same_v<T, toolkit::HtmlView>) {
+            w->on_link_click = std::move(f);
+        } else {
+            static_assert(std::is_same_v<T, void>, "on_link_click only works on HtmlView");
+        }
         return std::move(*this);
     }
 
@@ -539,6 +550,21 @@ inline int default_padding() { return 10; }
 constexpr int expand = 1;
 constexpr int no_stretch = 0;
 constexpr int no_spacing = 0;
+
+inline Element<toolkit::HtmlView> html_view(std::string_view html = "") {
+    auto v = std::make_unique<toolkit::HtmlView>();
+    if (!html.empty()) {
+        v->set_html(std::string(html));
+    }
+    return Element<toolkit::HtmlView>(std::move(v));
+}
+
+template <typename W>
+inline Element<toolkit::ScrollArea> scroll_area(Element<W> content) {
+    auto sa = std::make_unique<toolkit::ScrollArea>();
+    sa->set_content(std::move(content.w));
+    return Element<toolkit::ScrollArea>(std::move(sa));
+}
 
 inline Element<toolkit::VBoxLayout> vbox() {
     auto layout = std::make_unique<toolkit::VBoxLayout>();

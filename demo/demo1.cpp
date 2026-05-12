@@ -3,6 +3,8 @@
 
 #include "toolkit/application.hpp"
 #include "toolkit/button.hpp"
+#include "toolkit/html_view.hpp"
+#include "toolkit/scroll_area.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
 #include "toolkit/directory_dialog.hpp"
@@ -720,6 +722,62 @@ int main(int argc, char *argv[]) {
     tab_tree->add_widget(std::move(tree), 1);
 
     tabs->add_tab("Tree", std::move(tab_tree));
+
+    // ── Tab: HTML Viewer ───────────────────────────────────────────────
+    auto tab_html = std::make_unique<toolkit::VBoxLayout>();
+    tab_html->set_margins({0, 0, 0, 0});
+    tab_html->set_spacing(0);
+
+    auto html_view_owned = std::make_unique<toolkit::HtmlView>();
+    auto *html_view_ptr = html_view_owned.get();
+    html_view_ptr->set_html(R"html(<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: sans-serif; margin: 16px; background: #f9f9f9; color: #222; }
+  h1 { color: #336699; border-bottom: 2px solid #336699; padding-bottom: 4px; }
+  h2 { color: #558833; }
+  p  { line-height: 1.6; }
+  a  { color: #0066cc; }
+  ul { padding-left: 24px; }
+  li { margin-bottom: 4px; }
+  code { background: #eee; padding: 1px 4px; font-family: monospace; }
+  .box { border: 1px solid #ccc; background: #fff; padding: 12px; margin: 8px 0; }
+</style>
+</head>
+<body>
+  <h1>svision3 HTML Viewer</h1>
+  <p>This widget renders HTML using <a href="https://github.com/litehtml/litehtml">litehtml</a>,
+     a lightweight HTML/CSS rendering engine.</p>
+
+  <h2>Features</h2>
+  <ul>
+    <li>Basic HTML tags: headings, paragraphs, lists, links</li>
+    <li>Inline CSS styles and style blocks</li>
+    <li>Text decoration: <u>underline</u>, <s>strikethrough</s></li>
+    <li><strong>Bold</strong> and <em>italic</em> text</li>
+    <li><code>Monospace</code> code snippets</li>
+  </ul>
+
+  <div class="box">
+    <h2>Sample Box</h2>
+    <p>This is a styled <code>div</code> with a border and background,
+       demonstrating CSS box model support.</p>
+  </div>
+
+  <p>Click any link above — the <code>on_link_click</code> callback fires
+     and is logged to the console.</p>
+</body>
+</html>)html");
+
+    html_view_ptr->on_link_click = [](std::string const &url) {
+        spdlog::info("HTML link clicked: {}", url);
+    };
+
+    auto html_scroll = std::make_unique<toolkit::ScrollArea>();
+    html_scroll->set_content(std::move(html_view_owned));
+    tab_html->add_widget(std::move(html_scroll), 1);
+    tabs->add_tab("HTML", std::move(tab_html));
 
     // ── Tab: Tabs (Orientations) ────────────────────────────────────────
     auto tab6 = std::make_unique<toolkit::VBoxLayout>();

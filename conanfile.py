@@ -15,6 +15,7 @@ class ToolkitRecipe(ConanFile):
         self.requires("catch2/3.7.1")
         self.requires("tomlplusplus/3.4.0")
         self.requires("stb/cci.20240213")
+        self.requires("litehtml/0.8")
 
     def layout(self):
         cmake_layout(self, build_folder="build")
