@@ -20,9 +20,9 @@
 #include <cmath>
 #include <cstring>
 #include <optional>
-#include <unordered_map>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace toolkit {
@@ -64,7 +64,8 @@ struct Win32TextRasterizer::Impl {
     std::optional<MetricsCache> cached_metrics;
     std::unordered_map<std::string, Size> measure_cache;
 
-    HFONT create_font(float font_size, float scale = 1.0f, FontFamily family = FontFamily::System) {
+    HFONT create_font(float font_size, float scale = 1.0f, FontFamily family = FontFamily::System,
+                      bool bold = false, bool italic = false) {
         auto const &t = Theme::current();
         std::string face_name =
             (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
@@ -72,9 +73,9 @@ struct Win32TextRasterizer::Impl {
         int height = -static_cast<int>(std::round(font_size * scale));
         DWORD pitch =
             (family == FontFamily::Monospace) ? FIXED_PITCH | FF_MODERN : DEFAULT_PITCH | FF_SWISS;
-        return CreateFontW(height, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                           OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, pitch,
-                           wface.c_str());
+        return CreateFontW(height, 0, 0, 0, bold ? FW_BOLD : FW_NORMAL, italic ? TRUE : FALSE,
+                           FALSE, FALSE, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
+                           CLEARTYPE_QUALITY, pitch, wface.c_str());
     }
 };
 
@@ -90,13 +91,13 @@ Win32TextRasterizer::~Win32TextRasterizer() {
 }
 
 RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_size, float scale,
-                                              FontFamily font) {
+                                              FontFamily font, bool bold, bool italic) {
     auto wtext = to_wide(text);
     if (wtext.empty()) {
         return {};
     }
 
-    HFONT hfont = impl_->create_font(font_size, scale, font);
+    HFONT hfont = impl_->create_font(font_size, scale, font, bold, italic);
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
     SIZE sz;
@@ -170,9 +171,8 @@ Size Win32TextRasterizer::measure(std::string_view text, float font_size, FontFa
         return {0, 0};
     }
 
-    auto cache_key = std::string(text) + '\0'
-                   + std::to_string(font_size) + '\0'
-                   + (font == FontFamily::Monospace ? '1' : '0');
+    auto cache_key = std::string(text) + '\0' + std::to_string(font_size) + '\0' +
+                     (font == FontFamily::Monospace ? '1' : '0');
     auto it = impl_->measure_cache.find(cache_key);
     if (it != impl_->measure_cache.end()) {
         return it->second;
@@ -362,8 +362,12 @@ void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
     // To color pixels from fx to lx-1 (inclusive), width must be (lx-1) - fx.
     float dw = (lx - fx - 1.0f) / s;
     float dh = (ly - fy - 1.0f) / s;
-    if (dw < 0) dw = 0;
-    if (dh < 0) dh = 0;
+    if (dw < 0) {
+        dw = 0;
+    }
+    if (dh < 0) {
+        dh = 0;
+    }
 
     impl_->graphics->DrawRectangle(&pen, fx / s, fy / s, dw, dh);
 
@@ -486,7 +490,7 @@ void GDIPainter::draw_circle(Point center, float radius, Color const &c, float l
 }
 
 void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
-                           FontFamily family, TextOrientation orientation) {
+                           FontFamily family, TextOrientation orientation, bool bold, bool italic) {
     if (text.empty()) {
         return;
     }
@@ -504,7 +508,15 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
     // With ScaleTransform(scale) active, GDI+ renders this as font_size*scale physical pixels —
     // identical to what the rasterizer produces, with no manual bitmap scaling needed.
     Gdiplus::FontFamily ff(wface.c_str());
-    Gdiplus::Font font(&ff, font_size, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    int gdi_style = Gdiplus::FontStyleRegular;
+    if (bold && italic) {
+        gdi_style = Gdiplus::FontStyleBoldItalic;
+    } else if (bold) {
+        gdi_style = Gdiplus::FontStyleBold;
+    } else if (italic) {
+        gdi_style = Gdiplus::FontStyleItalic;
+    }
+    Gdiplus::Font font(&ff, font_size, gdi_style, Gdiplus::UnitPixel);
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
 
     // GenericTypographic removes GDI+'s default internal margins.
@@ -624,7 +636,6 @@ void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     impl_->graphics->SetSmoothingMode(old_s);
     impl_->graphics->SetInterpolationMode(old_i);
 }
-
 
 static int GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
     UINT num = 0;

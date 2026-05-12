@@ -74,6 +74,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/painters/gl_painter.cpp
     src/toolkit/painters/gl_offscreen.cpp
     src/toolkit/html_view.cpp
+    src/toolkit/rich_label.cpp
     src/toolkit/scroll_area.cpp
     src/toolkit/splitter.cpp
 )
@@ -456,5 +457,6 @@ add_executable(tests
     tests/test_image_loader.cpp
     tests/test_icon_grid.cpp
     tests/test_html_view.cpp
+    tests/test_utf8.cpp
 )
 target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)

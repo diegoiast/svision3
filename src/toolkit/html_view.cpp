@@ -9,6 +9,7 @@
 #include <litehtml/litehtml.h>
 #include <md4c-html.h>
 #include <spdlog/fmt/fmt.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cctype>
@@ -68,17 +69,21 @@ struct FontHandle {
     float size;
     toolkit::FontFamily family;
     int decoration; // litehtml::text_decoration flags
+    bool bold;
+    bool italic;
 };
 
 class LitehtmlContainer : public litehtml::document_container {
   public:
     explicit LitehtmlContainer(HtmlView *view) : view_(view) {}
 
-    litehtml::uint_ptr create_font(const char *faceName, int size, int /*weight*/,
-                                   litehtml::font_style /*italic*/, unsigned int decoration,
+    litehtml::uint_ptr create_font(const char *faceName, int size, int weight,
+                                   litehtml::font_style style, unsigned int decoration,
                                    litehtml::font_metrics *fm) override {
         auto *handle = new FontHandle{static_cast<float>(size), lh_font_family(faceName),
-                                      static_cast<int>(decoration)};
+                                      static_cast<int>(decoration),
+                                      weight >= 700,
+                                      style == litehtml::font_style_italic};
         if (fm) {
             auto m = view_->font_metrics(handle->size, handle->family);
             fm->height = static_cast<int>(m.height);
@@ -128,9 +133,10 @@ class LitehtmlContainer : public litehtml::document_container {
         auto painter = reinterpret_cast<Painter *>(hdc);
         auto handle = reinterpret_cast<FontHandle *>(hFont);
         auto fm = painter->font_metrics(handle->size, handle->family);
-        float baseline_y = static_cast<float>(pos.y) + fm.ascent;
-        painter->draw_text(text, {static_cast<float>(pos.x), baseline_y}, lh_color(color),
-                           handle->size, handle->family);
+        float baseline_y = std::round(static_cast<float>(pos.y) + fm.ascent);
+        painter->draw_text(text, {std::round(static_cast<float>(pos.x)), baseline_y}, lh_color(color),
+                           handle->size, handle->family,
+                           Painter::TextOrientation::Horizontal, handle->bold, handle->italic);
 
         if (handle->decoration & litehtml::font_decoration_underline) {
             float uy = static_cast<float>(pos.y) + fm.height;
@@ -146,10 +152,13 @@ class LitehtmlContainer : public litehtml::document_container {
         }
     }
 
+    float screen_dpi() const {
+        auto scale = view_->window() ? view_->window()->scale_factor() : 1.0f;
+        return 96.0f * scale;
+    }
+
     int pt_to_px(int pt) const override {
-        // FIXME: add support for other DPI
-        // 96 dpi: px = pt * 96 / 72
-        return pt * 96 / 72;
+        return static_cast<int>(std::round(pt * screen_dpi() / 72.0f));
     }
 
     int get_default_font_size() const override {
@@ -343,7 +352,7 @@ class LitehtmlContainer : public litehtml::document_container {
         media.device_width = media.width;
         media.device_height = media.height;
         media.color = 8;
-        media.resolution = 96;
+        media.resolution = static_cast<int>(screen_dpi());
     }
 
     void get_language(litehtml::string &language, litehtml::string &culture) const override {
@@ -436,11 +445,13 @@ void HtmlView::set_rect(Rect const &r) {
 void HtmlView::paint(Painter &painter) {
     auto const &pal = Theme::current().palette;
     auto local = Rect{0, 0, rect_.width, rect_.height};
-    painter.draw_filled_frame(local, pal.base, pal.border, pal, true);
+    if (draw_frame_) {
+        painter.draw_filled_frame(local, pal.base, pal.border, pal, true);
+    }
 
     container_->current_painter_ = &painter;
     if (document_) {
-        auto bw = pal.frame_inset();
+        auto bw = draw_frame_ ? pal.frame_inset() : 0.0f;
         auto inner_w = rect_.width - 2 * bw;
         auto inner_h = rect_.height - 2 * bw;
         auto inner_radius = std::max(0.0f, pal.corner_radius - bw);

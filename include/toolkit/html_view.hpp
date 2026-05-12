@@ -28,6 +28,11 @@ class HtmlView : public Widget {
 
     std::function<void(std::string const &)> on_link_click;
 
+    HtmlView &set_draw_frame(bool draw) {
+        draw_frame_ = draw;
+        return *this;
+    }
+
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
     CursorShape cursor() const override { return cursor_shape_; }
@@ -42,6 +47,7 @@ class HtmlView : public Widget {
     std::string markdown_;
     std::string markdown_css_light_;
     std::string markdown_css_dark_;
+    bool draw_frame_ = true;
     CursorShape cursor_shape_ = CursorShape::Arrow;
     std::unique_ptr<LitehtmlContainer> container_;
     std::shared_ptr<litehtml::document> document_;
