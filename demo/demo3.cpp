@@ -1,4 +1,5 @@
 #include "declarative.hpp"
+#include "github_markdown_css.hpp"
 #include "nfd.h"
 #include "toolkit/application.hpp"
 #include "toolkit/directory_dialog.hpp"
@@ -312,6 +313,7 @@ int main(int argc, char *argv[]) {
 
     auto preview_html_elem = ui::html_view();
     auto *preview_html_ptr = preview_html_elem.get();
+    preview_html_ptr->set_css(GITHUB_MARKDOWN_CSS_LIGHT, GITHUB_MARKDOWN_CSS_DARK);
     preview_html_ptr->set_markdown(PREVIEW_DEFAULT_MD);
     preview_html_ptr->on_link_click = [](std::string const &url) {
         spdlog::info("Preview link: {}", url);
@@ -381,6 +383,18 @@ int main(int argc, char *argv[]) {
     auto preview_html_mode_btn = ui::radio_button("HTML", preview_mode_group);
     preview_mode_group.group->select(preview_md_btn_ptr);
 
+    auto github_css_cb =
+        ui::checkbox("Use GitHub CSS")
+            .checked(true)
+            .on_toggle([preview_html_ptr, apply_preview](bool checked) {
+                if (checked) {
+                    preview_html_ptr->set_css(GITHUB_MARKDOWN_CSS_LIGHT, GITHUB_MARKDOWN_CSS_DARK);
+                } else {
+                    preview_html_ptr->set_css("", "");
+                }
+                apply_preview();
+            });
+
     auto preview_tab =
         ui::vbox()
             .margins(ui::no_margins())
@@ -396,7 +410,8 @@ int main(int argc, char *argv[]) {
                      .margins({4, 8, 4, 8})
                      .spacing(16)
                      .add(std::move(preview_md_btn))
-                     .add(std::move(preview_html_mode_btn)));
+                     .add(std::move(preview_html_mode_btn))
+                     .add(std::move(github_css_cb)));
 
     auto rootWidget =
         ui::tab_widget()

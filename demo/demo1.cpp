@@ -30,6 +30,7 @@
 #include "toolkit/toolbar.hpp"
 #include "toolkit/tree_view.hpp"
 #include "toolkit/window.hpp"
+#include "github_markdown_css.hpp"
 #include <chrono>
 #include <fstream>
 #include <iterator>
@@ -777,6 +778,7 @@ int main(int argc, char *argv[]) {
     static constexpr float PREVIEW_DELAY_SEC = 5.0f;
 
     auto preview_html = new toolkit::HtmlView();
+    preview_html->set_css(GITHUB_MARKDOWN_CSS_LIGHT, GITHUB_MARKDOWN_CSS_DARK);
     preview_html->set_markdown(PREVIEW_DEFAULT_MD);
     preview_html->on_link_click = [](std::string const &url) {
         spdlog::info("Preview link clicked: {}", url);
@@ -852,11 +854,23 @@ int main(int argc, char *argv[]) {
     auto rb_html_mode = std::make_unique<toolkit::RadioButton>("HTML", *preview_mode_group);
     preview_mode_group->select(rb_md.get());
 
+    auto github_css_cb = std::make_unique<toolkit::Checkbox>("Use GitHub CSS");
+    github_css_cb->set_checked(true);
+    github_css_cb->on_toggle = [preview_html, apply_preview](bool checked) {
+        if (checked) {
+            preview_html->set_css(GITHUB_MARKDOWN_CSS_LIGHT, GITHUB_MARKDOWN_CSS_DARK);
+        } else {
+            preview_html->set_css("", "");
+        }
+        apply_preview();
+    };
+
     auto preview_bottom = std::make_unique<toolkit::HBoxLayout>();
     preview_bottom->set_margins({4, 8, 4, 8});
     preview_bottom->set_spacing(16);
     preview_bottom->add_widget(std::move(rb_md));
     preview_bottom->add_widget(std::move(rb_html_mode));
+    preview_bottom->add_widget(std::move(github_css_cb));
 
     auto tab_preview = std::make_unique<toolkit::VBoxLayout>();
     tab_preview->set_margins({0, 0, 0, 0});
