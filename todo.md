@@ -41,7 +41,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 26. [x] Clipboard (copy/paste, all platforms).
 27. [ ] Drag and drop.
 28. [ ] Font selection / custom fonts.
-29. [ ] Image loading / rendering.
+29. [ ] Image loading - using platform APIs.
 30. [ ] Animation framework (transitions, easing).
 31. [ ] Undo/redo framework.
 32. [ ] Serialization (save/restore widget state).

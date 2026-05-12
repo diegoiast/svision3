@@ -30,6 +30,7 @@
 #include "toolkit/toolbar.hpp"
 #include "toolkit/tree_view.hpp"
 #include "toolkit/window.hpp"
+#include <chrono>
 #include <fstream>
 #include <iterator>
 #include <regex>
@@ -37,6 +38,55 @@
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
+
+static constexpr auto PREVIEW_DEFAULT_HTML = R"(<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: sans-serif; margin: 16px; background: #f9f9f9; color: #222; }
+  h1 { color: #336699; border-bottom: 2px solid #336699; padding-bottom: 4px; }
+  h2 { color: #558833; }
+  p  { line-height: 1.6; }
+  a  { color: #0066cc; }
+  ul { padding-left: 24px; }
+  li { margin-bottom: 4px; }
+  code { background: #eee; padding: 1px 4px; font-family: monospace; }
+</style>
+</head>
+<body>
+  <h1>svision3 HTML Viewer</h1>
+  <p>Edit this HTML and switch to <strong>Markdown</strong> mode to try the Markdown renderer.</p>
+  <ul>
+    <li>Text decoration: <u>underline</u>, <s>strikethrough</s></li>
+    <li><strong>Bold</strong> and <em>italic</em> text</li>
+    <li><code>Monospace</code> code snippets</li>
+    <li><a href="https://github.com/litehtml/litehtml">litehtml on GitHub</a></li>
+  </ul>
+</body>
+</html>)";
+
+static constexpr auto PREVIEW_DEFAULT_MD = R"(# Hello from svision3
+
+This is a **live preview** tab. Edit the text on the left and the
+rendered output updates automatically.
+
+## Markdown features
+
+- *Italic* and **bold** text
+- ~~Strikethrough~~
+- `inline code`
+- [Links](https://github.com/litehtml/litehtml)
+
+## Code block
+
+```cpp
+int main() {
+    return 0;
+}
+```
+
+> Blockquotes work too.
+)";
 
 static toolkit::RadioGroup scheme_group;
 static toolkit::ThemeStyle current_style = toolkit::ThemeStyle::MacOS; // Placeholder, set in main
@@ -723,61 +773,98 @@ int main(int argc, char *argv[]) {
 
     tabs->add_tab("Tree", std::move(tab_tree));
 
-    // ── Tab: HTML Viewer ───────────────────────────────────────────────
-    auto tab_html = std::make_unique<toolkit::VBoxLayout>();
-    tab_html->set_margins({0, 0, 0, 0});
-    tab_html->set_spacing(0);
+    // ── Tab: Preview (Markdown / HTML live editor) ─────────────────────
+    static constexpr float PREVIEW_DELAY_SEC = 5.0f;
 
-    auto html_view_owned = std::make_unique<toolkit::HtmlView>();
-    auto *html_view_ptr = html_view_owned.get();
-    html_view_ptr->set_html(R"html(<!DOCTYPE html>
-<html>
-<head>
-<style>
-  body { font-family: sans-serif; margin: 16px; background: #f9f9f9; color: #222; }
-  h1 { color: #336699; border-bottom: 2px solid #336699; padding-bottom: 4px; }
-  h2 { color: #558833; }
-  p  { line-height: 1.6; }
-  a  { color: #0066cc; }
-  ul { padding-left: 24px; }
-  li { margin-bottom: 4px; }
-  code { background: #eee; padding: 1px 4px; font-family: monospace; }
-  .box { border: 1px solid #ccc; background: #fff; padding: 12px; margin: 8px 0; }
-</style>
-</head>
-<body>
-  <h1>svision3 HTML Viewer</h1>
-  <p>This widget renders HTML using <a href="https://github.com/litehtml/litehtml">litehtml</a>,
-     a lightweight HTML/CSS rendering engine.</p>
-
-  <h2>Features</h2>
-  <ul>
-    <li>Basic HTML tags: headings, paragraphs, lists, links</li>
-    <li>Inline CSS styles and style blocks</li>
-    <li>Text decoration: <u>underline</u>, <s>strikethrough</s></li>
-    <li><strong>Bold</strong> and <em>italic</em> text</li>
-    <li><code>Monospace</code> code snippets</li>
-  </ul>
-
-  <div class="box">
-    <h2>Sample Box</h2>
-    <p>This is a styled <code>div</code> with a border and background,
-       demonstrating CSS box model support.</p>
-  </div>
-
-  <p>Click any link above — the <code>on_link_click</code> callback fires
-     and is logged to the console.</p>
-</body>
-</html>)html");
-
-    html_view_ptr->on_link_click = [](std::string const &url) {
-        spdlog::info("HTML link clicked: {}", url);
+    auto preview_html = new toolkit::HtmlView();
+    preview_html->set_markdown(PREVIEW_DEFAULT_MD);
+    preview_html->on_link_click = [](std::string const &url) {
+        spdlog::info("Preview link clicked: {}", url);
     };
 
-    auto html_scroll = std::make_unique<toolkit::ScrollArea>();
-    html_scroll->set_content(std::move(html_view_owned));
-    tab_html->add_widget(std::move(html_scroll), 1);
-    tabs->add_tab("HTML", std::move(tab_html));
+    auto preview_scroll = std::make_unique<toolkit::ScrollArea>();
+    preview_scroll->set_content(std::unique_ptr<toolkit::HtmlView>(preview_html));
+
+    auto preview_editor = new toolkit::TextEdit();
+    preview_editor->set_text(PREVIEW_DEFAULT_MD);
+
+    auto preview_columns = std::make_unique<toolkit::HBoxLayout>();
+    preview_columns->set_margins({0, 0, 0, 0});
+    preview_columns->set_spacing(0);
+    preview_columns->add_widget(std::unique_ptr<toolkit::TextEdit>(preview_editor), 1,
+                               toolkit::Alignment::Fill);
+    preview_columns->add_widget(std::move(preview_scroll), 1, toolkit::Alignment::Fill);
+
+    auto preview_progress = new toolkit::ProgressBar();
+    preview_progress->set_visible(false);
+
+    auto preview_mode_group = std::make_shared<toolkit::RadioGroup>();
+    auto preview_is_markdown = std::make_shared<bool>(true);
+    auto preview_pending = std::make_shared<bool>(false);
+    auto preview_last_edit =
+        std::make_shared<std::chrono::steady_clock::time_point>(std::chrono::steady_clock::now());
+
+    auto apply_preview = [preview_html, preview_editor, preview_is_markdown]() {
+        if (*preview_is_markdown) {
+            preview_html->set_markdown(preview_editor->text());
+        } else {
+            preview_html->set_html(preview_editor->text());
+        }
+    };
+
+    preview_editor->on_change = [preview_pending, preview_last_edit, preview_progress, window]() {
+        *preview_last_edit = std::chrono::steady_clock::now();
+        if (!*preview_pending) {
+            *preview_pending = true;
+            preview_progress->set_visible(true);
+            preview_progress->set_value(0.0f);
+            window->request_redraw("preview pending");
+        }
+    };
+
+    window->start_timer(0.25f, [preview_pending, preview_last_edit, preview_progress,
+                                 apply_preview, window]() {
+        if (!*preview_pending) {
+            return;
+        }
+        auto elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() -
+                                                    *preview_last_edit).count();
+        preview_progress->set_value(std::min(elapsed / PREVIEW_DELAY_SEC, 1.0f));
+        if (elapsed >= PREVIEW_DELAY_SEC) {
+            *preview_pending = false;
+            preview_progress->set_visible(false);
+            apply_preview();
+            window->request_redraw("preview done");
+        }
+    });
+
+    preview_mode_group->on_change = [preview_is_markdown, preview_pending, preview_progress,
+                                     preview_editor, apply_preview](int index) {
+        *preview_is_markdown = (index == 0);
+        *preview_pending = false;
+        preview_progress->set_visible(false);
+        preview_editor->set_text(*preview_is_markdown ? PREVIEW_DEFAULT_MD
+                                                      : PREVIEW_DEFAULT_HTML);
+        apply_preview();
+    };
+
+    auto rb_md = std::make_unique<toolkit::RadioButton>("Markdown", *preview_mode_group);
+    auto rb_html_mode = std::make_unique<toolkit::RadioButton>("HTML", *preview_mode_group);
+    preview_mode_group->select(rb_md.get());
+
+    auto preview_bottom = std::make_unique<toolkit::HBoxLayout>();
+    preview_bottom->set_margins({4, 8, 4, 8});
+    preview_bottom->set_spacing(16);
+    preview_bottom->add_widget(std::move(rb_md));
+    preview_bottom->add_widget(std::move(rb_html_mode));
+
+    auto tab_preview = std::make_unique<toolkit::VBoxLayout>();
+    tab_preview->set_margins({0, 0, 0, 0});
+    tab_preview->set_spacing(0);
+    tab_preview->add_widget(std::move(preview_columns), 1);
+    tab_preview->add_widget(std::unique_ptr<toolkit::ProgressBar>(preview_progress));
+    tab_preview->add_widget(std::move(preview_bottom));
+    tabs->add_tab("Preview", std::move(tab_preview));
 
     // ── Tab: Tabs (Orientations) ────────────────────────────────────────
     auto tab6 = std::make_unique<toolkit::VBoxLayout>();

@@ -22,6 +22,7 @@ class HtmlView : public Widget {
     ~HtmlView() override;
 
     void set_html(std::string const &html, std::string const &base_url = "");
+    void set_markdown(std::string const &markdown);
     std::string const &html() const { return html_; }
 
     std::function<void(std::string const &)> on_link_click;

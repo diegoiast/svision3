@@ -7,11 +7,38 @@
 #include "toolkit/window.hpp"
 
 #include <litehtml/litehtml.h>
+#include <md4c-html.h>
+#include <spdlog/fmt/fmt.h>
 
 #include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <string>
+
+// clang-format off
+// CSS braces escaped as {{ }} for fmt::format.
+static constexpr auto MARKDOWN_PAGE = R"(<!DOCTYPE html>
+<html><head><style>
+body{{font-family:sans-serif;margin:16px;background:{bg};color:{fg};line-height:1.6}}
+h1{{font-size:1.6em;margin-top:0.8em;margin-bottom:0.25em;border-bottom:1px solid rgba(128,128,128,0.3);padding-bottom:0.2em}}
+h2{{font-size:1.3em;margin-top:0.8em;margin-bottom:0.25em}}
+h3{{font-size:1.1em;margin-top:0.8em;margin-bottom:0.25em}}
+a{{color:{link}}}
+code{{font-family:monospace;background:rgba(128,128,128,0.15);padding:1px 4px;border-radius:3px}}
+pre{{background:rgba(128,128,128,0.15);padding:10px;border-radius:4px;overflow-x:auto}}
+pre code{{background:none;padding:0}}
+blockquote{{border-left:3px solid rgba(128,128,128,0.4);margin:0;padding-left:12px;opacity:0.8}}
+table{{border-collapse:collapse;margin:8px 0}}
+th,td{{border:1px solid rgba(128,128,128,0.4);padding:4px 8px}}
+th{{background:rgba(128,128,128,0.1)}}
+ul,ol{{padding-left:24px}}li{{margin-bottom:2px}}
+</style></head><body>{body}</body></html>)";
+// clang-format on
+
+static std::string css_color(toolkit::Color c) {
+    return fmt::format("rgba({},{},{},{:.2f})", static_cast<int>(c.r * 255),
+                       static_cast<int>(c.g * 255), static_cast<int>(c.b * 255), c.a);
+}
 
 namespace toolkit {
 
@@ -342,6 +369,21 @@ void HtmlView::set_html(std::string const &html, std::string const &base_url) {
     document_ = litehtml::document::createFromString(html_.c_str(), container_.get());
     relayout();
     invalidate_layout();
+}
+
+void HtmlView::set_markdown(std::string const &markdown) {
+    std::string body;
+    auto append = [](const MD_CHAR *text, MD_SIZE size, void *userdata) {
+        static_cast<std::string *>(userdata)->append(text, size);
+    };
+    md_html(markdown.c_str(), static_cast<MD_SIZE>(markdown.size()), append, &body,
+            MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_TABLES, 0);
+
+    auto const &pal = Theme::current().palette;
+    set_html(fmt::format(MARKDOWN_PAGE, fmt::arg("bg", css_color(pal.window)),
+                         fmt::arg("fg", css_color(pal.text)),
+                         fmt::arg("link", css_color(Color::rgb(0.0f, 0.4f, 0.8f))),
+                         fmt::arg("body", body)));
 }
 
 void HtmlView::relayout() {
