@@ -16,6 +16,7 @@
 #include "toolkit/tab_widget.hpp"
 
 #include <toolkit/html_view.hpp>
+#include <toolkit/rich_label.hpp>
 #include <toolkit/splitter.hpp>
 #include <toolkit/icon_grid.hpp>
 #include <toolkit/list_view.hpp>
@@ -558,6 +559,20 @@ inline Element<toolkit::HtmlView> html_view(std::string_view html = "") {
         v->set_html(std::string(html));
     }
     return Element<toolkit::HtmlView>(std::move(v));
+}
+
+inline Element<toolkit::RichLabel> rich_label(std::string_view text = "") {
+    auto v = std::make_unique<toolkit::RichLabel>();
+    if (!text.empty()) {
+        v->set_text(std::string(text));
+    }
+    return Element<toolkit::RichLabel>(std::move(v));
+}
+
+inline Element<toolkit::RichLabel> rich_label_md(std::string_view markdown) {
+    auto v = std::make_unique<toolkit::RichLabel>();
+    v->set_markdown(std::string(markdown));
+    return Element<toolkit::RichLabel>(std::move(v));
 }
 
 template <typename W>

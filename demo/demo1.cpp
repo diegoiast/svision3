@@ -20,6 +20,7 @@
 #include "toolkit/message_box.hpp"
 #include "toolkit/progress_bar.hpp"
 #include "toolkit/radio_button.hpp"
+#include "toolkit/rich_label.hpp"
 #include "toolkit/scroll_area.hpp"
 #include "toolkit/slider.hpp"
 #include "toolkit/spin_box.hpp"
@@ -263,12 +264,16 @@ int main(int argc, char *argv[]) {
     tab_main->set_margins({20, 20, 20, 20});
     tab_main->set_spacing(12);
 
-    auto label = std::make_unique<toolkit::Label>(
+    auto plain_label = std::make_unique<toolkit::Label>(
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
         "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.");
-    label->set_shrinkable(true);
-    label->set_tooltip(label->text());
-    tab_main->add_widget(std::move(label));
+    tab_main->add_widget(std::move(plain_label));
+
+    auto rich_label = std::make_unique<toolkit::RichLabel>(
+        "**Lorem** _ipsum_ dolor sit amet, [consectetur](https://example.com) adipiscing elit, "
+        "sed do eiusmod `tempor incididunt ut labore` et dolore magna ***aliqua***.");
+    rich_label->set_tooltip(rich_label->text());
+    tab_main->add_widget(std::move(rich_label));
 
     auto cb1 = std::make_unique<toolkit::Checkbox>("Enable notifications");
     cb1->set_checked(true);

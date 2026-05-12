@@ -245,8 +245,8 @@ void GLPainter::draw_circle(Point center, float radius, Color const &c, float lw
 }
 
 void GLPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
-                          FontFamily font, TextOrientation orientation) {
-    auto rt = rasterizer_->rasterize(text, font_size, scale_, font);
+                          FontFamily font, TextOrientation orientation, bool bold, bool italic) {
+    auto rt = rasterizer_->rasterize(text, font_size, scale_, font, bold, italic);
     if (rt.width <= 0 || rt.height <= 0) {
         return;
     }
@@ -274,7 +274,7 @@ void GLPainter::draw_text(std::string_view text, Point pos, Color const &c, floa
         glRotatef(90.0f, 0, 0, 1);
     }
 
-    float top_y = -rt.ascent;
+    float top_y = -std::round(rt.ascent);
     float left_x = 0;
     float qw = static_cast<float>(rt.width) / scale_;
     float qh = static_cast<float>(rt.height) / scale_;

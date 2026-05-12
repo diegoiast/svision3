@@ -58,20 +58,23 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 42. [ ] Resource / asset management.
 43. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
 44. [ ] Set window icon.
+45. [ ] Rounded frame clip. When drawing a frame, cliping with a radius would be
+        nice. However, I am unsure how to clean the clipping at the end of function call.
 
 ## Platform – Not Yet Implemented
 
 1. [x] File dialogs (open/save) - implemented via NFD internally
-1. [x] Non-native file dialogs (open/save) - re-implement them in this toolkit.
-1. [x] Message boxes / alerts.
-1. [x] Multi-window.
-1. [ ] IME / input method support.
-1. [ ] RTL / bidirectional text.
-1. [ ] Accessibility (screen readers).
-1. [ ] System tray / notifications.
-1. [ ] Native file drag-and-drop.
-1. [ ] Wayland clipboard (cross-client).
-1. [x] Wayland tooltips (xdg_popup)
+2. [x] Non-native file dialogs (open/save) - re-implement them in this toolkit.
+3. [x] Message boxes / alerts.
+4. [x] Multi-window.
+5. [ ] IME / input method support.
+6. [ ] RTL / bidirectional text.
+7. [ ] Accessibility (screen readers).
+8. [ ] System tray / notifications.
+9. [ ] Native file drag-and-drop.
+10. [ ] Wayland clipboard (cross-client).
+11. [x] Wayland tooltips (xdg_popup)
+12. [ ] Date picker API dialog
 
 ## Widgets [20/37]
 
@@ -104,7 +107,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 27. [x] Dialog (modal/modeles).
 28. [ ] StatusBar.
 29. [ ] GroupBox / Frame.
-30. [ ] Splitter.
+30. [x] Splitter.
 31. [ ] Image widget.
 32. [ ] Markdown tooltip.
 33. [ ] Undo/redo system (text area + LineInput).
@@ -320,6 +323,11 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 1. [ ] Editable / searchable mode
 1. [ ] Grouped items / separators
+
+## HTML View
+
+1. [ ] Dark mode is broken - text is still black.
+2. [ ] Fonts are too dark on X11/OpenGL.
 
 ## Testing [0/3]
 

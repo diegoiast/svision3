@@ -137,11 +137,13 @@ static std::string cairo_font_face(FontFamily f) {
 }
 
 void CairoPainter::draw_text(std::string_view text, Point position, Color const &color,
-                             float font_size, FontFamily font, TextOrientation orientation) {
+                             float font_size, FontFamily font, TextOrientation orientation,
+                             bool bold, bool italic) {
     cairo_new_path(cr_);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
-    cairo_select_font_face(cr_, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_select_font_face(cr_, cairo_font_face(font).c_str(),
+                           italic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL,
+                           bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr_, std::round(font_size));
 
     cairo_save(cr_);
@@ -246,15 +248,26 @@ bool cairo_save_to_png(Window *window, std::string const &path) {
 }
 
 RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_size, float scale,
-                                              FontFamily font) {
+                                              FontFamily font, bool bold, bool italic) {
     if (text.empty()) {
         return {};
     }
 
+    auto slant = italic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL;
+    auto weight = bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL;
+
+    auto apply_font_options = [](cairo_t *cr) {
+        cairo_font_options_t *fo = cairo_font_options_create();
+        cairo_font_options_set_antialias(fo, CAIRO_ANTIALIAS_GRAY);
+        cairo_font_options_set_hint_style(fo, CAIRO_HINT_STYLE_SLIGHT);
+        cairo_set_font_options(cr, fo);
+        cairo_font_options_destroy(fo);
+    };
+
     cairo_surface_t *temp_surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *temp_cr = cairo_create(temp_surf);
-    cairo_select_font_face(temp_cr, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_NORMAL);
+    apply_font_options(temp_cr);
+    cairo_select_font_face(temp_cr, cairo_font_face(font).c_str(), slant, weight);
     cairo_set_font_size(temp_cr, std::floor(font_size));
 
     cairo_text_extents_t te;
@@ -276,11 +289,11 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
 
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
     cairo_t *cr = cairo_create(surf);
+    apply_font_options(cr);
     cairo_scale(cr, scale, scale);
 
     cairo_set_source_rgba(cr, 1, 1, 1, 1);
-    cairo_select_font_face(cr, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
-                           CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_select_font_face(cr, cairo_font_face(font).c_str(), slant, weight);
     cairo_set_font_size(cr, std::floor(font_size));
 
     cairo_move_to(cr, 0, fe.ascent);

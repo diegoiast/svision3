@@ -33,7 +33,8 @@ class GLPainter : public Painter {
     void draw_circle(Point center, float radius, Color const &color, float line_width) override;
     void draw_text(std::string_view text, Point position, Color const &color, float font_size,
                    FontFamily font = FontFamily::System,
-                   TextOrientation orientation = TextOrientation::Horizontal) override;
+                   TextOrientation orientation = TextOrientation::Horizontal,
+                   bool bold = false, bool italic = false) override;
     void draw_image(ImageData const &image, Point position) override;
     void draw_image_scaled(ImageData const &image, Rect const &dest) override;
 
