@@ -328,8 +328,8 @@ int main(int argc, char *argv[]) {
 
     auto preview_is_markdown = std::make_shared<bool>(true);
     auto preview_pending = std::make_shared<bool>(false);
-    auto preview_last_edit = std::make_shared<std::chrono::steady_clock::time_point>(
-        std::chrono::steady_clock::now());
+    auto preview_last_edit =
+        std::make_shared<std::chrono::steady_clock::time_point>(std::chrono::steady_clock::now());
 
     auto apply_preview = [preview_html_ptr, preview_editor_ptr, preview_is_markdown]() {
         if (*preview_is_markdown) {
@@ -350,26 +350,26 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    window->start_timer(0.25f, [preview_pending, preview_last_edit, preview_progress_ptr,
-                                 apply_preview, window]() {
-        if (!*preview_pending) {
-            return;
-        }
-        auto elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() -
-                                                    *preview_last_edit)
-                           .count();
-        preview_progress_ptr->set_value(std::min(elapsed / PREVIEW_DELAY_SEC, 1.0f));
-        if (elapsed >= PREVIEW_DELAY_SEC) {
-            *preview_pending = false;
-            preview_progress_ptr->set_visible(false);
-            apply_preview();
-            window->request_redraw("preview done");
-        }
-    });
+    window->start_timer(
+        0.25f, [preview_pending, preview_last_edit, preview_progress_ptr, apply_preview, window]() {
+            if (!*preview_pending) {
+                return;
+            }
+            auto elapsed =
+                std::chrono::duration<float>(std::chrono::steady_clock::now() - *preview_last_edit)
+                    .count();
+            preview_progress_ptr->set_value(std::min(elapsed / PREVIEW_DELAY_SEC, 1.0f));
+            if (elapsed >= PREVIEW_DELAY_SEC) {
+                *preview_pending = false;
+                preview_progress_ptr->set_visible(false);
+                apply_preview();
+                window->request_redraw("preview done");
+            }
+        });
 
-    auto preview_mode_group = ui::radio_group().on_change(
-        [preview_is_markdown, preview_pending, preview_progress_ptr, preview_editor_ptr,
-         apply_preview](int index) {
+    auto preview_mode_group =
+        ui::radio_group().on_change([preview_is_markdown, preview_pending, preview_progress_ptr,
+                                     preview_editor_ptr, apply_preview](int index) {
             *preview_is_markdown = (index == 0);
             *preview_pending = false;
             preview_progress_ptr->set_visible(false);
@@ -395,23 +395,19 @@ int main(int argc, char *argv[]) {
                 apply_preview();
             });
 
-    auto preview_tab =
-        ui::vbox()
-            .margins(ui::no_margins())
-            .spacing(ui::no_spacing)
-            .add(ui::hbox()
-                     .margins(ui::no_margins())
-                     .spacing(ui::no_spacing)
-                     .add(std::move(preview_editor_elem), ui::expand)
-                     .add(ui::scroll_area(std::move(preview_html_elem)), ui::expand),
-                 ui::expand)
-            .add(std::move(preview_progress_elem))
-            .add(ui::hbox()
-                     .margins({4, 8, 4, 8})
-                     .spacing(16)
-                     .add(std::move(preview_md_btn))
-                     .add(std::move(preview_html_mode_btn))
-                     .add(std::move(github_css_cb)));
+    auto preview_tab = ui::vbox()
+                           .margins(ui::no_margins())
+                           .spacing(ui::no_spacing)
+                           .add(ui::hsplit(std::move(preview_editor_elem),
+                                           ui::scroll_area(std::move(preview_html_elem))),
+                                ui::expand)
+                           .add(std::move(preview_progress_elem))
+                           .add(ui::hbox()
+                                    .margins({4, 8, 4, 8})
+                                    .spacing(16)
+                                    .add(std::move(preview_md_btn))
+                                    .add(std::move(preview_html_mode_btn))
+                                    .add(std::move(github_css_cb)));
 
     auto rootWidget =
         ui::tab_widget()
@@ -441,9 +437,10 @@ int main(int argc, char *argv[]) {
                             .add(
                                 ui::button("Auto repeat").auto_repeat(true).on_click(repeat_action))
                             .add(ui::button("Open").icon(open_icon).on_click(open_action))
-                            .add(ui::button("Toggle me").checkable(true).on_toggle([](bool checked) {
-                                spdlog::info("Button toggled (declarative): {}", checked);
-                            }))
+                            .add(
+                                ui::button("Toggle me").checkable(true).on_toggle([](bool checked) {
+                                    spdlog::info("Button toggled (declarative): {}", checked);
+                                }))
                             .add(repeat_label);
                     }())
                     .add(ui::label(platformText)))

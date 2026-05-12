@@ -482,6 +482,7 @@ void MacOSOpenGLPlatformWindow::set_cursor(CursorShape shape) {
     case CursorShape::Hand:       nc = [NSCursor pointingHandCursor]; break;
     case CursorShape::NotAllowed: nc = [NSCursor operationNotAllowedCursor]; break;
     case CursorShape::ResizeEW:   nc = [NSCursor resizeLeftRightCursor]; break;
+    case CursorShape::ResizeNS:   nc = [NSCursor resizeUpDownCursor]; break;
     default:                      nc = [NSCursor arrowCursor]; break;
     }
     [nc set];

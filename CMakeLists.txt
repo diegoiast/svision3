@@ -82,6 +82,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/painters/gl_offscreen.cpp
     src/toolkit/html_view.cpp
     src/toolkit/scroll_area.cpp
+    src/toolkit/splitter.cpp
 )
 
 if(TOOLKIT_WITH_CAIRO)

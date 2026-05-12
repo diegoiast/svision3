@@ -675,6 +675,8 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
     ibeam_cursor = LoadCursorW(nullptr, IDC_IBEAM);
     hand_cursor = LoadCursorW(nullptr, IDC_HAND);
     not_allowed_cursor = LoadCursorW(nullptr, IDC_NO);
+    resize_ew_cursor = LoadCursorW(nullptr, IDC_SIZEWE);
+    resize_ns_cursor = LoadCursorW(nullptr, IDC_SIZENS);
     std::wstring wtitle = utf8_to_wide(title);
     float scale = static_cast<float>(get_system_dpi()) / 96.0f;
 
@@ -855,6 +857,12 @@ void Win32PlatformWindow::set_cursor(CursorShape shape) {
         break;
     case CursorShape::NotAllowed:
         hc = not_allowed_cursor;
+        break;
+    case CursorShape::ResizeEW:
+        hc = resize_ew_cursor;
+        break;
+    case CursorShape::ResizeNS:
+        hc = resize_ns_cursor;
         break;
     default:
         hc = arrow_cursor;
