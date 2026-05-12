@@ -8,6 +8,7 @@
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"
+#include <cmath>
 #include <memory>
 #include <optional>
 #include <span>
@@ -163,6 +164,9 @@ struct Palette {
 
     // Set the accent color of the palette
     void set_accent(Color color) { accent = color; }
+
+    // Inset in pixels from the widget edge to the inner content area, accounting for border style
+    float frame_inset() const { return beveled ? 1.0f : std::ceil(border_width); }
 };
 
 enum class ColorScheme { Light, Dark };

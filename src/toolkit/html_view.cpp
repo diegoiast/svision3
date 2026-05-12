@@ -419,7 +419,9 @@ void HtmlView::relayout() {
     if (!document_) {
         return;
     }
-    auto w = rect_.width > 0 ? static_cast<int>(rect_.width) : 800;
+    auto bw = Theme::current().palette.frame_inset();
+    auto inner_w = rect_.width > 2 * bw ? rect_.width - 2 * bw : rect_.width;
+    auto w = inner_w > 0 ? static_cast<int>(inner_w) : 800;
     document_->render(w);
 }
 
@@ -432,11 +434,22 @@ void HtmlView::set_rect(Rect const &r) {
 }
 
 void HtmlView::paint(Painter &painter) {
+    auto const &pal = Theme::current().palette;
+    auto local = Rect{0, 0, rect_.width, rect_.height};
+    painter.draw_filled_frame(local, pal.base, pal.border, pal, true);
+
     container_->current_painter_ = &painter;
     if (document_) {
-        litehtml::position clip{0, 0, static_cast<int>(rect_.width),
-                                static_cast<int>(rect_.height)};
+        auto bw = pal.frame_inset();
+        auto inner_w = rect_.width - 2 * bw;
+        auto inner_h = rect_.height - 2 * bw;
+        auto inner_radius = std::max(0.0f, pal.corner_radius - bw);
+        painter.push_clip({bw, bw, inner_w, inner_h}, inner_radius);
+        painter.push_translation({bw, bw});
+        litehtml::position clip{0, 0, static_cast<int>(inner_w), static_cast<int>(inner_h)};
         document_->draw(reinterpret_cast<litehtml::uint_ptr>(&painter), 0, 0, &clip);
+        painter.pop_translation();
+        painter.pop_clip();
     }
     container_->current_painter_ = nullptr;
 }
@@ -478,7 +491,9 @@ bool HtmlView::handle_mouse(MouseEvent const &event) {
 
 Size HtmlView::size_hint() const {
     if (document_) {
-        return {static_cast<float>(document_->width()), static_cast<float>(document_->height())};
+        auto bw = Theme::current().palette.frame_inset();
+        return {static_cast<float>(document_->width()) + 2 * bw,
+                static_cast<float>(document_->height()) + 2 * bw};
     }
     return {0, 0};
 }

@@ -20,6 +20,7 @@ class CairoPainter : public Painter {
     explicit CairoPainter(cairo_t *cr, TextRasterizer *rasterizer = nullptr);
 
     void push_clip(Rect const &rect) override;
+    void push_clip(Rect const &rect, float radius) override;
     void pop_clip() override;
 
     void push_translation(Point p) override;

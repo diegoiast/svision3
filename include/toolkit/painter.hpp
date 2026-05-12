@@ -33,6 +33,7 @@ class Painter {
     };
 
     virtual void push_clip(Rect const &rect) = 0;
+    virtual void push_clip(Rect const &rect, float radius) { push_clip(rect); }
     virtual void pop_clip() = 0;
 
     virtual void push_translation(Point p) = 0;
