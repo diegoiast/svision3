@@ -992,6 +992,23 @@ void TabWidget::collect_mnemonics(std::vector<Widget *> &out) {
     }
 }
 
+void TabWidget::on_theme_changed() {
+    Widget::on_theme_changed();
+    // for_each_child only visits the visible tab, so we must notify all tab
+    // contents explicitly here — otherwise a hidden tab's widgets (e.g. an
+    // HtmlView inside a ScrollArea) never see the theme change and keep
+    // rendering with the old colours until the user switches to that tab.
+    auto recurse = [](Widget *w, auto &self) -> void {
+        w->on_theme_changed();
+        w->for_each_child([&self](Widget *child) { self(child, self); });
+    };
+    for (auto &tab : tabs_) {
+        if (tab.content) {
+            recurse(tab.content.get(), recurse);
+        }
+    }
+}
+
 void TabWidget::for_each_child(std::function<void(Widget *)> const &callback) {
     if (leading_widget_) {
         callback(leading_widget_.get());

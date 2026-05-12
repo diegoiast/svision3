@@ -13,7 +13,7 @@ TEST_CASE("Theme::style_name returns correct names", "[theme]") {
     REQUIRE(std::string(Theme::style_name(ThemeStyle::GNOME)) == "GNOME");
 }
 
-TEST_CASE("theme_style_count matches enum", "[theme]") { REQUIRE(theme_style_count == 6); }
+TEST_CASE("theme_style_count matches enum", "[theme]") { REQUIRE(theme_style_count == 7); }
 
 TEST_CASE("ThemeFactory::crete produces named theme", "[theme]") {
     auto t = ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light);
