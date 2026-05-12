@@ -73,6 +73,18 @@ static void rounded_rect_path(cairo_t *cr, Rect const &r, float radius) {
     cairo_close_path(cr);
 }
 
+void CairoPainter::push_clip(Rect const &rect, float radius) {
+    if (radius <= 0) {
+        push_clip(rect);
+        return;
+    }
+    cairo_save(cr_);
+    if (rect.width > 0 && rect.height > 0) {
+        rounded_rect_path(cr_, rect, radius);
+        cairo_clip(cr_);
+    }
+}
+
 void CairoPainter::fill_rounded_rect(Rect const &rect, Color const &color, float radius) {
     rounded_rect_path(cr_, rect, radius);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);

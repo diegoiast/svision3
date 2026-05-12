@@ -265,6 +265,28 @@ void GDIPainter::push_clip(Rect const &r) {
     impl_->graphics->SetClip(Gdiplus::RectF(x, y, w, h), Gdiplus::CombineModeIntersect);
 }
 
+void GDIPainter::push_clip(Rect const &r, float radius) {
+    if (radius <= 0) {
+        push_clip(r);
+        return;
+    }
+    float s = impl_->scale;
+    float x = std::floor(r.x * s) / s;
+    float y = std::floor(r.y * s) / s;
+    float w = std::ceil((r.x + r.width) * s) / s - x;
+    float h = std::ceil((r.y + r.height) * s) / s - y;
+    float d = radius * 2;
+
+    Gdiplus::GraphicsPath path;
+    path.AddArc(x, y, d, d, 180, 90);
+    path.AddArc(x + w - d, y, d, d, 270, 90);
+    path.AddArc(x + w - d, y + h - d, d, d, 0, 90);
+    path.AddArc(x, y + h - d, d, d, 90, 90);
+    path.CloseFigure();
+    impl_->state_stack.push_back(impl_->graphics->Save());
+    impl_->graphics->SetClip(&path, Gdiplus::CombineModeIntersect);
+}
+
 void GDIPainter::pop_clip() {
     if (!impl_->state_stack.empty()) {
         impl_->graphics->Restore(impl_->state_stack.back());
