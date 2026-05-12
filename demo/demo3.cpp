@@ -9,6 +9,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/xdg_icons.hpp"
+#include <chrono>
 #include <fmt/format.h>
 #include <fstream>
 #include <regex>
@@ -17,7 +18,7 @@
 auto LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
                    "incididunt ut labore et dolore magna aliqua.";
 
-auto HTML_CONTENT = R"html(<!DOCTYPE html>
+static constexpr auto PREVIEW_DEFAULT_HTML = R"(<!DOCTYPE html>
 <html>
 <head>
 <style>
@@ -29,29 +30,42 @@ auto HTML_CONTENT = R"html(<!DOCTYPE html>
   ul { padding-left: 24px; }
   li { margin-bottom: 4px; }
   code { background: #eee; padding: 1px 4px; font-family: monospace; }
-  .box { border: 1px solid #ccc; background: #fff; padding: 12px; margin: 8px 0; }
 </style>
 </head>
 <body>
   <h1>svision3 HTML Viewer</h1>
-  <p>This widget renders HTML using <a href="https://github.com/litehtml/litehtml">litehtml</a>,
-     a lightweight HTML/CSS rendering engine.</p>
-  <h2>Features</h2>
+  <p>Edit this HTML and switch to <strong>Markdown</strong> mode to try the Markdown renderer.</p>
   <ul>
-    <li>Basic HTML tags: headings, paragraphs, lists, links</li>
-    <li>Inline CSS styles and style blocks</li>
     <li>Text decoration: <u>underline</u>, <s>strikethrough</s></li>
     <li><strong>Bold</strong> and <em>italic</em> text</li>
     <li><code>Monospace</code> code snippets</li>
+    <li><a href="https://github.com/litehtml/litehtml">litehtml on GitHub</a></li>
   </ul>
-  <div class="box">
-    <h2>Sample Box</h2>
-    <p>This is a styled <code>div</code> with a border and background,
-       demonstrating CSS box model support.</p>
-  </div>
-  <p>Click any link — the <code>on_link_click</code> callback fires and is logged to the console.</p>
 </body>
-</html>)html";
+</html>)";
+
+static constexpr auto PREVIEW_DEFAULT_MD = R"(# Hello from svision3
+
+This is a **live preview** tab. Edit the text on the left and the
+rendered output updates automatically.
+
+## Markdown features
+
+- *Italic* and **bold** text
+- ~~Strikethrough~~
+- `inline code`
+- [Links](https://github.com/litehtml/litehtml)
+
+## Code block
+
+```cpp
+int main() {
+    return 0;
+}
+```
+
+> Blockquotes work too.
+)";
 
 auto EDITOR_DEFAULT_TEXT = R"(#include <stdio.h>
 
@@ -293,6 +307,97 @@ int main(int argc, char *argv[]) {
             .background_color(toolkit::Color::rgb(1.0f, 0.8f, 0.8f));
     };
 
+    // ── Preview tab setup ─────────────────────────────────────────────
+    static constexpr float PREVIEW_DELAY_SEC = 5.0f;
+
+    auto preview_html_elem = ui::html_view();
+    auto *preview_html_ptr = preview_html_elem.get();
+    preview_html_ptr->set_markdown(PREVIEW_DEFAULT_MD);
+    preview_html_ptr->on_link_click = [](std::string const &url) {
+        spdlog::info("Preview link: {}", url);
+    };
+
+    auto preview_editor_elem = ui::text_edit(PREVIEW_DEFAULT_MD);
+    auto *preview_editor_ptr = preview_editor_elem.get();
+
+    auto preview_progress_elem = ui::progress_bar();
+    auto *preview_progress_ptr = preview_progress_elem.get();
+    preview_progress_ptr->set_visible(false);
+
+    auto preview_is_markdown = std::make_shared<bool>(true);
+    auto preview_pending = std::make_shared<bool>(false);
+    auto preview_last_edit = std::make_shared<std::chrono::steady_clock::time_point>(
+        std::chrono::steady_clock::now());
+
+    auto apply_preview = [preview_html_ptr, preview_editor_ptr, preview_is_markdown]() {
+        if (*preview_is_markdown) {
+            preview_html_ptr->set_markdown(preview_editor_ptr->text());
+        } else {
+            preview_html_ptr->set_html(preview_editor_ptr->text());
+        }
+    };
+
+    preview_editor_ptr->on_change = [preview_pending, preview_last_edit, preview_progress_ptr,
+                                     window]() {
+        *preview_last_edit = std::chrono::steady_clock::now();
+        if (!*preview_pending) {
+            *preview_pending = true;
+            preview_progress_ptr->set_visible(true);
+            preview_progress_ptr->set_value(0.0f);
+            window->request_redraw("preview pending");
+        }
+    };
+
+    window->start_timer(0.25f, [preview_pending, preview_last_edit, preview_progress_ptr,
+                                 apply_preview, window]() {
+        if (!*preview_pending) {
+            return;
+        }
+        auto elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() -
+                                                    *preview_last_edit)
+                           .count();
+        preview_progress_ptr->set_value(std::min(elapsed / PREVIEW_DELAY_SEC, 1.0f));
+        if (elapsed >= PREVIEW_DELAY_SEC) {
+            *preview_pending = false;
+            preview_progress_ptr->set_visible(false);
+            apply_preview();
+            window->request_redraw("preview done");
+        }
+    });
+
+    auto preview_mode_group = ui::radio_group().on_change(
+        [preview_is_markdown, preview_pending, preview_progress_ptr, preview_editor_ptr,
+         apply_preview](int index) {
+            *preview_is_markdown = (index == 0);
+            *preview_pending = false;
+            preview_progress_ptr->set_visible(false);
+            preview_editor_ptr->set_text(*preview_is_markdown ? PREVIEW_DEFAULT_MD
+                                                              : PREVIEW_DEFAULT_HTML);
+            apply_preview();
+        });
+
+    auto preview_md_btn = ui::radio_button("Markdown", preview_mode_group);
+    auto *preview_md_btn_ptr = preview_md_btn.get();
+    auto preview_html_mode_btn = ui::radio_button("HTML", preview_mode_group);
+    preview_mode_group.group->select(preview_md_btn_ptr);
+
+    auto preview_tab =
+        ui::vbox()
+            .margins(ui::no_margins())
+            .spacing(ui::no_spacing)
+            .add(ui::hbox()
+                     .margins(ui::no_margins())
+                     .spacing(ui::no_spacing)
+                     .add(std::move(preview_editor_elem), ui::expand)
+                     .add(ui::scroll_area(std::move(preview_html_elem)), ui::expand),
+                 ui::expand)
+            .add(std::move(preview_progress_elem))
+            .add(ui::hbox()
+                     .margins({4, 8, 4, 8})
+                     .spacing(16)
+                     .add(std::move(preview_md_btn))
+                     .add(std::move(preview_html_mode_btn)));
+
     auto rootWidget =
         ui::tab_widget()
             .add_tab(
@@ -449,10 +554,7 @@ int main(int argc, char *argv[]) {
                     .add(editor, ui::expand))
             .add_tab("Tree", ui::vbox().add(ui::tree_view(tree_model).alternate_row_colors(true),
                                             ui::expand))
-            .add_tab("HTML",
-                     ui::scroll_area(ui::html_view(HTML_CONTENT).on_link_click([](auto const &url) {
-                         spdlog::info("Link: {}", url);
-                     })))
+            .add_tab("Preview", std::move(preview_tab))
             .add_tab(
                 "Tabs",
                 ui::vbox()

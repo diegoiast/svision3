@@ -16,6 +16,7 @@ else()
 endif()
 
 find_package(litehtml REQUIRED)
+find_package(md4c REQUIRED)
 
 if(TOOLKIT_WITH_CAIRO)
     find_package(cairo QUIET)
@@ -252,7 +253,7 @@ endif()
 add_library(toolkit STATIC ${TOOLKIT_SOURCES})
 target_include_directories(toolkit PUBLIC include PRIVATE src)
 target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
-target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus stb::stb litehtml)
+target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus stb::stb litehtml md4c::md4c-html)
 
 if(TOOLKIT_WITH_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)
