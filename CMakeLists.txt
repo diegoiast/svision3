@@ -15,6 +15,8 @@ else()
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" OFF)
 endif()
 
+find_package(litehtml REQUIRED)
+
 if(TOOLKIT_WITH_CAIRO)
     find_package(cairo QUIET)
     if(NOT cairo_FOUND)
@@ -77,6 +79,8 @@ set(TOOLKIT_SOURCES
     src/toolkit/platform/dummy_platform.cpp
     src/toolkit/painters/gl_painter.cpp
     src/toolkit/painters/gl_offscreen.cpp
+    src/toolkit/html_view.cpp
+    src/toolkit/scroll_area.cpp
 )
 
 if(TOOLKIT_WITH_CAIRO)
@@ -248,7 +252,7 @@ endif()
 add_library(toolkit STATIC ${TOOLKIT_SOURCES})
 target_include_directories(toolkit PUBLIC include PRIVATE src)
 target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
-target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus stb::stb)
+target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus stb::stb litehtml)
 
 if(TOOLKIT_WITH_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)

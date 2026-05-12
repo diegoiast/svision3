@@ -91,7 +91,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 14. [ ] SpinBox: auto repeat (use regular buttons?)
 15. [x] Tooltip.
 16. [x] Slider (horizontal, vertical, range).
-17. [ ] ScrollBar / ScrollArea.
+17. [x] ScrollArea.
 18. [ ] ScrollBar: API for theme/app to tell widgets "have an inline scrollbar" or external.
 19. [x] TextArea (multi-line input).
 20. [x] TreeView.
