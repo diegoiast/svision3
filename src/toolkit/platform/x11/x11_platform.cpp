@@ -88,6 +88,7 @@ struct X11PlatformWindow::Impl {
     ::Window tooltip_xwindow = 0L;
     Cursor arrow_cursor = 0L, ibeam_cursor = 0L;
     Cursor hand_cursor = 0L, not_allowed_cursor = 0L;
+    Cursor resize_ew_cursor = 0L, resize_ns_cursor = 0L;
     std::unique_ptr<RenderingBackend> backend;
 
     bool needs_redraw = false;
@@ -849,6 +850,8 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     w->ibeam_cursor = XCreateFontCursor(d->display, XC_xterm);
     w->hand_cursor = XCreateFontCursor(d->display, XC_hand2);
     w->not_allowed_cursor = XCreateFontCursor(d->display, XC_X_cursor);
+    w->resize_ew_cursor = XCreateFontCursor(d->display, XC_sb_h_double_arrow);
+    w->resize_ns_cursor = XCreateFontCursor(d->display, XC_sb_v_double_arrow);
     d->window_map[w->xwindow] = {owner, xic};
 
     impl_->needs_redraw = true;
@@ -890,6 +893,14 @@ void X11PlatformWindow::cleanup_resources() {
     if (w->not_allowed_cursor) {
         XFreeCursor(d->display, w->not_allowed_cursor);
         w->not_allowed_cursor = 0L;
+    }
+    if (w->resize_ew_cursor) {
+        XFreeCursor(d->display, w->resize_ew_cursor);
+        w->resize_ew_cursor = 0L;
+    }
+    if (w->resize_ns_cursor) {
+        XFreeCursor(d->display, w->resize_ns_cursor);
+        w->resize_ns_cursor = 0L;
     }
     if (w->tooltip_xwindow != 0L) {
         XDestroyWindow(d->display, w->tooltip_xwindow);
@@ -1082,6 +1093,12 @@ void X11PlatformWindow::set_cursor(CursorShape shape) {
         break;
     case CursorShape::NotAllowed:
         c = w->not_allowed_cursor;
+        break;
+    case CursorShape::ResizeEW:
+        c = w->resize_ew_cursor;
+        break;
+    case CursorShape::ResizeNS:
+        c = w->resize_ns_cursor;
         break;
     default:
         c = w->arrow_cursor;

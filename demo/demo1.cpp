@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 // SPDX-&FileCopyrightText: l2026 Diego Iastrubni <diegoiast@gmail.com>
 
+#include "github_markdown_css.hpp"
 #include "toolkit/application.hpp"
 #include "toolkit/button.hpp"
-#include "toolkit/html_view.hpp"
-#include "toolkit/scroll_area.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
 #include "toolkit/directory_dialog.hpp"
 #include "toolkit/file_dialog.hpp"
+#include "toolkit/html_view.hpp"
 #include "toolkit/icon_grid.hpp"
 #include "toolkit/image_loader.hpp"
 #include "toolkit/label.hpp"
@@ -20,8 +20,10 @@
 #include "toolkit/message_box.hpp"
 #include "toolkit/progress_bar.hpp"
 #include "toolkit/radio_button.hpp"
+#include "toolkit/scroll_area.hpp"
 #include "toolkit/slider.hpp"
 #include "toolkit/spin_box.hpp"
+#include "toolkit/splitter.hpp"
 #include "toolkit/tab_widget.hpp"
 #include "toolkit/table_view.hpp"
 #include "toolkit/text_edit.hpp"
@@ -30,7 +32,6 @@
 #include "toolkit/toolbar.hpp"
 #include "toolkit/tree_view.hpp"
 #include "toolkit/window.hpp"
-#include "github_markdown_css.hpp"
 #include <chrono>
 #include <fstream>
 #include <iterator>
@@ -336,9 +337,7 @@ int main(int argc, char *argv[]) {
 
     auto toggle_btn = std::make_unique<toolkit::Button>("Toggle me");
     toggle_btn->set_checkable(true);
-    toggle_btn->on_toggle = [](bool checked) {
-        spdlog::info("Button toggled: {}", checked);
-    };
+    toggle_btn->on_toggle = [](bool checked) { spdlog::info("Button toggled: {}", checked); };
 
     autoclick_cmd->set_execute_func(repeat_action);
     autoclick_cmd->set_shortcut("F4");
@@ -790,12 +789,10 @@ int main(int argc, char *argv[]) {
     auto preview_editor = new toolkit::TextEdit();
     preview_editor->set_text(PREVIEW_DEFAULT_MD);
 
-    auto preview_columns = std::make_unique<toolkit::HBoxLayout>();
-    preview_columns->set_margins({0, 0, 0, 0});
-    preview_columns->set_spacing(0);
-    preview_columns->add_widget(std::unique_ptr<toolkit::TextEdit>(preview_editor), 1,
-                               toolkit::Alignment::Fill);
-    preview_columns->add_widget(std::move(preview_scroll), 1, toolkit::Alignment::Fill);
+    auto preview_columns =
+        std::make_unique<toolkit::Splitter>(toolkit::Splitter::Orientation::Horizontal);
+    preview_columns->set_first(std::unique_ptr<toolkit::TextEdit>(preview_editor));
+    preview_columns->set_second(std::move(preview_scroll));
 
     auto preview_progress = new toolkit::ProgressBar();
     preview_progress->set_visible(false);
@@ -824,29 +821,29 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    window->start_timer(0.25f, [preview_pending, preview_last_edit, preview_progress,
-                                 apply_preview, window]() {
-        if (!*preview_pending) {
-            return;
-        }
-        auto elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() -
-                                                    *preview_last_edit).count();
-        preview_progress->set_value(std::min(elapsed / PREVIEW_DELAY_SEC, 1.0f));
-        if (elapsed >= PREVIEW_DELAY_SEC) {
-            *preview_pending = false;
-            preview_progress->set_visible(false);
-            apply_preview();
-            window->request_redraw("preview done");
-        }
-    });
+    window->start_timer(
+        0.25f, [preview_pending, preview_last_edit, preview_progress, apply_preview, window]() {
+            if (!*preview_pending) {
+                return;
+            }
+            auto elapsed =
+                std::chrono::duration<float>(std::chrono::steady_clock::now() - *preview_last_edit)
+                    .count();
+            preview_progress->set_value(std::min(elapsed / PREVIEW_DELAY_SEC, 1.0f));
+            if (elapsed >= PREVIEW_DELAY_SEC) {
+                *preview_pending = false;
+                preview_progress->set_visible(false);
+                apply_preview();
+                window->request_redraw("preview done");
+            }
+        });
 
     preview_mode_group->on_change = [preview_is_markdown, preview_pending, preview_progress,
                                      preview_editor, apply_preview](int index) {
         *preview_is_markdown = (index == 0);
         *preview_pending = false;
         preview_progress->set_visible(false);
-        preview_editor->set_text(*preview_is_markdown ? PREVIEW_DEFAULT_MD
-                                                      : PREVIEW_DEFAULT_HTML);
+        preview_editor->set_text(*preview_is_markdown ? PREVIEW_DEFAULT_MD : PREVIEW_DEFAULT_HTML);
         apply_preview();
     };
 
@@ -944,7 +941,6 @@ int main(int argc, char *argv[]) {
     tab6->add_widget(std::move(south_tabs), 0);
 
     tabs->add_tab("Tabs", std::move(tab6));
-    tabs_ptr->set_current(5); // Editor tab
 
     root->add_widget(std::move(tabs), 1);
 

@@ -105,7 +105,7 @@ enum class TabOrientation { North, South, East, West };
 
 enum class CheckState { Unchecked, Checked, Partial };
 
-enum class CursorShape { Arrow, IBeam, Hand, NotAllowed, ResizeEW };
+enum class CursorShape { Arrow, IBeam, Hand, NotAllowed, ResizeEW, ResizeNS };
 
 enum class FontFamily { System, Monospace };
 

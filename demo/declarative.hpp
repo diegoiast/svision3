@@ -16,6 +16,7 @@
 #include "toolkit/tab_widget.hpp"
 
 #include <toolkit/html_view.hpp>
+#include <toolkit/splitter.hpp>
 #include <toolkit/icon_grid.hpp>
 #include <toolkit/list_view.hpp>
 #include <toolkit/menu.hpp>
@@ -564,6 +565,26 @@ inline Element<toolkit::ScrollArea> scroll_area(Element<W> content) {
     auto sa = std::make_unique<toolkit::ScrollArea>();
     sa->set_content(std::move(content.w));
     return Element<toolkit::ScrollArea>(std::move(sa));
+}
+
+template <typename A, typename B>
+inline Element<toolkit::Splitter> hsplit(Element<A> first, Element<B> second,
+                                         float ratio = 0.5f) {
+    auto sp = std::make_unique<toolkit::Splitter>(toolkit::Splitter::Orientation::Horizontal);
+    sp->set_first(std::move(first.w));
+    sp->set_second(std::move(second.w));
+    sp->set_ratio(ratio);
+    return Element<toolkit::Splitter>(std::move(sp));
+}
+
+template <typename A, typename B>
+inline Element<toolkit::Splitter> vsplit(Element<A> first, Element<B> second,
+                                         float ratio = 0.5f) {
+    auto sp = std::make_unique<toolkit::Splitter>(toolkit::Splitter::Orientation::Vertical);
+    sp->set_first(std::move(first.w));
+    sp->set_second(std::move(second.w));
+    sp->set_ratio(ratio);
+    return Element<toolkit::Splitter>(std::move(sp));
 }
 
 inline Element<toolkit::VBoxLayout> vbox() {

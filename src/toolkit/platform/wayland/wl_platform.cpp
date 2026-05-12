@@ -227,6 +227,10 @@ static const char *cursor_name_for(CursorShape shape) {
         return "pointer";
     case CursorShape::NotAllowed:
         return "not-allowed";
+    case CursorShape::ResizeEW:
+        return "ew-resize";
+    case CursorShape::ResizeNS:
+        return "ns-resize";
     default:
         return "left_ptr";
     }
@@ -242,6 +246,8 @@ static wp_cursor_shape_device_v1_shape cursor_shape_for(CursorShape shape) {
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NOT_ALLOWED;
     case CursorShape::ResizeEW:
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE;
+    case CursorShape::ResizeNS:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NS_RESIZE;
     case CursorShape::Arrow:
     default:
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
