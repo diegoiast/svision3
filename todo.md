@@ -326,8 +326,12 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ## HTML View
 
-1. [ ] Dark mode is broken - text is still black.
-2. [ ] Fonts are too dark on X11/OpenGL.
+1. [x] Monospaced fonts are not used in code block.
+2. [ ] Monospaced blocks spacing is not ideal.
+3. [ ] Dark mode is broken - text is still black.
+4. [ ] Fonts are too dark on X11/OpenGL.
+5. [ ] Tooltips do not use the rich view, only plain text.
+6. [ ] Rich tooltips do not elide.
 
 ## Testing [0/3]
 

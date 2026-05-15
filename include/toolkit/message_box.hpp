@@ -35,6 +35,7 @@ class MessageBox {
 
     MessageBox &title(std::string_view t);
     MessageBox &message(std::string_view m);
+    MessageBox &markdown(bool enabled = true);
     MessageBox &icon(MessageBoxIcon i);
     MessageBox &buttons(MessageBoxButtons b);
 
@@ -64,6 +65,7 @@ class MessageBox {
     std::string message_;
     MessageBoxIcon icon_ = MessageBoxIcon::Information;
     MessageBoxButtons buttons_ = MessageBoxButtons::Ok;
+    bool markdown_ = false;
 };
 
 } // namespace toolkit
