@@ -58,6 +58,8 @@ class Window {
     bool has_popup() const { return !popups_.empty(); }
     size_t num_popups() const { return popups_.size(); }
 
+    std::function<bool(KeyEvent const &)> on_key;
+
     void handle_paint(Painter &painter);
     void handle_mouse(MouseEvent const &event);
     void handle_key(KeyEvent const &event);

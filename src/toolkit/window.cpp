@@ -534,6 +534,9 @@ void Window::handle_mouse(MouseEvent const &event) {
 }
 
 void Window::handle_key(KeyEvent const &event) {
+    if (on_key && on_key(event)) {
+        return;
+    }
     if (!popups_.empty()) {
         auto &popup = popups_.back();
         if (popup.on_key && popup.on_key(event)) {
@@ -664,9 +667,13 @@ Window &Window::resize_to_fit() {
     if (!root_) {
         return *this;
     }
+    // First pass: layout at the current width so height-dependent widgets
+    // (e.g. RichLabel/HtmlView) render at their actual allocated width
+    // before we query their size_hint for the final height.
+    root_->set_rect({0, 0, size_.width, size_.height});
     auto hint = root_->size_hint();
-    Size new_size = size_;
-    bool changed = false;
+    auto new_size = size_;
+    auto changed = false;
     if (hint.width > size_.width) {
         new_size.width = hint.width;
         changed = true;
@@ -680,6 +687,7 @@ Window &Window::resize_to_fit() {
         if (impl_->platform) {
             impl_->platform->set_size(size_);
         }
+        root_->set_rect({0, 0, size_.width, size_.height});
     }
     return *this;
 }
