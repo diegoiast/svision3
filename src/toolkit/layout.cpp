@@ -29,7 +29,11 @@ void VBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
     }
 }
 
-void VBoxLayout::set_rect(Rect const &rect) { Widget::set_rect(rect); }
+void VBoxLayout::set_rect(Rect const &rect) {
+    Widget::set_rect(rect);
+    apply_layout();
+    state.layout_dirty = false;
+}
 
 void VBoxLayout::set_window(Window *w) {
     Widget::set_window(w);
@@ -277,7 +281,11 @@ void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
     }
 }
 
-void HBoxLayout::set_rect(Rect const &rect) { Widget::set_rect(rect); }
+void HBoxLayout::set_rect(Rect const &rect) {
+    Widget::set_rect(rect);
+    apply_layout();
+    state.layout_dirty = false;
+}
 
 void HBoxLayout::set_window(Window *w) {
     Widget::set_window(w);
