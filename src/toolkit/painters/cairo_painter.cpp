@@ -131,9 +131,35 @@ void CairoPainter::draw_circle(Point center, float radius, Color const &color, f
     cairo_stroke(cr_);
 }
 
-static std::string cairo_font_face(FontFamily f) {
-    auto const &t = Theme::current();
-    return f == FontFamily::Monospace ? t.palette.fonts.monospace : t.palette.fonts.system;
+// Detect a monospace font by checking that 'i' and 'm' have equal advances.
+// Reuses the caller's cairo_t (save/restore keeps it clean) — no extra surface.
+static std::string find_monospace_font(cairo_t *cr) {
+    static const char *candidates[] = {"DejaVu Sans Mono", "Liberation Mono",
+                                       "Courier New",      "Noto Mono",
+                                       "Hack",             "Ubuntu Mono",
+                                       "Courier",          nullptr};
+    cairo_save(cr);
+    cairo_set_font_size(cr, 12.0);
+    std::string found;
+    for (auto **name = candidates; *name; ++name) {
+        cairo_select_font_face(cr, *name, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+        cairo_text_extents_t ti, tm;
+        cairo_text_extents(cr, "i", &ti);
+        cairo_text_extents(cr, "m", &tm);
+        if (std::abs(ti.x_advance - tm.x_advance) < 0.1) {
+            found = *name;
+            break;
+        }
+    }
+    cairo_restore(cr);
+    return found.empty() ? "monospace" : found;
+}
+
+static std::string cairo_font_face(FontFamily f, cairo_t *cr) {
+    if (f == FontFamily::Monospace) {
+        return find_monospace_font(cr);
+    }
+    return Theme::current().palette.fonts.system;
 }
 
 void CairoPainter::draw_text(std::string_view text, Point position, Color const &color,
@@ -141,7 +167,7 @@ void CairoPainter::draw_text(std::string_view text, Point position, Color const 
                              bool bold, bool italic) {
     cairo_new_path(cr_);
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
-    cairo_select_font_face(cr_, cairo_font_face(font).c_str(),
+    cairo_select_font_face(cr_, cairo_font_face(font, cr_).c_str(),
                            italic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL,
                            bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr_, std::round(font_size));
@@ -247,6 +273,7 @@ bool cairo_save_to_png(Window *window, std::string const &path) {
     return status == CAIRO_STATUS_SUCCESS;
 }
 
+
 RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_size, float scale,
                                               FontFamily font, bool bold, bool italic) {
     if (text.empty()) {
@@ -267,7 +294,7 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     cairo_surface_t *temp_surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *temp_cr = cairo_create(temp_surf);
     apply_font_options(temp_cr);
-    cairo_select_font_face(temp_cr, cairo_font_face(font).c_str(), slant, weight);
+    cairo_select_font_face(temp_cr, cairo_font_face(font, temp_cr).c_str(), slant, weight);
     cairo_set_font_size(temp_cr, std::floor(font_size));
 
     cairo_text_extents_t te;
@@ -293,7 +320,7 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     cairo_scale(cr, scale, scale);
 
     cairo_set_source_rgba(cr, 1, 1, 1, 1);
-    cairo_select_font_face(cr, cairo_font_face(font).c_str(), slant, weight);
+    cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(), slant, weight);
     cairo_set_font_size(cr, std::floor(font_size));
 
     cairo_move_to(cr, 0, fe.ascent);
@@ -327,7 +354,7 @@ Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFa
     }
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *cr = cairo_create(surf);
-    cairo_select_font_face(cr, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
+    cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, std::round(font_size));
     cairo_text_extents_t te;
@@ -337,13 +364,15 @@ Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFa
     cairo_font_extents(cr, &fe);
     cairo_destroy(cr);
     cairo_surface_destroy(surf);
-    return {static_cast<float>(te.width), static_cast<float>(fe.height)};
+    // Use x_advance: width is the ink bounding box (0 for spaces),
+    // x_advance is the pen advance including trailing whitespace.
+    return {static_cast<float>(te.x_advance), static_cast<float>(fe.height)};
 }
 
 Painter::FontMetrics CairoTextRasterizer::metrics(float font_size, FontFamily font) {
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *cr = cairo_create(surf);
-    cairo_select_font_face(cr, cairo_font_face(font).c_str(), CAIRO_FONT_SLANT_NORMAL,
+    cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, std::round(font_size));
     cairo_font_extents_t fe;

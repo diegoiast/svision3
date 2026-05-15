@@ -4,9 +4,12 @@
 #include "toolkit/message_box.hpp"
 #include "toolkit/application.hpp"
 #include "toolkit/button.hpp"
+#include "toolkit/events.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/rich_label.hpp"
+#include "toolkit/window.hpp"
 #include "toolkit/xdg_icons.hpp"
 
 #include <future>
@@ -31,6 +34,11 @@ MessageBox &MessageBox::icon(MessageBoxIcon i) {
     return *this;
 }
 
+MessageBox &MessageBox::markdown(bool enabled) {
+    markdown_ = enabled;
+    return *this;
+}
+
 MessageBox &MessageBox::buttons(MessageBoxButtons b) {
     buttons_ = b;
     return *this;
@@ -43,6 +51,7 @@ MessageBox::Future MessageBox::show() {
     std::string message_str = message_;
     MessageBoxIcon icon = icon_;
     MessageBoxButtons buttons = buttons_;
+    bool use_markdown = markdown_;
 
     auto *win = Application::instance().create_window(title_str, {400, 160});
     auto root = std::make_unique<VBoxLayout>();
@@ -80,7 +89,11 @@ MessageBox::Future MessageBox::show() {
         msg_row->add_widget(std::move(icon_btn));
     }
 
-    msg_row->add_widget(std::make_unique<Label>(message_str), 1);
+    if (use_markdown) {
+        msg_row->add_widget(std::make_unique<RichLabel>(message_str), 1);
+    } else {
+        msg_row->add_widget(std::make_unique<Label>(message_str), 1);
+    }
     root->add_widget(std::move(msg_row), 1);
 
     // ── Button row ───────────────────────────────────────────────────────────
@@ -128,6 +141,16 @@ MessageBox::Future MessageBox::show() {
     if (parent_ && parent_->platform_window()) {
         win->platform_window()->set_modal_for(parent_->platform_window());
     }
+    win->on_key = [win, callback](KeyEvent const &e) -> bool {
+        if (e.type == KeyEvent::Type::Press && e.key == Key::Escape) {
+            if (*callback) {
+                (*callback)(MessageBoxResult::Cancel);
+            }
+            win->close();
+            return true;
+        }
+        return false;
+    };
     win->show();
 
     return Future(callback);
@@ -224,6 +247,15 @@ std::future<MessageBoxResult> MessageBox::show_static(Window *parent, std::strin
     if (parent && parent->platform_window()) {
         win->platform_window()->set_modal_for(parent->platform_window());
     }
+    win->on_key = [win, &result, &done](KeyEvent const &e) -> bool {
+        if (e.type == KeyEvent::Type::Press && e.key == Key::Escape) {
+            result = MessageBoxResult::Cancel;
+            done = true;
+            win->close();
+            return true;
+        }
+        return false;
+    };
     win->show();
 
     Application::instance().run_until([&done] { return done; });

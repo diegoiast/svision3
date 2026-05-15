@@ -677,16 +677,18 @@ int main(int argc, char *argv[]) {
                                    .action("Cut", [] { spdlog::info("Menu: Cut"); })
                                    .action("Copy", [] { spdlog::info("Menu: Copy"); })
                                    .action("Paste", [] { spdlog::info("Menu: Paste"); }))
-                     .add_menu(ui::menu("&Help").action("About",
-                                                        [&window] {
-                                                            toolkit::MessageBox(window)
-                                                                .title("About SVision3")
-                                                                .message(
-                                                                    "SVision3 declarative API demo "
-                                                                    "application.\n\nA "
-                                                                    "cross-platform UI toolkit.")
-                                                                .show();
-                                                        })))
+                     .add_menu(ui::menu("&Help")
+                                   .action("About",
+                                           [&window] {
+                                               toolkit::MessageBox(window)
+                                                   .title("About SVision3")
+                                                   .markdown()
+                                                   .message("## SVision3\n\n"
+                                                            "Declarative API demo application.\n\n"
+                                                            "Demo of a C++ **cross-platform** UI "
+                                                            "toolkit.")
+                                                   .show();
+                                           })))
             .add(ui::toolbar()
                      .command("OK", [] { spdlog::info("Toolbar: OK"); })
                      .command(exit_cmd)

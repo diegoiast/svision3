@@ -215,11 +215,14 @@ int main(int argc, char *argv[]) {
     edit_menu->add_action("Paste", [] { spdlog::info("Menu: Paste"); });
 
     menubar->add_menu("&Help")->add_action("About", [window] {
-        auto result =
-            toolkit::MessageBox::information(
-                window, "About Demo", "svision3 demo application.\n\nA cross-platform UI toolkit.")
-                .get();
-        spdlog::info("About dia`d (result={})", static_cast<int>(result));
+        toolkit::MessageBox(window)
+            .title("About Demo")
+            .markdown()
+            .message("## SVision3\n\n"
+                     "Imperative API demo application.\n\n"
+                     "Demo of a C++ **cross-platform** UI toolkit.")
+            .icon(toolkit::MessageBoxIcon::Information)
+            .show();
     });
 
     // Add shortcuts to the window globally so they are always active
