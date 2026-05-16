@@ -143,6 +143,9 @@ class Widget {
     void set_tooltip(std::string text);
     virtual std::string const &tooltip() const { return state.tooltip; }
 
+    void set_markdown_tooltip(std::string markdown);
+    bool tooltip_is_markdown() const { return state.tooltip_markdown; }
+
     Widget &set_background_color(std::optional<Color> c);
     std::optional<Color> background_color() const { return background_color_; }
 
@@ -160,6 +163,7 @@ class Widget {
         bool focusable = false;
         bool non_focus_input = false;
         std::string tooltip;
+        bool tooltip_markdown = false;
     } state;
 
     Rect rect_;

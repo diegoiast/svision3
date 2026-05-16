@@ -327,6 +327,7 @@ int main(int argc, char *argv[]) {
     repeat_row->set_spacing(10);
     auto repeat_btn = std::make_unique<toolkit::Button>("Auto &repeat");
     repeat_btn->set_auto_repeat(true, 1.0f, 0.2f);
+    repeat_btn->set_markdown_tooltip("Auto repeat button, every _second_");
     auto repeat_label = std::make_unique<toolkit::Label>("Count: 0");
     auto *repeat_label_ptr = repeat_label.get();
     static int repeat_count = 0;

@@ -20,7 +20,7 @@
 // CSS braces escaped as {{ }} for fmt::format.
 static constexpr auto MARKDOWN_PAGE = R"(<!DOCTYPE html>
 <html><head><style>
-body{{font-family:sans-serif;margin:16px;background:{bg};color:{fg};line-height:1.6}}
+body{{font-family:sans-serif;margin:{margin}px;{max_w}background:{bg};color:{fg};line-height:1.6}}
 h1{{font-size:1.6em;margin-top:0.8em;margin-bottom:0.25em;border-bottom:1px solid rgba(128,128,128,0.3);padding-bottom:0.2em}}
 h2{{font-size:1.3em;margin-top:0.8em;margin-bottom:0.25em}}
 h3{{font-size:1.1em;margin-top:0.8em;margin-bottom:0.25em}}
@@ -407,21 +407,25 @@ void HtmlView::set_markdown(std::string const &markdown) {
             MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_TABLES, 0);
 
     auto const &pal = Theme::current().palette;
+    auto bg = background_color_.value_or(pal.window);
     if (!markdown_css_light_.empty()) {
-        auto lum = 0.299f * pal.window.r + 0.587f * pal.window.g + 0.114f * pal.window.b;
+        auto lum = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
         auto const &css =
             (lum < 0.5f && !markdown_css_dark_.empty()) ? markdown_css_dark_ : markdown_css_light_;
-        // html/body background matches the theme window colour so there is no
-        // white bleed outside the .markdown-body div (e.g. below short content).
         auto page = std::string("<!DOCTYPE html><html><head><style>html,body{margin:0;padding:0;background:") +
-                    css_color(pal.window) + "}" +
+                    css_color(bg) + "}" +
                     css + "</style></head><body><div class=\"markdown-body\">" + body +
                     "</div></body></html>";
         load_html_(std::move(page), {});
     } else {
-        load_html_(fmt::format(MARKDOWN_PAGE, fmt::arg("bg", css_color(pal.window)),
+        auto max_w_css = content_max_width_ > 0
+                             ? fmt::format("width:max-content;max-width:{}px;", content_max_width_)
+                             : std::string{};
+        load_html_(fmt::format(MARKDOWN_PAGE, fmt::arg("bg", css_color(bg)),
                                fmt::arg("fg", css_color(pal.text)),
                                fmt::arg("link", css_color(Color::rgb(0.0f, 0.4f, 0.8f))),
+                               fmt::arg("margin", content_margin_),
+                               fmt::arg("max_w", max_w_css),
                                fmt::arg("body", body)),
                    {});
     }
@@ -513,7 +517,7 @@ bool HtmlView::handle_mouse(MouseEvent const &event) {
 
 Size HtmlView::size_hint() const {
     if (document_) {
-        auto bw = Theme::current().palette.frame_inset();
+        auto bw = draw_frame_ ? Theme::current().palette.frame_inset() : 0.0f;
         return {static_cast<float>(document_->width()) + 2 * bw,
                 static_cast<float>(document_->height()) + 2 * bw};
     }

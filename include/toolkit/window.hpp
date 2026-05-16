@@ -109,6 +109,7 @@ class Window {
     void focus_next(bool reverse);
     void update_tooltip(Widget *under, Point mouse_pos);
     void show_tooltip();
+    void show_rich_tooltip();
     void show_tooltip_window(std::string const &text, Point screen_pos);
     void hide_tooltip_window();
 

@@ -24,6 +24,8 @@ class HtmlView : public Widget {
     void set_html(std::string const &html, std::string const &base_url = "");
     void set_markdown(std::string const &markdown);
     void set_css(std::string light_css, std::string dark_css = {});
+    void set_content_margin(int px) { content_margin_ = px; }
+    void set_content_max_width(int px) { content_max_width_ = px; }
     std::string const &html() const { return html_; }
 
     std::function<void(std::string const &)> on_link_click;
@@ -47,6 +49,8 @@ class HtmlView : public Widget {
     std::string markdown_;
     std::string markdown_css_light_;
     std::string markdown_css_dark_;
+    int content_margin_ = 16;
+    int content_max_width_ = 0;
     bool draw_frame_ = true;
     CursorShape cursor_shape_ = CursorShape::Arrow;
     std::unique_ptr<LitehtmlContainer> container_;
