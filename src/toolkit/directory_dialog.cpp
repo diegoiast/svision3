@@ -19,6 +19,13 @@
 #include <nfd.h>
 #include <spdlog/spdlog.h>
 
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define NOGDI
+#include <windows.h>
+#endif
+
 namespace toolkit {
 
 namespace {
