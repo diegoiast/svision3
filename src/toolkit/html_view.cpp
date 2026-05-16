@@ -213,10 +213,21 @@ class LitehtmlContainer : public litehtml::document_container {
         };
 
         auto x = pos.x, y = pos.y, r = pos.right(), b = pos.bottom();
-        draw_side(borders.top, {x, y}, {r, y});
-        draw_side(borders.right, {r, y}, {r, b});
-        draw_side(borders.bottom, {x, b}, {r, b});
-        draw_side(borders.left, {x, y}, {x, b});
+        draw_side(borders.top,
+                  {static_cast<float>(x), static_cast<float>(y)},
+                  {static_cast<float>(r), static_cast<float>(y)});
+
+        draw_side(borders.right,
+                  {static_cast<float>(r), static_cast<float>(y)},
+                  {static_cast<float>(r), static_cast<float>(b)});
+
+        draw_side(borders.bottom,
+                  {static_cast<float>(x), static_cast<float>(b)},
+                  {static_cast<float>(r), static_cast<float>(b)});
+
+        draw_side(borders.left,
+                  {static_cast<float>(x), static_cast<float>(y)},
+                  {static_cast<float>(x), static_cast<float>(b)});
     }
 
     void draw_list_marker(litehtml::uint_ptr hdc, litehtml::list_marker const &marker) override {
