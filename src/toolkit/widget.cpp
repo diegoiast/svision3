@@ -85,6 +85,11 @@ void Widget::set_tooltip(std::string text) {
     }
 }
 
+void Widget::set_markdown_tooltip(std::string markdown) {
+    state.tooltip = std::move(markdown);
+    state.tooltip_markdown = true;
+}
+
 Widget &Widget::set_background_color(std::optional<Color> c) {
     background_color_ = c;
     return *this;

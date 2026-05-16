@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/window.hpp"
+#include "toolkit/html_view.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/tab_widget.hpp"
@@ -24,6 +25,9 @@ struct Window::Impl {
 
     bool logging_enabled = false;
     int stats_timer_id = 0;
+
+    std::unique_ptr<HtmlView> rich_tooltip_view;
+    Point rich_tooltip_pos;
 };
 
 Window::Window(std::string_view title, Size size)
@@ -309,11 +313,20 @@ void Window::handle_paint(Painter &painter) {
         }
     }
 
+    if (impl_->rich_tooltip_view) {
+        auto const &theme = Theme::current();
+        auto const &pal = theme.palette;
+        auto r = impl_->rich_tooltip_view->rect();
+        painter.fill_rounded_rect(r, pal.tooltip, pal.corner_radius);
+        impl_->rich_tooltip_view->draw(painter);
+        painter.draw_rounded_rect(r, pal.border, pal.corner_radius, pal.border_width);
+    }
+
     if (tooltip_visible_ && tooltip_widget_) {
         auto const &current = tooltip_widget_->tooltip();
         if (current != tooltip_text_) {
             tooltip_text_ = current;
-            if (!tooltip_text_.empty()) {
+            if (!tooltip_text_.empty() && !tooltip_widget_->tooltip_is_markdown()) {
                 show_tooltip_window(tooltip_text_, tooltip_mouse_pos_);
             } else {
                 hide_tooltip();
@@ -718,10 +731,42 @@ void Window::update_tooltip(Widget *under, Point mouse_pos) {
     }
 }
 
+void Window::show_rich_tooltip() {
+    auto cap_w = std::min(size_.width, 280.0f);
+    auto view = std::make_unique<HtmlView>();
+    view->set_window(this);
+    view->set_background_color(Color::rgba(0, 0, 0, 0));
+    view->set_draw_frame(false);
+    view->set_content_margin(2);
+    view->set_content_max_width(static_cast<int>(cap_w));
+    view->set_rect({0, 0, cap_w, 1000});
+    view->set_markdown(tooltip_text_);
+    auto hint = view->size_hint();
+    auto w = std::min(hint.width, cap_w);
+    auto h = hint.height;
+    auto x = tooltip_mouse_pos_.x;
+    auto y = tooltip_mouse_pos_.y - h - 8;
+    if (y < 0) {
+        y = tooltip_mouse_pos_.y + 20;
+    }
+    if (x + w > size_.width) {
+        x = size_.width - w;
+    }
+    x = std::max(x, 0.0f);
+    view->set_rect({x, y, w, h});
+    impl_->rich_tooltip_view = std::move(view);
+    impl_->rich_tooltip_pos = {x, y};
+    request_redraw("rich tooltip show");
+}
+
 void Window::show_tooltip() {
     tooltip_visible_ = true;
     tooltip_timer_id_ = 0;
-    show_tooltip_window(tooltip_text_, tooltip_mouse_pos_);
+    if (tooltip_widget_ && tooltip_widget_->tooltip_is_markdown()) {
+        show_rich_tooltip();
+    } else {
+        show_tooltip_window(tooltip_text_, tooltip_mouse_pos_);
+    }
 }
 
 void Window::hide_tooltip() {
@@ -731,7 +776,12 @@ void Window::hide_tooltip() {
     }
     if (tooltip_visible_) {
         tooltip_visible_ = false;
-        hide_tooltip_window();
+        if (impl_->rich_tooltip_view) {
+            impl_->rich_tooltip_view.reset();
+            request_redraw("rich tooltip hide");
+        } else {
+            hide_tooltip_window();
+        }
     }
     tooltip_widget_ = nullptr;
     tooltip_text_.clear();
