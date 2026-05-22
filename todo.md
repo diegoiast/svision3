@@ -289,6 +289,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 9. [x] Support for trailing/leading button.
 10. [x] Tab bar overflow (scroll when too many tabs).
 11. [ ] Tabs can have several icons at the title
+12. [ ] When tab bar is selected, it has a bring around it.
 
 ## ListView Features [15/17]
 
@@ -309,6 +310,14 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 15. [x] Column headers: TableView.
 16. [ ] Drag to reorder items.
 17. [ ] Inline editing.
+18. [ ] Inline widgets, should be recycled. Currently - it needs
+        `n` widgets, while it needs in theory only `k` (the height of the list widget).
+
+## Slider
+
+1. [ ] Mouse wheel support.
+1. [ ] Add support for "clicks"
+1. [ [ Add support for custom labels,
 
 ## Label Features [1/5]
 
