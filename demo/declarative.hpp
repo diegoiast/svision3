@@ -16,13 +16,13 @@
 #include "toolkit/tab_widget.hpp"
 
 #include <toolkit/html_view.hpp>
-#include <toolkit/rich_label.hpp>
-#include <toolkit/splitter.hpp>
 #include <toolkit/icon_grid.hpp>
 #include <toolkit/list_view.hpp>
 #include <toolkit/menu.hpp>
 #include <toolkit/menubar.hpp>
+#include <toolkit/rich_label.hpp>
 #include <toolkit/scroll_area.hpp>
+#include <toolkit/splitter.hpp>
 #include <toolkit/table_view.hpp>
 #include <toolkit/text_edit.hpp>
 #include <toolkit/toolbar.hpp>
@@ -49,8 +49,16 @@ template <typename T> struct Element {
         w->set_text(std::string(t));
         return std::move(*this);
     }
+    Element markdown(std::string_view t) {
+        w->set_markdown(std::string(t));
+        return std::move(*this);
+    }
     Element tooltip(std::string_view t) {
         w->set_tooltip(std::string(t));
+        return std::move(*this);
+    }
+    Element markdownToolTip(std::string_view t) {
+        w->set_markdown_tooltip(std::string(t));
         return std::move(*this);
     }
     Element enabled(bool e = true) {
@@ -575,16 +583,14 @@ inline Element<toolkit::RichLabel> rich_label_md(std::string_view markdown) {
     return Element<toolkit::RichLabel>(std::move(v));
 }
 
-template <typename W>
-inline Element<toolkit::ScrollArea> scroll_area(Element<W> content) {
+template <typename W> inline Element<toolkit::ScrollArea> scroll_area(Element<W> content) {
     auto sa = std::make_unique<toolkit::ScrollArea>();
     sa->set_content(std::move(content.w));
     return Element<toolkit::ScrollArea>(std::move(sa));
 }
 
 template <typename A, typename B>
-inline Element<toolkit::Splitter> hsplit(Element<A> first, Element<B> second,
-                                         float ratio = 0.5f) {
+inline Element<toolkit::Splitter> hsplit(Element<A> first, Element<B> second, float ratio = 0.5f) {
     auto sp = std::make_unique<toolkit::Splitter>(toolkit::Splitter::Orientation::Horizontal);
     sp->set_first(std::move(first.w));
     sp->set_second(std::move(second.w));
@@ -593,8 +599,7 @@ inline Element<toolkit::Splitter> hsplit(Element<A> first, Element<B> second,
 }
 
 template <typename A, typename B>
-inline Element<toolkit::Splitter> vsplit(Element<A> first, Element<B> second,
-                                         float ratio = 0.5f) {
+inline Element<toolkit::Splitter> vsplit(Element<A> first, Element<B> second, float ratio = 0.5f) {
     auto sp = std::make_unique<toolkit::Splitter>(toolkit::Splitter::Orientation::Vertical);
     sp->set_first(std::move(first.w));
     sp->set_second(std::move(second.w));

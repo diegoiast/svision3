@@ -109,7 +109,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 29. [ ] GroupBox / Frame.
 30. [x] Splitter.
 31. [ ] Image widget.
-32. [ ] Markdown tooltip.
+32. [x] Markdown tooltip.
 33. [ ] Undo/redo system (text area + LineInput).
 34. [ ] Client side decorations with theme.
 35. [ ] Proper filter API for listview and table view.
@@ -315,9 +315,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [x] Text alignment (left / center / right).
 2. [ ] Word wrap / multi-line.
 3. [ ] Selectable text for checkbox.
-4. [ ] Rich text / markup.
+4. [x] Rich text / markdown.
 5. [ ] Buddy support - when clicking a label, mark the buddy active.
-6. [ ] Markdown label using litehtml+(markdown processor for C++).
+6. [x] Markdown label using litehtml+(markdown processor for C++).
 
 ## Combobox Features [0/2]
 
@@ -327,11 +327,12 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## HTML View
 
 1. [x] Monospaced fonts are not used in code block.
-2. [ ] Monospaced blocks spacing is not ideal.
+2. [x] Monospaced blocks spacing is not ideal.
 3. [ ] Dark mode is broken - text is still black, on changing.
 4. [ ] Fonts are too dark on X11/OpenGL/Cairo.
 5. [x] Tooltips do not use the rich view, only plain text.
-6. [ ] Rich tooltips do not elide.
+6. [ ] Rich tooltips do not elide, no schrinkable option.
+7. [ ] Spacing on text is bad (# aaa1 bbb) - shows the bbb near the first word.
 
 ## Testing [0/3]
 

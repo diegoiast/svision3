@@ -274,8 +274,8 @@ int main(int argc, char *argv[]) {
 
     auto rich_label = std::make_unique<toolkit::RichLabel>(
         "**Lorem** _ipsum_ dolor sit amet, [consectetur](https://example.com) adipiscing elit, "
-        "sed do eiusmod `tempor incididunt ut labore` et dolore magna ***aliqua***.");
-    rich_label->set_tooltip(rich_label->text());
+        "sed do eiusmodmarkdown `tempor incididunt ut labore` et dolore magna ***aliqua***.");
+    rich_label->set_markdown_tooltip(rich_label->text());
     tab_main->add_widget(std::move(rich_label));
 
     auto cb1 = std::make_unique<toolkit::Checkbox>("Enable notifications");
@@ -433,15 +433,16 @@ int main(int argc, char *argv[]) {
     auto &slider_val =
         slider_row->add<toolkit::Label>().set_text(fmt::format("{:.0f}%", slider.value()));
 
-    slider.set_on_change([progress_ptr, &slider_val, window](toolkit::Slider &slider, float v) {
-        if (auto_progress_timer != 0) {
-            window->stop_timer(auto_progress_timer);
-            auto_progress_timer = 0;
-        }
-        progress_ptr->set_value(v / 100.0f);
-        progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
-        slider_val.set_text(fmt::format("{:.0f}%", v));
-    });
+    slider.set_on_change(
+        [progress_ptr, &slider_val, window](toolkit::Slider &slider, float v) {
+            if (auto_progress_timer != 0) {
+                window->stop_timer(auto_progress_timer);
+                auto_progress_timer = 0;
+            }
+            progress_ptr->set_value(v / 100.0f);
+            progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
+            slider_val.set_text(fmt::format("{:.0f}%", v));
+        });
 
     // We need to capture the timer ID to stop it if the user interacts with the slider
 
