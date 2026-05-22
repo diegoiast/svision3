@@ -486,7 +486,15 @@ int main(int argc, char *argv[]) {
                                       }),
                                   ui::expand)
                              .add(email_stats_label))
-                    .add(ui::hbox().add(ui::slider(), ui::expand).add(ui::label("0"))))
+                    .add([&]() {
+                        auto val = ui::label("0");
+                        return ui::hbox()
+                            .add(ui::slider().on_change([l = val.get()](float v) {
+                                l->set_text(fmt::format("{:.0f}", v));
+                            }),
+                                 ui::expand)
+                            .add(val);
+                    }()))
             .add_tab(
                 "Songs",
                 ui::vbox()
