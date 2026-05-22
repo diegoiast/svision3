@@ -16,8 +16,11 @@
 #include <regex>
 #include <spdlog/spdlog.h>
 
-auto LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
-                   "incididunt ut labore et dolore magna aliqua.";
+auto LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
+                   "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+auto LOREM_IPSUM_MD =
+    "**Lorem** _ipsum_ dolor sit amet, [consectetur](https://example.com) adipiscing elit, "
+    "sed do eiusmod `tempor incididunt ut labore` et dolore magna ***aliqua***.";
 
 static constexpr auto PREVIEW_DEFAULT_HTML = R"(<!DOCTYPE html>
 <html>
@@ -415,6 +418,7 @@ int main(int argc, char *argv[]) {
                 "Main",
                 ui::vbox()
                     .add(ui::label(LOREM_IPSUM).tooltip(LOREM_IPSUM).shrinkable(true))
+                    .add(ui::rich_label_md(LOREM_IPSUM_MD).markdownToolTip(LOREM_IPSUM_MD))
                     .add(ui::checkbox("Enable notifications")
                              .tooltip("Toggle desktop notifications")
                              .checked(true))

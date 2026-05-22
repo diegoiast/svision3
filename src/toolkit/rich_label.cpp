@@ -27,10 +27,9 @@ RichLabel::RichLabel(std::string text) : RichLabel() { set_markdown(text); }
 RichLabel &RichLabel::set_text(std::string const &text) {
     text_ = text;
     auto fs = static_cast<int>(Theme::current().palette.fonts.size);
-    set_html(fmt::format(
-        "<html><body style='margin:0;padding:0;font-size:{}px'>"
-        "<p style='margin:0'>{}</p></body></html>",
-        fs, html_escape(text)));
+    set_html(fmt::format("<html><body style='margin:0;padding:0;font-size:{}px'>"
+                         "<p style='margin:0'>{}</p></body></html>",
+                         fs, html_escape(text)));
     return *this;
 }
 

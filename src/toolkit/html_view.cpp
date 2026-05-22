@@ -81,8 +81,7 @@ class LitehtmlContainer : public litehtml::document_container {
                                    litehtml::font_style style, unsigned int decoration,
                                    litehtml::font_metrics *fm) override {
         auto *handle = new FontHandle{static_cast<float>(size), lh_font_family(faceName),
-                                      static_cast<int>(decoration),
-                                      weight >= 700,
+                                      static_cast<int>(decoration), weight >= 700,
                                       style == litehtml::font_style_italic};
         if (fm) {
             auto m = view_->font_metrics(handle->size, handle->family);
@@ -134,8 +133,8 @@ class LitehtmlContainer : public litehtml::document_container {
         auto handle = reinterpret_cast<FontHandle *>(hFont);
         auto fm = painter->font_metrics(handle->size, handle->family);
         float baseline_y = std::round(static_cast<float>(pos.y) + fm.ascent);
-        painter->draw_text(text, {std::round(static_cast<float>(pos.x)), baseline_y}, lh_color(color),
-                           handle->size, handle->family,
+        painter->draw_text(text, {std::round(static_cast<float>(pos.x)), baseline_y},
+                           lh_color(color), handle->size, handle->family,
                            Painter::TextOrientation::Horizontal, handle->bold, handle->italic);
 
         if (handle->decoration & litehtml::font_decoration_underline) {
@@ -213,20 +212,16 @@ class LitehtmlContainer : public litehtml::document_container {
         };
 
         auto x = pos.x, y = pos.y, r = pos.right(), b = pos.bottom();
-        draw_side(borders.top,
-                  {static_cast<float>(x), static_cast<float>(y)},
+        draw_side(borders.top, {static_cast<float>(x), static_cast<float>(y)},
                   {static_cast<float>(r), static_cast<float>(y)});
 
-        draw_side(borders.right,
-                  {static_cast<float>(r), static_cast<float>(y)},
+        draw_side(borders.right, {static_cast<float>(r), static_cast<float>(y)},
                   {static_cast<float>(r), static_cast<float>(b)});
 
-        draw_side(borders.bottom,
-                  {static_cast<float>(x), static_cast<float>(b)},
+        draw_side(borders.bottom, {static_cast<float>(x), static_cast<float>(b)},
                   {static_cast<float>(r), static_cast<float>(b)});
 
-        draw_side(borders.left,
-                  {static_cast<float>(x), static_cast<float>(y)},
+        draw_side(borders.left, {static_cast<float>(x), static_cast<float>(y)},
                   {static_cast<float>(x), static_cast<float>(b)});
     }
 
@@ -412,22 +407,22 @@ void HtmlView::set_markdown(std::string const &markdown) {
         auto lum = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
         auto const &css =
             (lum < 0.5f && !markdown_css_dark_.empty()) ? markdown_css_dark_ : markdown_css_light_;
-        auto page = std::string("<!DOCTYPE html><html><head><style>html,body{margin:0;padding:0;background:") +
-                    css_color(bg) + "}" +
-                    css + "</style></head><body><div class=\"markdown-body\">" + body +
-                    "</div></body></html>";
+        auto page =
+            std::string(
+                "<!DOCTYPE html><html><head><style>html,body{margin:0;padding:0;background:") +
+            css_color(bg) + "}" + css + "</style></head><body><div class=\"markdown-body\">" +
+            body + "</div></body></html>";
         load_html_(std::move(page), {});
     } else {
         auto max_w_css = content_max_width_ > 0
                              ? fmt::format("width:max-content;max-width:{}px;", content_max_width_)
                              : std::string{};
-        load_html_(fmt::format(MARKDOWN_PAGE, fmt::arg("bg", css_color(bg)),
-                               fmt::arg("fg", css_color(pal.text)),
-                               fmt::arg("link", css_color(Color::rgb(0.0f, 0.4f, 0.8f))),
-                               fmt::arg("margin", content_margin_),
-                               fmt::arg("max_w", max_w_css),
-                               fmt::arg("body", body)),
-                   {});
+        auto generated_html = fmt::format(MARKDOWN_PAGE, fmt::arg("bg", css_color(bg)),
+                                          fmt::arg("fg", css_color(pal.text)),
+                                          fmt::arg("link", css_color(Color::rgb(0.0f, 0.4f, 0.8f))),
+                                          fmt::arg("margin", content_margin_),
+                                          fmt::arg("max_w", max_w_css), fmt::arg("body", body));
+        load_html_(generated_html, {});
     }
 }
 
