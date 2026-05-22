@@ -1,4 +1,5 @@
 #include "wl_platform.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include "../linux_utils.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
@@ -958,6 +959,10 @@ WaylandPlatformApplication::~WaylandPlatformApplication() {
 std::unique_ptr<PlatformWindow>
 WaylandPlatformApplication::create_window(std::string_view title, Size size, Window *owner) {
     return std::make_unique<WaylandPlatformWindow>(this, title, size, owner);
+}
+
+std::unique_ptr<ImageLoaderInterface> WaylandPlatformApplication::create_image_loader() {
+    return std::make_unique<StbImageLoader>();
 }
 
 // Runs one iteration of the Wayland event loop. Returns false when the loop should stop.

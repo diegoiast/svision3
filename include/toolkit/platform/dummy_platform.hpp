@@ -29,6 +29,7 @@ class DummyPlatformApplication : public PlatformApplication {
   public:
     std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
                                                   Window *owner) override;
+    std::unique_ptr<ImageLoaderInterface> create_image_loader() override;
     int run() override { return 0; }
     void run_until(std::function<bool()>) override {}
     void quit() override {}

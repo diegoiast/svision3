@@ -50,6 +50,7 @@ class WaylandPlatformApplication : public PlatformApplication {
     ~WaylandPlatformApplication() override;
     std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
                                                   Window *owner) override;
+    std::unique_ptr<ImageLoaderInterface> create_image_loader() override;
     int run() override;
     void run_until(std::function<bool()> should_exit) override;
     void quit() override;

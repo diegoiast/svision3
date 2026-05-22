@@ -65,8 +65,8 @@ class XdgImageLoader : public IconProvider {
     auto theme_name() const -> std::string_view;
 
   private:
-    auto find_icon_path(std::string_view icon_name, int size,
-                        std::string_view context) -> std::optional<std::string>;
+    auto find_icon_path(std::string_view icon_name, int size, std::string_view context)
+        -> std::optional<std::string>;
     auto load_theme(std::string_view theme_name) -> std::optional<IconTheme>;
     auto parse_index_theme(std::string_view path) -> std::optional<IconTheme>;
 

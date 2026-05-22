@@ -1,4 +1,5 @@
 #include "macos_application_base.hpp"
+#include "toolkit/stb_image_loader.hpp"
 
 #import <Cocoa/Cocoa.h>
 #include <spdlog/spdlog.h>
@@ -30,6 +31,10 @@ MacOSPlatformApplicationBase::MacOSPlatformApplicationBase()
 }
 
 MacOSPlatformApplicationBase::~MacOSPlatformApplicationBase() = default;
+
+std::unique_ptr<ImageLoaderInterface> MacOSPlatformApplicationBase::create_image_loader() {
+    return std::make_unique<StbImageLoader>();
+}
 
 int MacOSPlatformApplicationBase::run() {
     [NSApp run];

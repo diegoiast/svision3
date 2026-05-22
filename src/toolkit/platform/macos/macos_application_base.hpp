@@ -8,6 +8,7 @@ class MacOSPlatformApplicationBase : public PlatformApplication {
   public:
     MacOSPlatformApplicationBase();
     ~MacOSPlatformApplicationBase() override;
+    std::unique_ptr<ImageLoaderInterface> create_image_loader() override;
     int run() override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;

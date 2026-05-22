@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/painter.hpp"
+#include "toolkit/image.hpp"
 #include "toolkit/text_rasterizer.hpp"
 #include "toolkit/types.hpp"
 #include <cstdint>
@@ -62,6 +63,7 @@ class PlatformApplication {
     virtual ~PlatformApplication() = default;
     virtual std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
                                                           Window *owner) = 0;
+    virtual std::unique_ptr<ImageLoaderInterface> create_image_loader() = 0;
     virtual int run() = 0;
     virtual void run_until(std::function<bool()> should_exit) = 0;
     virtual void quit() = 0;

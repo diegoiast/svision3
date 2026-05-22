@@ -11,6 +11,7 @@
 #include "toolkit/html_view.hpp"
 #include "toolkit/icon_grid.hpp"
 #include "toolkit/image_loader.hpp"
+#include "toolkit/image_widget.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/line_input.hpp"
@@ -951,6 +952,34 @@ int main(int argc, char *argv[]) {
     tab6->add_widget(std::move(south_tabs), 0);
 
     tabs->add_tab("Tabs", std::move(tab6));
+
+    // ── Tab: Image ───────────────────────────────────────────────────────
+    auto tab_image = std::make_unique<toolkit::VBoxLayout>();
+    tab_image->set_margins({20, 20, 20, 20});
+    
+    auto img_widget = std::make_unique<toolkit::ImageWidget>();
+    img_widget->load("vampire-riding-a-dinozaur.png");
+    auto *img_widget_ptr = img_widget.get();
+
+    auto load_btn = std::make_unique<toolkit::Button>("Load Image...");
+    load_btn->on_click = [img_widget_ptr, window, use_native_cb] {
+        toolkit::FileDialog(window)
+            .title("Load Image")
+            .use_native(use_native_cb->checked())
+            .open()
+            .then([img_widget_ptr](auto path) {
+                if (path) {
+                    img_widget_ptr->load(*path);
+                    spdlog::info("Loaded image: {}, size: {}x{}", *path, img_widget_ptr->size_hint().width, img_widget_ptr->size_hint().height);
+                }
+            });
+    };
+    tab_image->add_widget(std::move(load_btn));
+    
+    auto scroll = std::make_unique<toolkit::ScrollArea>();
+    scroll->set_content(std::move(img_widget));
+    tab_image->add_widget(std::move(scroll), 1); // Expand to fill tab
+    tabs->add_tab("Image", std::move(tab_image));
 
     root->add_widget(std::move(tabs), 1);
 

@@ -40,6 +40,8 @@ set(TOOLKIT_SOURCES
     src/toolkit/painter.cpp
     src/toolkit/command.cpp
     src/toolkit/image_loader.cpp
+    src/toolkit/image_widget.cpp
+    src/toolkit/stb_image_loader.cpp
     src/toolkit/toolbar.cpp
     src/toolkit/button.cpp
     src/toolkit/button_state.cpp
@@ -468,5 +470,6 @@ add_executable(tests
     tests/test_icon_grid.cpp
     tests/test_html_view.cpp
     tests/test_utf8.cpp
+    tests/test_new_image_api.cpp
 )
 target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)

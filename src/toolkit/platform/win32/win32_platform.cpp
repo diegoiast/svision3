@@ -1,4 +1,5 @@
 #include "win32_platform.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include "Win32OpenGlRenderingBackend.hpp"
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
@@ -556,6 +557,10 @@ SystemFonts Win32PlatformApplication::system_fonts() const {
 std::unique_ptr<PlatformWindow> Win32PlatformApplication::create_window(std::string_view title,
                                                                         Size size, Window *owner) {
     return std::make_unique<Win32PlatformWindow>(this, title, size, owner);
+}
+
+std::unique_ptr<ImageLoaderInterface> Win32PlatformApplication::create_image_loader() {
+    return std::make_unique<StbImageLoader>();
 }
 
 int Win32PlatformApplication::run() {

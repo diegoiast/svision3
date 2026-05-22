@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "x11_platform.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include "../linux_utils.hpp"
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/painters/gl_painter.hpp"
@@ -613,6 +614,10 @@ X11PlatformApplication::~X11PlatformApplication() {
 std::unique_ptr<PlatformWindow> X11PlatformApplication::create_window(std::string_view title,
                                                                       Size size, Window *owner) {
     return std::make_unique<X11PlatformWindow>(this, title, size, owner);
+}
+
+std::unique_ptr<ImageLoaderInterface> X11PlatformApplication::create_image_loader() {
+    return std::make_unique<StbImageLoader>();
 }
 
 // Runs one iteration of the event loop. Returns false when the loop should stop.
