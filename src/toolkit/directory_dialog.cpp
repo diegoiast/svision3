@@ -593,6 +593,13 @@ DirectoryDialog::Future DirectoryDialog::show_toolkit() {
     };
 
     win->set_root(std::move(widget));
+    win->on_key = [widget_ptr](KeyEvent const &event) {
+        if (event.type == KeyEvent::Type::Press && event.key == Key::Escape) {
+            widget_ptr->on_confirm(std::nullopt);
+            return true;
+        }
+        return false;
+    };
     if (parent && parent->platform_window()) {
         win->platform_window()->set_modal_for(parent->platform_window());
     }
