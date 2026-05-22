@@ -15,6 +15,22 @@ SpinBox::SpinBox(int value, int min_val, int max_val, int step)
       cursor_blink_time_(std::chrono::steady_clock::now()) {
     state.focusable = true;
     sync_text();
+
+    up_button_ = std::make_unique<Button>("+");
+    up_button_->set_parent(this);
+    up_button_->set_flat(true);
+    up_button_->set_padding({0, 0, 0, 0});
+    up_button_->set_focusable(false);
+    up_button_->set_auto_repeat(true, 0.5f, 0.1f);
+    up_button_->on_click = [this] { step_up(); };
+
+    down_button_ = std::make_unique<Button>("-");
+    down_button_->set_parent(this);
+    down_button_->set_flat(true);
+    down_button_->set_padding({0, 0, 0, 0});
+    down_button_->set_focusable(false);
+    down_button_->set_auto_repeat(true, 0.5f, 0.1f);
+    down_button_->on_click = [this] { step_down(); };
 }
 
 SpinBox &SpinBox::set_value(int v) {
@@ -46,6 +62,48 @@ SpinBox &SpinBox::set_focused(bool focused) {
         editing_ = false;
     }
     return *this;
+}
+
+void SpinBox::set_rect(Rect const &rect) {
+    Widget::set_rect(rect);
+    relayout_buttons();
+}
+
+void SpinBox::set_window(Window *w) {
+    Widget::set_window(w);
+    up_button_->set_window(w);
+    down_button_->set_window(w);
+}
+
+void SpinBox::relayout_buttons() {
+    auto bw = rect_.height;
+    auto bh = rect_.height / 2.0f;
+    up_button_->set_rect({rect_.width - bw, 0, bw, bh});
+    down_button_->set_rect({rect_.width - bw, bh, bw, rect_.height - bh});
+}
+
+Widget *SpinBox::widget_at(Point p) {
+    if (!state.visible || !hit_test(p)) {
+        return nullptr;
+    }
+    auto up_p = p;
+    up_p.x -= up_button_->rect().x;
+    up_p.y -= up_button_->rect().y;
+    if (auto *w = up_button_->widget_at(up_p)) {
+        return w;
+    }
+    auto down_p = p;
+    down_p.x -= down_button_->rect().x;
+    down_p.y -= down_button_->rect().y;
+    if (auto *w = down_button_->widget_at(down_p)) {
+        return w;
+    }
+    return this;
+}
+
+void SpinBox::for_each_child(std::function<void(Widget *)> const &callback) {
+    callback(up_button_.get());
+    callback(down_button_.get());
 }
 
 void SpinBox::sync_text() {
@@ -89,42 +147,8 @@ void SpinBox::step_down() {
     }
 }
 
-float SpinBox::btn_width() const { return 20.0f; }
-
-Rect SpinBox::up_btn_rect() const {
-    auto bw = btn_width();
-    return {rect_.width - bw, 0, bw, rect_.height / 2.0f};
-}
-
-Rect SpinBox::down_btn_rect() const {
-    auto bw = btn_width();
-    auto half = rect_.height / 2.0f;
-    return {rect_.width - bw, half, bw, rect_.height - half};
-}
-
-SpinBox::HitZone SpinBox::hit_zone(Point pos) const {
-    if (pos.x < 0 || pos.x > rect_.width || pos.y < 0 || pos.y > rect_.height) {
-        return HitZone::None;
-    }
-    if (up_btn_rect().contains(pos)) {
-        return HitZone::Up;
-    }
-    if (down_btn_rect().contains(pos)) {
-        return HitZone::Down;
-    }
-    return HitZone::Field;
-}
-
 CursorShape SpinBox::cursor() const {
-    switch (hovered_zone_) {
-    case HitZone::Up:
-    case HitZone::Down:
-        return CursorShape::Arrow;
-    case HitZone::Field:
-        return CursorShape::IBeam;
-    default:
-        return CursorShape::Arrow;
-    }
+    return CursorShape::IBeam;
 }
 
 Size SpinBox::size_hint() const {
@@ -134,7 +158,7 @@ Size SpinBox::size_hint() const {
     auto h = palette.fonts.size + style.padding.top + style.padding.bottom + 8.0f;
     auto max_text = std::to_string(max_val_);
     auto sz = measure_text(max_text, palette.fonts.size);
-    auto w = sz.width + style.padding.left + style.padding.right + btn_width() + 16.0f;
+    auto w = sz.width + style.padding.left + style.padding.right + h + 16.0f;
     return {w, h};
 }
 
@@ -160,60 +184,26 @@ void SpinBox::paint(Painter &painter) {
         .enabled       = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
+
     theme.draw_spinbox(painter, rect, text_, cursor_pos, sel_start_pos, sel_end_pos, wstate,
-                       hovered_zone_ == HitZone::Up, pressed_zone_ == HitZone::Up,
-                       hovered_zone_ == HitZone::Down, pressed_zone_ == HitZone::Down,
-                       cursor_visible);
+                       false, false, false, false, cursor_visible);
+
+    up_button_->draw(painter);
+    down_button_->draw(painter);
 }
 
 bool SpinBox::handle_mouse(MouseEvent const &event) {
-    if (event.type == MouseEvent::Type::Move) {
-        hovered_zone_ = hit_zone(event.position);
-        return false;
+    if (Widget::dispatch_mouse_event(up_button_.get(), event)) {
+        return true;
     }
-
-    if (event.type == MouseEvent::Type::Press) {
-        auto zone = hit_zone(event.position);
-        if (zone == HitZone::None) {
-            return false;
-        }
-        pressed_zone_ = zone;
-
-        if (zone == HitZone::Up) {
-            step_up();
-            return true;
-        }
-        if (zone == HitZone::Down) {
-            step_down();
-            return true;
-        }
-        if (zone == HitZone::Field) {
-            editing_ = true;
-            cursor_pos_ = text_.size();
-            sel_anchor_ = 0;
-            cursor_blink_time_ = std::chrono::steady_clock::now();
-            return true;
-        }
-    }
-
-    if (event.type == MouseEvent::Type::Release) {
-        pressed_zone_ = HitZone::None;
-        return false;
-    }
-
-    if (event.type == MouseEvent::Type::Scroll) {
-        auto zone = hit_zone(event.position);
-        if (zone == HitZone::None) {
-            return false;
-        }
-        if (event.scroll_dy > 0) {
-            step_up();
-        } else if (event.scroll_dy < 0) {
-            step_down();
-        }
+    if (Widget::dispatch_mouse_event(down_button_.get(), event)) {
         return true;
     }
 
+    if (event.type == MouseEvent::Type::Press) {
+        set_focused(true);
+        return true;
+    }
     return false;
 }
 

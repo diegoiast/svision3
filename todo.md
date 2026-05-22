@@ -89,9 +89,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 9. [x] ProgressBar (themed, value 0-1).
 10. [x] TabWidget (tab bar, close button, drag reorder).
 11. [x] ListView: MVC (ListAdapter / StringListAdapter / FilterAdapter).
-12. [ ] ListView: display widgets instead of simple text.
+12. [x] ListView: display widgets instead of simple text.
 13. [x] SpinBox (int value, min/max/step, arrow buttons).
-14. [ ] SpinBox: auto repeat (use regular buttons?)
+14. [x] SpinBox: auto repeat (use regular buttons?)
 15. [x] Tooltip.
 16. [x] Slider (horizontal, vertical, range).
 17. [x] ScrollArea.
@@ -336,7 +336,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## HTML View
 
 1. [x] Monospaced fonts are not used in code block.
-2. [x] Monospaced blocks spacing is not ideal.
+2. [ ] Monospaced blocks spacing is not ideal.
 3. [ ] Dark mode is broken - text is still black, on changing.
 4. [ ] Fonts are too dark on X11/OpenGL/Cairo.
 5. [x] Tooltips do not use the rich view, only plain text.

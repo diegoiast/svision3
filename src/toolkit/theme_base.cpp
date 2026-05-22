@@ -814,41 +814,6 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
     }
 
     painter.pop_clip();
-
-    auto btn_w = bw;
-    auto up_rect = Rect{rect.x + rect.width - btn_w, rect.y, btn_w, rect.height / 2.0f};
-    auto down_rect =
-        Rect{rect.x + rect.width - btn_w, rect.y + rect.height / 2.0f, btn_w, rect.height / 2.0f};
-
-    auto draw_spinbox_button = [&](Rect const &r, bool hovered, bool pressed) {
-        auto b_bg = palette.window;
-        if (pressed && palette.background_pressed) {
-            b_bg = *palette.background_pressed;
-        } else if (hovered && palette.background_hovered) {
-            b_bg = *palette.background_hovered;
-        }
-        painter.draw_filled_frame(r, b_bg, border, palette, false);
-
-        auto cx = r.x + r.width / 2.0f;
-        auto cy = r.y + r.height / 2.0f;
-        auto arrow_sz = 3.5f;
-        auto tc = palette.text;
-
-        if (r.y < rect.y + rect.height / 2.0f) {
-            painter.draw_line({cx - arrow_sz, cy + arrow_sz * 0.4f}, {cx, cy - arrow_sz * 0.4f}, tc,
-                              1.5f);
-            painter.draw_line({cx, cy - arrow_sz * 0.4f}, {cx + arrow_sz, cy + arrow_sz * 0.4f}, tc,
-                              1.5f);
-        } else {
-            painter.draw_line({cx - arrow_sz, cy - arrow_sz * 0.4f}, {cx, cy + arrow_sz * 0.4f}, tc,
-                              1.5f);
-            painter.draw_line({cx, cy + arrow_sz * 0.4f}, {cx + arrow_sz, cy - arrow_sz * 0.4f}, tc,
-                              1.5f);
-        }
-    };
-
-    draw_spinbox_button(up_rect, hovered_up, pressed_up);
-    draw_spinbox_button(down_rect, hovered_down, pressed_down);
 }
 
 void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
