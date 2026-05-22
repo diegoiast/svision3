@@ -22,10 +22,8 @@ macOS, Windows, and Linux (X11 and Wayland).
 | Platform | Windowing System | Rendering Backend | Selection Environment |
 |----------|------------------|-------------------|-----------------------|
 | **macOS**| Cocoa/AppKit     | CoreGraphics      | `SVISION_PAINT=native` (Default) |
-| **macOS**| Cocoa/AppKit     | Cairo             | `SVISION_PAINT=cairo` |
 | **macOS**| Cocoa/AppKit     | OpenGL 2.1        | `SVISION_PAINT=opengl` |
-| **Windows**| Win32          | Cairo             | `SVISION_PAINT=cairo` (Default) |
-| **Windows**| Win32          | GDI+              | Fallback if Cairo is OFF |
+| **Windows**| Win32          | GDI+              | |
 | **Windows**| Win32          | OpenGL 2.1        | `SVISION_PAINT=opengl` |
 | **Linux**| X11              | Cairo             | `SVISION_PAINT=cairo` (Default) |
 | **Linux**| X11              | OpenGL 2.1        | `SVISION_PAINT=opengl` |
@@ -51,16 +49,26 @@ Managed via [Conan 2](https://conan.io/):
 
 ### System dependencies (Linux only)
 
-For X11:
-
+## Debian
 ```
+# For X11
 sudo apt install libx11-dev
-```
 
-For Wayland:
-
-```
+# For Wayland
 sudo apt install libwayland-dev wayland-protocols libxkbcommon-dev
+```
+
+## Fedora
+```bash
+sudo dnf install brotli-devel xorg-x11-proto-devel bzip2-devel \
+    wayland-devel wayland-protocols-devel libxkbcommon-devel mesa-libEGL-devel mesa-libGL-devel libepoxy-devel \
+    cairo-devel fontconfig-devel freetype-devel glib2-devel pixman-devel \
+    xz-devel libfontenc-devel libXaw-devel libXcomposite-devel \
+    libXcursor-devel libXdmcp-devel libXtst-devel libXinerama-devel \
+    libxkbfile-devel libXrandr-devel libXres-devel libXScrnSaver-devel \
+    xcb-util-wm-devel xcb-util-image-devel xcb-util-keysyms-devel \
+    xcb-util-renderutil-devel libXdamage-devel libXxf86vm-devel \
+    libXv-devel xcb-util-devel libuuid-devel xcb-util-cursor-devel
 ```
 
 Both can be installed side-by-side. CMake detects what's available and compiles
@@ -90,13 +98,16 @@ cmake --preset conan-default
 cmake --build --preset conan-release
 ```
 
-For a debug build:
+For a debug build (we just hijack the default profile, and modify
+the build type):
 
 ```bash
-conan install . -s build_type=Debug --build=missing
+conan install .  -pr=default -s build_type=Debug --build=missing
+
 # If on Windows (Visual Studio):
 cmake --preset conan-default
 cmake --build --preset conan-debug
+
 # If on Linux/macOS (Ninja/Make):
 cmake --preset conan-debug
 cmake --build --preset conan-debug

@@ -32,6 +32,7 @@
 
 #ifdef __linux__
 #include <sys/syscall.h>
+#include <unistd.h>
 #endif
 
 namespace toolkit {
@@ -144,6 +145,26 @@ static void fractional_scale_preferred_scale(void *data, wp_fractional_scale_v1 
 
 static const wp_fractional_scale_v1_listener fractional_scale_listener = {
     fractional_scale_preferred_scale};
+
+static void decoration_configure(void *data, zxdg_toplevel_decoration_v1 *, uint32_t mode) {
+    auto *win = static_cast<WaylandPlatformWindow *>(data);
+
+    switch (mode) {
+    case ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE:
+        spdlog::info("Using server-side decorations");
+        break;
+
+    case ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:
+        spdlog::warn("Compositor requested client-side decorations");
+        break;
+
+    default:
+        spdlog::warn("Unknown decoration mode");
+        break;
+    }
+}
+
+static const zxdg_toplevel_decoration_v1_listener decoration_listener = {decoration_configure};
 
 // --- Key mapping ---
 
@@ -840,6 +861,11 @@ WaylandPlatformApplication::WaylandPlatformApplication() {
         fcntl(wakeup_pipe[1], F_SETFL, O_NONBLOCK);
     }
 
+    if (decoration_manager) {
+        spdlog::info("xdg-decoration protocol available");
+    } else {
+        spdlog::warn("xdg-decoration protocol NOT available");
+    }
     wl_registry_destroy(registry);
     spdlog::debug("Wayland backend initialized (scale={}, opengl={})", output_scale,
                   opengl_requested);
@@ -1062,10 +1088,32 @@ WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
     if (app_->decoration_manager) {
         toplevel_decoration =
             zxdg_decoration_manager_v1_get_toplevel_decoration(app_->decoration_manager, toplevel);
+
+        static const zxdg_toplevel_decoration_v1_listener decoration_listener = {
+            // configure
+            [](void *data, zxdg_toplevel_decoration_v1 *decoration, uint32_t mode) {
+                auto *win = static_cast<WaylandPlatformWindow *>(data);
+
+                switch (mode) {
+                case ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE:
+                    spdlog::info("Wayland compositor supports server-side decorations");
+                    break;
+
+                case ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:
+                    spdlog::warn("Wayland compositor requires client-side decorations");
+                    break;
+
+                default:
+                    spdlog::warn("Unknown decoration mode");
+                    break;
+                }
+            }};
+
+        zxdg_toplevel_decoration_v1_add_listener(toplevel_decoration, &decoration_listener, this);
+
         zxdg_toplevel_decoration_v1_set_mode(toplevel_decoration,
                                              ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
     }
-
     std::string t(title);
     xdg_toplevel_set_title(toplevel, t.c_str());
     xdg_toplevel_set_app_id(toplevel, "toolkit-app");

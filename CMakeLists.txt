@@ -16,7 +16,14 @@ else()
 endif()
 
 if(TOOLKIT_WITH_CAIRO)
-    find_package(cairo REQUIRED)
+    find_package(cairo QUIET)
+    if(NOT cairo_FOUND)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
+        add_library(cairo::cairo ALIAS PkgConfig::CAIRO)
+        pkg_check_modules(FONTCONFIG REQUIRED IMPORTED_TARGET fontconfig)
+        add_library(fontconfig::fontconfig ALIAS PkgConfig::FONTCONFIG)
+    endif()
     add_definitions(-DTOOLKIT_HAS_CAIRO)
 endif()
 
@@ -244,6 +251,9 @@ target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus s
 
 if(TOOLKIT_WITH_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)
+    if(TARGET fontconfig::fontconfig)
+        target_link_libraries(toolkit PUBLIC fontconfig::fontconfig)
+    endif()
 endif()
 
 if(APPLE)
