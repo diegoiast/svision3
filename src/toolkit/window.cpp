@@ -458,6 +458,7 @@ void Window::handle_mouse(MouseEvent const &event) {
     }
 
     if (captured_widget_) {
+        set_cursor(captured_widget_->cursor());
         // Dispatch to captured widget
         auto captured_ev = event;
         captured_ev.position = captured_widget_->map_from_window(event.position);
