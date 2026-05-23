@@ -28,17 +28,23 @@ class ImageWidget : public Widget {
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
+    CursorShape cursor() const override;
 
   private:
     std::shared_ptr<ImageData> image_;
     bool show_checkerboard_ = true;
     float zoom_ = 1.0f;
+    float scroll_x_ = 0.0f;
+    float scroll_y_ = 0.0f;
 
     // For panning
     bool dragging_ = false;
     Point last_mouse_pos_;
 
     void update_size();
+    void clamp_scroll();
+    float content_w() const;
+    float content_h() const;
 };
 
 } // namespace toolkit

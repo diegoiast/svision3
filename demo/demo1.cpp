@@ -434,16 +434,15 @@ int main(int argc, char *argv[]) {
     auto &slider_val =
         slider_row->add<toolkit::Label>().set_text(fmt::format("{:.0f}%", slider.value()));
 
-    slider.set_on_change(
-        [progress_ptr, &slider_val, window](toolkit::Slider &slider, float v) {
-            if (auto_progress_timer != 0) {
-                window->stop_timer(auto_progress_timer);
-                auto_progress_timer = 0;
-            }
-            progress_ptr->set_value(v / 100.0f);
-            progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
-            slider_val.set_text(fmt::format("{:.0f}%", v));
-        });
+    slider.set_on_change([progress_ptr, &slider_val, window](toolkit::Slider &slider, float v) {
+        if (auto_progress_timer != 0) {
+            window->stop_timer(auto_progress_timer);
+            auto_progress_timer = 0;
+        }
+        progress_ptr->set_value(v / 100.0f);
+        progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
+        slider_val.set_text(fmt::format("{:.0f}%", v));
+    });
 
     // We need to capture the timer ID to stop it if the user interacts with the slider
 
@@ -956,8 +955,9 @@ int main(int argc, char *argv[]) {
     // ── Tab: Image ───────────────────────────────────────────────────────
     auto tab_image = std::make_unique<toolkit::VBoxLayout>();
     tab_image->set_margins({20, 20, 20, 20});
-    
+
     auto img_widget = std::make_unique<toolkit::ImageWidget>();
+    img_widget->set_show_checkerboard(true);
     img_widget->load("vampire-riding-a-dinozaur.png");
     auto *img_widget_ptr = img_widget.get();
 
@@ -970,17 +970,18 @@ int main(int argc, char *argv[]) {
             .then([img_widget_ptr](auto path) {
                 if (path) {
                     img_widget_ptr->load(*path);
-                    spdlog::info("Loaded image: {}, size: {}x{}", *path, img_widget_ptr->size_hint().width, img_widget_ptr->size_hint().height);
                 }
             });
     };
     tab_image->add_widget(std::move(load_btn));
-    
-    auto scroll = std::make_unique<toolkit::ScrollArea>();
+
+    /*auto scroll = std::make_unique<toolkit::ScrollArea>();
     scroll->set_content(std::move(img_widget));
-    tab_image->add_widget(std::move(scroll), 1); // Expand to fill tab
+    tab_image->add_widget(std::move(scroll), 1); // Expand to fill tab*/
+    tab_image->add_widget(std::move(img_widget), 1);
     tabs->add_tab("Image", std::move(tab_image));
 
+    tabs->set_current(9);
     root->add_widget(std::move(tabs), 1);
 
     // ── Button bar ───────────────────────────────────────────────────────
