@@ -1,10 +1,11 @@
-#include "toolkit/image_loader.hpp"
+#include "toolkit/xdg_image_loader.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
-TEST_CASE("ImageLoader::load returns image data", "[image]") {
-    ImageLoader loader;
+TEST_CASE("StbImageLoader::load returns image data", "[image]") {
+    StbImageLoader loader;
 
     auto img = loader.load("themes/Faenza/actions/16/gtk-edit.png");
     REQUIRE(img);
@@ -14,15 +15,15 @@ TEST_CASE("ImageLoader::load returns image data", "[image]") {
     REQUIRE(!img->pixels.empty());
 }
 
-TEST_CASE("ImageLoader::load returns nullopt for invalid path", "[image]") {
-    ImageLoader loader;
+TEST_CASE("StbImageLoader::load returns nullopt for invalid path", "[image]") {
+    StbImageLoader loader;
 
     auto img = loader.load("nonexistent/image.png");
     REQUIRE(!img);
 }
 
-TEST_CASE("ImageLoader::supported_extensions", "[image]") {
-    ImageLoader loader;
+TEST_CASE("StbImageLoader::supported_extensions", "[image]") {
+    StbImageLoader loader;
 
     auto exts = loader.supported_extensions();
     REQUIRE(exts.size() > 0);

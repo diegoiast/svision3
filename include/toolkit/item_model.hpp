@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "toolkit/image_loader.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 #include <atomic>
 #include <functional>
 #include <memory>

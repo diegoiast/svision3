@@ -4,7 +4,7 @@
 #pragma once
 
 #include "toolkit/button_state.hpp"
-#include "toolkit/image_loader.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"

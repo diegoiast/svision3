@@ -3,13 +3,23 @@
 
 #pragma once
 
-#include "toolkit/image_loader.hpp"
+#include "toolkit/xdg_icons.hpp"
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
 namespace toolkit {
+
+struct ImageData {
+    std::vector<uint8_t> pixels;
+    int width = 0;
+    int height = 0;
+    int channels = 4;
+};
+
+using Icon = std::shared_ptr<ImageData>;
 
 /**
  * @brief An interface for loading images.
@@ -26,7 +36,7 @@ class ImageLoaderInterface {
      * @param path The path to the image file.
      * @return A shared pointer to the loaded image data, or nullptr if loading failed.
      */
-    virtual auto load(std::string_view path) -> std::shared_ptr<ImageData> = 0;
+    virtual auto load(std::string_view path) -> Icon = 0;
 
     /**
      * @brief Load an image from memory.
@@ -34,12 +44,21 @@ class ImageLoaderInterface {
      * @param size Size of the image data in bytes.
      * @return A shared pointer to the loaded image data, or nullptr if loading failed.
      */
-    virtual auto load(const uint8_t *data, size_t size) -> std::shared_ptr<ImageData> = 0;
+    virtual auto load(const uint8_t *data, size_t size) -> Icon = 0;
 
     /**
      * @brief Get the list of supported file extensions (e.g., ".png", ".jpg").
      */
     virtual auto supported_extensions() const -> std::vector<std::string> = 0;
+};
+
+class IconProvider {
+  public:
+    virtual ~IconProvider() = default;
+
+    // For names, use xdg_icons.hpp, XDG::IconContexts, XDG::IconActions or similar
+    virtual auto load(std::string_view icon_name, int size,
+                      std::string_view context = XDG::IconContexts::actions) -> Icon = 0;
 };
 
 } // namespace toolkit

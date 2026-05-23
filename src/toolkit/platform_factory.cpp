@@ -1,11 +1,11 @@
 #include "toolkit/application.hpp"
 #include "toolkit/clipboard.hpp"
-#include "toolkit/image_loader.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/platform/dummy_platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/widget.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 
 #include <cstdlib>
 #include <map>

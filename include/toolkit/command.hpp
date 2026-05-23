@@ -4,7 +4,7 @@
 #pragma once
 
 #include "toolkit/events.hpp"
-#include "toolkit/image_loader.hpp"
+#include "toolkit/image.hpp"
 #include <functional>
 #include <memory>
 #include <string>

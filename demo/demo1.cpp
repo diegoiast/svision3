@@ -10,7 +10,7 @@
 #include "toolkit/file_dialog.hpp"
 #include "toolkit/html_view.hpp"
 #include "toolkit/icon_grid.hpp"
-#include "toolkit/image_loader.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 #include "toolkit/image_widget.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"

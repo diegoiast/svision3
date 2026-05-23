@@ -4,7 +4,7 @@
 #include "toolkit/command.hpp"
 #include "toolkit/application.hpp"
 #include "toolkit/events.hpp"
-#include "toolkit/image_loader.hpp"
+#include "toolkit/image.hpp"
 #include <algorithm>
 #include <cctype>
 #include <vector>

@@ -9,8 +9,8 @@ namespace toolkit {
 
 class StbImageLoader : public ImageLoaderInterface {
   public:
-    auto load(std::string_view path) -> std::shared_ptr<ImageData> override;
-    auto load(const uint8_t *data, size_t size) -> std::shared_ptr<ImageData> override;
+    auto load(std::string_view path) -> Icon override;
+    auto load(const uint8_t *data, size_t size) -> Icon override;
     auto supported_extensions() const -> std::vector<std::string> override;
 };
 

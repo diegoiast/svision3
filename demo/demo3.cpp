@@ -4,7 +4,7 @@
 #include "toolkit/application.hpp"
 #include "toolkit/directory_dialog.hpp"
 #include "toolkit/file_dialog.hpp"
-#include "toolkit/image_loader.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 #include "toolkit/line_input.hpp"
 #include "toolkit/message_box.hpp"
 #include "toolkit/theme.hpp"
@@ -521,7 +521,7 @@ int main(int argc, char *argv[]) {
                         toolkit::FileDialog(window)
                             .title("Open Image")
                             .open()
-                            .then([iw_ptr](auto path) {
+                            .then([iw_ptr, window](auto path) {
                                 if (path) {
                                     iw_ptr->load(*path);
                                     window->start_timer(0.01f, [iw_ptr, window] {

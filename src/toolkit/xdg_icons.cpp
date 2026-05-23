@@ -1,5 +1,5 @@
 #include "toolkit/xdg_icons.hpp"
-#include "toolkit/image_loader.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 #include "toolkit/platform.hpp"
 #include <fstream>
 #include <sstream>

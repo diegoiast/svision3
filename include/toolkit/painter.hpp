@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "toolkit/image_loader.hpp"
+#include "toolkit/image.hpp"
 #include "toolkit/types.hpp"
 #include <string_view>
 
@@ -93,8 +93,8 @@ class MockPainter : public Painter {
     void draw_line(Point, Point, Color const &, float) override {}
     void fill_circle(Point, float, Color const &) override {}
     void draw_circle(Point, float, Color const &, float) override {}
-    void draw_text(std::string_view, Point, Color const &, float, FontFamily,
-                   TextOrientation, bool, bool) override {}
+    void draw_text(std::string_view, Point, Color const &, float, FontFamily, TextOrientation, bool,
+                   bool) override {}
     void draw_image(ImageData const &, Point) override {}
     void draw_image_scaled(ImageData const &, Rect const &) override {}
     std::string_view name() const override { return "mock"; }

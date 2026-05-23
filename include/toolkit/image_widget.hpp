@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "toolkit/image_loader.hpp"
 #include "toolkit/widget.hpp"
 #include <memory>
 

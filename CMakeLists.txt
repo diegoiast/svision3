@@ -39,7 +39,7 @@ endif()
 set(TOOLKIT_SOURCES
     src/toolkit/painter.cpp
     src/toolkit/command.cpp
-    src/toolkit/image_loader.cpp
+    src/toolkit/xdg_image_loader.cpp
     src/toolkit/image_widget.cpp
     src/toolkit/stb_image_loader.cpp
     src/toolkit/toolbar.cpp
@@ -466,7 +466,7 @@ add_executable(tests
     tests/test_menubar.cpp
     tests/test_catalog.cpp
     tests/test_db.cpp
-    tests/test_image_loader.cpp
+    tests/test_xdg_image_loader.cpp
     tests/test_icon_grid.cpp
     tests/test_html_view.cpp
     tests/test_utf8.cpp

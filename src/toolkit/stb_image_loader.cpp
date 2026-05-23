@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include "toolkit/stb_image_loader.hpp"
 #include <algorithm>
 #include <spdlog/spdlog.h>
-#include <stb_image.h>
 
 namespace toolkit {
 
-auto StbImageLoader::load(std::string_view path) -> std::shared_ptr<ImageData> {
+auto StbImageLoader::load(std::string_view path) -> Icon {
     int w = 0, h = 0, c = 0;
     auto *data = stbi_load(std::string(path).c_str(), &w, &h, &c, STBI_rgb_alpha);
 
@@ -27,7 +29,7 @@ auto StbImageLoader::load(std::string_view path) -> std::shared_ptr<ImageData> {
     return img;
 }
 
-auto StbImageLoader::load(const uint8_t *data, size_t size) -> std::shared_ptr<ImageData> {
+auto StbImageLoader::load(const uint8_t *data, size_t size) -> Icon {
     int w = 0, h = 0, c = 0;
     auto *stb_data = stbi_load_from_memory(data, static_cast<int>(size), &w, &h, &c, STBI_rgb_alpha);
 

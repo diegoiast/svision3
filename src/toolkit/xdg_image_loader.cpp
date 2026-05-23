@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
-#include "toolkit/image_loader.hpp"
+#include "toolkit/xdg_image_loader.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include <algorithm>
 #include <fstream>
 #include <spdlog/fmt/fmt.h>
@@ -13,31 +11,7 @@
 
 namespace toolkit {
 
-auto ImageLoader::load(std::string_view path) -> Icon {
-    int w = 0, h = 0, c = 0;
-    auto *data = stbi_load(std::string(path).c_str(), &w, &h, &c, STBI_rgb_alpha);
-
-    if (!data) {
-        spdlog::error("stb: failed image {} ", path);
-        return nullptr;
-    }
-
-    auto img = std::make_shared<ImageData>();
-    img->width = w;
-    img->height = h;
-    img->channels = 4;
-    img->pixels.resize(static_cast<size_t>(w) * h * 4);
-    std::copy(data, data + img->pixels.size(), img->pixels.begin());
-    stbi_image_free(data);
-
-    return img;
-}
-
-auto ImageLoader::supported_extensions() const -> std::vector<std::string> {
-    return {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tga", ".hdr"};
-}
-
-XdgImageLoader::XdgImageLoader() : loader(std::make_unique<ImageLoader>()) {
+XdgImageLoader::XdgImageLoader() : loader(std::make_unique<StbImageLoader>()) {
     auto xdg_str = std::getenv("XDG_DATA_DIRS");
     if (xdg_str) {
         std::string_view sv(xdg_str);

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "toolkit/button_state.hpp"
-#include "toolkit/image_loader.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
 #include <optional>
@@ -37,7 +36,7 @@ class Button : public Widget, public Fluent<Button> {
     }
 
     void set_padding(Margins const &padding) { padding_override_ = padding; }
-    Button& set_flat(bool f);
+    Button &set_flat(bool f);
     bool is_flat() const { return flat_; }
 
     Button &set_checkable(bool c);

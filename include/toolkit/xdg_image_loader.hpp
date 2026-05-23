@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/image.hpp"
 #include "toolkit/xdg_icons.hpp"
 #include <filesystem>
 #include <memory>
@@ -12,23 +13,6 @@
 #include <vector>
 
 namespace toolkit {
-
-struct ImageData {
-    std::vector<uint8_t> pixels;
-    int width = 0;
-    int height = 0;
-    int channels = 4;
-};
-
-using Icon = std::shared_ptr<ImageData>;
-
-class ImageLoader {
-  public:
-    virtual ~ImageLoader() = default;
-
-    virtual auto load(std::string_view path) -> Icon;
-    virtual auto supported_extensions() const -> std::vector<std::string>;
-};
 
 struct IconDirectory {
     std::string path;
@@ -43,15 +27,6 @@ struct IconTheme {
     std::string name;
     std::vector<std::string> inherits;
     std::vector<IconDirectory> directories;
-};
-
-class IconProvider {
-  public:
-    virtual ~IconProvider() = default;
-
-    // For names, use xdg_icons.hpp, XDG::IconContexts, XDG::IconActions or similar
-    virtual auto load(std::string_view icon_name, int size,
-                      std::string_view context = XDG::IconContexts::actions) -> Icon = 0;
 };
 
 class XdgImageLoader : public IconProvider {
@@ -72,7 +47,7 @@ class XdgImageLoader : public IconProvider {
 
     std::string current_theme;
     std::unique_ptr<IconTheme> theme;
-    std::unique_ptr<ImageLoader> loader;
+    std::unique_ptr<ImageLoaderInterface> loader;
     std::vector<std::filesystem::path> xdg_dirs;
 };
 
