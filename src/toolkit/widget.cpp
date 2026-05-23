@@ -149,15 +149,15 @@ bool Widget::handle_key_impl(KeyEvent const &event) {
 }
 
 Size Widget::measure_text(std::string_view text, float font_size, FontFamily font) const {
+    // FIXME: use the painter or something? I don't like accsing the rasterizer from platform
     if (auto *p = detail::current_platform()) {
-        // FIXME: use the painter or something? I see rasterizer is usef from the painter and
-        // platform
         return p->measure_text(text, font_size, font);
     }
     return {};
 }
 
 Painter::FontMetrics Widget::font_metrics(float font_size, FontFamily font) const {
+    // FIXME: use the painter or something? I don't like accsing the rasterizer from platform
     if (auto *p = detail::current_platform()) {
         return p->font_metrics(font_size, font);
     }

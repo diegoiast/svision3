@@ -6,9 +6,6 @@ Implemented: 112
 Total: 207
 Progress: 112 / 207 ≈ 54%
 
-This document is not final (note that the menus and toolbars support is done in
-another document). The idea is to reach version 0.9 with all these items marked.
-
 Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ## Core Architecture [19/41]
@@ -72,7 +69,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 7. [ ] Accessibility (screen readers).
 8. [ ] System tray / notifications.
 9. [ ] Native file drag-and-drop.
-10. [ ] Wayland clipboard (cross-client).
+10. [ ] Wayland clipboard (cross-client).X11/OpenGL/
 11. [x] Wayland tooltips (xdg_popup)
 12. [ ] Date picker API dialog
 
@@ -249,6 +246,10 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 6. [ ] Attach a menu (long click, or sub-button).
 7. [ ] Button group (mutually exclusive toggles).
 
+## ScrollArea
+
+1. [ ] Review code
+
 ## LineInput Features [14/15]
 
 1. [x] Text cursor with blinking (NSTimer + steady_clock).
@@ -316,7 +317,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## Slider
 
 1. [ ] Mouse wheel support.
-1. [ ] Add support for "clicks"
+1. [ ] Add support for "clicks".
 1. [ [ Add support for custom labels,
 
 ## Label Features [1/5]
@@ -337,10 +338,10 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 1. [x] Monospaced fonts are not used in code block.
 2. [ ] Monospaced blocks spacing is not ideal.
-3. [ ] Dark mode is broken - text is still black, on changing.
-4. [ ] Fonts are too dark on X11/OpenGL/Cairo.
+3. [ ] Dark mode is broken - text is still black, on changing theme.
+4. [ ] Fonts are too dark/bold on Cairo.
 5. [x] Tooltips do not use the rich view, only plain text.
-6. [ ] Rich tooltips do not elide, no schrinkable option.
+6. [ ] Rich tooltips do not elide, no shrinkable option.
 7. [ ] Spacing on text is bad (# aaa1 bbb) - shows the bbb near the first word.
 
 ## Testing [0/3]
