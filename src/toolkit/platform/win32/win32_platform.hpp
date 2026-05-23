@@ -103,7 +103,7 @@ class Win32PlatformWindow : public PlatformWindow {
     HGLRC hglrc = nullptr;
     HCURSOR arrow_cursor = nullptr, ibeam_cursor = nullptr;
     HCURSOR hand_cursor = nullptr, not_allowed_cursor = nullptr;
-    HCURSOR resize_ew_cursor = nullptr, resize_ns_cursor = nullptr;
+    HCURSOR resize_ew_cursor = nullptr, resize_ns_cursor = nullptr, move_cursor = nullptr;
     Win32TextRasterizer rasterizer_;
     std::unique_ptr<RenderingBackend> backend_;
 };

@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "x11_platform.hpp"
-#include "toolkit/stb_image_loader.hpp"
 #include "../linux_utils.hpp"
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/painters/gl_painter.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
@@ -87,9 +87,13 @@ struct X11PlatformApplication::Impl {
 struct X11PlatformWindow::Impl {
     ::Window xwindow = 0L;
     ::Window tooltip_xwindow = 0L;
-    Cursor arrow_cursor = 0L, ibeam_cursor = 0L;
-    Cursor hand_cursor = 0L, not_allowed_cursor = 0L;
-    Cursor resize_ew_cursor = 0L, resize_ns_cursor = 0L;
+    Cursor arrow_cursor = 0L;
+    Cursor ibeam_cursor = 0L;
+    Cursor hand_cursor = 0L;
+    Cursor not_allowed_cursor = 0L;
+    Cursor resize_ew_cursor = 0L;
+    Cursor resize_ns_cursor = 0L;
+    Cursor move_cursor = 0L;
     std::unique_ptr<RenderingBackend> backend;
 
     bool needs_redraw = false;
@@ -203,8 +207,8 @@ static Key keysym_to_key(KeySym ks) {
         return Key::F5;
     case XK_F6:
         return Key::F6;
-    case XK_F7:
         return Key::F7;
+    case XK_F7:
     case XK_F8:
         return Key::F8;
     case XK_F9:
@@ -231,7 +235,33 @@ static Key keysym_to_key(KeySym ks) {
         return Key::LeftSuper;
     case XK_Super_R:
         return Key::RightSuper;
+    case XK_KP_Equal:
+    case XK_equal:
+        return Key::Equals;
+    case XK_plus:
+        return Key::Plus;
+    case XK_KP_Subtract:
+        return Key::Minus;
+    case XK_KP_1:
+        return Key::Number1;
+    case XK_KP_2:
+        return Key::Number2;
+    case XK_KP_3:
+        return Key::Number3;
+    case XK_KP_4:
+        return Key::Number4;
+    case XK_KP_5:
+        return Key::Number5;
+    case XK_KP_6:
+        return Key::Number7;
+    case XK_KP_7:
+        return Key::Number7;
+    case XK_KP_8:
+        return Key::Number8;
+    case XK_KP_9:
+        return Key::Number9;
     default:
+        spdlog::info("Key {} - not parsed by X11", ks);
         return Key::NoKey;
     }
 }
@@ -525,8 +555,9 @@ static void process_pending_events(X11PlatformApplication::Impl *d) {
         if (xw == 0L) {
             continue;
         }
-        if (d->modal_xwindow != 0L && xw != d->modal_xwindow)
+        if (d->modal_xwindow != 0L && xw != d->modal_xwindow) {
             continue;
+        }
         auto it = d->window_map.find(xw);
         if (it != d->window_map.end()) {
             dispatch_x11_event(d, xw, it->second, ev);
@@ -649,27 +680,32 @@ static bool x11_run_iteration(X11PlatformApplication::Impl *d) {
     }
     {
         std::lock_guard lock(d->posted_mutex);
-        for (auto &fn : d->posted_fns)
+        for (auto &fn : d->posted_fns) {
             to_call.push_back(std::move(fn));
+        }
         d->posted_fns.clear();
     }
-    for (auto const &fn : to_call)
+    for (auto const &fn : to_call) {
         fn();
+    }
 
     // 2. Redraw windows that need it.
     {
         std::vector<X11PlatformWindow *> active_windows;
-        for (auto &pair : d->window_map)
+        for (auto &pair : d->window_map) {
             active_windows.push_back(
                 static_cast<X11PlatformWindow *>(pair.second.owner->platform_window()));
+        }
         for (auto *plat : active_windows) {
-            if (d->window_map.count(plat->impl_->xwindow) && plat->impl_->needs_redraw)
+            if (d->window_map.count(plat->impl_->xwindow) && plat->impl_->needs_redraw) {
                 plat->do_paint();
+            }
         }
     }
 
-    if (!d->running)
+    if (!d->running) {
         return false;
+    }
 
     // 3. Calculate poll timeout from next timer.
     int timeout_ms = -1;
@@ -679,8 +715,9 @@ static bool x11_run_iteration(X11PlatformApplication::Impl *d) {
             auto const ms =
                 std::chrono::duration_cast<std::chrono::milliseconds>(t.next_fire - now).count();
             int const wait_ms = ms < 0 ? 0 : static_cast<int>(ms);
-            if (timeout_ms < 0 || wait_ms < timeout_ms)
+            if (timeout_ms < 0 || wait_ms < timeout_ms) {
                 timeout_ms = wait_ms;
+            }
         }
     }
 
@@ -689,8 +726,9 @@ static bool x11_run_iteration(X11PlatformApplication::Impl *d) {
     fds[0] = {ConnectionNumber(d->display), POLLIN, 0};
     fds[1] = {d->wakeup_pipe[0], POLLIN, 0};
 
-    if (XPending(d->display))
+    if (XPending(d->display)) {
         timeout_ms = 0;
+    }
 
     XFlush(d->display);
     poll(fds, 2, timeout_ms);
@@ -710,13 +748,15 @@ int X11PlatformApplication::run() {
     auto *d = impl_.get();
     d->running = true;
     spdlog::info("Starting run loop (X11)");
-    while (x11_run_iteration(d)) {}
+    while (x11_run_iteration(d)) {
+    }
     return 0;
 }
 
 void X11PlatformApplication::run_until(std::function<bool()> should_exit) {
     auto *d = impl_.get();
-    while (!should_exit() && x11_run_iteration(d)) {}
+    while (!should_exit() && x11_run_iteration(d)) {
+    }
 }
 
 void X11PlatformApplication::quit() { impl_->running = false; }
@@ -789,7 +829,6 @@ void X11PlatformApplication::clipboard_set_text(std::string const &text) {
     XFlush(d->display);
 }
 
-
 X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
                                      Window *owner)
     : impl_(std::make_unique<Impl>()), app_(app), owner_(owner) {
@@ -857,6 +896,7 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     w->not_allowed_cursor = XCreateFontCursor(d->display, XC_X_cursor);
     w->resize_ew_cursor = XCreateFontCursor(d->display, XC_sb_h_double_arrow);
     w->resize_ns_cursor = XCreateFontCursor(d->display, XC_sb_v_double_arrow);
+    w->move_cursor = XCreateFontCursor(d->display, XC_fleur);
     d->window_map[w->xwindow] = {owner, xic};
 
     impl_->needs_redraw = true;
@@ -918,8 +958,9 @@ void X11PlatformWindow::cleanup_resources() {
         w->has_input_grab = false;
     }
 
-    if (d->modal_xwindow == w->xwindow)
+    if (d->modal_xwindow == w->xwindow) {
         d->modal_xwindow = 0L;
+    }
 
     XDestroyWindow(d->display, w->xwindow);
     w->xwindow = 0L;
@@ -1104,6 +1145,9 @@ void X11PlatformWindow::set_cursor(CursorShape shape) {
         break;
     case CursorShape::ResizeNS:
         c = w->resize_ns_cursor;
+        break;
+    case CursorShape::Move:
+        c = w->move_cursor;
         break;
     default:
         c = w->arrow_cursor;

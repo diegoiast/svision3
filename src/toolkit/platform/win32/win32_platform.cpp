@@ -1,7 +1,7 @@
 #include "win32_platform.hpp"
-#include "toolkit/stb_image_loader.hpp"
 #include "Win32OpenGlRenderingBackend.hpp"
 #include "toolkit/painters/win32_painter.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
@@ -17,12 +17,12 @@
 #include <gdiplus.h>
 // clang-format on
 
+#include "toolkit/stopwatch.hpp"
 #include <GL/gl.h>
 #include <algorithm>
 #include <cmath>
 #include <objidl.h>
 #include <spdlog/spdlog.h>
-#include "toolkit/stopwatch.hpp"
 
 namespace toolkit {
 
@@ -156,6 +156,30 @@ static Key vk_to_key(WPARAM vk) {
         return Key::F11;
     case VK_F12:
         return Key::F12;
+    case VK_ADD:
+        return Key::Plus;
+    case VK_SUBTRACT:
+        return Key::Minus;
+    case 0x30:
+        return Key::Number0;
+    case 0x31:
+        return Key::Number1;
+    case 0x32:
+        return Key::Number2;
+    case 0x33:
+        return Key::Number3;
+    case 0x34:
+        return Key::Number4;
+    case 0x35:
+        return Key::Number5;
+    case 0x36:
+        return Key::Number6;
+    case 0x37:
+        return Key::Number7;
+    case 0x38:
+        return Key::Number8;
+    case 0x39:
+        return Key::Number9;
     default:
         return Key::NoKey;
     }
@@ -180,7 +204,6 @@ static int detect_click_count(Win32PlatformApplication::WindowData &data, int bu
     data.last_press_button = button;
     return data.click_count;
 }
-
 
 void Win32PlatformApplication::paint_window(HWND hwnd, Window *win) {
     PAINTSTRUCT ps;
@@ -475,7 +498,8 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_DESTROY: {
         auto it = app->window_map.find(hwnd);
         if (it != app->window_map.end()) {
-            auto *plat_win = static_cast<Win32PlatformWindow *>(it->second.owner->platform_window());
+            auto *plat_win =
+                static_cast<Win32PlatformWindow *>(it->second.owner->platform_window());
             if (plat_win && plat_win->modal_parent_hwnd) {
                 EnableWindow(plat_win->modal_parent_hwnd, TRUE);
                 SetForegroundWindow(plat_win->modal_parent_hwnd);
@@ -547,7 +571,8 @@ SystemFonts Win32PlatformApplication::system_fonts() const {
     NONCLIENTMETRICSW ncm = {sizeof(NONCLIENTMETRICSW)};
     if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0)) {
         float dpi = static_cast<float>(get_system_dpi());
-        // 72 = points per inch (typographic constant); see https://en.wikipedia.org/wiki/Point_(typography)
+        // 72 = points per inch (typographic constant); see
+        // https://en.wikipedia.org/wiki/Point_(typography)
         float size = static_cast<float>(std::abs(ncm.lfMessageFont.lfHeight)) * 72.0f / dpi;
         return {wide_to_utf8(ncm.lfMessageFont.lfFaceName), "Consolas", size};
     }
@@ -682,6 +707,7 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
     not_allowed_cursor = LoadCursorW(nullptr, IDC_NO);
     resize_ew_cursor = LoadCursorW(nullptr, IDC_SIZEWE);
     resize_ns_cursor = LoadCursorW(nullptr, IDC_SIZENS);
+    move_cursor = LoadCursorW(nullptr, IDC_SIZEALL);
     std::wstring wtitle = utf8_to_wide(title);
     float scale = static_cast<float>(get_system_dpi()) / 96.0f;
 
@@ -868,6 +894,9 @@ void Win32PlatformWindow::set_cursor(CursorShape shape) {
         break;
     case CursorShape::ResizeNS:
         hc = resize_ns_cursor;
+        break;
+    case CursorShape::Move:
+        hc = move_cursor;
         break;
     default:
         hc = arrow_cursor;

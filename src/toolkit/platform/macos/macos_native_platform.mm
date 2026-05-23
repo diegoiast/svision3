@@ -412,6 +412,7 @@ class CoreGraphicsPainter : public Painter {
     case 109: ke.key = toolkit::Key::F10;       break;
     case 103: ke.key = toolkit::Key::F11;       break;
     case 111: ke.key = toolkit::Key::F12;       break;
+    // FIXME: add missing keys
     default:  break;
     }
     bool has_mod = ke.alt || ke.super || ke.ctrl;

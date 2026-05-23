@@ -1,6 +1,6 @@
 #include "wl_platform.hpp"
-#include "toolkit/stb_image_loader.hpp"
 #include "../linux_utils.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <cstring>
@@ -225,7 +225,32 @@ static Key xkb_to_key(xkb_keysym_t sym) {
         return Key::F11;
     case XKB_KEY_F12:
         return Key::F12;
+    case XKB_KEY_equal:
+        return Key::Equals;
+    case XKB_KEY_plus:
+        return Key::Plus;
+    case XKB_KEY_KP_Subtract:
+        return Key::Minus;
+    case XKB_KEY_1:
+        return Key::Number1;
+    case XKB_KEY_2:
+        return Key::Number2;
+    case XKB_KEY_3:
+        return Key::Number3;
+    case XKB_KEY_4:
+        return Key::Number4;
+    case XKB_KEY_5:
+        return Key::Number5;
+    case XKB_KEY_6:
+        return Key::Number7;
+    case XKB_KEY_7:
+        return Key::Number7;
+    case XKB_KEY_8:
+        return Key::Number8;
+    case XKB_KEY_9:
+        return Key::Number9;
     default:
+        spdlog::info("Key {} - not parsed by wayland", sym);
         return Key::NoKey;
     }
 }
@@ -253,6 +278,8 @@ static const char *cursor_name_for(CursorShape shape) {
         return "ew-resize";
     case CursorShape::ResizeNS:
         return "ns-resize";
+    case CursorShape::Move:
+        return "all-scroll";
     default:
         return "left_ptr";
     }
@@ -270,6 +297,8 @@ static wp_cursor_shape_device_v1_shape cursor_shape_for(CursorShape shape) {
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE;
     case CursorShape::ResizeNS:
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NS_RESIZE;
+    case CursorShape::Move:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ALL_SCROLL;
     case CursorShape::Arrow:
     default:
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
@@ -472,6 +501,7 @@ static void pointer_button(void *data, wl_pointer *, uint32_t, uint32_t time, ui
 
 static void pointer_axis(void *data, wl_pointer *, uint32_t, uint32_t axis, wl_fixed_t value) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
+    spdlog::debug("pointer_axis: axis={}", axis);
     if (!app->pointer_focus) {
         return;
     }

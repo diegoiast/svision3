@@ -45,6 +45,9 @@ enum class Key {
     RightControl,
     LeftSuper,
     RightSuper,
+    Plus,
+    Minus,
+    Equals,
     A,
     F1,
     F2,
@@ -58,6 +61,16 @@ enum class Key {
     F10,
     F11,
     F12,
+    Number0,
+    Number1,
+    Number2,
+    Number3,
+    Number4,
+    Number5,
+    Number6,
+    Number7,
+    Number8,
+    Number9,
 };
 
 struct KeyEvent {
