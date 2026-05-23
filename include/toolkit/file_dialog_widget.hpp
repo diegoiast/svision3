@@ -53,6 +53,7 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
   private:
     void setup_ui();
     void load_directory();
+    void navigate_up();
 
     enum class ViewMode { List, Icons, Details };
     ViewMode view_mode_ = ViewMode::Icons;

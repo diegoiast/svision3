@@ -228,11 +228,18 @@ void FileDialogWidget::set_ok_label(std::string_view label) {
 }
 
 bool FileDialogWidget::handle_key(KeyEvent const &event) {
-    if (event.type == KeyEvent::Type::Press && event.key == Key::Escape) {
-        if (on_cancel) {
-            Application::post_to_main_thread(on_cancel);
+    if (event.type == KeyEvent::Type::Press) {
+        if (event.key == Key::Escape) {
+            if (on_cancel) {
+                Application::post_to_main_thread(on_cancel);
+            }
+            return true;
         }
-        return true;
+        if ((event.key == Key::Up && event.alt) ||
+            (event.key == Key::Backspace && !path_input_->is_focused())) {
+            navigate_up();
+            return true;
+        }
     }
     return VBoxLayout::handle_key(event);
 }
@@ -313,18 +320,7 @@ void FileDialogWidget::setup_ui() {
     up_btn->set_tooltip("Up One Level");
     up_btn->set_icon(app.load_icon("go-up", 16, "actions"));
     up_button_ = up_btn.get();
-    up_button_->on_click = [this]() {
-        if (current_path_ != "/" && current_path_ != "") {
-            auto pos = current_path_.rfind('/');
-            if (pos != std::string::npos) {
-                current_path_ = current_path_.substr(0, pos);
-                if (current_path_.empty()) {
-                    current_path_ = "/";
-                }
-                load_directory();
-            }
-        }
-    };
+    up_button_->on_click = [this]() { navigate_up(); };
     toolbar_->add_widget(std::move(up_btn));
 
     auto new_btn = std::make_unique<Button>("");
@@ -472,8 +468,8 @@ void FileDialogWidget::setup_ui() {
             }
         }
     };
-    icon_grid_->on_back_requested = [this]() { up_button_->on_click(); };
-    table_view_->on_back_requested = [this]() { up_button_->on_click(); };
+    icon_grid_->on_back_requested = [this]() { navigate_up(); };
+    table_view_->on_back_requested = [this]() { navigate_up(); };
 
     auto details = std::make_unique<TableView>(details_model_);
     table_view_details_ = details.get();
@@ -509,7 +505,7 @@ void FileDialogWidget::setup_ui() {
             path_input_->set_text(items[*idx].text);
         }
     };
-    table_view_details_->on_back_requested = [this]() { up_button_->on_click(); };
+    table_view_details_->on_back_requested = [this]() { navigate_up(); };
 
     content_->add_widget(std::move(grid), 1);
     content_->add_widget(std::move(table), 1);
@@ -581,6 +577,17 @@ void FileDialogWidget::setup_ui() {
     bottom_controls_->add_widget(std::move(type_row));
 
     add_widget(std::move(bottom_controls_));
+}
+
+void FileDialogWidget::navigate_up() {
+    std::filesystem::path p(current_path_);
+    if (p.has_parent_path() && p.parent_path() != p) {
+        current_path_ = p.parent_path().string();
+        load_directory();
+        if (on_up) {
+            on_up();
+        }
+    }
 }
 
 } // namespace toolkit

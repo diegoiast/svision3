@@ -15,7 +15,7 @@ auto StbImageLoader::load(std::string_view path) -> Icon {
     auto *data = stbi_load(std::string(path).c_str(), &w, &h, &c, STBI_rgb_alpha);
 
     if (!data) {
-        spdlog::error("stb: failed image {} ", path);
+        spdlog::error("stb: failed image {} ", std::string(path));
         return nullptr;
     }
 
