@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include <cstdint>
 #include "toolkit/image_loader.hpp"
+#include <cstdint>
 #include <memory>
 #include <string_view>
 #include <vector>

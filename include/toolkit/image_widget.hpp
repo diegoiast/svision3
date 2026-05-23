@@ -23,6 +23,7 @@ class ImageWidget : public Widget {
 
     void set_zoom(float zoom);
     float zoom() const { return zoom_; }
+    void fit_to_widget();
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;

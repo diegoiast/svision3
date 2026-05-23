@@ -513,6 +513,26 @@ int main(int argc, char *argv[]) {
                     .add(ui::list_view(filter_adapter).alternate_row_colors(true), ui::expand))
             .add_tab("Table", ui::vbox().add(ui::table_view(table_model).alternate_row_colors(true),
                                              ui::expand))
+            .add_tab("Image", [&]() {
+                auto iw = ui::image_widget();
+                auto *iw_ptr = iw.get();
+                return ui::vbox()
+                    .add(ui::button("Open Image").on_click([window, iw_ptr]() {
+                        toolkit::FileDialog(window)
+                            .title("Open Image")
+                            .open()
+                            .then([iw_ptr](auto path) {
+                                if (path) {
+                                    iw_ptr->load(*path);
+                                    window->start_timer(0.01f, [iw_ptr, window] {
+                                        iw_ptr->fit_to_widget();
+                                        window->request_redraw("fit");
+                                    }, false);
+                                }
+                            });
+                    }))
+                    .add(std::move(iw), ui::expand);
+            }())
             .add_tab("Grid",
                      [&]() {
                          auto iconGrid = ui::icon_grid(grid_model);

@@ -71,7 +71,27 @@ void ImageWidget::clamp_scroll() {
     scroll_y_ = std::clamp(scroll_y_, 0.0f, std::max(0.0f, h - rect_.height));
 }
 
-void ImageWidget::update_size() { clamp_scroll(); }
+void ImageWidget::update_size() {
+    clamp_scroll();
+}
+
+void ImageWidget::fit_to_widget() {
+    if (!image_) return;
+    if (rect_.width <= 0 || rect_.height <= 0) return;
+
+    float aspect = (float)image_->width / image_->height;
+    float view_aspect = rect_.width / rect_.height;
+    if (aspect > view_aspect) {
+        set_zoom(rect_.width / image_->width);
+    } else {
+        set_zoom(rect_.height / image_->height);
+    }
+    scroll_x_ = 0;
+    scroll_y_ = 0;
+    if (window_) {
+        window_->request_redraw("ImageWidget::fit_to_widget");
+    }
+}
 
 void ImageWidget::paint(Painter &painter) {
     if (show_checkerboard_) {

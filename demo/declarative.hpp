@@ -6,6 +6,7 @@
 #include "toolkit/button.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
+#include "toolkit/image_widget.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/line_input.hpp"
@@ -505,6 +506,10 @@ inline Element<toolkit::Combobox> combobox(std::vector<std::string> items) {
 
 inline Element<toolkit::IconGrid> icon_grid(std::shared_ptr<toolkit::ItemModel> model) {
     return Element<toolkit::IconGrid>(std::make_unique<toolkit::IconGrid>(model));
+}
+
+inline Element<toolkit::ImageWidget> image_widget() {
+    return Element<toolkit::ImageWidget>(std::make_unique<toolkit::ImageWidget>());
 }
 
 inline Element<toolkit::Label> spacer() {
