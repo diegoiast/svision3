@@ -48,6 +48,7 @@ class Command {
     std::string const &shortcut_string() const { return shortcut_string_; }
     Shortcut const &shortcut() const { return shortcut_; }
     void set_shortcut(std::string s);
+    std::string printable_shortcut() const;
 
     bool is_enabled() const { return enabled_; }
     void set_enabled(bool e) { enabled_ = e; }

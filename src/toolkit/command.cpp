@@ -132,6 +132,22 @@ void Command::set_shortcut(std::string s) {
     shortcut_ = Shortcut::parse(shortcut_string_);
 }
 
+std::string Command::printable_shortcut() const {
+    std::string result = shortcut_string_;
+#ifdef __APPLE__
+    size_t pos = result.find("Std+");
+    if (pos != std::string::npos) {
+        result.replace(pos, 4, "Cmd+");
+    }
+#else
+    size_t pos = result.find("Std+");
+    if (pos != std::string::npos) {
+        result.replace(pos, 4, "Ctrl+");
+    }
+#endif
+    return result;
+}
+
 void Command::set_icon(std::string icon) {
     icon_ = std::move(icon);
     icon_image_ = nullptr;

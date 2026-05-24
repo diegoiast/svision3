@@ -36,7 +36,8 @@ void ContextMenu::show(Window *win, Point position) {
     auto const &style = Theme::current().combobox;
     auto const &theme = Theme::current();
     auto const &palette = theme.palette;
-    auto max_w = 0.0f;
+    auto max_name_w = 0.0f;
+    auto max_shortcut_w = 0.0f;
 
     item_height_ = detail::current_platform()->font_metrics(palette.fonts.size).height +
                    style.item_padding * 2.0f;
@@ -44,14 +45,25 @@ void ContextMenu::show(Window *win, Point position) {
         if (item.type == MenuItem::Type::Separator) {
             continue;
         }
-        auto w = detail::current_platform()
+        auto name_w = detail::current_platform()
                      ->measure_text(item.command->name(), palette.fonts.size)
                      .width;
-        max_w = std::max(max_w, w);
+        max_name_w = std::max(max_name_w, name_w);
+
+        auto shortcut = item.command->printable_shortcut();
+        if (!shortcut.empty()) {
+            auto shortcut_w = detail::current_platform()
+                     ->measure_text(shortcut, palette.fonts.size)
+                     .width;
+            max_shortcut_w = std::max(max_shortcut_w, shortcut_w);
+        }
     }
 
     // FIXME: what is this extra 20.0f padding?
-    auto width = max_w + style.padding.left + style.padding.right + 20.0f;
+    auto width = max_name_w + style.padding.left + style.padding.right + 20.0f;
+    if (max_shortcut_w > 0) {
+        width += max_shortcut_w + 20.0f; // Add gap and shortcut width
+    }
     auto height = menu_total_height(items_, item_height_, separator_height_);
     auto win_size = window_->size();
     auto x = position.x;
@@ -121,9 +133,10 @@ void ContextMenu::paint(Painter &painter) {
 
         auto enabled = item.command->is_enabled();
         auto item_rect = Rect{2, y, bounds_.width - 4, item_height_};
+        auto icon_data = item.command->icon_image();
+        auto shortcut = item.command->printable_shortcut();
 
-        Icon icon;
-        Theme::current().draw_menu_item(painter, item_rect, item.command->name(), icon, "",
+        Theme::current().draw_menu_item(painter, item_rect, item.command->name(), icon_data, shortcut,
                                         i == hovered_, enabled, false, false);
 
         y += item_height_;

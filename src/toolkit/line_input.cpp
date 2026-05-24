@@ -11,6 +11,41 @@
 
 namespace toolkit {
 
+class TextCommand : public UndoCommand {
+public:
+    TextCommand(std::string *text, std::string old_val, std::string new_val, size_t pos)
+        : text_(text), old_val_(std::move(old_val)), new_val_(std::move(new_val)), pos_(pos) {}
+
+    void undo() override {
+        text_->replace(pos_, new_val_.size(), old_val_);
+    }
+
+    void redo() override {
+        text_->replace(pos_, old_val_.size(), new_val_);
+    }
+
+    int id() const override { return 1; }
+
+    std::string text() const override {
+        return old_val_.empty() ? "Typing" : "Deletion";
+    }
+
+    bool merge_with(const UndoCommand *other) override {
+        auto const *o = static_cast<const TextCommand *>(other);
+        if (o->pos_ == pos_ + new_val_.size()) {
+            new_val_ += o->new_val_;
+            return true;
+        }
+        return false;
+    }
+
+private:
+    std::string *text_;
+    std::string old_val_;
+    std::string new_val_;
+    size_t pos_;
+};
+
 static std::string get_masked_text(std::string_view text, size_t byte_limit = std::string::npos) {
     std::string result;
     size_t i = 0;
@@ -43,6 +78,14 @@ LineInput::LineInput(std::string placeholder)
     paste_cmd = Command::create("Paste", [this] { paste(); });
     paste_cmd->set_shortcut("Std+V");
     add_command(paste_cmd);
+
+    undo_cmd = Command::create("Undo", [this] { undo(); });
+    undo_cmd->set_shortcut("Std+Z");
+    add_command(undo_cmd);
+
+    redo_cmd = Command::create("Redo", [this] { redo(); });
+    redo_cmd->set_shortcut("Std+Y");
+    add_command(redo_cmd);
 
     sync_commands();
 }
@@ -95,8 +138,10 @@ void LineInput::delete_selection() {
     }
     auto s = sel_start();
     auto e = sel_end();
+    std::string old_text = text_.substr(s, e - s);
 
     text_.erase(s, e - s);
+    undo_stack_.push(std::make_unique<TextCommand>(&text_, old_text, "", s));
     cursor_pos_ = s;
     sel_anchor_ = s;
     sync_commands();
@@ -170,6 +215,34 @@ void LineInput::sync_commands() {
     cut_cmd->set_enabled(has_sel && !password_mode_ && !read_only_);
     copy_cmd->set_enabled(has_sel && !password_mode_);
     paste_cmd->set_enabled(!read_only_ && !Clipboard::get_text().empty());
+
+    undo_cmd->set_enabled(undo_stack_.can_undo());
+    if (undo_stack_.can_undo()) {
+        undo_cmd->set_tooltip("Undo " + undo_stack_.undo_text());
+    } else {
+        undo_cmd->set_tooltip("Undo");
+    }
+
+    redo_cmd->set_enabled(undo_stack_.can_redo());
+    if (undo_stack_.can_redo()) {
+        redo_cmd->set_tooltip("Redo " + undo_stack_.redo_text());
+    } else {
+        redo_cmd->set_tooltip("Redo");
+    }
+}
+
+void LineInput::undo() {
+    if (undo_stack_.undo()) {
+        sync_commands();
+        if (window_) window_->request_redraw("input state");
+    }
+}
+
+void LineInput::redo() {
+    if (undo_stack_.redo()) {
+        sync_commands();
+        if (window_) window_->request_redraw("input state");
+    }
 }
 
 float LineInput::clear_btn_size() const {
@@ -514,49 +587,11 @@ bool LineInput::handle_key(KeyEvent const &event) {
             return true;
         }
         if (has_selection()) {
-            if (validation_mode_ == ValidationMode::Block && validator_) {
-                std::string next_text = text_;
-                next_text.erase(sel_start(), sel_end() - sel_start());
-                if (!validator_(next_text, *this)) {
-                    return true;
-                }
-            }
             delete_selection();
-        } else if (event.alt) {
-            if (validation_mode_ == ValidationMode::Block && validator_) {
-                size_t old = cursor_pos_;
-                // We need to simulate move_word_left without changing state
-                size_t p = cursor_pos_;
-                while (p > 0 && std::isspace(static_cast<unsigned char>(text_[p - 1]))) {
-                    p--;
-                }
-                while (p > 0 && !std::isspace(static_cast<unsigned char>(text_[p - 1]))) {
-                    p--;
-                }
-                std::string next_text = text_;
-                next_text.erase(p, old - p);
-                if (!validator_(next_text, *this)) {
-                    return true;
-                }
-            }
-            auto old = cursor_pos_;
-
-            move_word_left(false);
-            text_.erase(cursor_pos_, old - cursor_pos_);
-            sel_anchor_ = cursor_pos_;
-            sync_commands();
-            if (on_change) {
-                on_change(text_, *this);
-            }
         } else if (cursor_pos_ > 0) {
             size_t prev = Utf8Iterator::prev(text_, cursor_pos_);
-            if (validation_mode_ == ValidationMode::Block && validator_) {
-                std::string next_text = text_;
-                next_text.erase(prev, cursor_pos_ - prev);
-                if (!validator_(next_text, *this)) {
-                    return true;
-                }
-            }
+            std::string old_text = text_.substr(prev, cursor_pos_ - prev);
+            undo_stack_.push(std::make_unique<TextCommand>(&text_, old_text, "", prev));
             text_.erase(prev, cursor_pos_ - prev);
             cursor_pos_ = prev;
             sel_anchor_ = cursor_pos_;
@@ -654,23 +689,16 @@ bool LineInput::handle_key(KeyEvent const &event) {
         if (read_only_) {
             return false;
         }
-        if (validation_mode_ == ValidationMode::Block && validator_) {
-            auto next_text = text_;
-            if (has_selection()) {
-                next_text.erase(sel_start(), sel_end() - sel_start());
-            }
-            // Use local pos since cursor_pos_ might be updated if we had selection
-            auto insert_pos = has_selection() ? sel_start() : cursor_pos_;
-            next_text.insert(insert_pos, event.text);
-            if (!validator_(next_text, *this)) {
-                return true;
-            }
-        }
+        std::string old_sel;
+        size_t start_pos = cursor_pos_;
         if (has_selection()) {
+            start_pos = sel_start();
+            old_sel = text_.substr(start_pos, sel_end() - start_pos);
             delete_selection();
         }
-        text_.insert(cursor_pos_, event.text);
-        cursor_pos_ += event.text.size();
+        text_.insert(start_pos, event.text);
+        undo_stack_.push(std::make_unique<TextCommand>(&text_, old_sel, event.text, start_pos));
+        cursor_pos_ = start_pos + event.text.size();
         sel_anchor_ = cursor_pos_;
         sync_commands();
         if (on_change) {
@@ -766,14 +794,18 @@ void LineInput::show_context_menu(Point pos) {
 
     // FIXME: use i18n for menu text
     std::vector<MenuItem> items;
-    items.push_back(
-        MenuItem::action("Cut", [this] { cut(); }, has_sel && !password_mode_ && !read_only_));
-    items.push_back(MenuItem::action("Copy", [this] { copy(); }, has_sel && !password_mode_));
-    items.push_back(MenuItem::action("Paste", [this] { paste(); }, !read_only_ && can_paste));
+    items.push_back(MenuItem::action(undo_cmd));
+    items.push_back(MenuItem::action(redo_cmd));
     items.push_back(MenuItem::sep());
-    items.push_back(MenuItem::action("Select All", [this] { select_all(); }, not_empty));
-    items.push_back(
-        MenuItem::action("Delete", [this] { delete_selection(); }, !read_only_ && has_sel));
+    items.push_back(MenuItem::action(cut_cmd));
+    items.push_back(MenuItem::action(copy_cmd));
+    items.push_back(MenuItem::action(paste_cmd));
+    items.push_back(MenuItem::sep());
+    items.push_back(MenuItem::action(select_all_cmd));
+    
+    auto delete_cmd = Command::create("Delete", [this] { delete_selection(); }, !read_only_ && has_sel);
+    delete_cmd->set_shortcut("Delete");
+    items.push_back(MenuItem::action(delete_cmd));
 
     context_menu_ = std::make_unique<ContextMenu>(std::move(items));
     context_menu_->show(window(), map_to_window(pos));

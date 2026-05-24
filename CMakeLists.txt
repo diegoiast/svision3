@@ -57,6 +57,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/file_dialog_widget.cpp
     src/toolkit/file_dialog.cpp
     src/toolkit/directory_dialog.cpp
+    src/toolkit/undo_stack.cpp
     src/toolkit/slider.cpp
     src/toolkit/spin_box.cpp
     src/toolkit/line_input.cpp
@@ -466,6 +467,7 @@ add_executable(tests
     tests/test_menubar.cpp
     tests/test_catalog.cpp
     tests/test_db.cpp
+    tests/test_undo_stack.cpp
     tests/test_xdg_image_loader.cpp
     tests/test_icon_grid.cpp
     tests/test_html_view.cpp

@@ -190,7 +190,7 @@ void Menu::paint(Painter &painter) {
         auto enabled = item.command->is_enabled();
         auto item_rect = Rect{2, y, bounds_.width - 4, item_height_};
         auto icon_data = item.command->icon_image();
-        auto shortcut = item.command->shortcut_string();
+        auto shortcut = item.command->printable_shortcut();
         auto text = strip_mnemonic(item.command->name());
 
         theme.draw_menu_item(painter, item_rect, text, icon_data, shortcut, i == hovered_, enabled,

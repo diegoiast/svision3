@@ -116,7 +116,7 @@
         {
             "commands": "cmake --build --preset conan-release",
             "isBuild": true,
-            "name": "CMake Build build_directory (parallel)",
+            "name": "CMake Build release (parallel)",
             "runDirectory": "${source_directory}"
         }
     ]

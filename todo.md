@@ -40,7 +40,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 28. [ ] Font selection / custom fonts.
 29. [ ] Image loading - using platform APIs.
 30. [ ] Animation framework (transitions, easing).
-31. [ ] Undo/redo framework.
+31. [x] Undo/redo framework.
 32. [ ] Serialization (save/restore widget state).
 33. [ ] Declarative UI support. - WIP.
 34. [x] All setters should return a reference to self - for chainability.

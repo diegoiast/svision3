@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/context_menu.hpp"
+#include "toolkit/undo_stack.hpp"
 #include "toolkit/widget.hpp"
 #include <chrono>
 #include <functional>
@@ -55,6 +56,8 @@ class LineInput : public Widget, public Fluent<LineInput> {
     Command::Ptr cut_cmd;
     Command::Ptr copy_cmd;
     Command::Ptr paste_cmd;
+    Command::Ptr undo_cmd;
+    Command::Ptr redo_cmd;
 
     std::function<void(std::string const &, LineInput &widget)> on_change;
     std::function<void(std::string const &, LineInput &widget)> on_submit;
@@ -83,6 +86,8 @@ class LineInput : public Widget, public Fluent<LineInput> {
     void cut();
     void copy();
     void paste();
+    void undo();
+    void redo();
     void sync_commands();
 
     std::string text_;
@@ -103,6 +108,7 @@ class LineInput : public Widget, public Fluent<LineInput> {
     std::chrono::steady_clock::time_point cursor_blink_time_;
     int blink_timer_id_ = 0;
     std::unique_ptr<ContextMenu> context_menu_;
+    UndoStack undo_stack_;
 };
 
 } // namespace toolkit
