@@ -482,12 +482,15 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
         painter.fill_rect(rect, bg);
     }
 
-    auto vertical = (orientation == TabOrientation::West || orientation == TabOrientation::East);
+    auto vertical = (orientation == TabOrientation::West || orientation == TabOrientation::East ||
+                     orientation == TabOrientation::WestVertical || orientation == TabOrientation::EastVertical);
     auto text_orientation = Painter::TextOrientation::Horizontal;
     if (orientation == TabOrientation::West) {
         text_orientation = Painter::TextOrientation::VerticalCCW;
     } else if (orientation == TabOrientation::East) {
         text_orientation = Painter::TextOrientation::VerticalCW;
+    } else {
+        text_orientation = Painter::TextOrientation::Horizontal;
     }
 
     auto fm = painter.font_metrics(palette.fonts.size);
@@ -498,16 +501,29 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
     auto const close_btn_gap = 6.0f;
 
     if (vertical) {
-        if (orientation == TabOrientation::West) {
-            text_x = rect.x + (rect.width - fm.height) / 2.0f + fm.ascent;
-            baseline_y = rect.y + rect.height - style.tab_padding_h;
+        if (orientation == TabOrientation::West || orientation == TabOrientation::East) {
+            if (orientation == TabOrientation::West) {
+                text_x = rect.x + (rect.width - fm.height) / 2.0f + fm.ascent;
+                baseline_y = rect.y + rect.height - style.tab_padding_h;
+            } else {
+                text_x = rect.x + (rect.width + fm.height) / 2.0f - fm.ascent;
+                baseline_y = rect.y + style.tab_padding_h;
+            }
             close_cx = rect.x + rect.width / 2.0f;
-            close_cy = baseline_y - text_w - close_btn_gap - close_btn_size / 2.0f;
+            close_cy = (orientation == TabOrientation::West) ? (rect.y + style.tab_padding_v + close_btn_size / 2.0f) : (rect.y + rect.height - style.tab_padding_v - close_btn_size / 2.0f);
         } else {
-            text_x = rect.x + (rect.width + fm.height) / 2.0f - fm.ascent;
-            baseline_y = rect.y + style.tab_padding_h;
-            close_cx = rect.x + rect.width / 2.0f;
-            close_cy = baseline_y + text_w + close_btn_gap + close_btn_size / 2.0f;
+            // Standard WestVertical/EastVertical (Horizontal Text)
+            if (orientation == TabOrientation::WestVertical) {
+                text_x = rect.x + style.tab_padding_h;
+                baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+                close_cx = rect.x + style.tab_padding_h + text_w + close_btn_gap + close_btn_size / 2.0f;
+                close_cy = rect.y + rect.height / 2.0f;
+            } else {
+                text_x = rect.x + style.tab_padding_h;
+                baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+                close_cx = rect.x + rect.width - style.tab_padding_h - close_btn_gap - close_btn_size / 2.0f;
+                close_cy = rect.y + rect.height / 2.0f;
+            }
         }
     } else {
         text_x = rect.x + style.tab_padding_h;
@@ -554,9 +570,9 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
             indicator = {r2.x, on_inner ? rect.y + rect.height - weight : rect.y, r2.width, weight};
         } else if (orientation == TabOrientation::South) {
             indicator = {r2.x, on_inner ? rect.y : rect.y + rect.height - weight, r2.width, weight};
-        } else if (orientation == TabOrientation::West) {
+        } else if (orientation == TabOrientation::West || orientation == TabOrientation::WestVertical) {
             indicator = {on_inner ? rect.x + rect.width - weight : rect.x, r2.y, weight, r2.height};
-        } else if (orientation == TabOrientation::East) {
+        } else if (orientation == TabOrientation::East || orientation == TabOrientation::EastVertical) {
             indicator = {on_inner ? rect.x : rect.x + rect.width - weight, r2.y, weight, r2.height};
         }
         painter.fill_rect(indicator, palette.accent);

@@ -52,7 +52,8 @@ void TabWidget::scroll_by(float delta) {
 }
 
 void TabWidget::scroll_to_tab(int index) {
-    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
+    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                     orientation_ == TabOrientation::EastVertical || orientation_ == TabOrientation::WestVertical);
     auto available = vertical ? rect_.height : rect_.width;
     auto tab_start = 0.0f;
     auto tab_end = 0.0f;
@@ -96,7 +97,8 @@ void TabWidget::scroll_to_tab(int index) {
 }
 
 void TabWidget::update_scroll_bounds() {
-    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
+    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                     orientation_ == TabOrientation::EastVertical || orientation_ == TabOrientation::WestVertical);
     auto lead_off = leading_widget_ ? (vertical ? leading_widget_->size_hint().height
                                                 : leading_widget_->size_hint().width)
                                     : 0.0f;
@@ -201,20 +203,35 @@ auto TabWidget::tab_bar_thickness() const -> float {
     auto const &palette = theme.palette;
     auto const &style = theme.tab_widget;
     auto fm = font_metrics(palette.fonts.size);
+
+    if (orientation_ == TabOrientation::WestVertical || orientation_ == TabOrientation::EastVertical) {
+        float max_w = 0.0f;
+        for (auto const &tab : tabs_) {
+            max_w = std::max(max_w, theme.measure_tab(tab.title).width);
+        }
+        return max_w + style.tab_padding_h * 2 + close_btn_size_ + close_btn_gap_;
+    }
+
     return fm.height + style.tab_padding_v * 2;
 }
 
 auto TabWidget::tab_size(int i) const -> float {
     auto const &theme = Theme::current();
-    auto const &palette = theme.palette;
     auto const &style = theme.tab_widget;
-    auto tw = measure_text(tabs_[i].title, palette.fonts.size).width;
+
+    if (orientation_ == TabOrientation::WestVertical || orientation_ == TabOrientation::EastVertical) {
+        return theme.measure_tab(tabs_[i].title).height;
+    }
+
+    auto tw = theme.measure_tab(tabs_[i].title).width;
     return tw + close_btn_size_ + close_btn_gap_ + style.tab_padding_h * 2;
 }
 
 void TabWidget::layout_content() {
     auto thickness = tab_bar_thickness();
-    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
+    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                     orientation_ == TabOrientation::EastVertical || orientation_ == TabOrientation::WestVertical);
+
     auto bar_rect = Rect{0, 0, rect_.width, rect_.height};
     auto content_rect = Rect{0, 0, rect_.width, rect_.height};
     auto total_tabs = 0.0f;
@@ -222,7 +239,7 @@ void TabWidget::layout_content() {
 
     if (vertical) {
         bar_rect.width = thickness;
-        if (orientation_ == TabOrientation::East) {
+        if (orientation_ == TabOrientation::East || orientation_ == TabOrientation::EastVertical) {
             bar_rect.x = rect_.width - thickness;
             content_rect.width -= thickness;
         } else {
@@ -317,14 +334,15 @@ auto TabWidget::hit_test_tab(Point p) const -> HitResult {
     auto const &palette = theme.palette;
     auto const &style = theme.tab_widget;
     auto thickness = tab_bar_thickness();
-    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
+    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                     orientation_ == TabOrientation::EastVertical || orientation_ == TabOrientation::WestVertical);
     auto x = 0.0f;
     auto y = 0.0f;
 
     if (orientation_ == TabOrientation::South) {
         y = rect_.height - thickness;
     }
-    if (orientation_ == TabOrientation::East) {
+    if (orientation_ == TabOrientation::East || orientation_ == TabOrientation::EastVertical) {
         x = rect_.width - thickness;
     }
 
@@ -359,22 +377,37 @@ auto TabWidget::hit_test_tab(Point p) const -> HitResult {
         if (p.x < x || p.x >= x + thickness) {
             return {};
         }
-        if (p.y < bar_start || p.y >= bar_end) {
+        // Check if within the scrollable area, but not restricted by the absolute bar_end if scrolled
+        if (p.y < bar_start) {
             return {};
         }
+
         auto draw_y = bar_start - scroll_offset_;
         for (auto i = 0; i < static_cast<int>(tabs_.size()); i++) {
             auto h = tab_size(i);
             if (p.y >= draw_y && p.y < draw_y + h) {
-                auto text_w = measure_text(tabs_[i].title, palette.fonts.size).width;
-                auto close_cx = x + thickness / 2.0f;
-                auto close_cy = 0.0f;
-                if (orientation_ == TabOrientation::West) {
-                    close_cy = draw_y + h - style.tab_padding_h - text_w - close_btn_gap_ -
-                               close_btn_size_ / 2.0f;
+                bool is_vertical_text = (orientation_ == TabOrientation::West ||
+                                         orientation_ == TabOrientation::East);
+                float close_cx = x + thickness / 2.0f;
+                float close_cy = 0.0f;
+
+                if (is_vertical_text) {
+                     // Place close button at the top/bottom end of the tab
+                     float padding = style.tab_padding_v;
+                     if (orientation_ == TabOrientation::West) {
+                         close_cy = draw_y + padding + close_btn_size_ / 2.0f;
+                     } else {
+                         close_cy = draw_y + h - padding - close_btn_size_ / 2.0f;
+                     }
                 } else {
-                    close_cy = draw_y + style.tab_padding_h + text_w + close_btn_gap_ +
-                               close_btn_size_ / 2.0f;
+                    // Standard WestVertical/EastVertical (Horizontal Text)
+                    float tw = theme.measure_tab(tabs_[i].title).width;
+                    if (orientation_ == TabOrientation::WestVertical) {
+                        close_cx = x + style.tab_padding_h + tw + close_btn_gap_ + close_btn_size_ / 2.0f;
+                    } else {
+                        close_cx = x + thickness - style.tab_padding_h - tw - close_btn_gap_ - close_btn_size_ / 2.0f;
+                    }
+                    close_cy = draw_y + h / 2.0f;
                 }
                 auto hr = close_btn_size_ / 2.0f + 2.0f;
                 auto on_close = (p.x >= close_cx - hr && p.x <= close_cx + hr &&
@@ -443,7 +476,8 @@ void TabWidget::paint(Painter &painter) {
     auto const &style = theme.tab_widget;
     auto fm = font_metrics(palette.fonts.size);
     auto thickness = tab_bar_thickness();
-    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
+    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                     orientation_ == TabOrientation::EastVertical || orientation_ == TabOrientation::WestVertical);
     auto bar_x = 0.0f;
     auto bar_y = 0.0f;
     auto bar_w = rect_.width;
@@ -451,7 +485,7 @@ void TabWidget::paint(Painter &painter) {
 
     if (vertical) {
         bar_w = thickness;
-        if (orientation_ == TabOrientation::East) {
+        if (orientation_ == TabOrientation::East || orientation_ == TabOrientation::EastVertical) {
             bar_x = rect_.width - thickness;
         }
     } else {
@@ -483,8 +517,10 @@ void TabWidget::paint(Painter &painter) {
             .enabled       = true,
             .window_active = window_ ? window_->is_active() : true,
         };
+        bool draw_text_vertical = (orientation_ == TabOrientation::WestVertical ||
+                                   orientation_ == TabOrientation::EastVertical);
         Theme::current().draw_tab(painter, tab_rect, tabs_[i].title, active, tab_state,
-                                  orientation_, true, hovered_close);
+                                  orientation_, !draw_text_vertical, hovered_close);
     };
 
     auto start_pos = 0.0f;
@@ -564,10 +600,12 @@ void TabWidget::paint(Painter &painter) {
             painter.draw_line({0, rect_.height - thickness},
                               {rect_.width, rect_.height - thickness}, palette.border,
                               palette.border_width);
-        } else if (orientation_ == TabOrientation::West) {
+        } else if (orientation_ == TabOrientation::West ||
+                   orientation_ == TabOrientation::WestVertical) {
             painter.draw_line({thickness, 0}, {thickness, rect_.height}, palette.border,
                               palette.border_width);
-        } else if (orientation_ == TabOrientation::East) {
+        } else if (orientation_ == TabOrientation::East ||
+                   orientation_ == TabOrientation::EastVertical) {
             painter.draw_line({rect_.width - thickness, 0}, {rect_.width - thickness, rect_.height},
                               palette.border, palette.border_width);
         }
@@ -579,7 +617,8 @@ void TabWidget::paint(Painter &painter) {
 }
 
 auto TabWidget::handle_tab_drag(MouseEvent const &event) -> bool {
-    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
+    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                     orientation_ == TabOrientation::EastVertical || orientation_ == TabOrientation::WestVertical);
 
     if (event.type == MouseEvent::Type::Drag) {
         auto mouse_pos = vertical ? event.position.y : event.position.x;
@@ -684,12 +723,6 @@ auto TabWidget::handle_tab_drag(MouseEvent const &event) -> bool {
 }
 
 auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
-    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
-    auto thickness = tab_bar_thickness();
-    auto bar_x = 0.0f;
-    auto bar_y = 0.0f;
-    auto local_rect = Rect{0, 0, rect_.width, rect_.height};
-
     if (dragging_) {
         return handle_tab_drag(event);
     }
@@ -710,27 +743,16 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
         }
     }
 
-    if (vertical) {
-        if (orientation_ == TabOrientation::East) {
-            bar_x = rect_.width - thickness;
-        }
-    } else {
-        if (orientation_ == TabOrientation::South) {
-            bar_y = rect_.height - thickness;
-        }
-    }
-
-    auto const bar_rect =
-        vertical ? Rect{bar_x, 0, thickness, rect_.height} : Rect{0, bar_y, rect_.width, thickness};
-    auto const in_bar = bar_rect.contains(event.position);
+    // Always hit-test the tabs, regardless of orientation
+    HitResult hr = hit_test_tab(event.position);
+    bool in_bar = (hr.tab != -1);
 
     if (event.type == MouseEvent::Type::Move) {
         if (in_bar) {
-            auto hr = hit_test_tab(event.position);
             hovered_tab_ = hr.tab;
             hovered_close_ = hr.on_close ? hr.tab : -1;
             if (window_) {
-                window_->request_redraw("tab change");
+                window_->request_redraw("tab hover");
             }
             return true;
         }
@@ -738,7 +760,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
             hovered_tab_ = -1;
             hovered_close_ = -1;
             if (window_) {
-                window_->request_redraw("tab change");
+                window_->request_redraw("tab hover");
             }
         }
         if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
@@ -752,25 +774,29 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
             hovered_tab_ = -1;
             hovered_close_ = -1;
             if (window_) {
-                window_->request_redraw("tab change");
+                window_->request_redraw("tab leave");
             }
         }
         return true;
     }
 
-    if (event.type == MouseEvent::Type::Scroll && in_bar) {
-        auto delta = vertical ? event.scroll_dy : (event.scroll_dx + event.scroll_dy);
-        scroll_offset_ -= delta * 20.0f;
-        update_scroll_bounds();
-        return true;
+    if (event.type == MouseEvent::Type::Scroll) {
+        // Only scroll if we are over the bar area
+        if (in_bar) {
+            auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                             orientation_ == TabOrientation::EastVertical || orientation_ == TabOrientation::WestVertical);
+            auto delta = vertical ? event.scroll_dy : (event.scroll_dx + event.scroll_dy);
+            scroll_offset_ -= delta * 20.0f;
+            update_scroll_bounds();
+            return true;
+        }
     }
 
     if (event.type == MouseEvent::Type::Press && in_bar) {
         if (window_) {
             window_->set_focused_widget(this);
         }
-        auto hr = hit_test_tab(event.position);
-        if (hr.tab >= 0 && hr.on_close) {
+        if (hr.on_close) {
             spdlog::info("Tab close requested: [{}] \"{}\"", hr.tab, tabs_[hr.tab].title);
             if (on_tab_close) {
                 on_tab_close(hr.tab, tabs_[hr.tab].title);
@@ -783,15 +809,14 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
             }
             dragging_ = true;
             drag_tab_ = hr.tab;
+            auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                             orientation_ == TabOrientation::EastVertical || orientation_ == TabOrientation::WestVertical);
             drag_start_x_ = vertical ? event.position.y : event.position.x;
             drag_offset_x_ = 0;
             return true;
         }
         return true;
     }
-
-    hovered_tab_ = -1;
-    hovered_close_ = -1;
 
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
         return Widget::dispatch_mouse_event(tabs_[current_].content.get(), event);
@@ -837,7 +862,9 @@ auto TabWidget::size_hint() const -> Size {
     auto thickness = tab_bar_thickness();
     auto max_w = 0.0f;
     auto max_h = 0.0f;
-    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West);
+    auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                     orientation_ == TabOrientation::EastVertical ||
+                     orientation_ == TabOrientation::WestVertical);
     auto lead_size = 0.0f;
     auto trail_size = 0.0f;
 
@@ -856,9 +883,14 @@ auto TabWidget::size_hint() const -> Size {
         trail_size = vertical ? sz.height : sz.width;
     }
 
+    auto max_tab_size = 0.0f;
+    for (auto i = 0; i < (int)tabs_.size(); ++i) {
+        max_tab_size = std::max(max_tab_size, tab_size(i));
+    }
+
     auto bar_size = lead_size + trail_size;
     if (!tabs_.empty()) {
-        bar_size += tab_size(0);
+        bar_size += max_tab_size;
         auto sz_prev = prev_button_->size_hint();
         auto sz_next = next_button_->size_hint();
         bar_size += vertical ? (sz_prev.height + sz_next.height) : (sz_prev.width + sz_next.width);

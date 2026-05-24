@@ -414,6 +414,7 @@ int main(int argc, char *argv[]) {
 
     auto rootWidget =
         ui::tab_widget()
+            .orientation(toolkit::TabOrientation::WestVertical)
             .add_tab(
                 "Main",
                 ui::vbox()
