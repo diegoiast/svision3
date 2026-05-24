@@ -250,7 +250,9 @@ static Key xkb_to_key(xkb_keysym_t sym) {
     case XKB_KEY_9:
         return Key::Number9;
     default:
-        spdlog::info("Key {} - not parsed by wayland", sym);
+        if (128 < sym) {
+            spdlog::debug("Key {} - not parsed by wayland", sym);
+        }
         return Key::NoKey;
     }
 }

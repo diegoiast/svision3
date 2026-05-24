@@ -261,7 +261,10 @@ static Key keysym_to_key(KeySym ks) {
     case XK_KP_9:
         return Key::Number9;
     default:
-        spdlog::info("Key {} - not parsed by X11", ks);
+        // These are ASCII codes, no need to parse them.
+        if (128 < ks) {
+            spdlog::debug("Key code {} - not parsed by X11", ks);
+        }
         return Key::NoKey;
     }
 }
