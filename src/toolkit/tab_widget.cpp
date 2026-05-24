@@ -232,6 +232,14 @@ auto TabWidget::tab_bar_thickness() const -> float {
             }
             max_thickness = std::max(max_thickness, t);
         }
+        
+        if (trailing_widget_) {
+            max_thickness = std::max(max_thickness, trailing_widget_->size_hint().width);
+        }
+        if (leading_widget_) {
+            max_thickness = std::max(max_thickness, leading_widget_->size_hint().width);
+        }
+
         return max_thickness;
     }
 
