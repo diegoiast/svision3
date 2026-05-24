@@ -20,6 +20,43 @@
 
 namespace toolkit {
 
+class TextEditCommand : public UndoCommand {
+public:
+    TextEditCommand(TextEdit *edit, std::string old_text, std::string new_text, TextEdit::Pos old_cursor, TextEdit::Pos new_cursor)
+        : edit_(edit), old_text_(std::move(old_text)), new_text_(std::move(new_text)), old_cursor_(old_cursor), new_cursor_(new_cursor) {}
+
+    void undo() override {
+        edit_->set_text(old_text_);
+        edit_->set_cursor_for_undo(old_cursor_);
+    }
+
+    void redo() override {
+        edit_->set_text(new_text_);
+        edit_->set_cursor_for_undo(new_cursor_);
+    }
+
+    bool merge_with(const UndoCommand *other) override {
+        auto const *o = static_cast<const TextEditCommand *>(other);
+        // Merge if it's the same command and pos is after current
+        if (o->old_cursor_.line == new_cursor_.line && o->old_cursor_.col == new_cursor_.col) {
+            new_text_ = o->new_text_;
+            new_cursor_ = o->new_cursor_;
+            return true;
+        }
+        return false;
+    }
+
+    int id() const override { return 1; }
+    std::string text() const override { return "Typing"; }
+
+private:
+    TextEdit *edit_;
+    std::string old_text_;
+    std::string new_text_;
+    TextEdit::Pos old_cursor_;
+    TextEdit::Pos new_cursor_;
+};
+
 TextEdit::TextEdit(std::string text) {
     set_focusable(true);
     cursor_blink_time_ = std::chrono::steady_clock::now();
@@ -39,6 +76,14 @@ TextEdit::TextEdit(std::string text) {
     paste_cmd = Command::create("Paste", [this] { paste(); });
     paste_cmd->set_shortcut("Std+V");
     add_command(paste_cmd);
+
+    undo_cmd = Command::create("Undo", [this] { undo(); });
+    undo_cmd->set_shortcut("Std+Z");
+    add_command(undo_cmd);
+
+    redo_cmd = Command::create("Redo", [this] { redo(); });
+    redo_cmd->set_shortcut("Std+Y");
+    add_command(redo_cmd);
 
     set_text(text);
 }
@@ -234,6 +279,22 @@ void TextEdit::delete_selection() {
     if (!has_selection()) {
         return;
     }
+    auto before = text();
+    auto old_cursor = cursor_;
+    delete_selection_internal();
+    undo_stack_.push(std::make_unique<TextEditCommand>(this, before, text(), old_cursor, cursor_));
+
+    sync_commands();
+    ensure_cursor_visible();
+    if (window_) {
+        window_->request_redraw("text change");
+    }
+    if (on_change) {
+        on_change();
+    }
+}
+
+void TextEdit::delete_selection_internal() {
     auto s = sel_start();
     auto e = sel_end();
 
@@ -245,16 +306,23 @@ void TextEdit::delete_selection() {
         lines_.insert(lines_.begin() + s.line, std::move(merged));
     }
     cursor_ = anchor_ = s;
+}
+
+void TextEdit::set_cursor_for_undo(Pos p) {
+    cursor_ = anchor_ = p;
     sync_commands();
     ensure_cursor_visible();
-    if (on_change) {
-        on_change();
+    if (window_) {
+        window_->request_redraw("undo/redo");
     }
 }
 
 void TextEdit::insert_text(std::string_view t) {
+    auto before = text();
+    auto old_cursor = cursor_;
+
     if (has_selection()) {
-        delete_selection();
+        delete_selection_internal();
     }
 
     for (auto i = 0; i < (int)t.size(); i++) {
@@ -275,8 +343,13 @@ void TextEdit::insert_text(std::string_view t) {
         }
     }
     anchor_ = cursor_;
+    undo_stack_.push(std::make_unique<TextEditCommand>(this, before, text(), old_cursor, cursor_));
+
     sync_commands();
     ensure_cursor_visible();
+    if (window_) {
+        window_->request_redraw("text change");
+    }
     if (on_change) {
         on_change();
     }
@@ -363,6 +436,43 @@ void TextEdit::paste() {
     }
 }
 
+void TextEdit::undo() {
+    if (undo_stack_.undo()) {
+        sync_commands();
+        if (window_) window_->request_redraw("undo");
+    }
+}
+
+void TextEdit::redo() {
+    if (undo_stack_.redo()) {
+        sync_commands();
+        if (window_) window_->request_redraw("redo");
+    }
+}
+
+void TextEdit::show_context_menu(Point pos) {
+    if (!window()) {
+        return;
+    }
+
+    std::vector<MenuItem> items;
+    items.push_back(MenuItem::action(undo_cmd));
+    items.push_back(MenuItem::action(redo_cmd));
+    items.push_back(MenuItem::sep());
+    items.push_back(MenuItem::action(cut_cmd));
+    items.push_back(MenuItem::action(copy_cmd));
+    items.push_back(MenuItem::action(paste_cmd));
+    items.push_back(MenuItem::sep());
+    items.push_back(MenuItem::action(select_all_cmd));
+
+    auto delete_cmd = Command::create("Delete", [this] { delete_selection(); }, has_selection());
+    delete_cmd->set_shortcut("Delete");
+    items.push_back(MenuItem::action(delete_cmd));
+
+    context_menu_ = std::make_unique<ContextMenu>(std::move(items));
+    context_menu_->show(window(), map_to_window(pos));
+}
+
 void TextEdit::sync_commands() {
     if (!select_all_cmd) {
         return;
@@ -373,6 +483,20 @@ void TextEdit::sync_commands() {
     cut_cmd->set_enabled(has_sel);
     copy_cmd->set_enabled(has_sel);
     paste_cmd->set_enabled(!Clipboard::get_text().empty());
+
+    undo_cmd->set_enabled(undo_stack_.can_undo());
+    if (undo_stack_.can_undo()) {
+        undo_cmd->set_tooltip("Undo " + undo_stack_.undo_text());
+    } else {
+        undo_cmd->set_tooltip("Undo");
+    }
+
+    redo_cmd->set_enabled(undo_stack_.can_redo());
+    if (undo_stack_.can_redo()) {
+        redo_cmd->set_tooltip("Redo " + undo_stack_.redo_text());
+    } else {
+        redo_cmd->set_tooltip("Redo");
+    }
 }
 
 void TextEdit::paint(Painter &painter) {
@@ -414,6 +538,10 @@ bool TextEdit::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press && local_rect.contains(event.position)) {
+        if (event.button == 1) {
+            show_context_menu(event.position);
+            return true;
+        }
         auto lh = line_height();
         if (event.position.y + scroll_y_ > (int)lines_.size() * lh) {
             return false;
@@ -484,60 +612,78 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         insert_text("\n");
         return true;
 
-    case Key::Backspace:
+    case Key::Backspace: {
         if (has_selection()) {
             delete_selection();
-        } else if (event.alt) {
-            auto old = cursor_;
-            move_word_left(false);
-            anchor_ = cursor_;
-            cursor_ = old;
-            delete_selection();
-        } else if (cursor_.col > 0) {
-            auto prev = Utf8Iterator::prev(lines_[cursor_.line], cursor_.col);
-            lines_[cursor_.line].erase(prev, cursor_.col - prev);
-            cursor_.col = static_cast<int>(prev);
-            anchor_ = cursor_;
-            sync_commands();
-            ensure_cursor_visible();
-            if (on_change) {
-                on_change();
+        } else {
+            auto before = text();
+            auto old_cursor = cursor_;
+            bool changed = false;
+            if (event.alt) {
+                auto old = cursor_;
+                move_word_left(false);
+                anchor_ = cursor_;
+                cursor_ = old;
+                delete_selection_internal();
+                changed = true;
+            } else if (cursor_.col > 0) {
+                auto prev = Utf8Iterator::prev(lines_[cursor_.line], cursor_.col);
+                lines_[cursor_.line].erase(prev, cursor_.col - prev);
+                cursor_.col = static_cast<int>(prev);
+                anchor_ = cursor_;
+                changed = true;
+            } else if (cursor_.line > 0) {
+                auto prev_len = static_cast<int>(lines_[cursor_.line - 1].size());
+                lines_[cursor_.line - 1] += lines_[cursor_.line];
+                lines_.erase(lines_.begin() + cursor_.line);
+                cursor_ = {cursor_.line - 1, prev_len};
+                anchor_ = cursor_;
+                changed = true;
             }
-        } else if (cursor_.line > 0) {
-            auto prev_len = static_cast<int>(lines_[cursor_.line - 1].size());
-            lines_[cursor_.line - 1] += lines_[cursor_.line];
-            lines_.erase(lines_.begin() + cursor_.line);
-            cursor_ = {cursor_.line - 1, prev_len};
-            anchor_ = cursor_;
-            sync_commands();
-            ensure_cursor_visible();
-            if (on_change) {
-                on_change();
-            }
-        }
-        return true;
 
-    case Key::Delete:
-        if (has_selection()) {
-            delete_selection();
-        } else if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
-            auto next = Utf8Iterator::next(lines_[cursor_.line], cursor_.col);
-            lines_[cursor_.line].erase(cursor_.col, next - cursor_.col);
-            sync_commands();
-            ensure_cursor_visible();
-            if (on_change) {
-                on_change();
-            }
-        } else if (cursor_.line + 1 < nlines) {
-            lines_[cursor_.line] += lines_[cursor_.line + 1];
-            lines_.erase(lines_.begin() + cursor_.line + 1);
-            sync_commands();
-            ensure_cursor_visible();
-            if (on_change) {
-                on_change();
+            if (changed) {
+                undo_stack_.push(
+                    std::make_unique<TextEditCommand>(this, before, text(), old_cursor, cursor_));
+                sync_commands();
+                ensure_cursor_visible();
+                if (on_change) {
+                    on_change();
+                }
             }
         }
         return true;
+    }
+
+    case Key::Delete: {
+        if (has_selection()) {
+            delete_selection();
+        } else {
+            auto before = text();
+            auto old_cursor = cursor_;
+            bool changed = false;
+
+            if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
+                auto next = Utf8Iterator::next(lines_[cursor_.line], cursor_.col);
+                lines_[cursor_.line].erase(cursor_.col, next - cursor_.col);
+                changed = true;
+            } else if (cursor_.line + 1 < nlines) {
+                lines_[cursor_.line] += lines_[cursor_.line + 1];
+                lines_.erase(lines_.begin() + cursor_.line + 1);
+                changed = true;
+            }
+
+            if (changed) {
+                undo_stack_.push(
+                    std::make_unique<TextEditCommand>(this, before, text(), old_cursor, cursor_));
+                sync_commands();
+                ensure_cursor_visible();
+                if (on_change) {
+                    on_change();
+                }
+            }
+        }
+        return true;
+    }
 
     case Key::Left:
         if (event.alt) {
