@@ -432,6 +432,8 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
 
         if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
             ke.text.assign(buf, len);
+        } else if (ke.ctrl && keysym >= 'a' && keysym <= 'z') {
+            ke.text = std::string(1, static_cast<char>(keysym));
         }
         ke.key = keysym_to_key(keysym);
 
