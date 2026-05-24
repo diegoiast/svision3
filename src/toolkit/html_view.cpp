@@ -513,8 +513,9 @@ bool HtmlView::handle_mouse(MouseEvent const &event) {
 Size HtmlView::size_hint() const {
     if (document_) {
         auto bw = draw_frame_ ? Theme::current().palette.frame_inset() : 0.0f;
-        return {static_cast<float>(document_->width()) + 2 * bw,
-                static_cast<float>(document_->height()) + 2 * bw};
+        // Returning 0 width allows the layout system to shrink this widget as much as it wants.
+        // The HTML document will re-render to this new width on set_rect.
+        return {0.0f, static_cast<float>(document_->height()) + 2 * bw};
     }
     return {0, 0};
 }
