@@ -584,14 +584,7 @@ void Window::handle_key(KeyEvent const &event) {
         }
     }
 
-    for (auto const &cmd : global_commands_) {
-        if (cmd->matches_key_event(event)) {
-            cmd->execute();
-            request_redraw("event");
-            return;
-        }
-    }
-
+    // Check focused widget and its parents FIRST
     if (focused_widget_) {
         auto w = focused_widget_;
         while (w) {
@@ -602,8 +595,17 @@ void Window::handle_key(KeyEvent const &event) {
         }
     }
 
+    // Try global commands LAST
+    for (auto const &cmd : global_commands_) {
+        if (cmd->matches_key_event(event)) {
+            cmd->execute();
+            request_redraw("event");
+            return;
+        }
+    }
+
     // If focused widget didn't handle it, or nothing is focused,
-    // try a recursive search from the root for global shortcuts attached to widgets.
+    // try a recursive search from the root for shortcuts attached to widgets.
     if (root_ && dispatch_key_event_recursive(root_.get(), event)) {
         request_redraw("event");
         return;
