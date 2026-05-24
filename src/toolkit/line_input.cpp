@@ -587,9 +587,23 @@ bool LineInput::handle_key(KeyEvent const &event) {
             return true;
         }
         if (has_selection()) {
+            if (validation_mode_ == ValidationMode::Block && validator_) {
+                std::string next_text = text_;
+                next_text.erase(sel_start(), sel_end() - sel_start());
+                if (!validator_(next_text, *this)) {
+                    return true;
+                }
+            }
             delete_selection();
         } else if (cursor_pos_ > 0) {
             size_t prev = Utf8Iterator::prev(text_, cursor_pos_);
+            if (validation_mode_ == ValidationMode::Block && validator_) {
+                std::string next_text = text_;
+                next_text.erase(prev, cursor_pos_ - prev);
+                if (!validator_(next_text, *this)) {
+                    return true;
+                }
+            }
             std::string old_text = text_.substr(prev, cursor_pos_ - prev);
             undo_stack_.push(std::make_unique<TextCommand>(&text_, old_text, "", prev));
             text_.erase(prev, cursor_pos_ - prev);
@@ -689,13 +703,25 @@ bool LineInput::handle_key(KeyEvent const &event) {
         if (read_only_) {
             return false;
         }
-        std::string old_sel;
+
+        std::string next_text = text_;
         size_t start_pos = cursor_pos_;
+        std::string old_sel;
         if (has_selection()) {
             start_pos = sel_start();
             old_sel = text_.substr(start_pos, sel_end() - start_pos);
+            next_text.erase(start_pos, sel_end() - start_pos);
+        }
+        next_text.insert(start_pos, event.text);
+
+        if (validation_mode_ == ValidationMode::Block && validator_ && !validator_(next_text, *this)) {
+            return true;
+        }
+
+        if (has_selection()) {
             delete_selection();
         }
+
         text_.insert(start_pos, event.text);
         undo_stack_.push(std::make_unique<TextCommand>(&text_, old_sel, event.text, start_pos));
         cursor_pos_ = start_pos + event.text.size();
