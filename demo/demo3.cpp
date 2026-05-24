@@ -4,12 +4,12 @@
 #include "toolkit/application.hpp"
 #include "toolkit/directory_dialog.hpp"
 #include "toolkit/file_dialog.hpp"
-#include "toolkit/xdg_image_loader.hpp"
 #include "toolkit/line_input.hpp"
 #include "toolkit/message_box.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/xdg_icons.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 #include <chrono>
 #include <fmt/format.h>
 #include <fstream>
@@ -269,20 +269,17 @@ int main(int argc, char *argv[]) {
 
     auto open_icon = app.load_icon(XDG::IconActions::documentOpen, 16, XDG::IconContexts::actions);
 
-    auto open_action = [editor = editor.get()]() {
-        NFD_Init();
-        nfdu8char_t *out_path = nullptr;
-        nfdresult_t result = NFD_OpenDialogU8(&out_path, nullptr, 0, nullptr);
-        if (result == NFD_OKAY && out_path) {
-            std::ifstream f(out_path);
-            if (f) {
-                std::string contents((std::istreambuf_iterator<char>(f)),
-                                     std::istreambuf_iterator<char>());
-                editor->set_text(contents);
+    auto open_action = [editor = editor.get(), window]() {
+        toolkit::FileDialog(window).title("Open File").open().then([editor](auto path) {
+            if (path) {
+                std::ifstream f(*path);
+                if (f) {
+                    std::string contents((std::istreambuf_iterator<char>(f)),
+                                         std::istreambuf_iterator<char>());
+                    editor->set_text(contents);
+                }
             }
-            NFD_FreePathU8(out_path);
-        }
-        NFD_Quit();
+        });
     };
 
     auto new_cmd = ui::command("New", [] { spdlog::info("Menu: New"); }).shortcut("Std+N");
@@ -412,10 +409,28 @@ int main(int argc, char *argv[]) {
                                     .add(std::move(preview_html_mode_btn))
                                     .add(std::move(github_css_cb)));
 
+    auto debug_stats_widget = [&window]() {
+        return ui::vbox()
+            .add(ui::checkbox("Show debug frames").on_toggle([&window](auto checked) {
+                toolkit::Widget::debug_show_frames = checked;
+                window->request_redraw();
+            }))
+            .add(ui::checkbox("Show performance stats").on_toggle([&window](auto checked) {
+                if (checked) {
+                    window->reset_statistics();
+                    spdlog::set_level(spdlog::level::trace);
+                } else {
+                    spdlog::set_level(spdlog::level::info);
+                }
+                window->set_statistics_logging_enabled(checked);
+            }));
+    };
+
     auto rootWidget =
         ui::tab_widget()
             .orientation(toolkit::TabOrientation::WestVertical)
-            .min_tab_width(200)
+            .trailing_widget(debug_stats_widget())
+            .min_tab_width(100)
             .tabs_closable(false)
             .tabs_movable(false)
             .add_tab(
@@ -517,26 +532,30 @@ int main(int argc, char *argv[]) {
                     .add(ui::list_view(filter_adapter).alternate_row_colors(true), ui::expand))
             .add_tab("Table", ui::vbox().add(ui::table_view(table_model).alternate_row_colors(true),
                                              ui::expand))
-            .add_tab("Image", [&]() {
-                auto iw = ui::image_widget();
-                auto *iw_ptr = iw.get();
-                return ui::vbox()
-                    .add(ui::button("Open Image").on_click([window, iw_ptr]() {
-                        toolkit::FileDialog(window)
-                            .title("Open Image")
-                            .open()
-                            .then([iw_ptr, window](auto path) {
-                                if (path) {
-                                    iw_ptr->load(*path);
-                                    window->start_timer(0.01f, [iw_ptr, window] {
-                                        iw_ptr->fit_to_widget();
-                                        window->request_redraw("fit");
-                                    }, false);
-                                }
-                            });
-                    }))
-                    .add(std::move(iw), ui::expand);
-            }())
+            .add_tab("Image",
+                     [&]() {
+                         auto iw = ui::image_widget();
+                         auto *iw_ptr = iw.get();
+                         return ui::vbox()
+                             .add(ui::button("Open Image").on_click([window, iw_ptr]() {
+                                 toolkit::FileDialog(window)
+                                     .title("Open Image")
+                                     .open()
+                                     .then([iw_ptr, window](auto path) {
+                                         if (path) {
+                                             iw_ptr->load(*path);
+                                             window->start_timer(
+                                                 0.01f,
+                                                 [iw_ptr, window] {
+                                                     iw_ptr->fit_to_widget();
+                                                     window->request_redraw("fit");
+                                                 },
+                                                 false);
+                                         }
+                                     });
+                             }))
+                             .add(std::move(iw), ui::expand);
+                     }())
             .add_tab("Grid",
                      [&]() {
                          auto iconGrid = ui::icon_grid(grid_model);
@@ -733,21 +752,6 @@ int main(int argc, char *argv[]) {
                      .disable()
                      .command("Increase count", "Increase the counter", {}, repeat_action))
             .add(rootWidget, ui::expand)
-            .add(ui::spacer())
-            .add(ui::vbox()
-                     .add(ui::checkbox("Show debug frames").on_toggle([&window](auto checked) {
-                         toolkit::Widget::debug_show_frames = checked;
-                         window->request_redraw();
-                     }))
-                     .add(ui::checkbox("Show performace stats").on_toggle([&window](auto checked) {
-                         if (checked) {
-                             window->reset_statistics();
-                             spdlog::set_level(spdlog::level::trace);
-                         } else {
-                             spdlog::set_level(spdlog::level::info);
-                         }
-                         window->set_statistics_logging_enabled(checked);
-                     })))
             .add(ui::hbox()
                      .add(ui::button("About").disable())
                      .add(ui::spacer(), ui::expand)

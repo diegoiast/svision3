@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-&FileCopyrightText: l2026 Diego Iastrubni <diegoiast@gmail.com>
 
+#include "declarative.hpp"
 #include "github_markdown_css.hpp"
 #include "toolkit/application.hpp"
 #include "toolkit/button.hpp"
@@ -260,10 +261,28 @@ int main(int argc, char *argv[]) {
 
     root->add_widget(std::move(toolbar));
 
+    auto debug_stats_widget = [&window]() {
+        return ui::vbox()
+            .add(ui::checkbox("Show Debug Frames").on_toggle([&window](bool checked) {
+                toolkit::Widget::debug_show_frames = checked;
+                window->request_redraw();
+            }))
+            .add(ui::checkbox("Show Performance Stats").on_toggle([&window](bool checked) {
+                if (checked) {
+                    window->reset_statistics();
+                    spdlog::set_level(spdlog::level::trace);
+                } else {
+                    spdlog::set_level(spdlog::level::info);
+                }
+                window->set_statistics_logging_enabled(checked);
+            }));
+    };
+
     auto tabs = std::make_unique<toolkit::TabWidget>();
     tabs->set_tabs_closable(false);
     tabs->set_tabs_movable(false);
     tabs->set_orientation(toolkit::TabOrientation::WestVertical);
+    tabs->set_trailing_widget(debug_stats_widget());
     tabs->set_min_tab_width(200.0f);
     auto *tabs_ptr = tabs.get();
 
@@ -988,29 +1007,8 @@ int main(int argc, char *argv[]) {
     root->add_widget(std::move(tabs), 1);
 
     // ── Button bar ───────────────────────────────────────────────────────
-    auto bar_wrapper = std::make_unique<toolkit::VBoxLayout>();
-    bar_wrapper->set_margins({20, 10, 20, 10});
-
-    auto debug_toggle = std::make_unique<toolkit::Checkbox>("Show Debug Frames");
-    debug_toggle->on_toggle = [window](bool checked) {
-        toolkit::Widget::debug_show_frames = checked;
-        window->request_redraw();
-    };
-    bar_wrapper->add_widget(std::move(debug_toggle));
-
-    auto stats_toggle = std::make_unique<toolkit::Checkbox>("Show Performance Stats");
-    stats_toggle->on_toggle = [window](bool checked) {
-        if (checked) {
-            window->reset_statistics();
-            spdlog::set_level(spdlog::level::trace);
-        } else {
-            spdlog::set_level(spdlog::level::info);
-        }
-        window->set_statistics_logging_enabled(checked);
-    };
-    bar_wrapper->add_widget(std::move(stats_toggle));
-
     auto button_bar = std::make_unique<toolkit::HBoxLayout>();
+    button_bar->set_margins({20, 10, 20, 10});
     button_bar->set_spacing(10);
 
     auto ok_btn = std::make_unique<toolkit::Button>("&ok");
@@ -1031,8 +1029,7 @@ int main(int argc, char *argv[]) {
     quit_btn->set_tooltip("Close the application (Cmd+Q)");
     button_bar->add_widget(std::move(quit_btn));
 
-    bar_wrapper->add_widget(std::move(button_bar));
-    root->add_widget(std::move(bar_wrapper));
+    root->add_widget(std::move(button_bar));
 
     window->set_root(std::move(root));
     window->resize_to_fit();
