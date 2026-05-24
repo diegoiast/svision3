@@ -514,14 +514,20 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
         } else {
             // Standard WestVertical/EastVertical (Horizontal Text)
             if (orientation == TabOrientation::WestVertical) {
+                // Bar on the left, content on the right. Button on the right.
                 text_x = rect.x + style.tab_padding_h;
                 baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-                close_cx = rect.x + style.tab_padding_h + text_w + close_btn_gap + close_btn_size / 2.0f;
+                close_cx = rect.x + rect.width - style.tab_padding_h - close_btn_size / 2.0f;
                 close_cy = rect.y + rect.height / 2.0f;
             } else {
-                text_x = rect.x + style.tab_padding_h;
+                // Bar on the right, content on the left. Button on the left.
+                if (has_close) {
+                    close_cx = rect.x + style.tab_padding_h + close_btn_size / 2.0f;
+                    text_x = rect.x + style.tab_padding_h + close_btn_size + close_btn_gap;
+                } else {
+                    text_x = rect.x + style.tab_padding_h;
+                }
                 baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-                close_cx = rect.x + rect.width - style.tab_padding_h - close_btn_gap - close_btn_size / 2.0f;
                 close_cy = rect.y + rect.height / 2.0f;
             }
         }

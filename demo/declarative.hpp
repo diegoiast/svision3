@@ -334,8 +334,23 @@ template <typename T> struct Element {
         return std::move(*this);
     }
 
-    template <typename W> Element add_tab(std::string_view title, Element<W> &&child) {
-        w->add_tab(std::string(title), std::move(child.w));
+    Element tabs_closable(bool closable) {
+        w->set_tabs_closable(closable);
+        return std::move(*this);
+    }
+
+    Element min_tab_width(float width) {
+        w->set_min_tab_width(width);
+        return std::move(*this);
+    }
+
+    Element tabs_movable(bool movable) {
+        w->set_tabs_movable(movable);
+        return std::move(*this);
+    }
+
+    template <typename W> Element add_tab(std::string_view title, Element<W> &&child, bool closable = true) {
+        w->add_tab(std::string(title), std::move(child.w), closable);
         return std::move(*this);
     }
 

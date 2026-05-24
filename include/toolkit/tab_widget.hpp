@@ -15,11 +15,20 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
   public:
     TabWidget();
 
-    TabWidget &add_tab(std::string title, std::unique_ptr<Widget> content);
+    TabWidget &add_tab(std::string title, std::unique_ptr<Widget> content, bool closable = true);
 
     int current_index() const { return current_; }
     TabWidget &set_current(int index);
-    
+
+    TabWidget &set_tabs_closable(bool closable);
+    bool tabs_closable() const { return tabs_closable_; }
+
+    TabWidget &set_min_tab_width(float width);
+    float min_tab_width() const { return min_tab_width_; }
+
+    TabWidget &set_tabs_movable(bool movable) { tabs_movable_ = movable; return *this; }
+    bool tabs_movable() const { return tabs_movable_; }
+
     TabWidget &set_orientation(TabOrientation o);
     TabOrientation orientation() const { return orientation_; }
     
@@ -48,6 +57,7 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     struct Tab {
         std::string title;
         std::unique_ptr<Widget> content;
+        bool closable = true;
     };
 
     static constexpr float close_btn_size_ = 14.0f;
@@ -79,6 +89,9 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
 
     bool show_scroll_buttons_ = false;
     float scroll_offset_ = 0;
+    bool tabs_closable_ = true;
+    float min_tab_width_ = 0.0f;
+    bool tabs_movable_ = true;
 
     bool dragging_ = false;
     int drag_tab_ = -1;

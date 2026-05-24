@@ -261,6 +261,10 @@ int main(int argc, char *argv[]) {
     root->add_widget(std::move(toolbar));
 
     auto tabs = std::make_unique<toolkit::TabWidget>();
+    tabs->set_tabs_closable(false);
+    tabs->set_tabs_movable(false);
+    tabs->set_orientation(toolkit::TabOrientation::WestVertical);
+    tabs->set_min_tab_width(200.0f);
     auto *tabs_ptr = tabs.get();
 
     // ── Tab: Main ──────────────────────────────────────────────────────
@@ -981,7 +985,6 @@ int main(int argc, char *argv[]) {
     tab_image->add_widget(std::move(img_widget), 1);
     tabs->add_tab("Image", std::move(tab_image));
 
-    tabs->set_current(9);
     root->add_widget(std::move(tabs), 1);
 
     // ── Button bar ───────────────────────────────────────────────────────
