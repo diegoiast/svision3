@@ -23,6 +23,7 @@ class RadioGroup {
   private:
     // FIXME: naked pointers are bad,
     std::vector<RadioButton *> buttons_;
+    RadioButton *selected_ = nullptr;
 };
 
 class RadioButton : public Widget {
@@ -35,7 +36,7 @@ class RadioButton : public Widget {
     Size size_hint() const override;
 
     bool selected() const { return selected_; }
-    void set_selected(bool s) { selected_ = s; }
+    void set_selected(bool s);
 
   private:
     friend class RadioGroup;

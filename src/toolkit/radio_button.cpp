@@ -12,6 +12,11 @@ namespace toolkit {
 void RadioGroup::add(RadioButton *rb) { buttons_.push_back(rb); }
 
 void RadioGroup::select(RadioButton *rb) {
+    if (selected_ == rb) {
+        return;
+    }
+    selected_ = rb;
+
     auto idx = 0;
     for (auto *b : buttons_) {
         b->set_selected(b == rb);
@@ -20,6 +25,14 @@ void RadioGroup::select(RadioButton *rb) {
         }
         idx++;
     }
+}
+
+void RadioButton::set_selected(bool s) {
+    if (selected_ == s) {
+        return;
+    }
+    selected_ = s;
+    on_state_changed();
 }
 
 void RadioButton::on_state_changed() {

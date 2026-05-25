@@ -23,7 +23,9 @@ Combobox &Combobox::set_items(std::vector<std::string> items) {
 
 Combobox &Combobox::set_selected(int index) {
     if (index >= 0 && index < static_cast<int>(items_.size())) {
-        selected_index_ = index;
+        if (selected_index_ != index) {
+            selected_index_ = index;
+        }
     }
     return *this;
 }
