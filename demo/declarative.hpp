@@ -246,7 +246,11 @@ template <typename T> struct Element {
     operator T *() const { return w.get(); }
 
     template <typename W> Element &add_child(Element<W> &&child, int stretch = 0) {
-        w->add_widget(std::move(child.w), stretch, toolkit::Alignment::Fill);
+        if constexpr (std::is_same_v<T, toolkit::Toolbar>) {
+            w->add_widget(std::move(child.w), static_cast<float>(stretch));
+        } else {
+            w->add_widget(std::move(child.w), stretch, toolkit::Alignment::Fill);
+        }
         return *this;
     }
 

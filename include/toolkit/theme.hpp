@@ -182,6 +182,10 @@ class Theme {
   public:
     virtual ~Theme() = default;
 
+    // Observers
+    static void add_theme_observer(std::function<void(const Theme &)> observer);
+    static void notify_theme_changed();
+
     // FIXME this should be in the application, this method should be removed
     static const Theme &current();
 
@@ -288,7 +292,6 @@ class Theme {
 
     // Members for backward compatibility during migration
     std::string name;
-    ThemeStyle style;
     Palette palette;
 
     float focus_ring_margin = 5.0f;

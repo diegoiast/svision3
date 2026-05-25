@@ -15,7 +15,25 @@
 #include <cstdlib>
 #include <spdlog/spdlog.h>
 
+#include <vector>
+
 namespace toolkit {
+
+static std::vector<std::function<void(const Theme &)>>& get_theme_observers() {
+    static std::vector<std::function<void(const Theme &)>> observers;
+    return observers;
+}
+
+void Theme::add_theme_observer(std::function<void(const Theme &)> observer) {
+    get_theme_observers().push_back(std::move(observer));
+}
+
+void Theme::notify_theme_changed() {
+    auto const &t = current();
+    for (auto& observer : get_theme_observers()) {
+        observer(t);
+    }
+}
 
 static std::unique_ptr<Theme> &mutable_current_ptr() {
     static std::unique_ptr<Theme> instance;
@@ -70,7 +88,10 @@ ThemeStyle Theme::detect_system_style() {
 #endif
 }
 
-void Theme::set_current(std::unique_ptr<Theme> theme) { mutable_current_ptr() = std::move(theme); }
+void Theme::set_current(std::unique_ptr<Theme> theme) { 
+    mutable_current_ptr() = std::move(theme);
+    notify_theme_changed();
+}
 
 void Theme::init_fonts(Palette &p) {
     p.fonts.system = "sans-serif";

@@ -30,7 +30,6 @@ BaseTheme::BaseTheme(ColorScheme scheme, std::optional<Palette> p) {
 
     // Initialize backward compatibility members
     name = "Base";
-    style = ThemeStyle::Material;
     layout.margins = {8, 8, 8, 8};
     layout.spacing = 8.0f;
 }

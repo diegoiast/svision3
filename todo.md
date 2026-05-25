@@ -100,7 +100,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 23. [x] Toolbar.
 24. [x] Toolbar + images.
 25. [x] Icon grid (tooltips, selection, rubber band)
-26. [ ] Toolbar + custom widgets.
+26. [x] Toolbar + custom widgets.
 27. [x] Dialog (modal/modeles).
 28. [ ] StatusBar.
 29. [ ] GroupBox / Frame.

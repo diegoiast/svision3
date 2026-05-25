@@ -97,13 +97,65 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < toolkit::theme_style_count; i++) {
         style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
     }
+    style_names.push_back("Other");
     auto window = app.create_window("Declarative Kitchen sink", {600, 400});
     auto platformText =
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name());
-    auto group = ui::radio_group().on_change([&app, &window](int index) {
+    auto group = ui::radio_group().on_change([&app, window](int index) {
         current_scheme = (index == 0) ? toolkit::ColorScheme::Light : toolkit::ColorScheme::Dark;
         apply_theme(app, window);
     });
+    auto rb_light = ui::radio_button("Light", group).selected(true);
+    auto rb_dark = ui::radio_button("Dark", group);
+    auto *rb_light_ptr = rb_light.get();
+    auto *rb_dark_ptr = rb_dark.get();
+
+    auto toolbar_theme_combo = ui::combobox(style_names).on_change([&app, window](int index) {
+        if (index < toolkit::theme_style_count) {
+            current_style = static_cast<toolkit::ThemeStyle>(index);
+            apply_theme(app, window);
+        }
+    });
+    auto toolbar_theme_toggle = ui::checkbox("Light Theme").on_toggle([&app, window](bool checked) {
+        current_scheme = checked ? toolkit::ColorScheme::Light : toolkit::ColorScheme::Dark;
+        apply_theme(app, window);
+    });
+
+    auto main_theme_combo = ui::combobox(style_names).on_change([&app, window](int index) {
+        if (index < toolkit::theme_style_count) {
+            current_style = static_cast<toolkit::ThemeStyle>(index);
+            apply_theme(app, window);
+        }
+    });
+
+    auto *t_combo_ptr = toolbar_theme_combo.get();
+    auto *t_toggle_ptr = toolbar_theme_toggle.get();
+    auto *m_combo_ptr = main_theme_combo.get();
+
+    // Initial state and observer
+    auto sync_ui = [t_combo_ptr, t_toggle_ptr, m_combo_ptr, group, rb_light_ptr,
+                    rb_dark_ptr](const toolkit::Theme &theme) {
+        int selected = -1;
+        for (int i = 0; i < toolkit::theme_style_count; i++) {
+            if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
+                selected = i;
+                break;
+            }
+        }
+        if (selected == -1) {
+            selected = toolkit::theme_style_count; // "Other"
+        }
+
+        t_combo_ptr->set_selected(selected);
+        m_combo_ptr->set_selected(selected);
+
+        bool light = theme.palette.window.luma() > 0.5f;
+        t_toggle_ptr->set_checked(light);
+        group.group->select(light ? rb_light_ptr : rb_dark_ptr);
+    };
+
+    sync_ui(toolkit::Theme::current());
+    toolkit::Theme::add_theme_observer(sync_ui);
 
     // Progress bar needs to be accesed from the lambda, and inserted into the root widget
     // If you move this to be bellow the root widget, code will crash
@@ -445,14 +497,9 @@ int main(int argc, char *argv[]) {
                              .tri_state(true)
                              .tooltip("This checkbox cycles trough 3 state")
                              .checked(true))
-                    .add(ui::combobox(style_names)
-                             .selected(static_cast<int>(current_style))
-                             .on_change([&app, &window](int index) {
-                                 current_style = static_cast<toolkit::ThemeStyle>(index);
-                                 apply_theme(app, window);
-                             }))
-                    .add(ui::radio_button("Light", group).selected(true))
-                    .add(ui::radio_button("Dark", group))
+                    .add(std::move(main_theme_combo))
+                    .add(std::move(rb_light))
+                    .add(std::move(rb_dark))
                     .add(progressBar)
                     .add([&]() {
                         return ui::hbox()
@@ -750,7 +797,10 @@ int main(int argc, char *argv[]) {
                      .separator()
                      .command("Disabled", "This command is disabled")
                      .disable()
-                     .command("Increase count", "Increase the counter", {}, repeat_action))
+                     .command("Increase count", "Increase the counter", {}, repeat_action)
+                     .add(ui::spacer(), ui::expand)
+                     .add(std::move(toolbar_theme_toggle))
+                     .add(std::move(toolbar_theme_combo)))
             .add(rootWidget, ui::expand)
             .add(ui::hbox()
                      .add(ui::button("About").disable())

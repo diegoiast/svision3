@@ -101,8 +101,7 @@ static toolkit::ColorScheme current_scheme = toolkit::ColorScheme::Light;
 
 static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
     toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
-    app.notify_theme_changed();
-    window->request_redraw();
+    window->request_redraw("theme apply");
 }
 
 int main(int argc, char *argv[]) {
@@ -259,6 +258,71 @@ int main(int argc, char *argv[]) {
     autoclick_cmd->set_tooltip("Increase the counter");
     toolbar->add_command(autoclick_cmd);
 
+    std::vector<std::string> style_names;
+    for (int i = 0; i < toolkit::theme_style_count; i++) {
+        style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
+    }
+    style_names.push_back("Other");
+
+    auto theme_combo = std::make_unique<toolkit::Combobox>(style_names);
+    {
+        int initial_selected = -1;
+        auto const &theme = toolkit::Theme::current();
+        for (int i = 0; i < toolkit::theme_style_count; i++) {
+            if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
+                initial_selected = i;
+                break;
+            }
+        }
+        if (initial_selected == -1) initial_selected = toolkit::theme_style_count;
+        theme_combo->set_selected(initial_selected);
+    }
+    
+    auto theme_toggle = std::make_unique<toolkit::Checkbox>("Light Theme");
+    theme_toggle->set_checked(toolkit::Theme::current().palette.window.luma() > 0.5f);
+    
+    // UI sync function
+    auto sync_theme_ui = [theme_combo = theme_combo.get(), theme_toggle = theme_toggle.get()](const toolkit::Theme &theme) {
+        int selected = -1;
+        for (int i = 0; i < toolkit::theme_style_count; i++) {
+            if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
+                selected = i;
+                break;
+            }
+        }
+        if (selected == -1) {
+            selected = toolkit::theme_style_count; // "Other"
+        }
+
+        theme_combo->set_selected(selected);
+        theme_toggle->set_checked(theme.palette.window.luma() > 0.5f);
+    };
+    toolkit::Theme::add_theme_observer(sync_theme_ui);
+
+    theme_combo->on_change = [window](int index) {
+        auto scheme = toolkit::Theme::current().palette.window.luma() < 0.5f 
+            ? toolkit::ColorScheme::Dark : toolkit::ColorScheme::Light;
+        auto style = (index < toolkit::theme_style_count) ? static_cast<toolkit::ThemeStyle>(index) : toolkit::ThemeStyle::Material;
+        auto new_theme = toolkit::ThemeFactory::create(style, scheme);
+        toolkit::Theme::set_current(std::move(new_theme));
+        window->request_redraw("theme changed");
+    };
+
+    
+    theme_toggle->on_toggle = [window, theme_combo = theme_combo.get()](bool checked) {
+        auto scheme = checked ? toolkit::ColorScheme::Light : toolkit::ColorScheme::Dark;
+        int index = theme_combo->selected();
+        auto style = (index == 0) ? toolkit::ThemeStyle::System : static_cast<toolkit::ThemeStyle>(index);
+        auto new_theme = toolkit::ThemeFactory::create(style, scheme);
+        toolkit::Theme::set_current(std::move(new_theme));
+        window->request_redraw("scheme changed");
+    };
+
+    auto spacer = std::make_unique<toolkit::Label>("");
+    toolbar->add_widget(std::move(spacer), 1.0f);
+    toolbar->add_widget(std::move(theme_toggle));
+    toolbar->add_widget(std::move(theme_combo));
+
     root->add_widget(std::move(toolbar));
 
     auto debug_stats_widget = [&window]() {
@@ -313,18 +377,32 @@ int main(int argc, char *argv[]) {
     cb2->set_tooltip("This checkbox cycles through three states");
     tab_main->add_widget(std::move(cb2));
 
-    std::vector<std::string> style_names;
+    std::vector<std::string> main_page_style_names;
     for (int i = 0; i < toolkit::theme_style_count; i++) {
-        style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
+        main_page_style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
     }
 
-    auto combo = std::make_unique<toolkit::Combobox>(style_names);
+    auto combo = std::make_unique<toolkit::Combobox>(main_page_style_names);
     combo->set_selected(static_cast<int>(current_style));
     combo->set_tooltip("Select a theme style");
     combo->on_change = [&app, window](int index) {
         current_style = static_cast<toolkit::ThemeStyle>(index);
         apply_theme(app, window);
     };
+    toolkit::Theme::add_theme_observer([combo = combo.get()](const toolkit::Theme &theme) {
+        int selected = -1;
+        for (int i = 0; i < toolkit::theme_style_count; i++) {
+            if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
+                selected = i;
+                break;
+            }
+        }
+        if (selected != -1) {
+            combo->set_selected(selected);
+        } else {
+            combo->set_selected(toolkit::theme_style_count); // "Other"
+        }
+    });
     tab_main->add_widget(std::move(combo));
 
     auto rb_light = std::make_unique<toolkit::RadioButton>("Light", scheme_group);
