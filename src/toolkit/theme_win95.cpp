@@ -8,7 +8,8 @@
 
 namespace toolkit {
 
-Win95Theme::Win95Theme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme(scheme, std::move(p)) {
+Win95Theme::Win95Theme(ColorScheme scheme, std::optional<Palette> p)
+    : BaseTheme(scheme, std::move(p)) {
     if (!p) {
         palette = this->default_palette(scheme);
     }

@@ -151,6 +151,7 @@ void Window::on_theme_changed() {
     for (auto &w : widgets_) {
         on_theme_changed_recursive(w.get());
     }
+    relayout();
 }
 
 void Window::close() {

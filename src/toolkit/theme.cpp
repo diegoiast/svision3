@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/theme.hpp"
+#include "toolkit/application.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/theme_factory.hpp"
@@ -19,7 +20,7 @@
 
 namespace toolkit {
 
-static std::vector<std::function<void(const Theme &)>>& get_theme_observers() {
+static std::vector<std::function<void(const Theme &)>> &get_theme_observers() {
     static std::vector<std::function<void(const Theme &)>> observers;
     return observers;
 }
@@ -30,9 +31,10 @@ void Theme::add_theme_observer(std::function<void(const Theme &)> observer) {
 
 void Theme::notify_theme_changed() {
     auto const &t = current();
-    for (auto& observer : get_theme_observers()) {
+    for (auto &observer : get_theme_observers()) {
         observer(t);
     }
+    Application::instance().notify_theme_changed();
 }
 
 static std::unique_ptr<Theme> &mutable_current_ptr() {
@@ -88,7 +90,7 @@ ThemeStyle Theme::detect_system_style() {
 #endif
 }
 
-void Theme::set_current(std::unique_ptr<Theme> theme) { 
+void Theme::set_current(std::unique_ptr<Theme> theme) {
     mutable_current_ptr() = std::move(theme);
     notify_theme_changed();
 }
