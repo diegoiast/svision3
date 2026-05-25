@@ -105,9 +105,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 28. [ ] StatusBar.
 29. [ ] GroupBox / Frame.
 30. [x] Splitter.
-31. [ ] Image widget.
+31. [x] Image widget.
 32. [x] Markdown tooltip.
-33. [ ] Undo/redo system (text area + LineInput).
+33. [x] Undo/redo system (text area + LineInput).
 34. [ ] Client side decorations with theme.
 35. [ ] Proper filter API for listview and table view.
 36. [ ] MainWindow with docking widgets on the sides.

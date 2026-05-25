@@ -129,4 +129,8 @@ void Win11Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_
     painter.draw_text(text, {x_offset, text_y}, text_col, palette.fonts.size);
 }
 
+void Win11Theme::draw_tab_content_background(Painter &painter, Rect const &rect) const {
+    painter.fill_rect(rect, palette.base);
+}
+
 } // namespace toolkit

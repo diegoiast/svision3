@@ -643,7 +643,25 @@ void TabWidget::paint(Painter &painter) {
     }
 
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        tabs_[current_].content->draw(painter);
+        auto &content = tabs_[current_].content;
+        
+        // Calculate the content rect, taking orientation into account.
+        auto thickness = tab_bar_thickness();
+        auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
+                         orientation_ == TabOrientation::EastVertical || orientation_ == TabOrientation::WestVertical);
+        auto content_rect = Rect{0, 0, rect_.width, rect_.height};
+        if (orientation_ == TabOrientation::North) {
+            content_rect = {0, thickness, rect_.width, rect_.height - thickness};
+        } else if (orientation_ == TabOrientation::South) {
+            content_rect = {0, 0, rect_.width, rect_.height - thickness};
+        } else if (orientation_ == TabOrientation::West || orientation_ == TabOrientation::WestVertical) {
+            content_rect = {thickness, 0, rect_.width - thickness, rect_.height};
+        } else if (orientation_ == TabOrientation::East || orientation_ == TabOrientation::EastVertical) {
+            content_rect = {0, 0, rect_.width - thickness, rect_.height};
+        }
+        
+        Theme::current().draw_tab_content_background(painter, content_rect);
+        content->draw(painter);
     }
 }
 

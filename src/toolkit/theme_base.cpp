@@ -122,7 +122,7 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
 }
 
 void BaseTheme::draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
-                              CheckState check_state, WidgetState const &state) const {
+                               CheckState check_state, WidgetState const &state) const {
     auto const &style = checkbox;
     auto focused = state.focused;
     auto enabled = state.enabled;
@@ -165,7 +165,6 @@ void BaseTheme::draw_checkbox(Painter &painter, Rect const &rect, std::string_vi
     auto text_c = enabled ? palette.text : palette.text_disabled;
     painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 }
-
 void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::string_view text,
                                   bool checked, WidgetState const &state) const {
     auto const &style = radio;
@@ -222,9 +221,11 @@ void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::strin
             painter.fill_circle(center, (r - hw) * 0.45f, palette.accent);
         }
     }
+
     auto text_c = enabled ? palette.text : palette.text_disabled;
     painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 }
+
 
 void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
                                 std::string_view placeholder, int cursor_pos, int selection_start,
@@ -774,6 +775,10 @@ void BaseTheme::draw_tooltip(Painter &painter, Rect const &rect, std::string_vie
     painter.fill_rounded_rect(rect, palette.tooltip, palette.corner_radius);
     painter.draw_rounded_rect(rect, palette.border, palette.corner_radius, palette.border_width);
     painter.draw_text(text, {text_x, baseline_y}, palette.text, palette.fonts.size);
+}
+
+void BaseTheme::draw_tab_content_background(Painter &painter, Rect const &rect) const {
+    painter.fill_rect(rect, palette.window);
 }
 
 void BaseTheme::draw_toolbar(Painter &painter, Rect const &rect, WidgetState const &state) const {

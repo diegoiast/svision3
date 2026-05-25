@@ -23,6 +23,8 @@ class Win11Theme : public BaseTheme {
     void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
                         bool has_children, bool expanded, bool selected, bool hovered,
                         bool alternate) const override;
+
+    void draw_tab_content_background(Painter &painter, Rect const &rect) const override;
 };
 
 } // namespace toolkit

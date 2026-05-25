@@ -256,6 +256,7 @@ class Theme {
     virtual void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
                                     bool hovered) const = 0;
     virtual void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const = 0;
+    virtual void draw_tab_content_background(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_toolbar(Painter &painter, Rect const &rect,
                               WidgetState const &state) const = 0;
     virtual void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text,
