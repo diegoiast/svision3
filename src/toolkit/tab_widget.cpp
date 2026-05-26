@@ -551,7 +551,7 @@ void TabWidget::paint(Painter &painter) {
         auto tab_rect =
             vertical ? Rect{bar_x, draw_y, thickness, size} : Rect{draw_x, bar_y, size, thickness};
         auto active = (i == current_);
-        auto hovered = (i == hovered_tab_ && !active);
+        auto hovered = (i == hovered_tab_);
         auto hovered_close = (i == hovered_close_);
 
         auto tab_state = WidgetState{
@@ -595,8 +595,42 @@ void TabWidget::paint(Painter &painter) {
         }
     }
 
+    if (palette.border_width > 0) {
+        if (orientation_ == TabOrientation::North) {
+            painter.draw_line({0, thickness}, {rect_.width, thickness}, palette.border,
+                              palette.border_width);
+        } else if (orientation_ == TabOrientation::South) {
+            painter.draw_line({0, rect_.height - thickness},
+                              {rect_.width, rect_.height - thickness}, palette.border,
+                              palette.border_width);
+        } else if (orientation_ == TabOrientation::West ||
+                   orientation_ == TabOrientation::WestVertical) {
+            painter.draw_line({thickness, 0}, {thickness, rect_.height}, palette.border,
+                              palette.border_width);
+        } else if (orientation_ == TabOrientation::East ||
+                   orientation_ == TabOrientation::EastVertical) {
+            painter.draw_line({rect_.width - thickness, 0}, {rect_.width - thickness, rect_.height},
+                              palette.border, palette.border_width);
+        }
+    }
+
     auto scrollable_rect = vertical ? Rect{bar_x, bar_start, thickness, bar_end - bar_start}
                                     : Rect{bar_start, bar_y, bar_end - bar_start, thickness};
+
+    auto bw = palette.border_width;
+    if (orientation_ == TabOrientation::North) {
+        scrollable_rect.height += bw;
+    } else if (orientation_ == TabOrientation::South) {
+        scrollable_rect.y -= bw;
+        scrollable_rect.height += bw;
+    } else if (orientation_ == TabOrientation::West ||
+               orientation_ == TabOrientation::WestVertical) {
+        scrollable_rect.width += bw;
+    } else if (orientation_ == TabOrientation::East ||
+               orientation_ == TabOrientation::EastVertical) {
+        scrollable_rect.x -= bw;
+        scrollable_rect.width += bw;
+    }
 
     painter.push_clip(scrollable_rect);
 
@@ -632,25 +666,6 @@ void TabWidget::paint(Painter &painter) {
     }
 
     painter.pop_clip();
-
-    if (palette.border_width > 0) {
-        if (orientation_ == TabOrientation::North) {
-            painter.draw_line({0, thickness}, {rect_.width, thickness}, palette.border,
-                              palette.border_width);
-        } else if (orientation_ == TabOrientation::South) {
-            painter.draw_line({0, rect_.height - thickness},
-                              {rect_.width, rect_.height - thickness}, palette.border,
-                              palette.border_width);
-        } else if (orientation_ == TabOrientation::West ||
-                   orientation_ == TabOrientation::WestVertical) {
-            painter.draw_line({thickness, 0}, {thickness, rect_.height}, palette.border,
-                              palette.border_width);
-        } else if (orientation_ == TabOrientation::East ||
-                   orientation_ == TabOrientation::EastVertical) {
-            painter.draw_line({rect_.width - thickness, 0}, {rect_.width - thickness, rect_.height},
-                              palette.border, palette.border_width);
-        }
-    }
 
     if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
         auto &content = tabs_[current_].content;

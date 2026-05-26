@@ -682,9 +682,7 @@ int main(int argc, char *argv[]) {
                                      .leading_widget(make_plus())
                                      .trailing_widget(make_close())
                                      .add_tab("West 1", ui::label("West 1 Content")
-                                                            .alignment(toolkit::Alignment::Center)
-                                                            .background_color(
-                                                                toolkit::Color::rgb(0.9, 1.0, 0.9)))
+                                                            .alignment(toolkit::Alignment::Center))
                                      .add_tab("West 2", ui::label("West 2 Content")
                                                             .alignment(toolkit::Alignment::Center)
                                                             .background_color(
@@ -707,9 +705,7 @@ int main(int argc, char *argv[]) {
                                      .leading_widget(make_plus())
                                      .trailing_widget(make_close())
                                      .add_tab("East 1", ui::label("East 1 Content")
-                                                            .alignment(toolkit::Alignment::Center)
-                                                            .background_color(
-                                                                toolkit::Color::rgb(0.9, 0.9, 1.0)))
+                                                            .alignment(toolkit::Alignment::Center))
                                      .add_tab("East 2", ui::label("East 2 Content")
                                                             .alignment(toolkit::Alignment::Center)
                                                             .background_color(
@@ -732,10 +728,9 @@ int main(int argc, char *argv[]) {
                              .orientation(toolkit::TabOrientation::South)
                              .leading_widget(make_plus())
                              .trailing_widget(make_close())
-                             .add_tab("South 1",
-                                      ui::label("South 1 Content")
-                                          .alignment(toolkit::Alignment::Center)
-                                          .background_color(toolkit::Color::rgb(1.0, 0.9, 0.9)))
+                             .add_tab(
+                                 "South 1",
+                                 ui::label("South 1 Content").alignment(toolkit::Alignment::Center))
                              .add_tab("South 2",
                                       ui::label("South 2 Content")
                                           .alignment(toolkit::Alignment::Center)

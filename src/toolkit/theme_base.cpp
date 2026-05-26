@@ -472,14 +472,39 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
     auto hovered = state.interaction == ButtonState::Hovered;
     
     auto bg = active ? palette.tab_select_background : palette.tab_background;
-    if (!active && hovered && palette.background_hovered) {
-        bg = *palette.background_hovered;
+    if (hovered) {
+        if (palette.background_hovered) {
+            bg = active ? Color::lerp(bg, *palette.background_hovered, 0.5f) : *palette.background_hovered;
+        } else {
+            bg = bg.luma() > 0.5f ? bg.darken(0.05f) : bg.lighten(0.05f);
+        }
     }
     
     auto text_c = state.enabled ? palette.text : palette.text_disabled;
 
     if (active) {
         painter.fill_rounded_rect(rect, bg, palette.tab_radius);
+        float r = palette.tab_radius;
+        float bw = palette.border_width;
+        if (r > 0 || bw > 0) {
+            float fill_r = std::max(r, bw);
+            switch (orientation) {
+            case TabOrientation::North:
+                painter.fill_rect({rect.x, rect.y + rect.height - fill_r, rect.width, fill_r + bw}, bg);
+                break;
+            case TabOrientation::South:
+                painter.fill_rect({rect.x, rect.y - bw, rect.width, fill_r + bw}, bg);
+                break;
+            case TabOrientation::West:
+            case TabOrientation::WestVertical:
+                painter.fill_rect({rect.x + rect.width - fill_r, rect.y, fill_r + bw, rect.height}, bg);
+                break;
+            case TabOrientation::East:
+            case TabOrientation::EastVertical:
+                painter.fill_rect({rect.x - bw, rect.y, fill_r + bw, rect.height}, bg);
+                break;
+            }
+        }
     } else {
         painter.fill_rect(rect, bg);
     }
@@ -567,11 +592,15 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
         auto r2 = rect;
 
         if (vertical) {
-            r2.y += palette.tab_radius;
-            r2.height -= palette.tab_radius * 2;
+            if (!on_inner) {
+                r2.y += palette.tab_radius;
+                r2.height -= palette.tab_radius * 2;
+            }
         } else {
-            r2.x += palette.tab_radius;
-            r2.width -= palette.tab_radius * 2;
+            if (!on_inner) {
+                r2.x += palette.tab_radius;
+                r2.width -= palette.tab_radius * 2;
+            }
         }
 
         if (orientation == TabOrientation::North) {
