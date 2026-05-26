@@ -4,10 +4,10 @@
 #pragma once
 
 #include "toolkit/button_state.hpp"
-#include "toolkit/xdg_image_loader.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 #include <cmath>
 #include <memory>
 #include <optional>
@@ -132,6 +132,9 @@ struct Palette {
     Color link;
     // Background color of tooltip windows
     Color tooltip;
+
+    Color tab_select_background;
+    Color tab_background;
 
     // If the palette supports shadows, a shadow, otherwise the same as border
     Color shadow;

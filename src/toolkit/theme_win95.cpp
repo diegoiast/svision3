@@ -47,6 +47,9 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF008000);
         p.warning = Color::from_argb(0xFFFF8000);
         p.error = Color::from_argb(0xFF800000);
+        p.tab_select_background = p.window;
+        p.tab_background = p.window;
+        p.tab_radius = 0.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_argb(0xFF000000);
@@ -68,6 +71,9 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF008000);
         p.warning = Color::from_argb(0xFFFF8000);
         p.error = Color::from_argb(0xFF800000);
+        p.tab_select_background = p.window;
+        p.tab_background = p.window;
+        p.tab_radius = 0.0f;
         break;
     }
     return p;

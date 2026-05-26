@@ -49,6 +49,9 @@ Palette BaseTheme::default_palette(ColorScheme scheme) const {
         p.highlight = primary;
         p.highlighted_text = Color::from_rgb(0xFFFFFF);
         p.accent = primary;
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
+        p.tab_radius = 4.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_rgb(0x1C1B1F);
@@ -57,6 +60,9 @@ Palette BaseTheme::default_palette(ColorScheme scheme) const {
         p.highlight = primary;
         p.highlighted_text = Color::from_rgb(0xFFFFFF);
         p.accent = primary;
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
+        p.tab_radius = 4.0f;
         break;
     }
     return p;
@@ -456,8 +462,7 @@ void BaseTheme::draw_slider(Painter &painter, Rect const &rect, float value, boo
 
 void BaseTheme::draw_tab_bar_background(Painter &painter, Rect const &rect,
                                         WidgetState const &state) const {
-    auto bg = state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
-    painter.fill_rect(rect, bg);
+    painter.fill_rect(rect, palette.tab_background);
 }
 
 void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
@@ -465,16 +470,13 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
                          bool hovered_close) const {
     auto const &style = tab_widget;
     auto hovered = state.interaction == ButtonState::Hovered;
-    auto bg = state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
-    auto text_c = state.enabled ? palette.text : palette.text_disabled;
-
-    if (active) {
-        bg = palette.base;
-    } else {
-        if (hovered && palette.background_hovered) {
-            bg = *palette.background_hovered;
-        }
+    
+    auto bg = active ? palette.tab_select_background : palette.tab_background;
+    if (!active && hovered && palette.background_hovered) {
+        bg = *palette.background_hovered;
     }
+    
+    auto text_c = state.enabled ? palette.text : palette.text_disabled;
 
     if (active) {
         painter.fill_rounded_rect(rect, bg, palette.tab_radius);

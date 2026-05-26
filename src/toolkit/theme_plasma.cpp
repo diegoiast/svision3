@@ -82,6 +82,8 @@ Palette Plasma6Theme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF27AE60);
         p.warning = Color::from_argb(0xFFF39C12);
         p.error = Color::from_argb(0xFFE74C3C);
+        p.tab_select_background = p.window;
+        p.tab_background = Color::from_argb(0xFFBCBDBE);
         break;
     case ColorScheme::Dark:
         p.window = Color::from_argb(0xFF232629);
@@ -103,6 +105,8 @@ Palette Plasma6Theme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF27AE60);
         p.warning = Color::from_argb(0xFFF39C12);
         p.error = Color::from_argb(0xFFE74C3C);
+        p.tab_select_background = p.window;
+        p.tab_background = p.window;
         break;
     }
     return p;

@@ -55,6 +55,9 @@ Palette MaterialTheme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_rgb(0x2E7D32);
         p.warning = Color::from_rgb(0xF9A825);
         p.error = Color::from_rgb(0xB3261E);
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
+        p.tab_radius = 4.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_rgb(0x1C1B1F);
@@ -76,6 +79,9 @@ Palette MaterialTheme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_rgb(0x2E7D32);
         p.warning = Color::from_rgb(0xF9A825);
         p.error = Color::from_rgb(0xB3261E);
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
+        p.tab_radius = 4.0f;
         break;
     }
     return p;
@@ -122,6 +128,9 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF2E7D32);
         p.warning = Color::from_argb(0xFFFBC02D);
         p.error = Color::from_argb(0xFFC62828);
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
+        p.tab_radius = 4.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_argb(0xFF2E3436);
@@ -143,6 +152,9 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF2E7D32);
         p.warning = Color::from_argb(0xFFFBC02D);
         p.error = Color::from_argb(0xFFC62828);
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
+        p.tab_radius = 4.0f;
         break;
     }
     return p;

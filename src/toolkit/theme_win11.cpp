@@ -50,6 +50,8 @@ Palette Win11Theme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF107C10);
         p.warning = Color::from_argb(0xFFFFB900);
         p.error = Color::from_argb(0xFFD13438);
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_argb(0xFF202020);
@@ -71,6 +73,8 @@ Palette Win11Theme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF6CCB5F);
         p.warning = Color::from_argb(0xFFFFC83D);
         p.error = Color::from_argb(0xFFFF5F5F);
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
         break;
     }
     return p;

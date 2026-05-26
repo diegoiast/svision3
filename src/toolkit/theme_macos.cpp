@@ -43,6 +43,9 @@ Palette MacOSTheme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF34C759);
         p.warning = Color::from_argb(0xFFFF9F0A);
         p.error = Color::from_argb(0xFFFF3B30);
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
+        p.tab_radius = 4.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_argb(0xFF1E1E1E);
@@ -64,6 +67,9 @@ Palette MacOSTheme::default_palette(ColorScheme scheme) const {
         p.success = Color::from_argb(0xFF30D158);
         p.warning = Color::from_argb(0xFFFF9F0A);
         p.error = Color::from_argb(0xFFFF453A);
+        p.tab_select_background = p.base;
+        p.tab_background = p.window;
+        p.tab_radius = 4.0f;
         break;
     }
     return p;
