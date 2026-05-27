@@ -3,6 +3,7 @@
 
 #include "toolkit/layout.hpp"
 #include <algorithm>
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
 
@@ -169,7 +170,7 @@ bool VBoxLayout::handle_key(KeyEvent const &event) {
 
         if (!w->is_visible()) {
             continue;
-        }    
+        }
         if (!w->is_focused() && !w->can_get_non_focus_input()) {
             continue;
         }
@@ -265,8 +266,6 @@ void VBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
         callback(item.widget.get());
     }
 }
-
-// --- HBoxLayout ---
 
 HBoxLayout::HBoxLayout() {}
 
@@ -509,6 +508,36 @@ void HBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
     for (auto &item : items_) {
         callback(item.widget.get());
     }
+}
+
+nlohmann::json VBoxLayout::to_json() const {
+    auto j = Widget::to_json();
+    j["spacing"] = spacing_;
+    j["margins"] = {{"top", margins_.top},
+                    {"bottom", margins_.bottom},
+                    {"left", margins_.left},
+                    {"right", margins_.right}};
+    auto children = nlohmann::json::array();
+    for (auto const &item : items_) {
+        children.push_back(item.widget->to_json());
+    }
+    j["children"] = children;
+    return j;
+}
+
+nlohmann::json HBoxLayout::to_json() const {
+    auto j = Widget::to_json();
+    j["spacing"] = spacing_;
+    j["margins"] = {{"top", margins_.top},
+                    {"bottom", margins_.bottom},
+                    {"left", margins_.left},
+                    {"right", margins_.right}};
+    auto children = nlohmann::json::array();
+    for (auto const &item : items_) {
+        children.push_back(item.widget->to_json());
+    }
+    j["children"] = children;
+    return j;
 }
 
 } // namespace toolkit

@@ -8,6 +8,7 @@
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"
+#include <nlohmann/json_fwd.hpp>
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -84,6 +85,7 @@ class Window {
 
     void hide_tooltip();
     bool save_to_png(std::string const &path);
+    nlohmann::json to_json() const;
     float scale_factor() const;
 
     PlatformWindow *platform_window() const;

@@ -1,3 +1,4 @@
+#include <nlohmann/json.hpp>
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
@@ -162,6 +163,17 @@ Painter::FontMetrics Widget::font_metrics(float font_size, FontFamily font) cons
         return p->font_metrics(font_size, font);
     }
     return {};
+}
+
+nlohmann::json Widget::to_json() const {
+    nlohmann::json j;
+    j["type"] = class_name();
+    j["rect"] = {rect_.x, rect_.y, rect_.width, rect_.height};
+    j["visible"] = state.visible;
+    j["enabled"] = state.enabled;
+    j["focused"] = state.focused;
+    j["focusable"] = state.focusable;
+    return j;
 }
 
 } // namespace toolkit

@@ -27,8 +27,10 @@ class RadioGroup {
 };
 
 class RadioButton : public Widget {
+    DECLARE_WIDGET(RadioButton)
   public:
     RadioButton(std::string text, RadioGroup &group);
+    nlohmann::json to_json() const override;
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;

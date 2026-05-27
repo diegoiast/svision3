@@ -5,10 +5,13 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <algorithm>
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
 
-Slider::Slider(SliderOrientation orientation) : orientation_(orientation) { Widget::set_focusable(true); }
+Slider::Slider(SliderOrientation orientation) : orientation_(orientation) {
+    Widget::set_focusable(true);
+}
 
 Slider &Slider::set_value(float v) {
     v = std::clamp(v, min_, max_);
@@ -116,9 +119,9 @@ void Slider::paint(Painter &painter) {
 
     // FIXME: add support for hovered/pressed interaction states
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = ButtonState::Normal,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
     Theme::current().draw_slider(painter, rect, normalized_value, horizontal, wstate);
@@ -194,4 +197,12 @@ Size Slider::size_hint() const {
     }
 }
 
+nlohmann::json Slider::to_json() const {
+    auto j = Widget::to_json();
+    j["value"] = value_;
+    j["min"] = min_;
+    j["max"] = max_;
+    j["orientation"] = (orientation_ == SliderOrientation::Horizontal) ? "Horizontal" : "Vertical";
+    return j;
+}
 } // namespace toolkit

@@ -16,7 +16,8 @@ namespace toolkit {
 
 class TextEditCommand;
 
-class TextEdit : public Widget , public Fluent<TextEdit> {
+class TextEdit : public Widget, public Fluent<TextEdit> {
+    DECLARE_WIDGET(Checkbox)
   public:
     struct Pos {
         int line = 0;
@@ -30,6 +31,7 @@ class TextEdit : public Widget , public Fluent<TextEdit> {
     };
 
     explicit TextEdit(std::string text = "");
+    nlohmann::json to_json() const override;
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;

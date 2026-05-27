@@ -11,7 +11,6 @@
 #include "toolkit/file_dialog.hpp"
 #include "toolkit/html_view.hpp"
 #include "toolkit/icon_grid.hpp"
-#include "toolkit/xdg_image_loader.hpp"
 #include "toolkit/image_widget.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
@@ -35,12 +34,14 @@
 #include "toolkit/toolbar.hpp"
 #include "toolkit/tree_view.hpp"
 #include "toolkit/window.hpp"
+#include "toolkit/xdg_image_loader.hpp"
+
 #include <chrono>
 #include <fstream>
 #include <iterator>
+#include <nlohmann/json.hpp>
 #include <regex>
 #include <set>
-
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
@@ -274,15 +275,18 @@ int main(int argc, char *argv[]) {
                 break;
             }
         }
-        if (initial_selected == -1) initial_selected = toolkit::theme_style_count;
+        if (initial_selected == -1) {
+            initial_selected = toolkit::theme_style_count;
+        }
         theme_combo->set_selected(initial_selected);
     }
-    
+
     auto theme_toggle = std::make_unique<toolkit::Checkbox>("Light Theme");
     theme_toggle->set_checked(toolkit::Theme::current().palette.window.luma() > 0.5f);
-    
+
     // UI sync function
-    auto sync_theme_ui = [theme_combo = theme_combo.get(), theme_toggle = theme_toggle.get()](const toolkit::Theme &theme) {
+    auto sync_theme_ui = [theme_combo = theme_combo.get(),
+                          theme_toggle = theme_toggle.get()](const toolkit::Theme &theme) {
         int selected = -1;
         for (int i = 0; i < toolkit::theme_style_count; i++) {
             if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
@@ -300,19 +304,21 @@ int main(int argc, char *argv[]) {
     toolkit::Theme::add_theme_observer(sync_theme_ui);
 
     theme_combo->on_change = [window](int index) {
-        auto scheme = toolkit::Theme::current().palette.window.luma() < 0.5f 
-            ? toolkit::ColorScheme::Dark : toolkit::ColorScheme::Light;
-        auto style = (index < toolkit::theme_style_count) ? static_cast<toolkit::ThemeStyle>(index) : toolkit::ThemeStyle::Material;
+        auto scheme = toolkit::Theme::current().palette.window.luma() < 0.5f
+                          ? toolkit::ColorScheme::Dark
+                          : toolkit::ColorScheme::Light;
+        auto style = (index < toolkit::theme_style_count) ? static_cast<toolkit::ThemeStyle>(index)
+                                                          : toolkit::ThemeStyle::Material;
         auto new_theme = toolkit::ThemeFactory::create(style, scheme);
         toolkit::Theme::set_current(std::move(new_theme));
         window->request_redraw("theme changed");
     };
 
-    
     theme_toggle->on_toggle = [window, theme_combo = theme_combo.get()](bool checked) {
         auto scheme = checked ? toolkit::ColorScheme::Light : toolkit::ColorScheme::Dark;
         int index = theme_combo->selected();
-        auto style = (index == 0) ? toolkit::ThemeStyle::System : static_cast<toolkit::ThemeStyle>(index);
+        auto style =
+            (index == 0) ? toolkit::ThemeStyle::System : static_cast<toolkit::ThemeStyle>(index);
         auto new_theme = toolkit::ThemeFactory::create(style, scheme);
         toolkit::Theme::set_current(std::move(new_theme));
         window->request_redraw("scheme changed");
@@ -379,7 +385,8 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::string> main_page_style_names;
     for (int i = 0; i < toolkit::theme_style_count; i++) {
-        main_page_style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
+        main_page_style_names.push_back(
+            toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
     }
 
     auto combo = std::make_unique<toolkit::Combobox>(main_page_style_names);
@@ -1106,6 +1113,23 @@ int main(int argc, char *argv[]) {
     quit_btn->on_click = [window] { window->close(); };
     quit_btn->set_tooltip("Close the application (Cmd+Q)");
     button_bar->add_widget(std::move(quit_btn));
+
+    auto export_btn = std::make_unique<toolkit::Button>("Export to JSON");
+    export_btn->on_click = [window, use_native_cb] {
+        toolkit::FileDialog(window)
+            .title("Export Window to JSON")
+            .use_native(use_native_cb->checked())
+            .save()
+            .then([window](auto path) {
+                if (path) {
+                    std::ofstream f(*path);
+                    if (f) {
+                        f << window->to_json().dump(4);
+                    }
+                }
+            });
+    };
+    button_bar->add_widget(std::move(export_btn));
 
     root->add_widget(std::move(button_bar));
 

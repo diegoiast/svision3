@@ -1,6 +1,13 @@
+#include <chrono>
+#include <fmt/format.h>
+#include <fstream>
+#include <nlohmann/json.hpp>
+#include <regex>
+#include <spdlog/spdlog.h>
+
 #include "declarative.hpp"
 #include "github_markdown_css.hpp"
-#include "nfd.h"
+// #include "nfd.h"
 #include "toolkit/application.hpp"
 #include "toolkit/directory_dialog.hpp"
 #include "toolkit/file_dialog.hpp"
@@ -10,11 +17,6 @@
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/xdg_icons.hpp"
 #include "toolkit/xdg_image_loader.hpp"
-#include <chrono>
-#include <fmt/format.h>
-#include <fstream>
-#include <regex>
-#include <spdlog/spdlog.h>
 
 auto LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
                    "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
@@ -338,12 +340,27 @@ int main(int argc, char *argv[]) {
     auto save_cmd = ui::command("Save", [] { spdlog::info("Menu: Save"); }).shortcut("Std+S");
     auto exit_cmd =
         ui::command("Exit", [&window] { window->close(); }).icon(XDG::IconActions::applicationExit);
+    auto export_cmd = ui::command("Export JSON", [window, use_native_cb_ptr] {
+        toolkit::FileDialog(window)
+            .title("Export Window to JSON")
+            .use_native(use_native_cb_ptr->checked())
+            .save()
+            .then([window](auto path) {
+                if (path) {
+                    std::ofstream f(*path);
+                    if (f) {
+                        f << window->to_json().dump(4);
+                    }
+                }
+            });
+    });
     auto undo_cmd = ui::command("Undo", [] { spdlog::info("Menu: Undo"); }).shortcut("Std+Z");
     auto redo_cmd = ui::command("Redo", [] { spdlog::info("Menu: Redo"); }).shortcut("Std+Y");
 
     window->add_command(new_cmd);
     window->add_command(open_cmd);
     window->add_command(save_cmd);
+    window->add_command(export_cmd);
     window->add_command(exit_cmd);
     window->add_command(undo_cmd);
     window->add_command(redo_cmd);

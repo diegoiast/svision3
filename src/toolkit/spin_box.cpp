@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
 
@@ -147,9 +148,7 @@ void SpinBox::step_down() {
     }
 }
 
-CursorShape SpinBox::cursor() const {
-    return CursorShape::IBeam;
-}
+CursorShape SpinBox::cursor() const { return CursorShape::IBeam; }
 
 Size SpinBox::size_hint() const {
     auto const &style = Theme::current().line_input;
@@ -179,14 +178,14 @@ void SpinBox::paint(Painter &painter) {
     }
 
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = ButtonState::Normal,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
 
-    theme.draw_spinbox(painter, rect, text_, cursor_pos, sel_start_pos, sel_end_pos, wstate,
-                       false, false, false, false, cursor_visible);
+    theme.draw_spinbox(painter, rect, text_, cursor_pos, sel_start_pos, sel_end_pos, wstate, false,
+                       false, false, false, cursor_visible);
 
     up_button_->draw(painter);
     down_button_->draw(painter);
@@ -353,4 +352,12 @@ bool SpinBox::handle_key(KeyEvent const &event) {
     return false;
 }
 
+nlohmann::json SpinBox::to_json() const {
+    auto j = Widget::to_json();
+    j["value"] = value_;
+    j["min"] = min_val_;
+    j["max"] = max_val_;
+    j["step"] = step_;
+    return j;
+}
 } // namespace toolkit

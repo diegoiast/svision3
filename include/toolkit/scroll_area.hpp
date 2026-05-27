@@ -15,9 +15,12 @@ namespace toolkit {
 // Scrollbars are drawn as thin overlay thumbs (no space taken from the viewport).
 // Horizontal scrolling is supported but the scrollbar is only shown when needed.
 class ScrollArea : public Widget {
+    DECLARE_WIDGET(ScrollArea)
   public:
     ScrollArea();
     ~ScrollArea() override = default;
+
+    nlohmann::json to_json() const override;
 
     void set_content(std::unique_ptr<Widget> widget);
     Widget *content() const { return content_.get(); }

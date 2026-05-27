@@ -6,9 +6,25 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <algorithm>
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
+
+nlohmann::json TabWidget::to_json() const {
+    auto j = Widget::to_json();
+    j["current"] = current_;
+    nlohmann::json tabs = nlohmann::json::array();
+    for (auto const &tab : tabs_) {
+        nlohmann::json t;
+        t["title"] = tab.title;
+        t["content"] = tab.content->to_json();
+        t["closable"] = tab.closable;
+        tabs.push_back(t);
+    }
+    j["tabs"] = tabs;
+    return j;
+}
 
 TabWidget::TabWidget() {
     state.focusable = false;

@@ -11,8 +11,10 @@ namespace toolkit {
 enum class SliderOrientation { Horizontal, Vertical };
 
 class Slider : public Widget, public Fluent<Slider> {
+    DECLARE_WIDGET(Slider)
   public:
     explicit Slider(SliderOrientation orientation = SliderOrientation::Horizontal);
+    nlohmann::json to_json() const override;
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;

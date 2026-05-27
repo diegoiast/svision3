@@ -7,11 +7,15 @@
 #include "toolkit/events.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
+#include <nlohmann/json_fwd.hpp>
 #include <algorithm>
 #include <functional>
 #include <optional>
 #include <string>
 #include <vector>
+
+#define DECLARE_WIDGET(ClassName)                                                                  \
+    std::string_view class_name() const override { return #ClassName; }
 
 namespace toolkit {
 
@@ -148,6 +152,9 @@ class Widget {
 
     Widget &set_background_color(std::optional<Color> c);
     std::optional<Color> background_color() const { return background_color_; }
+
+    virtual nlohmann::json to_json() const;
+    virtual std::string_view class_name() const { return "Widget"; }
 
   protected:
     // Let window call this protected method

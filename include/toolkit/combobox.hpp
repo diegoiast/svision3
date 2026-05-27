@@ -11,8 +11,10 @@
 namespace toolkit {
 
 class Combobox : public Widget, public Fluent<Combobox> {
+    DECLARE_WIDGET(Combobox)
   public:
     explicit Combobox(std::vector<std::string> items = {});
+    nlohmann::json to_json() const override;
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;

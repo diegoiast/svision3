@@ -10,6 +10,7 @@
 namespace toolkit {
 
 class Label : public Widget, public Fluent<Label> {
+    DECLARE_WIDGET(Label)
   public:
     explicit Label();
     explicit Label(std::string text);
@@ -17,6 +18,7 @@ class Label : public Widget, public Fluent<Label> {
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
     Size size_hint() const override;
+    nlohmann::json to_json() const override;
 
     Label &set_text(std::string const &text);
     std::string const &text() const { return text_; }

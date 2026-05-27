@@ -5,8 +5,18 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <cctype>
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
+
+nlohmann::json Button::to_json() const {
+    auto j = Widget::to_json();
+    j["text"] = display_text_;
+    j["checked"] = checked_;
+    j["checkable"] = checkable_;
+    j["flat"] = flat_;
+    return j;
+}
 
 Button::Button(std::string text) {
     auto pos = text.find('&');

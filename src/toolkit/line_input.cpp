@@ -6,29 +6,24 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
+#include <nlohmann/json.hpp>
 
 #include <cctype>
 
 namespace toolkit {
 
 class TextCommand : public UndoCommand {
-public:
+  public:
     TextCommand(std::string *text, std::string old_val, std::string new_val, size_t pos)
         : text_(text), old_val_(std::move(old_val)), new_val_(std::move(new_val)), pos_(pos) {}
 
-    void undo() override {
-        text_->replace(pos_, new_val_.size(), old_val_);
-    }
+    void undo() override { text_->replace(pos_, new_val_.size(), old_val_); }
 
-    void redo() override {
-        text_->replace(pos_, old_val_.size(), new_val_);
-    }
+    void redo() override { text_->replace(pos_, old_val_.size(), new_val_); }
 
     int id() const override { return 1; }
 
-    std::string text() const override {
-        return old_val_.empty() ? "Typing" : "Deletion";
-    }
+    std::string text() const override { return old_val_.empty() ? "Typing" : "Deletion"; }
 
     bool merge_with(const UndoCommand *other) override {
         auto const *o = static_cast<const TextCommand *>(other);
@@ -39,7 +34,7 @@ public:
         return false;
     }
 
-private:
+  private:
     std::string *text_;
     std::string old_val_;
     std::string new_val_;
@@ -234,14 +229,18 @@ void LineInput::sync_commands() {
 void LineInput::undo() {
     if (undo_stack_.undo()) {
         sync_commands();
-        if (window_) window_->request_redraw("input state");
+        if (window_) {
+            window_->request_redraw("input state");
+        }
     }
 }
 
 void LineInput::redo() {
     if (undo_stack_.redo()) {
         sync_commands();
-        if (window_) window_->request_redraw("input state");
+        if (window_) {
+            window_->request_redraw("input state");
+        }
     }
 }
 
@@ -362,14 +361,14 @@ void LineInput::paint(Painter &painter) {
     }
 
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = is_focused(),
-        .enabled       = !read_only_,
+        .interaction = ButtonState::Normal,
+        .focused = is_focused(),
+        .enabled = !read_only_,
         .window_active = window_ ? window_->is_active() : true,
     };
     theme.draw_line_input(painter, rect, d_text, placeholder_, static_cast<int>(cursor_pos_),
-                          sel_start_pos, sel_end_pos, wstate, password_mode_,
-                          scroll_offset_, bg, cursor_visible);
+                          sel_start_pos, sel_end_pos, wstate, password_mode_, scroll_offset_, bg,
+                          cursor_visible);
 
     paint_buttons(painter);
 }
@@ -714,7 +713,8 @@ bool LineInput::handle_key(KeyEvent const &event) {
         }
         next_text.insert(start_pos, event.text);
 
-        if (validation_mode_ == ValidationMode::Block && validator_ && !validator_(next_text, *this)) {
+        if (validation_mode_ == ValidationMode::Block && validator_ &&
+            !validator_(next_text, *this)) {
             return true;
         }
 
@@ -828,8 +828,9 @@ void LineInput::show_context_menu(Point pos) {
     items.push_back(MenuItem::action(paste_cmd));
     items.push_back(MenuItem::sep());
     items.push_back(MenuItem::action(select_all_cmd));
-    
-    auto delete_cmd = Command::create("Delete", [this] { delete_selection(); }, !read_only_ && has_sel);
+
+    auto delete_cmd =
+        Command::create("Delete", [this] { delete_selection(); }, !read_only_ && has_sel);
     delete_cmd->set_shortcut("Delete");
     items.push_back(MenuItem::action(delete_cmd));
 
@@ -845,4 +846,11 @@ Size LineInput::size_hint() const {
     return {150.0f, h};
 }
 
+nlohmann::json LineInput::to_json() const {
+    auto j = Widget::to_json();
+    j["text"] = text_;
+    j["placeholder"] = placeholder_;
+    j["read_only"] = read_only_;
+    return j;
+}
 } // namespace toolkit

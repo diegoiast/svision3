@@ -11,8 +11,10 @@
 namespace toolkit {
 
 class Checkbox : public Widget {
+    DECLARE_WIDGET(Checkbox)
   public:
     explicit Checkbox(std::string text);
+    nlohmann::json to_json() const override;
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;

@@ -10,8 +10,10 @@
 namespace toolkit {
 
 class VBoxLayout : public Widget, public Fluent<VBoxLayout> {
+    DECLARE_WIDGET(VBoxLayout)
   public:
     VBoxLayout();
+    nlohmann::json to_json() const override;
     struct Item {
         std::unique_ptr<Widget> widget;
         int stretch;
@@ -53,8 +55,10 @@ class VBoxLayout : public Widget, public Fluent<VBoxLayout> {
 };
 
 class HBoxLayout : public Widget {
+    DECLARE_WIDGET(HBoxLayout)
   public:
     HBoxLayout();
+    nlohmann::json to_json() const override;
     struct Item {
         std::unique_ptr<Widget> widget;
         int stretch;

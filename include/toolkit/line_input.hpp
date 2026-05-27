@@ -14,8 +14,10 @@
 namespace toolkit {
 
 class LineInput : public Widget, public Fluent<LineInput> {
+    DECLARE_WIDGET(LineInput)
   public:
     explicit LineInput(std::string placeholder = "");
+    nlohmann::json to_json() const override;
 
     void paint(Painter &painter) override;
     void paint_buttons(Painter &painter);

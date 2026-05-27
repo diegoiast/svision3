@@ -4,8 +4,15 @@
 #include "toolkit/label.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
+
+nlohmann::json Label::to_json() const {
+    auto j = Widget::to_json();
+    j["text"] = text_;
+    return j;
+}
 
 Label::Label() {}
 

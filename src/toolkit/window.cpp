@@ -9,6 +9,7 @@
 #include "toolkit/theme.hpp"
 #include <cctype>
 #include <chrono>
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
@@ -818,4 +819,20 @@ void Window::draw_debug_frames_recursive(Painter &painter, Widget *widget) {
     painter.pop_translation();
 }
 
+nlohmann::json Window::to_json() const {
+    nlohmann::json j;
+    j["title"] = title_;
+    j["size"] = {{"width", size_.width}, {"height", size_.height}};
+    if (root_) {
+        j["root"] = root_->to_json();
+    }
+    if (!widgets_.empty()) {
+        auto widgets = nlohmann::json::array();
+        for (auto const &w : widgets_) {
+            widgets.push_back(w->to_json());
+        }
+        j["widgets"] = widgets;
+    }
+    return j;
+}
 } // namespace toolkit

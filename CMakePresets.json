@@ -1,6 +1,7 @@
 {
   "version": 4,
   "include": [
-    "build/Debug/generators/CMakePresets.json"
+    "build/Debug/generators/CMakePresets.json",
+    "build/Release/generators/CMakePresets.json"
   ]
 }

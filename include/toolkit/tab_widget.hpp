@@ -12,8 +12,10 @@
 namespace toolkit {
 
 class TabWidget : public Widget, public Fluent<TabWidget> {
+    DECLARE_WIDGET(TabWidget)
   public:
     TabWidget();
+    nlohmann::json to_json() const override;
 
     TabWidget &add_tab(std::string title, std::unique_ptr<Widget> content, bool closable = true);
 

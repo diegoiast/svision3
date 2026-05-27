@@ -13,6 +13,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -21,9 +22,11 @@
 namespace toolkit {
 
 class TextEditCommand : public UndoCommand {
-public:
-    TextEditCommand(TextEdit *edit, std::string old_text, std::string new_text, TextEdit::Pos old_cursor, TextEdit::Pos new_cursor)
-        : edit_(edit), old_text_(std::move(old_text)), new_text_(std::move(new_text)), old_cursor_(old_cursor), new_cursor_(new_cursor) {}
+  public:
+    TextEditCommand(TextEdit *edit, std::string old_text, std::string new_text,
+                    TextEdit::Pos old_cursor, TextEdit::Pos new_cursor)
+        : edit_(edit), old_text_(std::move(old_text)), new_text_(std::move(new_text)),
+          old_cursor_(old_cursor), new_cursor_(new_cursor) {}
 
     void undo() override {
         edit_->set_text(old_text_);
@@ -49,7 +52,7 @@ public:
     int id() const override { return 1; }
     std::string text() const override { return "Typing"; }
 
-private:
+  private:
     TextEdit *edit_;
     std::string old_text_;
     std::string new_text_;
@@ -124,7 +127,7 @@ void TextEdit::set_text(std::string const &text) {
     }
 }
 
-TextEdit& TextEdit::set_focused(bool focused) {
+TextEdit &TextEdit::set_focused(bool focused) {
     Widget::set_focused(focused);
     if (!focused) {
         anchor_ = cursor_;
@@ -250,8 +253,7 @@ void TextEdit::ensure_cursor_visible() {
         scroll_y_ = cy;
     }
     if (cursor_.col > 0) {
-        cx = measure_text(lines_[cursor_.line].substr(0, cursor_.col), palette.fonts.size,
-                                    kFont)
+        cx = measure_text(lines_[cursor_.line].substr(0, cursor_.col), palette.fonts.size, kFont)
                  .width;
     }
     // FIXME: what is this 10.0f?
@@ -439,14 +441,18 @@ void TextEdit::paste() {
 void TextEdit::undo() {
     if (undo_stack_.undo()) {
         sync_commands();
-        if (window_) window_->request_redraw("undo");
+        if (window_) {
+            window_->request_redraw("undo");
+        }
     }
 }
 
 void TextEdit::redo() {
     if (undo_stack_.redo()) {
         sync_commands();
-        if (window_) window_->request_redraw("redo");
+        if (window_) {
+            window_->request_redraw("redo");
+        }
     }
 }
 
@@ -516,9 +522,9 @@ void TextEdit::paint(Painter &painter) {
     auto sel_end_col = has_selection() ? se.col : -1;
 
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = ButtonState::Normal,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
     theme.draw_text_edit(painter, local_rect, lines_, cursor_.line, cursor_.col, sel_start_line,
@@ -765,5 +771,11 @@ bool TextEdit::handle_key(KeyEvent const &event) {
 }
 
 Size TextEdit::size_hint() const { return {0, 200}; }
+
+nlohmann::json TextEdit::to_json() const {
+    auto j = Widget::to_json();
+    j["text"] = text();
+    return j;
+}
 
 } // namespace toolkit

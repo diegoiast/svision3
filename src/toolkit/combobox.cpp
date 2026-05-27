@@ -6,6 +6,7 @@
 #include "toolkit/window.hpp"
 #include <algorithm>
 #include <cmath>
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
 
@@ -126,9 +127,9 @@ void Combobox::close_dropdown() {
 void Combobox::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = ButtonState::Normal,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
     Theme::current().draw_combobox(painter, rect, selected_text(), wstate, open_);
@@ -331,4 +332,10 @@ auto Combobox::size_hint() const -> Size {
             fm.height + style.padding.top + style.padding.bottom};
 }
 
+nlohmann::json Combobox::to_json() const {
+    auto j = Widget::to_json();
+    j["current_index"] = selected_index_;
+    j["items"] = items_;
+    return j;
+}
 } // namespace toolkit

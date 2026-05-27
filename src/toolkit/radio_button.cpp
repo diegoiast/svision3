@@ -4,8 +4,16 @@
 #include "toolkit/radio_button.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
+
+nlohmann::json RadioButton::to_json() const {
+    auto j = Widget::to_json();
+    j["text"] = text_;
+    j["selected"] = selected_;
+    return j;
+}
 
 // --- RadioGroup ---
 
@@ -55,9 +63,9 @@ RadioButton::RadioButton(std::string text, RadioGroup &group)
 void RadioButton::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto wstate = WidgetState{
-        .interaction   = state_handler_.button_state,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = state_handler_.button_state,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
     Theme::current().draw_radio_button(painter, rect, text_, selected_, wstate);

@@ -12,8 +12,10 @@
 namespace toolkit {
 
 class SpinBox : public Widget, public Fluent<SpinBox> {
+    DECLARE_WIDGET(SpinBox)
   public:
     explicit SpinBox(int value = 0, int min_val = 0, int max_val = 100, int step = 1);
+    nlohmann::json to_json() const override;
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;

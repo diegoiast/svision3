@@ -8,8 +8,10 @@
 namespace toolkit {
 
 class ProgressBar : public Widget {
+    DECLARE_WIDGET(ProgressBar)
   public:
     ProgressBar();
+    nlohmann::json to_json() const override;
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override {
         (void)event;

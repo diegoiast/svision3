@@ -4,8 +4,8 @@
 #include "toolkit/scroll_area.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
-#include <algorithm>
 #include <cmath>
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
 
@@ -44,13 +44,9 @@ void ScrollArea::scroll_to(float x, float y) {
 
 // ── geometry helpers ──────────────────────────────────────────────────────────
 
-float ScrollArea::content_w() const {
-    return content_ ? content_->size_hint().width : 0;
-}
+float ScrollArea::content_w() const { return content_ ? content_->size_hint().width : 0; }
 
-float ScrollArea::content_h() const {
-    return content_ ? content_->size_hint().height : 0;
-}
+float ScrollArea::content_h() const { return content_ ? content_->size_hint().height : 0; }
 
 bool ScrollArea::needs_vscroll() const { return content_h() > rect_.height; }
 bool ScrollArea::needs_hscroll() const { return content_w() > rect_.width; }
@@ -272,6 +268,16 @@ void ScrollArea::for_each_child(std::function<void(Widget *)> const &cb) {
     if (content_) {
         cb(content_.get());
     }
+}
+
+nlohmann::json ScrollArea::to_json() const {
+    auto j = Widget::to_json();
+    j["scroll_x"] = scroll_x_;
+    j["scroll_y"] = scroll_y_;
+    if (content_) {
+        j["content"] = content_->to_json();
+    }
+    return j;
 }
 
 } // namespace toolkit

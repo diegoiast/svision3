@@ -12,8 +12,10 @@
 namespace toolkit {
 
 class Button : public Widget, public Fluent<Button> {
+    DECLARE_WIDGET(Button)
   public:
     explicit Button(std::string text);
+    nlohmann::json to_json() const override;
 
     void set_text(std::string text);
     std::string const &text() const { return display_text_; }

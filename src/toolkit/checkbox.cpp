@@ -4,8 +4,17 @@
 #include "toolkit/checkbox.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
+
+nlohmann::json Checkbox::to_json() const {
+    auto j = Widget::to_json();
+    j["text"] = text_;
+    j["state"] = static_cast<int>(state_);
+    j["tri_state"] = tri_state_;
+    return j;
+}
 
 void Checkbox::on_state_changed() {
     if (window_) {
@@ -63,9 +72,9 @@ void Checkbox::toggle() {
 void Checkbox::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto wstate = WidgetState{
-        .interaction   = state_handler_.button_state,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = state_handler_.button_state,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
     Theme::current().draw_checkbox(painter, rect, text_, state_, wstate);
