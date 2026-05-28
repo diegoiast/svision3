@@ -7,12 +7,38 @@
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
 #include <algorithm>
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
 
 ImageWidget::ImageWidget() {
     state.focusable = true;
     state.non_focus_input = true;
+}
+
+nlohmann::json ImageWidget::to_json() const {
+    auto j = Widget::to_json();
+    j["checkboard"] = show_checkerboard_;
+    j["zoom"] = zoom_;
+    j["scroll_y"] = scroll_y_;
+    j["scroll_x"] = scroll_x_;
+    return j;
+}
+
+void ImageWidget::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("checkboard")) {
+        show_checkerboard_ = j["checkboard"];
+    }
+    if (j.contains("zoom")) {
+        zoom_ = j["zoom"];
+    }
+    if (j.contains("scroll_y")) {
+        scroll_y_ = j["scroll_y"];
+    }
+    if (j.contains("scroll_x")) {
+        scroll_x_ = j["scroll_x"];
+    }
 }
 
 void ImageWidget::load(std::string_view path) {
@@ -71,13 +97,15 @@ void ImageWidget::clamp_scroll() {
     scroll_y_ = std::clamp(scroll_y_, 0.0f, std::max(0.0f, h - rect_.height));
 }
 
-void ImageWidget::update_size() {
-    clamp_scroll();
-}
+void ImageWidget::update_size() { clamp_scroll(); }
 
 void ImageWidget::fit_to_widget() {
-    if (!image_) return;
-    if (rect_.width <= 0 || rect_.height <= 0) return;
+    if (!image_) {
+        return;
+    }
+    if (rect_.width <= 0 || rect_.height <= 0) {
+        return;
+    }
 
     float aspect = (float)image_->width / image_->height;
     float view_aspect = rect_.width / rect_.height;

@@ -2,6 +2,7 @@
 #include "toolkit/button.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
+#include "toolkit/image_widget.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/line_input.hpp"
@@ -15,6 +16,13 @@
 #include "toolkit/text_edit.hpp"
 #include "toolkit/toolbar.hpp"
 #include <spdlog/spdlog.h>
+
+#define DO_REGISTER_WIDGET(x)                                                                      \
+    register_widget(#x, [](nlohmann::json const &j) {                                              \
+        auto w = std::make_unique<x>();                                                            \
+        w->from_json(j);                                                                           \
+        return w;                                                                                  \
+    })
 
 namespace toolkit {
 
@@ -33,89 +41,43 @@ void WidgetLoader::register_widget(std::string_view class_name, WidgetFactory fa
 }
 
 void WidgetLoader::register_all_widgets() {
-    register_widget("Label", [](nlohmann::json const &j) {
-        auto w = std::make_unique<Label>();
-        w->from_json(j);
-        return w;
-    });
+    // FIXME: simple constructor is missing
     register_widget("Button", [](nlohmann::json const &j) {
         auto w = std::make_unique<Button>("");
         w->from_json(j);
         return w;
     });
+    // FIXME: simple constructor is missing
     register_widget("Checkbox", [](nlohmann::json const &j) {
         auto w = std::make_unique<Checkbox>("");
         w->from_json(j);
         return w;
     });
+    // FIXME: simple constructor is missing
     register_widget("RadioButton", [](nlohmann::json const &j) {
+        // FIXME: support for radio group boxes
         static RadioGroup g;
         auto w = std::make_unique<RadioButton>("", g);
         w->from_json(j);
         return w;
     });
-    register_widget("VBoxLayout", [](nlohmann::json const &j) {
-        auto w = std::make_unique<VBoxLayout>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("HBoxLayout", [](nlohmann::json const &j) {
-        auto w = std::make_unique<HBoxLayout>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("TabWidget", [](nlohmann::json const &j) {
-        auto w = std::make_unique<TabWidget>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("ScrollArea", [](nlohmann::json const &j) {
-        auto w = std::make_unique<ScrollArea>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("ProgressBar", [](nlohmann::json const &j) {
-        auto w = std::make_unique<ProgressBar>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("Slider", [](nlohmann::json const &j) {
-        auto w = std::make_unique<Slider>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("SpinBox", [](nlohmann::json const &j) {
-        auto w = std::make_unique<SpinBox>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("LineInput", [](nlohmann::json const &j) {
-        auto w = std::make_unique<LineInput>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("TextEdit", [](nlohmann::json const &j) {
-        auto w = std::make_unique<TextEdit>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("Combobox", [](nlohmann::json const &j) {
-        auto w = std::make_unique<Combobox>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("MenuBar", [](nlohmann::json const &j) {
-        auto w = std::make_unique<MenuBar>();
-        w->from_json(j);
-        return w;
-    });
-    register_widget("Toolbar", [](nlohmann::json const &j) {
-        auto w = std::make_unique<Toolbar>();
-        w->from_json(j);
-        return w;
-    });
     register_widget("ToolbarSeparator",
                     [](nlohmann::json const &) { return create_toolbar_separator(); });
+
+    DO_REGISTER_WIDGET(Combobox);
+    DO_REGISTER_WIDGET(HBoxLayout);
+    DO_REGISTER_WIDGET(ImageWidget);
+    DO_REGISTER_WIDGET(Label);
+    DO_REGISTER_WIDGET(ProgressBar);
+    DO_REGISTER_WIDGET(LineInput);
+    DO_REGISTER_WIDGET(TextEdit);
+    DO_REGISTER_WIDGET(MenuBar);
+    DO_REGISTER_WIDGET(ScrollArea);
+    DO_REGISTER_WIDGET(Slider);
+    DO_REGISTER_WIDGET(TabWidget);
+    DO_REGISTER_WIDGET(SpinBox);
+    DO_REGISTER_WIDGET(Toolbar);
+    DO_REGISTER_WIDGET(VBoxLayout);
 }
 
 std::unique_ptr<Widget> WidgetLoader::create_widget(nlohmann::json const &j) {

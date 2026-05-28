@@ -9,9 +9,12 @@
 namespace toolkit {
 
 class ImageWidget : public Widget {
+    DECLARE_WIDGET(ImageWidget)
   public:
     ImageWidget();
     ~ImageWidget() override = default;
+    nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     void load(std::string_view path);
     void load(const uint8_t *data, size_t size);

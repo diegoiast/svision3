@@ -482,5 +482,6 @@ add_executable(tests
     tests/test_new_image_api.cpp
     tests/repro_tab_orientation.cpp
     tests/test_button_serialization.cpp
+    tests/test_image_widget.cpp
 )
 target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)
