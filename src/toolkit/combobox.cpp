@@ -14,6 +14,24 @@ Combobox::Combobox(std::vector<std::string> items) : items_(std::move(items)) {
     state.focusable = true;
 }
 
+nlohmann::json Combobox::to_json() const {
+    auto j = Widget::to_json();
+    j["current_index"] = selected_index_;
+    j["items"] = items_;
+    return j;
+}
+
+void Combobox::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("current_index")) {
+        selected_index_ = j["current_index"];
+    }
+    if (j.contains("items")) {
+        items_ = j["items"];
+    }
+}
+
+
 Combobox &Combobox::set_items(std::vector<std::string> items) {
     items_ = std::move(items);
     if (selected_index_ >= static_cast<int>(items_.size())) {
@@ -332,10 +350,4 @@ auto Combobox::size_hint() const -> Size {
             fm.height + style.padding.top + style.padding.bottom};
 }
 
-nlohmann::json Combobox::to_json() const {
-    auto j = Widget::to_json();
-    j["current_index"] = selected_index_;
-    j["items"] = items_;
-    return j;
-}
 } // namespace toolkit

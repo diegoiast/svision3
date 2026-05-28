@@ -2,8 +2,10 @@
 #include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
+#include "toolkit/widget_loader.hpp"
 #include "toolkit/window.hpp"
 #include <catch2/catch_test_macros.hpp>
+#include <nlohmann/json.hpp>
 
 using namespace toolkit;
 
@@ -61,4 +63,56 @@ TEST_CASE("Combobox interaction with virtual window", "[combobox]") {
     REQUIRE(cb->selected() == 2);
     REQUIRE(cb->selected_text() == "Three");
     REQUIRE(win.has_popup() == false);
+}
+
+TEST_CASE("Combobox serialization round-trip", "[combobox][serialization]") {
+    Combobox cb({"Red", "Green", "Blue"});
+    cb.set_selected(2);
+
+    auto j = cb.to_json();
+    REQUIRE(j["type"] == "Combobox");
+    REQUIRE(j["items"] == std::vector<std::string>{"Red", "Green", "Blue"});
+    REQUIRE(j["current_index"] == 2);
+
+    Combobox cb2;
+    cb2.from_json(j);
+    REQUIRE(cb2.selected() == 2);
+    REQUIRE(cb2.selected_text() == "Blue");
+}
+
+TEST_CASE("Combobox serialization no selection", "[combobox][serialization]") {
+    Combobox cb({"A", "B"});
+
+    auto j = cb.to_json();
+    REQUIRE(j["current_index"] == -1);
+
+    Combobox cb2;
+    cb2.from_json(j);
+    REQUIRE(cb2.selected() == -1);
+    REQUIRE(cb2.selected_text().empty());
+}
+
+TEST_CASE("Combobox serialization empty items", "[combobox][serialization]") {
+    Combobox cb;
+    auto j = cb.to_json();
+    REQUIRE(j["items"].empty());
+    REQUIRE(j["current_index"] == -1);
+
+    Combobox cb2;
+    cb2.from_json(j);
+    REQUIRE(cb2.selected() == -1);
+}
+
+TEST_CASE("Combobox serialization via WidgetLoader", "[combobox][serialization]") {
+    Combobox cb({"X", "Y", "Z"});
+    cb.set_selected(1);
+
+    auto j = cb.to_json();
+    auto w = WidgetLoader::instance().create_widget(j);
+    REQUIRE(w != nullptr);
+
+    auto *restored = dynamic_cast<Combobox *>(w.get());
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->selected() == 1);
+    REQUIRE(restored->selected_text() == "Y");
 }
