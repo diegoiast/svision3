@@ -520,10 +520,27 @@ nlohmann::json VBoxLayout::to_json() const {
                     {"right", margins_.right}};
     auto children = nlohmann::json::array();
     for (auto const &item : items_) {
-        children.push_back(item.widget->to_json());
+        auto child = item.widget->to_json();
+        child["stretch"] = item.stretch;
+        static constexpr const char *alignment_names[] = {"fill", "start", "center", "end"};
+        child["h_align"] = alignment_names[static_cast<int>(item.h_align)];
+        children.push_back(child);
     }
     j["children"] = children;
     return j;
+}
+
+static auto parse_alignment(std::string const &s) -> Alignment {
+    if (s == "start") {
+        return Alignment::Start;
+    }
+    if (s == "center") {
+        return Alignment::Center;
+    }
+    if (s == "end") {
+        return Alignment::End;
+    }
+    return Alignment::Fill;
 }
 
 void VBoxLayout::from_json(nlohmann::json const &j) {
@@ -543,7 +560,9 @@ void VBoxLayout::from_json(nlohmann::json const &j) {
         for (auto const &child_j : j["children"]) {
             auto child = WidgetLoader::instance().create_widget(child_j);
             if (child) {
-                add_widget(std::move(child));
+                auto stretch = child_j.value("stretch", 0);
+                auto h_align = parse_alignment(child_j.value("h_align", std::string{"fill"}));
+                add_widget(std::move(child), stretch, h_align);
             }
         }
     }
@@ -558,7 +577,11 @@ nlohmann::json HBoxLayout::to_json() const {
                     {"right", margins_.right}};
     auto children = nlohmann::json::array();
     for (auto const &item : items_) {
-        children.push_back(item.widget->to_json());
+        auto child = item.widget->to_json();
+        child["stretch"] = item.stretch;
+        static constexpr const char *alignment_names[] = {"fill", "start", "center", "end"};
+        child["v_align"] = alignment_names[static_cast<int>(item.v_align)];
+        children.push_back(child);
     }
     j["children"] = children;
     return j;
@@ -581,7 +604,9 @@ void HBoxLayout::from_json(nlohmann::json const &j) {
         for (auto const &child_j : j["children"]) {
             auto child = WidgetLoader::instance().create_widget(child_j);
             if (child) {
-                add_widget(std::move(child));
+                auto stretch = child_j.value("stretch", 0);
+                auto v_align = parse_alignment(child_j.value("v_align", std::string{"center"}));
+                add_widget(std::move(child), stretch, v_align);
             }
         }
     }
