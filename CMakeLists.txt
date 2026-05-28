@@ -461,6 +461,7 @@ add_executable(tests
     tests/test_list_view.cpp
     tests/test_layout.cpp
     tests/test_layout_mouse.cpp
+    tests/test_layout_stretch.cpp
     tests/test_tab_widget.cpp
     tests/test_filter_adapter.cpp
     tests/test_slider.cpp

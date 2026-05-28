@@ -34,7 +34,9 @@ void Theme::notify_theme_changed() {
     for (auto &observer : get_theme_observers()) {
         observer(t);
     }
-    Application::instance().notify_theme_changed();
+    if (Application::has_instance()) {
+        Application::instance().notify_theme_changed();
+    }
 }
 
 static std::unique_ptr<Theme> &mutable_current_ptr() {

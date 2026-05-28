@@ -18,6 +18,7 @@ class Application {
     ~Application();
 
     static Application &instance();
+    static bool has_instance();
 
     Application(Application const &) = delete;
     Application &operator=(Application const &) = delete;

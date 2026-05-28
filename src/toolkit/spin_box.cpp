@@ -200,8 +200,12 @@ bool SpinBox::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press) {
-        set_focused(true);
-        return true;
+        auto inside = Rect{0, 0, rect_.width, rect_.height}.contains(event.position);
+        if (inside) {
+            set_focused(true);
+            return true;
+        }
+        return false;
     }
     return false;
 }

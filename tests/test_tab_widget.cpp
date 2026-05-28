@@ -1,8 +1,8 @@
-#include <catch2/catch_test_macros.hpp>
-#include "toolkit/tab_widget.hpp"
+#include "toolkit/button.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
-#include "toolkit/button.hpp"
+#include "toolkit/tab_widget.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
 
@@ -62,12 +62,12 @@ TEST_CASE("TabWidget collect_focusables from active tab only", "[tabwidget]") {
 
     std::vector<Widget *> focusables;
     tw.collect_focusables(focusables);
-    REQUIRE(focusables.size() == 3); // TabWidget + 2 child buttons
+    REQUIRE(focusables.size() == 2); // 2 child buttons (TabWidget is not focusable)
 
     focusables.clear();
     tw.set_current(1);
     tw.collect_focusables(focusables);
-    REQUIRE(focusables.size() == 2); // TabWidget + 1 child button
+    REQUIRE(focusables.size() == 1); // 1 child button (TabWidget is not focusable)
 }
 
 TEST_CASE("TabWidget collect_mnemonics from active tab only", "[tabwidget]") {
@@ -108,7 +108,7 @@ TEST_CASE("TabWidget scrolling with interaction", "[tabwidget]") {
     MouseEvent scroll_ev;
     scroll_ev.type = MouseEvent::Type::Scroll;
     scroll_ev.position = {50, 5}; // In the bar
-    scroll_ev.scroll_dy = -1.0f; // Scroll right/down
+    scroll_ev.scroll_dy = -1.0f;  // Scroll right/down
     tw.handle_mouse(scroll_ev);
 
     // After scrolling, hitting a tab at a specific position should change
@@ -146,7 +146,7 @@ TEST_CASE("TabWidget hidden scroll buttons hit test", "[tabwidget]") {
     // Hit test at x=5 (where prev_button would be if visible) should hit Tab 0
     // We need to be careful about button sizes, but with 100px width and many tabs,
     // scroll buttons WILL be shown.
-    
+
     // This is more of a behavioral test, ensuring no crashes and current logic
     REQUIRE(tw.current_index() == 0);
 }
@@ -171,7 +171,7 @@ TEST_CASE("TabWidget scroll back to first tab", "[tabwidget]") {
     // Tab 0 should be at x=0 (relative to bar_start, which is start_pos since scroll_offset is 0)
     auto hr = tw.widget_at({5, 5}); // Should be in the first tab
     REQUIRE(hr != nullptr);
-    // Depending on TabWidget implementation, widget_at might return the TabWidget itself if 
+    // Depending on TabWidget implementation, widget_at might return the TabWidget itself if
     // it's not the content. But it should definitely NOT be null or a scroll button.
 }
 
@@ -186,39 +186,39 @@ TEST_CASE("TabWidget no gap when prev button hidden", "[tabwidget]") {
         tw.add_tab("Tab " + std::to_string(i), std::make_unique<Label>("C"));
     }
 
-    // scroll_offset is 0, prev button is hidden. 
+    // scroll_offset is 0, prev button is hidden.
     // Tab 0 should start immediately after leading widget.
-    // Assuming leading widget is small, x=30 should definitely be inside Tab 0 
+    // Assuming leading widget is small, x=30 should definitely be inside Tab 0
     // if there's no gap. If there's a 20-30px gap for a hidden button, it might miss.
-    
-    // We don't know exact sizes, but we can verify that widget_at returns 
+
+    // We don't know exact sizes, but we can verify that widget_at returns
     // the TabWidget (representing the tab bar) at a point very close to the start.
-    
+
     // First, verify leading widget is there
     auto *w_lead = tw.widget_at({5, 5});
     REQUIRE(w_lead != nullptr);
     REQUIRE(w_lead != &tw);
 
     // Now check immediately after leading widget (assuming it's around 20-40px)
-    // If there was a gap for the hidden "prev" button, x=50 might be empty space (returning null or parent)
-    // With buttons at the end, x=50 MUST be a tab.
+    // If there was a gap for the hidden "prev" button, x=50 might be empty space (returning null or
+    // parent) With buttons at the end, x=50 MUST be a tab.
     auto *w_tab = tw.widget_at({50, 5});
-    REQUIRE(w_tab == &tw); 
+    REQUIRE(w_tab == &tw);
 }
 
 TEST_CASE("TabWidget different orientations selection", "[tabwidget]") {
     auto orientations = {TabOrientation::South, TabOrientation::West, TabOrientation::East};
-    
+
     for (auto o : orientations) {
         TabWidget tw;
         tw.set_orientation(o);
         tw.set_rect({0, 0, 200, 200});
-        
+
         tw.add_tab("Tab 0", std::make_unique<Label>("C0"));
         tw.add_tab("Tab 1", std::make_unique<Label>("C1"));
-        
+
         REQUIRE(tw.current_index() == 0);
-        
+
         // Find a point that should hit Tab 1
         // We don't know exact sizes, but we can guess
         Point p;
@@ -229,12 +229,12 @@ TEST_CASE("TabWidget different orientations selection", "[tabwidget]") {
         } else if (o == TabOrientation::East) {
             p = {190, 100}; // Right bar
         }
-        
+
         MouseEvent ev;
         ev.type = MouseEvent::Type::Press;
         ev.position = p;
         ev.button = 1;
-        
+
         if (tw.handle_mouse(ev)) {
             // It might have hit Tab 0 or Tab 1 depending on coordinates
             // but it should at least not crash and handle the event
@@ -247,9 +247,9 @@ TEST_CASE("TabWidget keyboard shortcuts", "[tabwidget]") {
     tw.add_tab("Tab 0", std::make_unique<Label>("C0"));
     tw.add_tab("Tab 1", std::make_unique<Label>("C1"));
     tw.add_tab("Tab 2", std::make_unique<Label>("C2"));
-    
+
     REQUIRE(tw.current_index() == 0);
-    
+
     // Ctrl+PageDown to next tab
     KeyEvent ev;
     ev.type = KeyEvent::Type::Press;
@@ -257,47 +257,47 @@ TEST_CASE("TabWidget keyboard shortcuts", "[tabwidget]") {
     ev.key = Key::PageDown;
     tw.handle_key(ev);
     REQUIRE(tw.current_index() == 1);
-    
+
     // Ctrl+PageUp back to first tab
     ev.key = Key::PageUp;
     tw.handle_key(ev);
     REQUIRE(tw.current_index() == 0);
-    
+
     // Ctrl+Shift+PageDown to move Tab 0 to index 1
     ev.key = Key::PageDown;
     ev.shift = true;
     tw.handle_key(ev);
     REQUIRE(tw.current_index() == 1);
     // After moving, Tab 0 should be at index 1
-    // We can't easily check titles without making more methods public, 
+    // We can't easily check titles without making more methods public,
     // but we've verified it doesn't crash and index is updated.
 }
 
 TEST_CASE("TabWidget with nested layout", "[tabwidget]") {
     TabWidget tw;
     tw.set_rect({0, 0, 400, 300});
-    
+
     auto layout = std::make_unique<VBoxLayout>();
-    auto* layout_ptr = layout.get();
-    
+    auto *layout_ptr = layout.get();
+
     auto btn = std::make_unique<Button>("Btn");
-    auto* btn_ptr = btn.get();
+    auto *btn_ptr = btn.get();
     layout->add_widget(std::move(btn));
-    
+
     tw.add_tab("Tab", std::move(layout));
-    
+
     // Initial resize to ensure layout is applied
     tw.set_rect({0, 0, 400, 300});
     tw.find_focusable_at({0, 0});
     auto width1 = btn_ptr->rect().width;
-    
+
     // Now resize TabWidget
     tw.set_rect({0, 0, 500, 400});
-    
+
     // Trigger layout via interaction probe
     tw.find_focusable_at({0, 0});
     auto width2 = btn_ptr->rect().width;
-    
+
     REQUIRE(width2 > width1);
     REQUIRE(width2 > 450);
 }

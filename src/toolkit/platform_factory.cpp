@@ -53,6 +53,8 @@ Application *current_application() { return s_application; }
 void set_current_application(Application *a) { s_application = a; }
 } // namespace detail
 
+bool Application::has_instance() { return s_application != nullptr; }
+
 std::unique_ptr<PlatformApplication> create_platform_application() {
     const char *env_backend = std::getenv("SVISION_BACKEND");
     if (env_backend && std::string_view(env_backend) == "dummy") {
