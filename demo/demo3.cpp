@@ -820,8 +820,7 @@ int main(int argc, char *argv[]) {
                      .add(ui::button("Export to JSON").on_click([export_cmd] {
                          export_cmd.cmd->execute();
                      }))
-                     .add(ui::button("&Quit").on_click([&window] { window->close(); }))
-            ));
+                     .add(ui::button("&Quit").on_click([&window] { window->close(); }))));
 
     window->resize_to_fit();
     window->show();

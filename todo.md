@@ -41,7 +41,6 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 29. [ ] Image loading - using platform APIs.
 30. [ ] Animation framework (transitions, easing).
 31. [x] Undo/redo framework.
-32. [ ] Serialization (save/restore widget state).
 33. [ ] Declarative UI support. - WIP.
 34. [x] All setters should return a reference to self - for chainability.
 35. [x] Winwodws should have a `Window::add<T>` template that
@@ -102,8 +101,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 25. [x] Icon grid (tooltips, selection, rubber band)
 26. [x] Toolbar + custom widgets.
 27. [x] Dialog (modal/modeles).
-28. [ ] Save UI state.
-29. [ ] Load UI state.
+28. [x] Save UI state.
+29. [x] Load UI state.
 30. [ ] StatusBar.
 31. [ ] GroupBox / Frame.
 32. [x] Splitter.
