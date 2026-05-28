@@ -16,6 +16,19 @@ nlohmann::json Checkbox::to_json() const {
     return j;
 }
 
+void Checkbox::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("text")) {
+        text_ = j["text"];
+    }
+    if (j.contains("state")) {
+        set_check_state(static_cast<CheckState>(j["state"].get<int>()));
+    }
+    if (j.contains("tri_state")) {
+        set_tri_state(j["tri_state"]);
+    }
+}
+
 void Checkbox::on_state_changed() {
     if (window_) {
         window_->request_redraw("checkbox state");

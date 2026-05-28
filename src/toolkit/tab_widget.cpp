@@ -14,6 +14,10 @@ namespace toolkit {
 nlohmann::json TabWidget::to_json() const {
     auto j = Widget::to_json();
     j["current"] = current_;
+    j["orientation"] = static_cast<int>(orientation_);
+    j["tabs_closable"] = tabs_closable_;
+    j["tabs_movable"] = tabs_movable_;
+    j["min_tab_width"] = min_tab_width_;
     nlohmann::json tabs = nlohmann::json::array();
     for (auto const &tab : tabs_) {
         nlohmann::json t;
@@ -24,6 +28,30 @@ nlohmann::json TabWidget::to_json() const {
     }
     j["tabs"] = tabs;
     return j;
+}
+
+void TabWidget::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("orientation")) {
+        auto o = j["orientation"];
+        if (o.is_number()) {
+            set_orientation(static_cast<TabOrientation>(o.get<int>()));
+        } else {
+            spdlog::error("TabWidget: orientation expected number, got: {}", o.dump());
+        }
+    }
+    if (j.contains("tabs_closable")) {
+        set_tabs_closable(j["tabs_closable"]);
+    }
+    if (j.contains("tabs_movable")) {
+        set_tabs_movable(j["tabs_movable"]);
+    }
+    if (j.contains("min_tab_width")) {
+        set_min_tab_width(j["min_tab_width"]);
+    }
+    if (j.contains("current")) {
+        set_current(j["current"]);
+    }
 }
 
 TabWidget::TabWidget() {

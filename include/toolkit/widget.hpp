@@ -154,6 +154,7 @@ class Widget {
     std::optional<Color> background_color() const { return background_color_; }
 
     virtual nlohmann::json to_json() const;
+    virtual void from_json(nlohmann::json const &j);
     virtual std::string_view class_name() const { return "Widget"; }
 
   protected:

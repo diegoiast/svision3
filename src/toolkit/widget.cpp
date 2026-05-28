@@ -176,4 +176,23 @@ nlohmann::json Widget::to_json() const {
     return j;
 }
 
+void Widget::from_json(nlohmann::json const &j) {
+    if (j.contains("rect")) {
+        auto r = j["rect"];
+        set_rect({r[0], r[1], r[2], r[3]});
+    }
+    if (j.contains("visible")) {
+        set_visible(j["visible"]);
+    }
+    if (j.contains("enabled")) {
+        set_enabled(j["enabled"]);
+    }
+    if (j.contains("focusable")) {
+        set_focusable(j["focusable"]);
+    }
+    if (j.contains("focused")) {
+        set_focused(j["focused"]);
+    }
+}
+
 } // namespace toolkit

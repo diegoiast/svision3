@@ -775,6 +775,7 @@ int main(int argc, char *argv[]) {
                              .action(new_cmd)
                              .action(open_cmd)
                              .action(save_cmd)
+                             .action(export_cmd)
                              .separator()
                              .submenu(
                                  "Recent &Files",
@@ -816,7 +817,11 @@ int main(int argc, char *argv[]) {
             .add(ui::hbox()
                      .add(ui::button("About").disable())
                      .add(ui::spacer(), ui::expand)
-                     .add(ui::button("&Quit").on_click([&window] { window->close(); }))));
+                     .add(ui::button("Export to JSON").on_click([export_cmd] {
+                         export_cmd.cmd->execute();
+                     }))
+                     .add(ui::button("&Quit").on_click([&window] { window->close(); }))
+            ));
 
     window->resize_to_fit();
     window->show();

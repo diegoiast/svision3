@@ -19,6 +19,7 @@ class Label : public Widget, public Fluent<Label> {
     bool handle_mouse(MouseEvent const &event) override;
     Size size_hint() const override;
     nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     Label &set_text(std::string const &text);
     std::string const &text() const { return text_; }

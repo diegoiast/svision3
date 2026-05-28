@@ -205,4 +205,25 @@ nlohmann::json Slider::to_json() const {
     j["orientation"] = (orientation_ == SliderOrientation::Horizontal) ? "Horizontal" : "Vertical";
     return j;
 }
+
+void Slider::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("value")) {
+        set_value(j["value"]);
+    }
+    if (j.contains("min")) {
+        set_minimum(j["min"]);
+    }
+    if (j.contains("max")) {
+        set_maximum(j["max"]);
+    }
+    if (j.contains("orientation")) {
+        auto o = j["orientation"];
+        if (o.is_string()) {
+            orientation_ = (o == "Horizontal") ? SliderOrientation::Horizontal : SliderOrientation::Vertical;
+        } else if (o.is_number()) {
+            orientation_ = static_cast<SliderOrientation>(o.get<int>());
+        }
+    }
+}
 } // namespace toolkit

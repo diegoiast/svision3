@@ -15,6 +15,16 @@ nlohmann::json RadioButton::to_json() const {
     return j;
 }
 
+void RadioButton::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("text")) {
+        text_ = j["text"];
+    }
+    if (j.contains("selected")) {
+        set_selected(j["selected"]);
+    }
+}
+
 // --- RadioGroup ---
 
 void RadioGroup::add(RadioButton *rb) { buttons_.push_back(rb); }

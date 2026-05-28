@@ -14,6 +14,13 @@ nlohmann::json Label::to_json() const {
     return j;
 }
 
+void Label::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("text")) {
+        set_text(j["text"]);
+    }
+}
+
 Label::Label() {}
 
 Label::Label(std::string text) : text_(std::move(text)) {}

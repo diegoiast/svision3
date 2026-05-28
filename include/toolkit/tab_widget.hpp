@@ -16,11 +16,14 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
   public:
     TabWidget();
     nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     TabWidget &add_tab(std::string title, std::unique_ptr<Widget> content, bool closable = true);
 
     int current_index() const { return current_; }
     TabWidget &set_current(int index);
+
+    size_t tab_count() const { return tabs_.size(); }
 
     TabWidget &set_tabs_closable(bool closable);
     bool tabs_closable() const { return tabs_closable_; }

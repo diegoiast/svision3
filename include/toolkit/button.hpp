@@ -16,6 +16,7 @@ class Button : public Widget, public Fluent<Button> {
   public:
     explicit Button(std::string text);
     nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     void set_text(std::string text);
     std::string const &text() const { return display_text_; }

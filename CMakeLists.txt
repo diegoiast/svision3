@@ -80,6 +80,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/theme_win95.cpp
     src/toolkit/window.cpp
     src/toolkit/widget.cpp
+    src/toolkit/widget_loader.cpp
     src/toolkit/platform_factory.cpp
     src/toolkit/platform/dummy_platform.cpp
     src/toolkit/painters/gl_painter.cpp
@@ -438,6 +439,10 @@ if(WIN32)
 endif()
 target_link_libraries(sqlite_viewer PRIVATE toolkit db nfd)
 
+
+add_executable(json_ui_viewer tools/json_ui_viewer.cpp)
+target_link_libraries(json_ui_viewer PRIVATE toolkit)
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 find_package(Catch2 REQUIRED)
 add_executable(tests
@@ -474,5 +479,7 @@ add_executable(tests
     tests/test_html_view.cpp
     tests/test_utf8.cpp
     tests/test_new_image_api.cpp
+    tests/repro_tab_orientation.cpp
+    tests/test_button_serialization.cpp
 )
 target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)

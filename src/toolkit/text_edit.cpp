@@ -91,6 +91,19 @@ TextEdit::TextEdit(std::string text) {
     set_text(text);
 }
 
+nlohmann::json TextEdit::to_json() const {
+    auto j = Widget::to_json();
+    j["text"] = text();
+    return j;
+}
+
+void TextEdit::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("text")) {
+        set_text(j["text"]);
+    }
+}
+
 std::string TextEdit::text() const {
     std::string result;
     for (auto i = 0; i < (int)lines_.size(); i++) {
@@ -771,11 +784,5 @@ bool TextEdit::handle_key(KeyEvent const &event) {
 }
 
 Size TextEdit::size_hint() const { return {0, 200}; }
-
-nlohmann::json TextEdit::to_json() const {
-    auto j = Widget::to_json();
-    j["text"] = text();
-    return j;
-}
 
 } // namespace toolkit

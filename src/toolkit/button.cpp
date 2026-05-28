@@ -18,6 +18,22 @@ nlohmann::json Button::to_json() const {
     return j;
 }
 
+void Button::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("text")) {
+        set_text(j["text"]);
+    }
+    if (j.contains("checked")) {
+        set_checked(j["checked"]);
+    }
+    if (j.contains("checkable")) {
+        set_checkable(j["checkable"]);
+    }
+    if (j.contains("flat")) {
+        set_flat(j["flat"]);
+    }
+}
+
 Button::Button(std::string text) {
     auto pos = text.find('&');
     auto const &style = Theme::current().button;
