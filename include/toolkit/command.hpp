@@ -7,6 +7,7 @@
 #include "toolkit/image.hpp"
 #include <functional>
 #include <memory>
+#include <nlohmann/json_fwd.hpp>
 #include <string>
 
 namespace toolkit {
@@ -57,6 +58,9 @@ class Command {
     void set_checked(bool c) { checked_ = c; }
 
     void set_execute_func(std::function<void()> func) { execute_ = std::move(func); }
+
+    nlohmann::json to_json() const;
+    void from_json(nlohmann::json const &j);
 
     void execute() {
         if (enabled_ && execute_) {

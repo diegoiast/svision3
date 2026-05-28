@@ -1109,11 +1109,6 @@ int main(int argc, char *argv[]) {
     auto btn_spacer = std::make_unique<toolkit::Label>("");
     button_bar->add_widget(std::move(btn_spacer), 1);
 
-    auto quit_btn = std::make_unique<toolkit::Button>("&Quit");
-    quit_btn->on_click = [window] { window->close(); };
-    quit_btn->set_tooltip("Close the application (Cmd+Q)");
-    button_bar->add_widget(std::move(quit_btn));
-
     auto export_btn = std::make_unique<toolkit::Button>("Export to JSON");
     export_btn->on_click = [window, use_native_cb] {
         toolkit::FileDialog(window)
@@ -1130,6 +1125,11 @@ int main(int argc, char *argv[]) {
             });
     };
     button_bar->add_widget(std::move(export_btn));
+
+    auto quit_btn = std::make_unique<toolkit::Button>("&Quit");
+    quit_btn->on_click = [window] { window->close(); };
+    quit_btn->set_tooltip("Close the application (Cmd+Q)");
+    button_bar->add_widget(std::move(quit_btn));
 
     root->add_widget(std::move(button_bar));
 

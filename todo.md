@@ -102,16 +102,18 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 25. [x] Icon grid (tooltips, selection, rubber band)
 26. [x] Toolbar + custom widgets.
 27. [x] Dialog (modal/modeles).
-28. [ ] StatusBar.
-29. [ ] GroupBox / Frame.
-30. [x] Splitter.
-31. [x] Image widget.
-32. [x] Markdown tooltip.
-33. [x] Undo/redo system (text area + LineInput).
-34. [ ] Client side decorations with theme.
-35. [ ] Proper filter API for listview and table view.
-36. [ ] MainWindow with docking widgets on the sides.
-37. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
+28. [ ] Save UI state.
+29. [ ] Load UI state.
+30. [ ] StatusBar.
+31. [ ] GroupBox / Frame.
+32. [x] Splitter.
+33. [x] Image widget.
+34. [x] Markdown tooltip.
+35. [x] Undo/redo system (text area + LineInput).
+36. [ ] Client side decorations with theme.
+37. [ ] Proper filter API for listview and table view.
+38. [ ] MainWindow with docking widgets on the sides.
+39. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
 
 ## Layout System [6/12]
 
@@ -121,12 +123,14 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 4. [x] Buttons don't stretch vertically.
 5. [x] Layouts skip hidden widgets.
 6. [x] Min/max size constraints respected in layout.
-7. [ ] GridLayout.
-8. [ ] FormLayout (label + field pairs).
-9. [ ] StackedLayout (one visible child at a time).
-10. [ ] RTL layout direction switch (right-to-left mirroring).
-11. [ ] Method to center point inside rect.
-12. [ ] Paddings/margins should be defined by the theme (unless overriden in the widget).
+7. [ ] Make an abstract layout class
+8. [ ] HBoxLayout, VBoxLayout: make them return "self"
+9. [ ] GridLayout.
+10. [ ] FormLayout (label + field pairs).
+11. [ ] StackedLayout (one visible child at a time).
+12. [ ] RTL layout direction switch (right-to-left mirroring).
+13. [ ] Method to center point inside rect.
+14. [ ] Paddings/margins should be defined by the theme (unless overriden in the widget).
 
 ## Theming & Styling [11/19]
 
@@ -141,15 +145,14 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 9. [x] Native theme/font support.
 10. [ ] Tint support.
 11. [ ] Scrollbar theming (overlay vs classic per theme).
-12. [ ] Focus ring styling per theme.
-13. [x] XDG Icon theme support (PNG).
-14. [ ] SVG XDG icon theme support.
-15. [ ] Simplify and minimize the theme structs.
-16. [ ] Theme should be in application, then window then widget, in all but app - optional.
-17. [ ] Load theme from config file (which theme?).
-18. [x] Themes should not be an enum, but virtual classes.
-19. [x] Draw premetives from theme.
-20. [ ] Ring focus using theme.
+12. [x] XDG Icon theme support (PNG).
+13. [ ] SVG XDG icon theme support.
+14. [ ] Simplify and minimize the theme structs.
+15. [ ] Theme should be in application, then window then widget, in all but app - optional.
+16. [ ] Load theme from config file (which theme?).
+17. [x] Themes should not be an enum, but virtual classes.
+18. [x] Draw premetives from theme.
+19. [ ] Ring focus using theme.
 
 ### Windows 11 Theme
 
@@ -162,14 +165,14 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
     4. [x] ~~Backgroun + non-active tabs should be darker.~~
     5. [x] Separation of non-active tabs is just a line.
 4. Menus:
-    1. Popup menus should be rounded.
+    1. [ ] Popup menus should be rounded.
 5. Buttons:
     1. [x] Rounded 2px radius
 6. Radio buttons
-    1. Active: center is white, and filled with accent.
-    2. Circle should be bigger
+    1. [ ] Active: center is white, and filled with accent.
+    2. [ ] Circle should be bigger
 7. Fonts (not really a theme... but...)
-    1. Fonts are too small. Claude says:
+    1. [ ] Fonts are too small. Claude says:
 
     ```text
     Found it. In draw_text, rast.width/height are in physical pixels (rasterized at scale), but
@@ -185,24 +188,24 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ### Plasma theme
 
 1. Tabs:
-    1. Background of non-selected tabs should be darker.
-    2. Selected item background should "window".
-    3. No round corners.
-    4. Width of selected tab should be full tab.
-    5. Ideally - the sides of the tabs should be rounded.
+    1. [ ] Background of non-selected tabs should be darker.
+    2. [ ] Selected item background should "window".
+    3. [ ] No round corners.
+    4. [ ] Width of selected tab should be full tab.
+    5. [ ] Ideally - the sides of the tabs should be rounded.
 2. Progress bar:
-    1. Should have rounded border.
+    1. [ ] Should have rounded border.
 3. Checkbox
-    1. When checked - background should be tint.
+    1. [ ] When checked - background should be tint.
 4. Input
-    1. When selected - border should be tinted.
-    2. Hoever - border should be slightly tinted.
+    1. [ ] When selected - border should be tinted.
+    2. [ ] Hoever - border should be slightly tinted.
 5. Button
-    1. Hoever should have tinted border, but no background.
+    1. [ ] Hoever should have tinted border, but no background.
 6. Radio button
-    1. When selected - use tint background, black center
+    1. [ ] When selected - use tint background, black center
 7. Window
-    1. Default color should be darker.
+    1. [ ] Default color should be darker.
 
 ### Gnome theme
 
@@ -266,7 +269,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 12. [x] Password mode (masked characters).
 13. [x] Read-only mode.
 14. [x] Input validation / formatting.
-15. [ ] Undo/redo.
+15. [x] Undo/redo.
 
 ## Widget State & Interaction [DONE]
 
@@ -289,8 +292,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 8. [x] Support for south/west east.
 9. [x] Support for trailing/leading button.
 10. [x] Tab bar overflow (scroll when too many tabs).
-11. [ ] Tabs can have several icons at the title
-12. [ ] When tab bar is selected, it has a bring around it.
+11. [x] When tab bar is selected, it has a ring around it.
+12. [ ] Tabs can have several icons at the title
 
 ## ListView Features [15/17]
 
@@ -320,7 +323,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [ ] Add support for "clicks".
 1. [ [ Add support for custom labels,
 
-## Label Features [1/5]
+## Label Features [3/6]
 
 1. [x] Text alignment (left / center / right).
 2. [ ] Word wrap / multi-line.

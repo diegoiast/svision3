@@ -7,6 +7,7 @@
 #include "toolkit/image.hpp"
 #include <algorithm>
 #include <cctype>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 namespace toolkit {
@@ -158,6 +159,48 @@ auto Command::icon_image() const -> Icon {
         icon_image_ = Application::instance().load_icon(icon_, 16, "actions");
     }
     return icon_image_;
+}
+
+nlohmann::json Command::to_json() const {
+    auto j = nlohmann::json::object();
+    j["name"] = name_;
+    if (!tooltip_.empty()) {
+        j["tooltip"] = tooltip_;
+    }
+    if (!icon_.empty()) {
+        j["icon"] = icon_;
+    }
+    if (!shortcut_string_.empty()) {
+        j["shortcut"] = shortcut_string_;
+    }
+    if (!enabled_) {
+        j["enabled"] = false;
+    }
+    if (checked_) {
+        j["checked"] = true;
+    }
+    return j;
+}
+
+void Command::from_json(nlohmann::json const &j) {
+    if (j.contains("name")) {
+        name_ = j["name"];
+    }
+    if (j.contains("tooltip")) {
+        tooltip_ = j["tooltip"];
+    }
+    if (j.contains("icon")) {
+        set_icon(j["icon"]);
+    }
+    if (j.contains("shortcut")) {
+        set_shortcut(j["shortcut"]);
+    }
+    if (j.contains("enabled")) {
+        enabled_ = j["enabled"];
+    }
+    if (j.contains("checked")) {
+        checked_ = j["checked"];
+    }
 }
 
 } // namespace toolkit

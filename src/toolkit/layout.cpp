@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/layout.hpp"
+#include "toolkit/widget_loader.hpp"
 #include <algorithm>
 #include <nlohmann/json.hpp>
 
@@ -525,6 +526,29 @@ nlohmann::json VBoxLayout::to_json() const {
     return j;
 }
 
+void VBoxLayout::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("spacing")) {
+        set_spacing(j["spacing"]);
+    }
+    if (j.contains("margins")) {
+        auto const &m = j["margins"];
+        margins_.top = m.value("top", 0.0f);
+        margins_.bottom = m.value("bottom", 0.0f);
+        margins_.left = m.value("left", 0.0f);
+        margins_.right = m.value("right", 0.0f);
+    }
+    if (j.contains("children") && j["children"].is_array()) {
+        items_.clear();
+        for (auto const &child_j : j["children"]) {
+            auto child = WidgetLoader::instance().create_widget(child_j);
+            if (child) {
+                add_widget(std::move(child));
+            }
+        }
+    }
+}
+
 nlohmann::json HBoxLayout::to_json() const {
     auto j = Widget::to_json();
     j["spacing"] = spacing_;
@@ -538,6 +562,29 @@ nlohmann::json HBoxLayout::to_json() const {
     }
     j["children"] = children;
     return j;
+}
+
+void HBoxLayout::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("spacing")) {
+        set_spacing(j["spacing"]);
+    }
+    if (j.contains("margins")) {
+        auto const &m = j["margins"];
+        margins_.top = m.value("top", 0.0f);
+        margins_.bottom = m.value("bottom", 0.0f);
+        margins_.left = m.value("left", 0.0f);
+        margins_.right = m.value("right", 0.0f);
+    }
+    if (j.contains("children") && j["children"].is_array()) {
+        items_.clear();
+        for (auto const &child_j : j["children"]) {
+            auto child = WidgetLoader::instance().create_widget(child_j);
+            if (child) {
+                add_widget(std::move(child));
+            }
+        }
+    }
 }
 
 } // namespace toolkit

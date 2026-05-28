@@ -5,6 +5,7 @@
 #include "toolkit/button.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
 
@@ -42,6 +43,7 @@ class ToolButton : public Button {
 };
 
 class ToolbarSeparator : public Widget {
+    DECLARE_WIDGET(ToolbarSeparator)
   public:
     void paint(Painter &painter) override {
         auto const &theme = Theme::current();
@@ -63,6 +65,10 @@ class ToolbarSeparator : public Widget {
     Size size_hint() const override { return {8.0f, 0.0f}; }
 };
 
+auto create_toolbar_separator() -> std::unique_ptr<Widget> {
+    return std::make_unique<ToolbarSeparator>();
+}
+
 Toolbar::Toolbar() {
     layout_ = std::make_unique<HBoxLayout>();
     layout_->set_margins({2, 4, 2, 4});
@@ -82,9 +88,9 @@ void Toolbar::add_separator() { layout_->add_widget(std::make_unique<ToolbarSepa
 void Toolbar::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = false,
-        .enabled       = true,
+        .interaction = ButtonState::Normal,
+        .focused = false,
+        .enabled = true,
         .window_active = window_ ? window_->is_active() : true,
     };
     Theme::current().draw_toolbar(painter, rect, wstate);
@@ -126,6 +132,19 @@ void Toolbar::set_window(Window *w) {
 
 void Toolbar::for_each_child(std::function<void(Widget *)> const &callback) {
     layout_->for_each_child(callback);
+}
+
+nlohmann::json Toolbar::to_json() const {
+    nlohmann::json j = Widget::to_json();
+    j["layout"] = layout_->to_json();
+    return j;
+}
+
+void Toolbar::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("layout")) {
+        layout_->from_json(j["layout"]);
+    }
 }
 
 } // namespace toolkit

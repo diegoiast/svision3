@@ -14,6 +14,7 @@ class VBoxLayout : public Widget, public Fluent<VBoxLayout> {
   public:
     VBoxLayout();
     nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
     struct Item {
         std::unique_ptr<Widget> widget;
         int stretch;
@@ -59,6 +60,7 @@ class HBoxLayout : public Widget {
   public:
     HBoxLayout();
     nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
     struct Item {
         std::unique_ptr<Widget> widget;
         int stretch;

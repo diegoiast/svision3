@@ -4,6 +4,7 @@
 #include "toolkit/menubar.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
@@ -46,9 +47,9 @@ int MenuBar::find_menu(std::string_view title) const {
 void MenuBar::paint(Painter &painter) {
     auto const &theme = Theme::current();
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = false,
-        .enabled       = true,
+        .interaction = ButtonState::Normal,
+        .focused = false,
+        .enabled = true,
         .window_active = window_ ? window_->is_active() : true,
     };
     theme.draw_menubar_background(painter, rect_, wstate);
@@ -324,6 +325,94 @@ Size MenuBar::size_hint() const {
         w += theme.measure_menubar_item(m->display_title()).width;
     }
     return {w, fm.height + style.padding.top + style.padding.bottom};
+}
+
+auto MenuBar::item_to_json(MenuItem const &item) -> nlohmann::json {
+    auto j = nlohmann::json::object();
+    switch (item.type) {
+    case MenuItem::Type::Action:
+        j["type"] = "action";
+        if (item.command) {
+            j["command"] = item.command->to_json();
+        }
+        break;
+    case MenuItem::Type::Separator:
+        j["type"] = "separator";
+        break;
+    case MenuItem::Type::Submenu:
+        j["type"] = "submenu";
+        if (item.command) {
+            j["command"] = item.command->to_json();
+        }
+        if (item.submenu) {
+            auto items = nlohmann::json::array();
+            for (auto const &sub : item.submenu->items()) {
+                items.push_back(item_to_json(sub));
+            }
+            j["items"] = items;
+        }
+        break;
+    }
+    return j;
+}
+
+void MenuBar::item_from_json(nlohmann::json const &j, Menu &menu) {
+    auto type = j.value("type", std::string{});
+    if (type == "action") {
+        auto cmd = Command::create("", nullptr);
+        if (j.contains("command")) {
+            cmd->from_json(j["command"]);
+        }
+        menu.add_action(cmd);
+    } else if (type == "separator") {
+        menu.add_separator();
+    } else if (type == "submenu") {
+        auto cmd = Command::create("", nullptr);
+        if (j.contains("command")) {
+            cmd->from_json(j["command"]);
+        }
+        auto submenu = std::make_shared<Menu>(cmd->name());
+        if (j.contains("items")) {
+            for (auto const &sub_json : j["items"]) {
+                item_from_json(sub_json, *submenu);
+            }
+        }
+        menu.add_submenu(cmd->name(), submenu);
+    }
+}
+
+nlohmann::json MenuBar::to_json() const {
+    auto j = Widget::to_json();
+    auto menus_json = nlohmann::json::array();
+    for (auto const &menu : menus_) {
+        auto menu_json = nlohmann::json::object();
+        menu_json["title"] = menu->title();
+        auto items_json = nlohmann::json::array();
+        for (auto const &item : menu->items()) {
+            items_json.push_back(item_to_json(item));
+        }
+        menu_json["items"] = items_json;
+        menus_json.push_back(menu_json);
+    }
+    j["menus"] = menus_json;
+    return j;
+}
+
+void MenuBar::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (!j.contains("menus")) {
+        return;
+    }
+    for (auto const &menu_json : j["menus"]) {
+        auto title = menu_json.value("title", std::string{});
+        auto menu = std::make_shared<Menu>(title);
+        if (menu_json.contains("items")) {
+            for (auto const &item_json : menu_json["items"]) {
+                item_from_json(item_json, *menu);
+            }
+        }
+        add_menu(menu);
+    }
 }
 
 } // namespace toolkit

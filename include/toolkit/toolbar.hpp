@@ -11,9 +11,13 @@
 
 namespace toolkit {
 
-class Toolbar : public Widget {
+class Toolbar : public Widget, public Fluent<Toolbar> {
+    DECLARE_WIDGET(Toolbar)
   public:
     Toolbar();
+
+    nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     void add_command(Command::Ptr cmd);
     void add_widget(std::unique_ptr<Widget> w, float stretch = 0);
@@ -31,5 +35,7 @@ class Toolbar : public Widget {
   private:
     std::unique_ptr<HBoxLayout> layout_;
 };
+
+auto create_toolbar_separator() -> std::unique_ptr<Widget>;
 
 } // namespace toolkit

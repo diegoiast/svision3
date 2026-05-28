@@ -10,9 +10,13 @@
 
 namespace toolkit {
 
-class MenuBar : public Widget {
+class MenuBar : public Widget, public Fluent<MenuBar> {
+    DECLARE_WIDGET(MenuBar)
   public:
     MenuBar();
+
+    nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     void add_menu(std::shared_ptr<Menu> menu);
     std::shared_ptr<Menu> add_menu(std::string title);
@@ -31,6 +35,9 @@ class MenuBar : public Widget {
   private:
     float get_menu_x(int index) const;
     int menu_at(Point p) const;
+
+    static auto item_to_json(MenuItem const &item) -> nlohmann::json;
+    static void item_from_json(nlohmann::json const &j, Menu &menu);
 
     std::vector<std::shared_ptr<Menu>> menus_;
     int hovered_ = -1;
