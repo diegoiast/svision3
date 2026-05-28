@@ -2,7 +2,9 @@
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/tab_widget.hpp"
+#include "toolkit/widget_loader.hpp"
 #include <catch2/catch_test_macros.hpp>
+#include <nlohmann/json.hpp>
 
 using namespace toolkit;
 
@@ -300,4 +302,87 @@ TEST_CASE("TabWidget with nested layout", "[tabwidget]") {
 
     REQUIRE(width2 > width1);
     REQUIRE(width2 > 450);
+}
+
+TEST_CASE("TabWidget serialization with leading widget", "[tabwidget][serialization]") {
+    TabWidget tw;
+    tw.add_tab("Tab 1", std::make_unique<Label>("One"));
+    tw.set_leading_widget(std::make_unique<Button>("<"));
+
+    auto j = tw.to_json();
+
+    REQUIRE(j.contains("leading_widget"));
+    REQUIRE(j["leading_widget"]["type"] == "Button");
+    REQUIRE(j["leading_widget"]["text"] == "<");
+
+    TabWidget tw2;
+    tw2.from_json(j);
+
+    // Verify via round-trip serialization
+    auto j2 = tw2.to_json();
+    REQUIRE(j2.contains("leading_widget"));
+    REQUIRE(j2["leading_widget"]["type"] == "Button");
+    REQUIRE(j2["leading_widget"]["text"] == "<");
+}
+
+TEST_CASE("TabWidget serialization with trailing widget", "[tabwidget][serialization]") {
+    TabWidget tw;
+    tw.add_tab("Tab 1", std::make_unique<Label>("One"));
+    tw.set_trailing_widget(std::make_unique<Button>(">"));
+
+    auto j = tw.to_json();
+    REQUIRE(j.contains("trailing_widget"));
+    REQUIRE(j["trailing_widget"]["type"] == "Button");
+    REQUIRE(j["trailing_widget"]["text"] == ">");
+
+    TabWidget tw2;
+    tw2.from_json(j);
+
+    auto j2 = tw2.to_json();
+    REQUIRE(j2.contains("trailing_widget"));
+    REQUIRE(j2["trailing_widget"]["type"] == "Button");
+    REQUIRE(j2["trailing_widget"]["text"] == ">");
+}
+
+TEST_CASE("TabWidget serialization with both leading and trailing widgets",
+          "[tabwidget][serialization]") {
+    TabWidget tw;
+    tw.add_tab("Tab 1", std::make_unique<Label>("One"));
+    tw.set_leading_widget(std::make_unique<Label>("LEFT"));
+    tw.set_trailing_widget(std::make_unique<Label>("RIGHT"));
+
+    auto j = tw.to_json();
+    REQUIRE(j.contains("leading_widget"));
+    REQUIRE(j.contains("trailing_widget"));
+
+    TabWidget tw2;
+    tw2.from_json(j);
+
+    auto j2 = tw2.to_json();
+    REQUIRE(j2["leading_widget"]["type"] == "Label");
+    REQUIRE(j2["leading_widget"]["text"] == "LEFT");
+    REQUIRE(j2["trailing_widget"]["type"] == "Label");
+    REQUIRE(j2["trailing_widget"]["text"] == "RIGHT");
+}
+
+TEST_CASE("TabWidget leading/trailing widget via WidgetLoader", "[tabwidget][serialization]") {
+    TabWidget tw;
+    tw.add_tab("Tab 1", std::make_unique<Label>("Content"));
+    tw.set_leading_widget(std::make_unique<Button>("<"));
+    tw.set_trailing_widget(std::make_unique<Button>(">"));
+
+    auto j = tw.to_json();
+    auto w = WidgetLoader::instance().create_widget(j);
+    REQUIRE(w != nullptr);
+
+    auto *restored = dynamic_cast<TabWidget *>(w.get());
+    REQUIRE(restored != nullptr);
+
+    auto j2 = restored->to_json();
+    REQUIRE(j2.contains("leading_widget"));
+    REQUIRE(j2["leading_widget"]["type"] == "Button");
+    REQUIRE(j2["leading_widget"]["text"] == "<");
+    REQUIRE(j2.contains("trailing_widget"));
+    REQUIRE(j2["trailing_widget"]["type"] == "Button");
+    REQUIRE(j2["trailing_widget"]["text"] == ">");
 }

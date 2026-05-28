@@ -4,6 +4,7 @@
 #include "toolkit/tab_widget.hpp"
 #include "toolkit/button.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/widget_loader.hpp"
 #include "toolkit/window.hpp"
 #include <algorithm>
 #include <nlohmann/json.hpp>
@@ -27,6 +28,12 @@ nlohmann::json TabWidget::to_json() const {
         tabs.push_back(t);
     }
     j["tabs"] = tabs;
+    if (leading_widget_) {
+        j["leading_widget"] = leading_widget_->to_json();
+    }
+    if (trailing_widget_) {
+        j["trailing_widget"] = trailing_widget_->to_json();
+    }
     return j;
 }
 
@@ -51,6 +58,18 @@ void TabWidget::from_json(nlohmann::json const &j) {
     }
     if (j.contains("current")) {
         set_current(j["current"]);
+    }
+    if (j.contains("leading_widget")) {
+        auto w = WidgetLoader::instance().create_widget(j["leading_widget"]);
+        if (w) {
+            set_leading_widget(std::move(w));
+        }
+    }
+    if (j.contains("trailing_widget")) {
+        auto w = WidgetLoader::instance().create_widget(j["trailing_widget"]);
+        if (w) {
+            set_trailing_widget(std::move(w));
+        }
     }
 }
 
