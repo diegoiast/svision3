@@ -7,7 +7,6 @@
 #include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
 #include <nlohmann/json.hpp>
-
 #include <cctype>
 
 namespace toolkit {
@@ -83,6 +82,35 @@ LineInput::LineInput(std::string placeholder)
     add_command(redo_cmd);
 
     sync_commands();
+}
+
+nlohmann::json LineInput::to_json() const {
+    auto j = Widget::to_json();
+    j["text"] = text_;
+    j["placeholder"] = placeholder_;
+    j["read_only"] = read_only_;
+    j["is_password"] = password_mode_;
+    j["cursor"] = cursor_pos_;
+    return j;
+}
+
+void LineInput::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("text")) {
+        text_ = j["text"];
+    }
+    if (j.contains("placeholder")) {
+        placeholder_ = j["placeholder"];
+    }
+    if (j.contains("read_only")) {
+        read_only_ = j["read_only"];
+    }
+    if (j.contains("is_password")) {
+        password_mode_ = j["is_password"];
+    }
+    if (j.contains("cursor")) {
+        cursor_pos_ = j["cursor"];
+    }
 }
 
 LineInput &LineInput::set_focused(bool focused) {
@@ -846,11 +874,4 @@ Size LineInput::size_hint() const {
     return {150.0f, h};
 }
 
-nlohmann::json LineInput::to_json() const {
-    auto j = Widget::to_json();
-    j["text"] = text_;
-    j["placeholder"] = placeholder_;
-    j["read_only"] = read_only_;
-    return j;
-}
 } // namespace toolkit

@@ -18,6 +18,7 @@ class LineInput : public Widget, public Fluent<LineInput> {
   public:
     explicit LineInput(std::string placeholder = "");
     nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     void paint(Painter &painter) override;
     void paint_buttons(Painter &painter);
@@ -94,7 +95,10 @@ class LineInput : public Widget, public Fluent<LineInput> {
 
     std::string text_;
     std::string placeholder_;
+    bool read_only_ = false;
+    bool password_mode_ = false;
     size_t cursor_pos_ = 0;
+
     size_t sel_anchor_ = 0;
     float scroll_offset_ = 0.0f;
     bool dragging_ = false;
@@ -102,9 +106,7 @@ class LineInput : public Widget, public Fluent<LineInput> {
     bool clear_pressed_ = false;
     bool peek_hovered_ = false;
     bool peek_pressed_ = false;
-    bool password_mode_ = false;
     bool is_password_field_ = false;
-    bool read_only_ = false;
     ValidationMode validation_mode_ = ValidationMode::None;
     std::function<bool(std::string const &, LineInput const &)> validator_;
     std::chrono::steady_clock::time_point cursor_blink_time_;
