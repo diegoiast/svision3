@@ -6,10 +6,13 @@
 #include "toolkit/button_state.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 
 namespace toolkit {
+
+class Menu;
 
 class Button : public Widget, public Fluent<Button> {
     DECLARE_WIDGET(Button)
@@ -64,6 +67,10 @@ class Button : public Widget, public Fluent<Button> {
     Button &set_command(Command::Ptr cmd);
     Command::Ptr command() const { return command_; }
 
+    Button &set_menu(std::shared_ptr<Menu> menu);
+    std::shared_ptr<Menu> menu() const { return menu_; }
+    bool has_menu() const { return menu_ != nullptr; }
+
     std::function<void()> on_click;
     std::function<void(bool)> on_toggle;
 
@@ -72,6 +79,9 @@ class Button : public Widget, public Fluent<Button> {
     void sync_from_command();
 
     Command::Ptr command_;
+    std::shared_ptr<Menu> menu_;
+    bool menu_open_ = false;
+    void show_menu();
     void start_auto_repeat_delay();
     void start_auto_repeat_interval();
     void on_state_changed();

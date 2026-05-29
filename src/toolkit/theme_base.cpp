@@ -72,11 +72,13 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
                             Icon const &icon, WidgetState const &state, bool flat,
                             std::optional<Color> background) const {
 
-    auto hovered = state.interaction == ButtonState::Hovered || state.interaction == ButtonState::ClickedInside;
+    auto hovered = state.interaction == ButtonState::Hovered ||
+                   state.interaction == ButtonState::ClickedInside;
     auto pressed = state.interaction == ButtonState::ClickedInside || state.checked;
     auto focused = state.focused;
     auto enabled = state.enabled;
-    auto border_c = (focused || hovered || (pressed && !state.checked)) ? palette.accent : palette.border;
+    auto border_c =
+        (focused || hovered || (pressed && !state.checked)) ? palette.accent : palette.border;
     if (state.checked) {
         border_c = palette.accent;
     }
@@ -99,7 +101,8 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
 
     auto defaultBg = palette.base;
     if (flat && state.interaction != ButtonState::Hovered) {
-        defaultBg = state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
+        defaultBg =
+            state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
     }
     auto bg = background.value_or(defaultBg);
     if (enabled && !background) {
@@ -128,12 +131,12 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
 }
 
 void BaseTheme::draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
-                               CheckState check_state, WidgetState const &state) const {
+                              CheckState check_state, WidgetState const &state) const {
     auto const &style = checkbox;
     auto focused = state.focused;
     auto enabled = state.enabled;
-    auto hovered =
-        state.interaction == ButtonState::Hovered || state.interaction == ButtonState::ClickedInside;
+    auto hovered = state.interaction == ButtonState::Hovered ||
+                   state.interaction == ButtonState::ClickedInside;
     auto pressed = state.interaction == ButtonState::ClickedInside;
     auto fm = painter.font_metrics(palette.fonts.size);
     auto box = style.box_size;
@@ -176,8 +179,8 @@ void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::strin
     auto const &style = radio;
     auto focused = state.focused;
     auto enabled = state.enabled;
-    auto hovered =
-        state.interaction == ButtonState::Hovered || state.interaction == ButtonState::ClickedInside;
+    auto hovered = state.interaction == ButtonState::Hovered ||
+                   state.interaction == ButtonState::ClickedInside;
     auto pressed = state.interaction == ButtonState::ClickedInside;
     auto fm = painter.font_metrics(palette.fonts.size);
     // Use the full row height for the circle so it is 100 % of the widget height.
@@ -231,7 +234,6 @@ void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::strin
     auto text_c = enabled ? palette.text : palette.text_disabled;
     painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 }
-
 
 void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
                                 std::string_view placeholder, int cursor_pos, int selection_start,
@@ -334,7 +336,8 @@ void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::strin
 void BaseTheme::draw_menubar_background(Painter &painter, Rect const &rect,
                                         WidgetState const &state) const {
     // FIXME: do we want a different background for menubar?
-    auto bg = state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
+    auto bg =
+        state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
     painter.fill_rect(rect, bg);
     if (palette.chrome_lines) {
         // FIXME do not modify theme colors
@@ -399,6 +402,16 @@ void BaseTheme::draw_menu_separator(Painter &painter, Rect const &rect) const {
     painter.draw_line({rect.x + 8, mid_y}, {rect.x + rect.width - 8, mid_y}, sep_col, 0.5f);
 }
 
+void BaseTheme::draw_menu_indicator(Painter &painter, Rect const &rect, bool enabled) const {
+    auto ind_w = button.menu_indicator_width;
+    auto cx = rect.x + rect.width - 8.0f;
+    auto cy = rect.y + rect.height / 2.0f;
+    auto s = ind_w / 2.0f;
+    auto color = enabled ? palette.text : palette.text_disabled;
+    painter.fill_triangle({cx - s, cy - s + 2.0f}, {cx + s, cy - s + 2.0f}, {cx, cy + s - 2.0f},
+                          color);
+}
+
 void BaseTheme::draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                                   WidgetState const &state) const {
     auto enabled = state.enabled;
@@ -414,7 +427,8 @@ void BaseTheme::draw_progress_bar(Painter &painter, Rect const &rect, float prog
 void BaseTheme::draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal,
                             WidgetState const &state) const {
     auto const &style = slider;
-    auto hovered = state.interaction == ButtonState::Hovered || state.interaction == ButtonState::ClickedInside;
+    auto hovered = state.interaction == ButtonState::Hovered ||
+                   state.interaction == ButtonState::ClickedInside;
     auto pressed = state.interaction == ButtonState::ClickedInside;
 
     auto groove_rect = Rect{};
@@ -470,16 +484,17 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
                          bool hovered_close) const {
     auto const &style = tab_widget;
     auto hovered = state.interaction == ButtonState::Hovered;
-    
+
     auto bg = active ? palette.tab_select_background : palette.tab_background;
     if (hovered) {
         if (palette.background_hovered) {
-            bg = active ? Color::lerp(bg, *palette.background_hovered, 0.5f) : *palette.background_hovered;
+            bg = active ? Color::lerp(bg, *palette.background_hovered, 0.5f)
+                        : *palette.background_hovered;
         } else {
             bg = bg.luma() > 0.5f ? bg.darken(0.05f) : bg.lighten(0.05f);
         }
     }
-    
+
     auto text_c = state.enabled ? palette.text : palette.text_disabled;
 
     if (active) {
@@ -490,14 +505,16 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
             float fill_r = std::max(r, bw);
             switch (orientation) {
             case TabOrientation::North:
-                painter.fill_rect({rect.x, rect.y + rect.height - fill_r, rect.width, fill_r + bw}, bg);
+                painter.fill_rect({rect.x, rect.y + rect.height - fill_r, rect.width, fill_r + bw},
+                                  bg);
                 break;
             case TabOrientation::South:
                 painter.fill_rect({rect.x, rect.y - bw, rect.width, fill_r + bw}, bg);
                 break;
             case TabOrientation::West:
             case TabOrientation::WestVertical:
-                painter.fill_rect({rect.x + rect.width - fill_r, rect.y, fill_r + bw, rect.height}, bg);
+                painter.fill_rect({rect.x + rect.width - fill_r, rect.y, fill_r + bw, rect.height},
+                                  bg);
                 break;
             case TabOrientation::East:
             case TabOrientation::EastVertical:
@@ -510,7 +527,8 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
     }
 
     auto vertical = (orientation == TabOrientation::West || orientation == TabOrientation::East ||
-                     orientation == TabOrientation::WestVertical || orientation == TabOrientation::EastVertical);
+                     orientation == TabOrientation::WestVertical ||
+                     orientation == TabOrientation::EastVertical);
     auto text_orientation = Painter::TextOrientation::Horizontal;
     if (orientation == TabOrientation::West) {
         text_orientation = Painter::TextOrientation::VerticalCCW;
@@ -537,7 +555,9 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
                 baseline_y = rect.y + style.tab_padding_h;
             }
             close_cx = rect.x + rect.width / 2.0f;
-            close_cy = (orientation == TabOrientation::West) ? (rect.y + style.tab_padding_v + close_btn_size / 2.0f) : (rect.y + rect.height - style.tab_padding_v - close_btn_size / 2.0f);
+            close_cy = (orientation == TabOrientation::West)
+                           ? (rect.y + style.tab_padding_v + close_btn_size / 2.0f)
+                           : (rect.y + rect.height - style.tab_padding_v - close_btn_size / 2.0f);
         } else {
             // Standard WestVertical/EastVertical (Horizontal Text)
             if (orientation == TabOrientation::WestVertical) {
@@ -607,9 +627,11 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
             indicator = {r2.x, on_inner ? rect.y + rect.height - weight : rect.y, r2.width, weight};
         } else if (orientation == TabOrientation::South) {
             indicator = {r2.x, on_inner ? rect.y : rect.y + rect.height - weight, r2.width, weight};
-        } else if (orientation == TabOrientation::West || orientation == TabOrientation::WestVertical) {
+        } else if (orientation == TabOrientation::West ||
+                   orientation == TabOrientation::WestVertical) {
             indicator = {on_inner ? rect.x + rect.width - weight : rect.x, r2.y, weight, r2.height};
-        } else if (orientation == TabOrientation::East || orientation == TabOrientation::EastVertical) {
+        } else if (orientation == TabOrientation::East ||
+                   orientation == TabOrientation::EastVertical) {
             indicator = {on_inner ? rect.x : rect.x + rect.width - weight, r2.y, weight, r2.height};
         }
         painter.fill_rect(indicator, palette.accent);
@@ -813,7 +835,8 @@ void BaseTheme::draw_tab_content_background(Painter &painter, Rect const &rect) 
 }
 
 void BaseTheme::draw_toolbar(Painter &painter, Rect const &rect, WidgetState const &state) const {
-    auto bg = state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
+    auto bg =
+        state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
     if (palette.beveled) {
         painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, palette.highlight, 1.0f);
         painter.draw_line({rect.x, rect.y + rect.height - 1.0f},

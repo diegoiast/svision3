@@ -246,7 +246,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 3. [x] Auto repeat.
 4. [x] Icon support (image + text)
 5. [x] Toggle buttton - on/off.
-6. [ ] Attach a menu (long click, or sub-button).
+6. [x] Attach a menu (long click, or sub-button).
 7. [ ] Button group (mutually exclusive toggles).
 
 ## ScrollArea

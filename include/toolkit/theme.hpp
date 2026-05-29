@@ -19,6 +19,7 @@ namespace toolkit {
 // FIXME: remove this style
 struct ButtonStyle {
     Margins padding = {6, 16, 6, 16};
+    float menu_indicator_width = 10.0f;
 };
 
 // FIXME: remove this style
@@ -230,6 +231,7 @@ class Theme {
                                 Icon const &icon, std::string_view shortcut, bool hovered,
                                 bool enabled, bool checkable, bool checked) const = 0;
     virtual void draw_menu_separator(Painter &painter, Rect const &rect) const = 0;
+    virtual void draw_menu_indicator(Painter &painter, Rect const &rect, bool enabled) const = 0;
     virtual void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                                    WidgetState const &state) const = 0;
     virtual void draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal,

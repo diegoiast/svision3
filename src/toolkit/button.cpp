@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/button.hpp"
+#include "toolkit/menu.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <cctype>
@@ -61,6 +62,28 @@ void Button::on_state_changed() {
     if (auto_repeat_ && state_handler_.button_state == ButtonState::ClickedInside) {
         start_auto_repeat_delay();
     }
+}
+
+Button &Button::set_menu(std::shared_ptr<Menu> menu) {
+    menu_ = std::move(menu);
+    invalidate_layout();
+    return *this;
+}
+
+void Button::show_menu() {
+    if (!menu_ || !window_) {
+        return;
+    }
+
+    if (menu_->is_shown()) {
+        menu_->close();
+        menu_open_ = false;
+        return;
+    }
+
+    menu_open_ = true;
+    auto menu_pos = map_to_window({0, rect_.height});
+    menu_->show(window_, menu_pos);
 }
 
 void Button::fire_click() {
@@ -208,9 +231,16 @@ Widget &Button::set_visible(bool v) {
 }
 
 void Button::paint(Painter &painter) {
+    if (menu_open_ && window_ && !window_->has_popup()) {
+        menu_open_ = false;
+    }
     auto rect = Rect{0, 0, rect_.width, rect_.height};
+    auto interaction = state_handler_.button_state;
+    if (menu_open_) {
+        interaction = ButtonState::ClickedInside;
+    }
     auto wstate = WidgetState{
-        .interaction = state_handler_.button_state,
+        .interaction = interaction,
         .focused = is_focused(),
         .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
@@ -218,6 +248,9 @@ void Button::paint(Painter &painter) {
     };
     Theme::current().draw_button(painter, rect, display_text_, icon_, wstate, flat_,
                                  background_color_);
+    if (menu_) {
+        Theme::current().draw_menu_indicator(painter, rect, is_enabled());
+    }
 }
 
 bool Button::trigger_mnemonic(char key) {
@@ -268,7 +301,11 @@ bool Button::handle_key(KeyEvent const &event) {
         return false;
     }
     if (event.key == Key::Enter || (!event.text.empty() && event.text[0] == ' ')) {
-        fire_click();
+        if (menu_) {
+            show_menu();
+        } else {
+            fire_click();
+        }
         return true;
     }
     return false;
@@ -297,6 +334,10 @@ bool Button::handle_mouse(MouseEvent const &event) {
         return inside;
     case MouseEvent::Type::Press:
         if (inside) {
+            if (menu_) {
+                show_menu();
+                return true;
+            }
             state_handler_.on_mouse_click(event);
             if (auto_repeat_ && (command_ || on_click) && window_) {
                 fire_click();
@@ -306,6 +347,14 @@ bool Button::handle_mouse(MouseEvent const &event) {
         }
         return false;
     case MouseEvent::Type::Release:
+        if (menu_) {
+            if (inside && !menu_open_) {
+                state_handler_.on_mouse_enter();
+            } else {
+                state_handler_.on_mouse_leave();
+            }
+            return inside;
+        }
         if (state_handler_.button_state == ButtonState::ClickedInside ||
             state_handler_.button_state == ButtonState::ClickedOutside) {
             auto was_fire = should_fire_click();
@@ -332,6 +381,12 @@ bool Button::handle_mouse(MouseEvent const &event) {
     return false;
 }
 
-Size Button::size_hint() const { return Theme::current().measure_button(display_text_, icon_); }
+Size Button::size_hint() const {
+    auto sh = Theme::current().measure_button(display_text_, icon_);
+    if (menu_) {
+        sh.width += Theme::current().button.menu_indicator_width + 8.0f;
+    }
+    return sh;
+}
 
 } // namespace toolkit

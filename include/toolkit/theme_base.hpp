@@ -38,6 +38,7 @@ class BaseTheme : public Theme {
                         std::string_view shortcut, bool hovered, bool enabled, bool checkable,
                         bool checked) const override;
     void draw_menu_separator(Painter &painter, Rect const &rect) const override;
+    void draw_menu_indicator(Painter &painter, Rect const &rect, bool enabled) const override;
 
     void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                            WidgetState const &state) const override;

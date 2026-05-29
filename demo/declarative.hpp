@@ -303,6 +303,7 @@ template <typename T> struct Element {
         }
         return std::move(*this);
     }
+    Element menu(MenuElement &&m);
     Element command(std::string name, std::function<void()> action) {
         static_assert(std::is_same_v<T, toolkit::Toolbar>, "command only works on Toolbar");
         auto cmd = toolkit::Command::create(std::move(name), std::move(action));
@@ -466,6 +467,15 @@ template <typename T> Element<T> Element<T>::add_menu(MenuElement &&m) {
 template <typename T> Element<T> Element<T>::add_menu(std::string_view title, MenuElement &&m) {
     static_assert(std::is_same_v<T, toolkit::MenuBar>, "add_menu only works on MenuBar");
     w->add_menu(std::string(title), m.menu);
+    return std::move(*this);
+}
+
+template <typename T> Element<T> Element<T>::menu(MenuElement &&m) {
+    if constexpr (std::is_same_v<T, toolkit::Button>) {
+        w->set_menu(m.menu);
+    } else {
+        static_assert(std::is_same_v<T, void>, "menu only works on Button");
+    }
     return std::move(*this);
 }
 

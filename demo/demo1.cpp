@@ -454,6 +454,12 @@ int main(int argc, char *argv[]) {
     }
     open_icon_btn->set_tooltip("Open file");
 
+    auto open_menu = std::make_shared<toolkit::Menu>();
+    open_menu->add_action("Open File", open_action);
+    open_menu->add_action("Open Document", [] { spdlog::info("Menu: Open Document"); });
+    open_menu->add_action("Open Image", [] { spdlog::info("Menu: Open Image"); });
+    open_icon_btn->set_menu(open_menu);
+
     auto toggle_btn = std::make_unique<toolkit::Button>("Toggle me");
     toggle_btn->set_checkable(true);
     toggle_btn->on_toggle = [](bool checked) { spdlog::info("Button toggled: {}", checked); };

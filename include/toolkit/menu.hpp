@@ -51,6 +51,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
 
     void show(Window *window, Point position);
     void close();
+    bool is_shown() const { return window_ != nullptr; }
     void select_first();
 
     std::string const &title() const { return title_; }
