@@ -90,6 +90,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/scroll_area.cpp
     src/toolkit/splitter.cpp
     src/toolkit/toast_widget.cpp
+    src/toolkit/status_bar.cpp
 )
 
 if(TOOLKIT_WITH_CAIRO)
@@ -479,6 +480,7 @@ add_executable(tests
     tests/test_table_view.cpp
     tests/test_text_edit.cpp
     tests/test_toast.cpp
+    tests/test_status_bar.cpp
     tests/test_theme.cpp
     tests/test_types.cpp
     tests/test_utf8.cpp

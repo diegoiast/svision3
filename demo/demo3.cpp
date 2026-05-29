@@ -129,6 +129,13 @@ int main(int argc, char *argv[]) {
         }
     });
 
+    auto status_bar_elem = ui::status_bar();
+    auto *status_bar_ptr = status_bar_elem.get();
+    status_bar_ptr->add_section("status", "Ready");
+    status_bar_ptr->add_section("progress", "Connecting...").appear(350);
+    status_bar_ptr->add_section("work", "Processing").spinner(350);
+    status_bar_ptr->add_section("pulse", "Scanning").pulse(350);
+
     auto *t_combo_ptr = toolbar_theme_combo.get();
     auto *t_toggle_ptr = toolbar_theme_toggle.get();
     auto *m_combo_ptr = main_theme_combo.get();
@@ -842,7 +849,8 @@ int main(int argc, char *argv[]) {
                          window->show_toast(builder);
                      }))
                      .add(ui::button("Export to JSON").command(export_cmd))
-                     .add(ui::button("&Quit").on_click([&window] { window->close(); }))));
+                     .add(ui::button("&Quit").on_click([&window] { window->close(); })))
+            .add(std::move(status_bar_elem)));
 
     window->resize_to_fit();
     window->show();

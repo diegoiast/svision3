@@ -24,6 +24,7 @@
 #include <toolkit/rich_label.hpp>
 #include <toolkit/scroll_area.hpp>
 #include <toolkit/splitter.hpp>
+#include <toolkit/status_bar.hpp>
 #include <toolkit/table_view.hpp>
 #include <toolkit/text_edit.hpp>
 #include <toolkit/toast_widget.hpp>
@@ -658,5 +659,9 @@ inline Element<toolkit::Toolbar> toolbar() {
 }
 
 inline toolkit::ToastBuilder toast() { return {}; }
+
+inline Element<toolkit::StatusBar> status_bar() {
+    return Element<toolkit::StatusBar>(std::make_unique<toolkit::StatusBar>());
+}
 
 } // namespace ui

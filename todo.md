@@ -104,7 +104,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 27. [x] Dialog (modal/modeles).
 28. [x] Save UI state.
 29. [x] Load UI state.
-30. [ ] StatusBar.
+30. [x] StatusBar.
 31. [ ] GroupBox / Frame.
 32. [x] Splitter.
 33. [x] Image widget.
@@ -188,11 +188,11 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ### Plasma theme
 
 1. Tabs:
-    1. [ ] Background of non-selected tabs should be darker.
-    2. [ ] Selected item background should "window".
-    3. [ ] No round corners.
-    4. [ ] Width of selected tab should be full tab.
-    5. [ ] Ideally - the sides of the tabs should be rounded.
+    1. [x] Background of non-selected tabs should be darker.
+    2. [x] Selected item background should "window".
+    3. [x] No round corners.
+    4. [x] Width of selected tab should be full tab.
+    5. [x] Ideally - the sides of the tabs should be rounded.
 2. Progress bar:
     1. [ ] Should have rounded border.
 3. Checkbox

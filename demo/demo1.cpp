@@ -26,6 +26,7 @@
 #include "toolkit/slider.hpp"
 #include "toolkit/spin_box.hpp"
 #include "toolkit/splitter.hpp"
+#include "toolkit/status_bar.hpp"
 #include "toolkit/tab_widget.hpp"
 #include "toolkit/table_view.hpp"
 #include "toolkit/text_edit.hpp"
@@ -1132,6 +1133,13 @@ int main(int argc, char *argv[]) {
     button_bar->add_widget(std::move(quit_btn));
 
     root->add_widget(std::move(button_bar));
+
+    auto status_bar = std::make_unique<toolkit::StatusBar>();
+    status_bar->add_section("status", "Ready");
+    status_bar->add_section("progress", "Connecting...").appear(250);
+    status_bar->add_section("work", "Processing").spinner(100);
+    status_bar->add_section("pulse", "Scanning").pulse(100);
+    root->add_widget(std::move(status_bar));
 
     window->set_root(std::move(root));
     window->resize_to_fit();
