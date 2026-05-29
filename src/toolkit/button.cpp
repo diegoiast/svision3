@@ -63,6 +63,37 @@ void Button::on_state_changed() {
     }
 }
 
+void Button::fire_click() {
+    if (checkable_) {
+        set_checked(!checked_);
+    }
+    if (command_) {
+        command_->execute();
+    }
+    if (on_click) {
+        on_click();
+    }
+}
+
+void Button::sync_from_command() {
+    if (!command_) {
+        return;
+    }
+    set_text(command_->name());
+    auto img = command_->icon_image();
+    if (img) {
+        set_icon(std::move(img));
+    }
+    Widget::set_enabled(command_->is_enabled());
+    set_checked(command_->is_checked());
+}
+
+Button &Button::set_command(Command::Ptr cmd) {
+    command_ = std::move(cmd);
+    sync_from_command();
+    return *this;
+}
+
 bool Button::should_fire_click() const {
     return state_handler_.button_state == ButtonState::ClickedInside;
 }
@@ -130,8 +161,8 @@ void Button::start_auto_repeat_delay() {
             [this] {
                 if ((state_handler_.button_state == ButtonState::ClickedInside ||
                      state_handler_.button_state == ButtonState::ClickedOutside) &&
-                    on_click) {
-                    on_click();
+                    (command_ || on_click)) {
+                    fire_click();
                     start_auto_repeat_interval();
                 } else {
                     auto_repeat_timer_id_ = 0;
@@ -149,8 +180,8 @@ void Button::start_auto_repeat_interval() {
             [this] {
                 if ((state_handler_.button_state == ButtonState::ClickedInside ||
                      state_handler_.button_state == ButtonState::ClickedOutside) &&
-                    on_click) {
-                    on_click();
+                    (command_ || on_click)) {
+                    fire_click();
                 } else {
                     stop_auto_repeat();
                 }
@@ -194,12 +225,7 @@ bool Button::trigger_mnemonic(char key) {
         return false;
     }
     if (mnemonic_key_ && mnemonic_key_ == key) {
-        if (checkable_) {
-            set_checked(!checked_);
-        }
-        if (on_click) {
-            on_click();
-        }
+        fire_click();
         return true;
     }
     return false;
@@ -218,6 +244,9 @@ Button &Button::set_checkable(bool c) {
 Button &Button::set_checked(bool c) {
     if (checked_ != c) {
         checked_ = c;
+        if (command_) {
+            command_->set_checked(c);
+        }
         if (on_toggle) {
             on_toggle(checked_);
         }
@@ -239,12 +268,7 @@ bool Button::handle_key(KeyEvent const &event) {
         return false;
     }
     if (event.key == Key::Enter || (!event.text.empty() && event.text[0] == ' ')) {
-        if (checkable_) {
-            set_checked(!checked_);
-        }
-        if (on_click) {
-            on_click();
-        }
+        fire_click();
         return true;
     }
     return false;
@@ -274,8 +298,8 @@ bool Button::handle_mouse(MouseEvent const &event) {
     case MouseEvent::Type::Press:
         if (inside) {
             state_handler_.on_mouse_click(event);
-            if (auto_repeat_ && on_click && window_) {
-                on_click();
+            if (auto_repeat_ && (command_ || on_click) && window_) {
+                fire_click();
                 start_auto_repeat_delay();
             }
             return true;
@@ -284,16 +308,11 @@ bool Button::handle_mouse(MouseEvent const &event) {
     case MouseEvent::Type::Release:
         if (state_handler_.button_state == ButtonState::ClickedInside ||
             state_handler_.button_state == ButtonState::ClickedOutside) {
-            auto fire_click = should_fire_click();
+            auto was_fire = should_fire_click();
             stop_auto_repeat();
             state_handler_.on_mouse_click(event);
-            if (fire_click && !auto_repeat_) {
-                if (checkable_) {
-                    set_checked(!checked_);
-                }
-                if (on_click) {
-                    on_click();
-                }
+            if (was_fire && !auto_repeat_) {
+                fire_click();
             }
         }
         return inside;

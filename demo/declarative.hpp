@@ -289,11 +289,17 @@ template <typename T> struct Element {
     Element add_menu(MenuElement &&m);
     Element add_menu(std::string_view title, MenuElement &&m);
 
-    // Toolbar special functions
+    // Toolbar and Button special functions
     Element command(toolkit::Command::Ptr cmd) {
-        static_assert(std::is_same_v<T, toolkit::Toolbar>, "command only works on Toolbar");
-        last_cmd_ = cmd.get();
-        w->add_command(std::move(cmd));
+        if constexpr (std::is_same_v<T, toolkit::Toolbar>) {
+            last_cmd_ = cmd.get();
+            w->add_command(std::move(cmd));
+        } else if constexpr (std::is_same_v<T, toolkit::Button>) {
+            w->set_command(std::move(cmd));
+        } else {
+            static_assert(std::is_same_v<T, toolkit::Toolbar> || std::is_same_v<T, toolkit::Button>,
+                          "command only works on Toolbar or Button");
+        }
         return std::move(*this);
     }
     Element command(std::string name, std::function<void()> action) {

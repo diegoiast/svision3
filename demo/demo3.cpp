@@ -811,8 +811,8 @@ int main(int argc, char *argv[]) {
                      .disable()
                      .command("Increase count", "Increase the counter", {}, repeat_action)
                      .add(ui::spacer(), ui::expand)
-                     .add(std::move(toolbar_theme_toggle))
-                     .add(std::move(toolbar_theme_combo)))
+                     .add(toolbar_theme_toggle)
+                     .add(toolbar_theme_combo))
             .add(rootWidget, ui::expand)
             .add(ui::hbox()
                      .add(ui::button("About").disable())
@@ -841,9 +841,7 @@ int main(int argc, char *argv[]) {
                          }
                          window->show_toast(builder);
                      }))
-                     .add(ui::button("Export to JSON").on_click([export_cmd] {
-                         export_cmd.cmd->execute();
-                     }))
+                     .add(ui::button("Export to JSON").command(export_cmd))
                      .add(ui::button("&Quit").on_click([&window] { window->close(); }))));
 
     window->resize_to_fit();

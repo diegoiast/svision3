@@ -444,7 +444,7 @@ int main(int argc, char *argv[]) {
         repeat_count++;
         repeat_label_ptr->set_text(fmt::format("Count: {}", repeat_count));
     };
-    repeat_btn->on_click = repeat_action;
+    repeat_btn->set_command(autoclick_cmd);
 
     auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
     auto icon = app.load_icon(XDG::IconActions::documentOpen, 16, XDG::IconContexts::actions);
@@ -776,12 +776,12 @@ int main(int argc, char *argv[]) {
 
     auto open_btn = std::make_unique<toolkit::Button>("Open...");
     open_btn->set_tooltip("Open a text file (F3)");
-    open_btn->on_click = open_action;
+    open_btn->set_command(open_menu_cmd);
     editor_toolbar->add_widget(std::move(open_btn));
 
     auto save_btn = std::make_unique<toolkit::Button>("Save As...");
     save_btn->set_tooltip("Save the file (Ctrl+S)");
-    save_btn->on_click = save_action;
+    save_btn->set_command(save_cmd);
     editor_toolbar->add_widget(std::move(save_btn));
 
     auto choose_dir_btn = std::make_unique<toolkit::Button>("Choose Directory...");

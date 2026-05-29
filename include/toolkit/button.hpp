@@ -61,10 +61,17 @@ class Button : public Widget, public Fluent<Button> {
     }
     bool is_pressed() const { return state_handler_.button_state == ButtonState::ClickedInside; }
 
+    Button &set_command(Command::Ptr cmd);
+    Command::Ptr command() const { return command_; }
+
     std::function<void()> on_click;
     std::function<void(bool)> on_toggle;
 
   private:
+    void fire_click();
+    void sync_from_command();
+
+    Command::Ptr command_;
     void start_auto_repeat_delay();
     void start_auto_repeat_interval();
     void on_state_changed();

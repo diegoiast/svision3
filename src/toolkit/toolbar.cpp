@@ -15,7 +15,6 @@ class ToolButton : public Button {
         set_flat(true);
         set_padding({4, 8, 4, 8});
         set_tooltip(cmd_->tooltip());
-        on_click = [this] { cmd_->execute(); };
 
         if (!cmd_->icon().empty()) {
             auto icon_data = cmd_->icon_image();
@@ -23,6 +22,7 @@ class ToolButton : public Button {
                 set_icon(icon_data);
             }
         }
+        this->set_command(cmd_);
     }
 
     void paint(Painter &painter) override {
