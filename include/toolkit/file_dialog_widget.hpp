@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "toolkit/button.hpp"
+#include "toolkit/button_group.hpp"
 #include "toolkit/combobox.hpp"
 #include "toolkit/icon_grid.hpp"
 #include "toolkit/label.hpp"
@@ -75,9 +75,7 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
     Combobox *extension_combo_ = nullptr;
     Button *up_button_ = nullptr;
     Button *new_button_ = nullptr;
-    Button *list_view_btn_ = nullptr;
-    Button *icon_view_btn_ = nullptr;
-    Button *details_view_btn_ = nullptr;
+    ButtonGroup *view_group_ = nullptr;
 
     IconGrid *icon_grid_ = nullptr;
     TableView *table_view_ = nullptr;

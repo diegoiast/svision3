@@ -57,7 +57,7 @@ static std::string format_mtime(std::filesystem::file_time_type t) {
     auto sys = std::chrono::clock_cast<std::chrono::system_clock>(t);
 
     return std::format("{:%Y-%m-%d %H:%M}",
-        std::chrono::zoned_time{std::chrono::current_zone(), sys});
+                       std::chrono::zoned_time{std::chrono::current_zone(), sys});
 }
 
 class DirDetailsModel : public ItemModel {
@@ -304,7 +304,7 @@ void FileDialogWidget::setup_ui() {
 
     auto home_btn = std::make_unique<Button>("");
     home_btn->set_tooltip("Go to Home");
-    home_btn->set_icon(app.load_icon("go-home", 16, "actions"));
+    home_btn->set_icon(app.load_icon(XDG::IconActions::goHome, 16, XDG::IconContexts::actions));
     home_btn->on_click = [this]() {
         auto home = std::getenv("HOME");
         if (!home) {
@@ -318,7 +318,7 @@ void FileDialogWidget::setup_ui() {
 
     auto up_btn = std::make_unique<Button>("");
     up_btn->set_tooltip("Up One Level");
-    up_btn->set_icon(app.load_icon("go-up", 16, "actions"));
+    up_btn->set_icon(app.load_icon(XDG::IconActions::goUp, 16, XDG::IconContexts::actions));
     up_button_ = up_btn.get();
     up_button_->on_click = [this]() { navigate_up(); };
     toolbar_->add_widget(std::move(up_btn));
@@ -334,70 +334,57 @@ void FileDialogWidget::setup_ui() {
     };
     toolbar_->add_widget(std::move(new_btn));
 
-    auto list_btn = std::make_unique<Button>("");
-    list_btn->set_tooltip("List View");
-    list_btn->set_icon(app.load_icon("view-list-icons-symbolic", 16, XDG::IconContexts::actions));
-    list_view_btn_ = list_btn.get();
-    list_view_btn_->on_click = [this] {
-        view_mode_ = ViewMode::List;
-        if (icon_grid_) {
+    auto view_group = std::make_unique<ButtonGroup>();
+    view_group_ = view_group.get();
+
+    auto &list_btn = view_group->add_button("");
+    list_btn.set_tooltip("List View");
+    list_btn.set_icon(
+        app.load_icon(XDG::IconActions::viewListIconsSymbolic, 16, XDG::IconContexts::actions));
+
+    auto &icon_btn = view_group->add_button("");
+    icon_btn.set_tooltip("Icon View");
+    icon_btn.set_icon(
+        app.load_icon(XDG::IconActions::viewListCompactSymbolic, 16, XDG::IconContexts::actions));
+
+    auto &details_btn = view_group->add_button("");
+    details_btn.set_tooltip("Details View");
+    details_btn.set_icon(
+        app.load_icon(XDG::IconActions::viewListDetailsSymbolic, 16, XDG::IconContexts::actions));
+
+    view_group->on_change = [this](int index) {
+        switch (index) {
+        case 0:
+            view_mode_ = ViewMode::List;
             icon_grid_->set_visible(false);
-        }
-        if (table_view_) {
             table_view_->set_visible(true);
             table_view_->set_model(model_);
             table_view_->auto_fit_columns();
-        }
-        if (table_view_details_) {
             table_view_details_->set_visible(false);
-        }
-        this->invalidate_layout();
-    };
-    toolbar_->add_widget(std::move(list_btn));
-
-    auto icon_btn = std::make_unique<Button>("");
-    icon_btn->set_tooltip("Icon View");
-    icon_btn->set_icon(app.load_icon("view-list-compact-symbolic", 16, XDG::IconContexts::actions));
-    icon_view_btn_ = icon_btn.get();
-    icon_view_btn_->on_click = [this] {
-        view_mode_ = ViewMode::Icons;
-        if (icon_grid_) {
+            break;
+        case 1:
+            view_mode_ = ViewMode::Icons;
             icon_grid_->set_visible(true);
             icon_grid_->set_model(model_);
-        }
-        if (table_view_) {
             table_view_->set_visible(false);
-        }
-        if (table_view_details_) {
             table_view_details_->set_visible(false);
-        }
-        this->invalidate_layout();
-    };
-
-    toolbar_->add_widget(std::move(icon_btn));
-    auto details_btn = std::make_unique<Button>("");
-    details_btn->set_tooltip("Details View");
-    details_btn->set_icon(
-        app.load_icon("view-list-details-symbolic", 16, XDG::IconContexts::actions));
-    details_view_btn_ = details_btn.get();
-    details_view_btn_->on_click = [this] {
-        view_mode_ = ViewMode::Details;
-        if (icon_grid_) {
+            break;
+        case 2:
+            view_mode_ = ViewMode::Details;
             icon_grid_->set_visible(false);
-        }
-        if (table_view_) {
             table_view_->set_visible(false);
-        }
-        if (table_view_details_) {
             table_view_details_->set_visible(true);
             table_view_details_->auto_fit_columns();
+            break;
         }
         this->invalidate_layout();
     };
-    toolbar_->add_widget(std::move(details_btn));
+    toolbar_->add_widget(std::move(view_group));
 
-    auto show_hidden_btn = std::make_unique<Button>("H");
+    auto show_hidden_btn = std::make_unique<Button>("");
     show_hidden_btn->set_tooltip("Toggle Show Hidden Files");
+    show_hidden_btn->set_icon(
+        app.load_icon(XDG::IconActions::viewFilter, 16, XDG::IconContexts::actions));
     show_hidden_btn->on_click = [this] { set_show_hidden(!show_hidden()); };
     toolbar_->add_widget(std::move(show_hidden_btn));
 

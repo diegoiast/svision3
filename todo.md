@@ -237,7 +237,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 9. [ ] Mnemonic shortcuts selecting a label's buddy
 10. [x] Cmd+Q / Ctrl+Q triggers Quit mnemonic.
 11. [ ] Global keyboard shortcuts / accelerators.
-12. [ ] Mouse enter/leave events on widgets.
+12. [x] Mouse enter/leave events on widgets.
 
 ## Button features [4/7]
 
@@ -247,7 +247,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 4. [x] Icon support (image + text)
 5. [x] Toggle buttton - on/off.
 6. [x] Attach a menu (long click, or sub-button).
-7. [ ] Button group (mutually exclusive toggles).
+7. [x] Button group (mutually exclusive toggles).
 
 ## ScrollArea
 

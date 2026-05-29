@@ -39,6 +39,23 @@ inline constexpr const char *editUndo = "edit-undo";
 inline constexpr const char *findLocation = "find-location";
 inline constexpr const char *folderNew = "folder-new";
 
+// For navigating to the user's home directory
+inline constexpr const char *goHome = "go-home";
+// For navigating up one directory level
+inline constexpr const char *goUp = "go-up";
+
+// For switching to icon/grid view mode
+inline constexpr const char *viewListIconsSymbolic = "view-list-icons-symbolic";
+// For switching to compact list view mode
+inline constexpr const char *viewListCompactSymbolic = "view-list-compact-symbolic";
+// For switching to detailed list view mode (name, size, date)
+inline constexpr const char *viewListDetailsSymbolic = "view-list-details-symbolic";
+
+// For toggling visibility of hidden files
+inline constexpr const char *showHiddenFiles = "show-hidden-files";
+// For filtering or refining visible content
+inline constexpr const char *viewFilter = "view-filter";
+
 inline constexpr const char *formatIndentLess = "format-indent-less";
 inline constexpr const char *formatIndentMore = "format-indent-more";
 inline constexpr const char *formatJustifyCenter = "format-justify-center";

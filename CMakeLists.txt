@@ -45,6 +45,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/stb_image_loader.cpp
     src/toolkit/toolbar.cpp
     src/toolkit/button.cpp
+    src/toolkit/button_group.cpp
     src/toolkit/button_state.cpp
     src/toolkit/checkbox.cpp
     src/toolkit/combobox.cpp
