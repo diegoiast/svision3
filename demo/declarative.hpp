@@ -26,6 +26,7 @@
 #include <toolkit/splitter.hpp>
 #include <toolkit/table_view.hpp>
 #include <toolkit/text_edit.hpp>
+#include <toolkit/toast_widget.hpp>
 #include <toolkit/toolbar.hpp>
 #include <toolkit/tree_view.hpp>
 
@@ -353,7 +354,8 @@ template <typename T> struct Element {
         return std::move(*this);
     }
 
-    template <typename W> Element add_tab(std::string_view title, Element<W> &&child, bool closable = true) {
+    template <typename W>
+    Element add_tab(std::string_view title, Element<W> &&child, bool closable = true) {
         w->add_tab(std::string(title), std::move(child.w), closable);
         return std::move(*this);
     }
@@ -648,5 +650,7 @@ inline Element<toolkit::HBoxLayout> hbox() {
 inline Element<toolkit::Toolbar> toolbar() {
     return Element<toolkit::Toolbar>(std::make_unique<toolkit::Toolbar>());
 }
+
+inline toolkit::ToastBuilder toast() { return {}; }
 
 } // namespace ui

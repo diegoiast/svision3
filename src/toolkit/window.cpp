@@ -14,6 +14,87 @@
 
 namespace toolkit {
 
+static auto is_descendant_of(Widget *descendant, Widget *ancestor) -> bool {
+    while (descendant) {
+        if (descendant == ancestor) {
+            return true;
+        }
+        descendant = descendant->parent();
+    }
+    return false;
+}
+
+static void draw_on_top_recursive(Painter &painter, Widget *parent) {
+    parent->for_each_child([&](Widget *child) {
+        if (!child->is_visible()) {
+            return;
+        }
+        if (child->is_on_top()) {
+            child->draw(painter);
+        }
+        draw_on_top_recursive(painter, child);
+    });
+}
+
+static auto find_focusable_on_top(Widget *parent, Point window_pos) -> Widget * {
+    auto result = static_cast<Widget *>(nullptr);
+    parent->for_each_child([&](Widget *child) {
+        if (result || !child->is_visible()) {
+            return;
+        }
+        auto local = window_pos;
+        local.x -= child->rect().x;
+        local.y -= child->rect().y;
+        if (child->is_on_top()) {
+            result = child->find_focusable_at(local);
+        }
+        if (!result) {
+            result = find_focusable_on_top(child, local);
+        }
+    });
+    return result;
+}
+
+static auto widget_at_on_top(Widget *parent, Point window_pos) -> Widget * {
+    auto result = static_cast<Widget *>(nullptr);
+    parent->for_each_child([&](Widget *child) {
+        if (result || !child->is_visible()) {
+            return;
+        }
+        auto local = window_pos;
+        local.x -= child->rect().x;
+        local.y -= child->rect().y;
+        if (child->is_on_top()) {
+            result = child->widget_at(local);
+        }
+        if (!result) {
+            result = widget_at_on_top(child, local);
+        }
+    });
+    return result;
+}
+
+static bool dispatch_to_on_top(Widget *parent, MouseEvent const &event) {
+    auto handled = false;
+    parent->for_each_child([&](Widget *child) {
+        if (handled || !child->is_visible()) {
+            return;
+        }
+        if (child->is_on_top()) {
+            if (Widget::dispatch_mouse_event(child, event)) {
+                handled = true;
+            }
+        }
+        if (!handled) {
+            auto child_event = event;
+            child_event.position.x -= child->rect().x;
+            child_event.position.y -= child->rect().y;
+            handled = dispatch_to_on_top(child, child_event);
+        }
+    });
+    return handled;
+}
+
 struct Window::Impl {
     std::unique_ptr<PlatformWindow> platform;
     Window::Statistics stats;
@@ -230,6 +311,95 @@ void Window::add_widget(std::unique_ptr<Widget> widget) {
     widgets_.push_back(std::move(widget));
 }
 
+void Window::relayout_toasts() {
+    auto toast_x = 10.0f;
+    auto toast_y = size_.height - 10.0f;
+
+    for (auto &widget : widgets_) {
+        if (auto toast = dynamic_cast<ToastWidget *>(widget.get())) {
+            auto hint = toast->size_hint();
+            toast_y -= hint.height;
+            toast->set_rect({toast_x, toast_y, hint.width, hint.height});
+            toast_y -= 10.0f;
+        }
+    }
+}
+
+void Window::show_toast(std::string text, std::string title, std::string icon_path, float timeout) {
+    auto toast = std::make_unique<ToastWidget>(text, title, icon_path, timeout);
+    auto toast_ptr = toast.get();
+    toast->set_on_close([this, toast_ptr] { this->close_toast(toast_ptr); });
+    add_widget(std::move(toast));
+    relayout_toasts();
+
+    start_toast_timer();
+    request_redraw("toast added");
+}
+
+void Window::show_toast(ToastBuilder const &builder) {
+    auto toast = builder.build();
+    auto toast_ptr = toast.get();
+    toast->set_on_close([this, toast_ptr] { this->close_toast(toast_ptr); });
+    add_widget(std::move(toast));
+    relayout_toasts();
+
+    start_toast_timer();
+    request_redraw("toast added");
+}
+
+void Window::close_toast(ToastWidget *toast) {
+    toast->expire();
+    relayout_toasts();
+    request_redraw("toast closed");
+}
+
+void Window::start_toast_timer() {
+    if (toast_timer_id_ != 0) {
+        return;
+    }
+    toast_timer_id_ = start_timer(
+        0.1f,
+        [this] {
+            auto needs_redraw = false;
+            auto needs_relayout = false;
+            for (auto it = widgets_.begin(); it != widgets_.end();) {
+                if (auto toast = dynamic_cast<ToastWidget *>(it->get())) {
+                    toast->update_remaining_time(0.1f);
+                    needs_redraw = true;
+                    if (toast->is_expired()) {
+                        if (hovered_widget_ && is_descendant_of(hovered_widget_, toast)) {
+                            hovered_widget_ = nullptr;
+                        }
+                        if (captured_widget_ && is_descendant_of(captured_widget_, toast)) {
+                            captured_widget_ = nullptr;
+                        }
+                        if (focused_widget_ && is_descendant_of(focused_widget_, toast)) {
+                            set_focused_widget(nullptr);
+                        }
+                        it = widgets_.erase(it);
+                        needs_relayout = true;
+                        continue;
+                    }
+                }
+                ++it;
+            }
+            if (needs_redraw) {
+                request_redraw("toast tick");
+            }
+            if (needs_relayout) {
+                relayout_toasts();
+            }
+            auto any_toasts = std::any_of(widgets_.begin(), widgets_.end(), [](auto const &w) {
+                return dynamic_cast<ToastWidget *>(w.get()) != nullptr;
+            });
+            if (!any_toasts) {
+                stop_timer(toast_timer_id_);
+                toast_timer_id_ = 0;
+            }
+        },
+        true);
+}
+
 void Window::open_popup(Popup popup) {
     if (popups_.empty()) {
         saved_focus_ = focused_widget_;
@@ -291,6 +461,9 @@ void Window::handle_paint(Painter &painter) {
     }
     for (auto &widget : widgets_) {
         widget->draw(painter);
+    }
+    if (root_) {
+        draw_on_top_recursive(painter, root_.get());
     }
 
     if (focused_widget_ && focused_widget_->is_focused() && focused_widget_->is_focusable()) {
@@ -437,22 +610,23 @@ void Window::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Press) {
         auto under = static_cast<Widget *>(nullptr);
-        if (root_) {
+        for (auto &w : widgets_) {
+            auto p = event.position;
+            p.x -= w->rect().x;
+            p.y -= w->rect().y;
+            under = w->find_focusable_at(p);
+            if (under) {
+                break;
+            }
+        }
+        if (!under && root_) {
+            under = find_focusable_on_top(root_.get(), event.position);
+        }
+        if (!under && root_) {
             auto p = event.position;
             p.x -= root_->rect().x;
             p.y -= root_->rect().y;
             under = root_->find_focusable_at(p);
-        }
-        if (!under) {
-            for (auto &w : widgets_) {
-                auto p = event.position;
-                p.x -= w->rect().x;
-                p.y -= w->rect().y;
-                under = w->find_focusable_at(p);
-                if (under) {
-                    break;
-                }
-            }
         }
         set_focused_widget(under);
         captured_widget_ = under;
@@ -481,14 +655,19 @@ void Window::handle_mouse(MouseEvent const &event) {
         }
         return;
     } else {
-        // Normal dispatch
-        if (root_) {
-            if (Widget::dispatch_mouse_event(root_.get(), event)) {
+        // Normal dispatch — overlay widgets (toasts) first
+        for (auto &widget : widgets_) {
+            if (Widget::dispatch_mouse_event(widget.get(), event)) {
                 needs_redraw = true;
             }
         }
-        for (auto &widget : widgets_) {
-            if (Widget::dispatch_mouse_event(widget.get(), event)) {
+        if (root_) {
+            if (dispatch_to_on_top(root_.get(), event)) {
+                needs_redraw = true;
+            }
+        }
+        if (root_) {
+            if (Widget::dispatch_mouse_event(root_.get(), event)) {
                 needs_redraw = true;
             }
         }
@@ -496,22 +675,23 @@ void Window::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
         auto under = static_cast<Widget *>(nullptr);
-        if (root_) {
+        for (auto &w : widgets_) {
+            auto p = event.position;
+            p.x -= w->rect().x;
+            p.y -= w->rect().y;
+            under = w->widget_at(p);
+            if (under) {
+                break;
+            }
+        }
+        if (!under && root_) {
+            under = widget_at_on_top(root_.get(), event.position);
+        }
+        if (!under && root_) {
             auto p = event.position;
             p.x -= root_->rect().x;
             p.y -= root_->rect().y;
             under = root_->widget_at(p);
-        }
-        if (!under) {
-            for (auto &w : widgets_) {
-                auto p = event.position;
-                p.x -= w->rect().x;
-                p.y -= w->rect().y;
-                under = w->widget_at(p);
-                if (under) {
-                    break;
-                }
-            }
         }
 
         // Only update hovered_widget_ if not dragging, or if under is the captured widget

@@ -7,9 +7,9 @@
 #include "toolkit/events.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
-#include <nlohmann/json_fwd.hpp>
 #include <algorithm>
 #include <functional>
+#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
 #include <vector>
@@ -76,6 +76,8 @@ class Widget {
     virtual bool is_enabled() const { return state.enabled; }
     virtual Widget &set_visible(bool v);
     virtual bool is_visible() const { return state.visible; }
+    virtual Widget &set_on_top(bool v);
+    virtual bool is_on_top() const { return state.on_top; }
 
     // FIXME: really? is this a good API?
     bool can_get_non_focus_input() const { return state.non_focus_input; }
@@ -149,7 +151,6 @@ class Widget {
 
     void set_markdown_tooltip(std::string markdown);
     bool tooltip_is_markdown() const { return state.tooltip_markdown; }
-
     Widget &set_background_color(std::optional<Color> c);
     std::optional<Color> background_color() const { return background_color_; }
 
@@ -170,6 +171,7 @@ class Widget {
         bool visible = true;
         bool focusable = false;
         bool non_focus_input = false;
+        bool on_top = false;
         std::string tooltip;
         bool tooltip_markdown = false;
     } state;

@@ -56,6 +56,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 44. [ ] Set window icon.
 45. [ ] Rounded frame clip. When drawing a frame, cliping with a radius would be
         nice. However, I am unsure how to clean the clipping at the end of function call.
+46. [x] Toast support
 
 ## Platform – Not Yet Implemented
 

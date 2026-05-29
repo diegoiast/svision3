@@ -817,6 +817,30 @@ int main(int argc, char *argv[]) {
             .add(ui::hbox()
                      .add(ui::button("About").disable())
                      .add(ui::spacer(), ui::expand)
+                     .add(ui::button("Toast").on_click([window] {
+                         static const std::optional<toolkit::Color> colors[] = {
+                             toolkit::Color::rgb(1.0f, 0.85f, 0.85f),
+                             toolkit::Color::rgb(0.85f, 1.0f, 0.85f),
+                             toolkit::Color::rgb(0.85f, 0.85f, 1.0f),
+                             toolkit::Color::rgb(1.0f, 1.0f, 0.85f),
+                             toolkit::Color::rgb(1.0f, 0.85f, 1.0f),
+                             std::nullopt,
+                         };
+                         static int count = 0;
+                         auto title = fmt::format("Toast #{}", count++);
+                         auto builder = ui::toast().title(title).timeout(7);
+                         auto bg = colors[count % 6];
+
+                         if (count % 2 == 0) {
+                             builder.text(LOREM_IPSUM);
+                         } else {
+                             builder.rich_text(LOREM_IPSUM_MD);
+                         }
+                         if (bg) {
+                             builder.background(*bg);
+                         }
+                         window->show_toast(builder);
+                     }))
                      .add(ui::button("Export to JSON").on_click([export_cmd] {
                          export_cmd.cmd->execute();
                      }))

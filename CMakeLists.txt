@@ -89,6 +89,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/rich_label.cpp
     src/toolkit/scroll_area.cpp
     src/toolkit/splitter.cpp
+    src/toolkit/toast_widget.cpp
 )
 
 if(TOOLKIT_WITH_CAIRO)
@@ -446,42 +447,43 @@ target_link_libraries(json_ui_viewer PRIVATE toolkit)
 # ── Tests ─────────────────────────────────────────────────────────────────────
 find_package(Catch2 REQUIRED)
 add_executable(tests
-    tests/test_main.cpp
-    tests/test_types.cpp
+    tests/test_button_serialization.cpp
+    tests/test_catalog.cpp
+    tests/test_command.cpp
+    tests/test_context_menu.cpp
+    tests/test_db.cpp
     tests/test_events.cpp
-    tests/test_theme.cpp
     tests/test_widget.cpp
     tests/test_button.cpp
     tests/test_label.cpp
     tests/test_checkbox.cpp
-    tests/test_radio_button.cpp
     tests/test_combobox.cpp
-    tests/test_progress_bar.cpp
-    tests/test_list_adapter.cpp
-    tests/test_list_view.cpp
+    tests/test_filter_adapter.cpp
+    tests/test_html_view.cpp
+    tests/test_icon_grid.cpp
+    tests/test_image_widget.cpp
     tests/test_layout.cpp
     tests/test_layout_mouse.cpp
     tests/test_layout_stretch.cpp
-    tests/test_tab_widget.cpp
-    tests/test_filter_adapter.cpp
+    tests/test_line_input.cpp
+    tests/test_list_adapter.cpp
+    tests/test_list_view.cpp
+    tests/test_main.cpp
+    tests/test_menubar.cpp
+    tests/test_new_image_api.cpp
+    tests/test_progress_bar.cpp
+    tests/test_radio_button.cpp
     tests/test_slider.cpp
     tests/test_spin_box.cpp
-    tests/test_line_input.cpp
-    tests/test_command.cpp
-    tests/test_context_menu.cpp
+    tests/test_tab_widget.cpp
     tests/test_table_view.cpp
     tests/test_text_edit.cpp
-    tests/test_menubar.cpp
-    tests/test_catalog.cpp
-    tests/test_db.cpp
+    tests/test_toast.cpp
+    tests/test_theme.cpp
+    tests/test_types.cpp
+    tests/test_utf8.cpp
     tests/test_undo_stack.cpp
     tests/test_xdg_image_loader.cpp
-    tests/test_icon_grid.cpp
-    tests/test_html_view.cpp
-    tests/test_utf8.cpp
-    tests/test_new_image_api.cpp
     tests/repro_tab_orientation.cpp
-    tests/test_button_serialization.cpp
-    tests/test_image_widget.cpp
 )
 target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)

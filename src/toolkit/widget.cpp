@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/widget.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
 #include <spdlog/spdlog.h>
 
@@ -91,6 +91,11 @@ void Widget::set_markdown_tooltip(std::string markdown) {
     state.tooltip_markdown = true;
 }
 
+Widget &Widget::set_on_top(bool v) {
+    state.on_top = v;
+    return *this;
+}
+
 Widget &Widget::set_background_color(std::optional<Color> c) {
     background_color_ = c;
     return *this;
@@ -173,6 +178,7 @@ nlohmann::json Widget::to_json() const {
     j["enabled"] = state.enabled;
     j["focused"] = state.focused;
     j["focusable"] = state.focusable;
+    j["on_top"] = state.on_top;
     return j;
 }
 
@@ -192,6 +198,9 @@ void Widget::from_json(nlohmann::json const &j) {
     }
     if (j.contains("focused")) {
         set_focused(j["focused"]);
+    }
+    if (j.contains("on_top")) {
+        set_on_top(j["on_top"]);
     }
 }
 

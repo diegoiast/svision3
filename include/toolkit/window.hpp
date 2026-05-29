@@ -6,13 +6,13 @@
 #include "toolkit/command.hpp"
 #include "toolkit/events.hpp"
 #include "toolkit/painter.hpp"
+#include "toolkit/toast_widget.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"
-#include <nlohmann/json_fwd.hpp>
+
 #include <algorithm>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -52,6 +52,12 @@ class Window {
     void show();
     void close();
     void request_redraw(std::string_view reason = "other");
+
+    void show_toast(std::string text, std::string title = "", std::string icon_path = "",
+                    float timeout = 10.0f);
+    void show_toast(ToastBuilder const &builder);
+    void close_toast(ToastWidget *toast);
+    void relayout_toasts();
 
     void open_popup(Popup popup);
     void close_popup();
@@ -114,6 +120,7 @@ class Window {
     void show_rich_tooltip();
     void show_tooltip_window(std::string const &text, Point screen_pos);
     void hide_tooltip_window();
+    void start_toast_timer();
 
     void draw_debug_frames_recursive(Painter &painter, Widget *widget);
 
@@ -138,6 +145,8 @@ class Window {
     bool tooltip_visible_ = false;
     Point tooltip_mouse_pos_;
     std::string tooltip_text_;
+
+    int toast_timer_id_ = 0;
 
     struct Impl;
     std::unique_ptr<Impl> impl_;
