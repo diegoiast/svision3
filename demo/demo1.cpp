@@ -23,6 +23,7 @@
 #include "toolkit/radio_button.hpp"
 #include "toolkit/rich_label.hpp"
 #include "toolkit/scroll_area.hpp"
+#include "toolkit/scrollbar.hpp"
 #include "toolkit/slider.hpp"
 #include "toolkit/spin_box.hpp"
 #include "toolkit/splitter.hpp"
@@ -365,6 +366,8 @@ int main(int argc, char *argv[]) {
     auto plain_label = std::make_unique<toolkit::Label>(
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
         "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.");
+    plain_label->set_elide(true);
+    plain_label->set_shrinkable(true);
     tab_main->add_widget(std::move(plain_label));
 
     auto rich_label = std::make_unique<toolkit::RichLabel>(
@@ -474,6 +477,20 @@ int main(int argc, char *argv[]) {
     repeat_row->add_widget(std::move(toggle_btn));
     repeat_row->add_widget(std::move(repeat_label), 1);
     tab_main->add_widget(std::move(repeat_row));
+
+    auto scrollbar = std::make_unique<toolkit::Scrollbar>();
+    scrollbar->set_range(0, 100);
+    scrollbar->set_step_small(5);
+    scrollbar->set_step_page(20);
+    scrollbar->set_value(50);
+    auto *scrollbar_ptr = scrollbar.get();
+    auto scrollbar_label = std::make_unique<toolkit::Label>("Scroll: 50");
+    auto *scrollbar_label_ptr = scrollbar_label.get();
+    scrollbar->on_change = [scrollbar_label_ptr](float v) {
+        scrollbar_label_ptr->set_text(fmt::format("Scroll: {:.0f}", v));
+    };
+    tab_main->add_widget(std::move(scrollbar));
+    tab_main->add_widget(std::move(scrollbar_label));
 
     tab_main->add_widget(std::make_unique<toolkit::Label>(
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name())));

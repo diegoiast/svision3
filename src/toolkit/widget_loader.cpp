@@ -10,6 +10,7 @@
 #include "toolkit/progress_bar.hpp"
 #include "toolkit/radio_button.hpp"
 #include "toolkit/scroll_area.hpp"
+#include "toolkit/scrollbar.hpp"
 #include "toolkit/slider.hpp"
 #include "toolkit/spin_box.hpp"
 #include "toolkit/tab_widget.hpp"
@@ -73,6 +74,7 @@ void WidgetLoader::register_all_widgets() {
     DO_REGISTER_WIDGET(TextEdit);
     DO_REGISTER_WIDGET(MenuBar);
     DO_REGISTER_WIDGET(ScrollArea);
+    DO_REGISTER_WIDGET(Scrollbar);
     DO_REGISTER_WIDGET(Slider);
     DO_REGISTER_WIDGET(TabWidget);
     DO_REGISTER_WIDGET(SpinBox);

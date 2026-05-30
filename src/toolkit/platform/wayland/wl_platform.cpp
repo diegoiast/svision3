@@ -503,7 +503,6 @@ static void pointer_button(void *data, wl_pointer *, uint32_t, uint32_t time, ui
 
 static void pointer_axis(void *data, wl_pointer *, uint32_t, uint32_t axis, wl_fixed_t value) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
-    spdlog::debug("pointer_axis: axis={}", axis);
     if (!app->pointer_focus) {
         return;
     }

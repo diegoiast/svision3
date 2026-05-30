@@ -45,6 +45,9 @@ class BaseTheme : public Theme {
 
     void draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal,
                      WidgetState const &state) const override;
+    void draw_scrollbar(Painter &painter, Rect const &rect, float value, WidgetState const &state,
+                        bool hovered_left_btn, bool pressed_left_btn, bool hovered_right_btn,
+                        bool pressed_right_btn, bool hovered_thumb) const override;
 
     void draw_tab_bar_background(Painter &painter, Rect const &rect,
                                  WidgetState const &state) const override;

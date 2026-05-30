@@ -999,6 +999,56 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
     }
 }
 
+void BaseTheme::draw_scrollbar(Painter &painter, Rect const &rect, float value,
+                               WidgetState const &state, bool hovered_left_btn,
+                               bool pressed_left_btn, bool hovered_right_btn,
+                               bool pressed_right_btn, bool hovered_thumb) const {
+    auto enabled = state.enabled;
+    auto bs = std::min(rect.height, 16.0f);
+    auto track_rect = Rect{rect.x + bs, rect.y, rect.width - 2 * bs, rect.height};
+    auto thumb_h = rect.height - 4.0f;
+    auto thumb_w = std::max(20.0f, track_rect.width * 0.1f);
+    auto max_thumb_x = track_rect.width - thumb_w;
+    auto thumb_x = track_rect.x + value * max_thumb_x;
+    auto thumb_y = rect.y + (rect.height - thumb_h) / 2.0f;
+    auto thumb = Rect{thumb_x, thumb_y, thumb_w, thumb_h};
+
+    auto border_c = state.focused ? palette.accent : palette.border;
+    auto track_c = state.focused ? palette.alternate : Color::mid(palette.window, palette.base);
+
+    // Track background
+    painter.draw_filled_frame(track_rect, track_c, border_c, palette, true);
+
+    // Left button
+    auto lbtn = Rect{rect.x, (rect.height - bs) / 2.0f, bs, bs};
+    auto lbtn_bg =
+        pressed_left_btn ? palette.border : (hovered_left_btn ? palette.alternate : palette.window);
+    painter.draw_filled_frame(lbtn, lbtn_bg, border_c, palette, pressed_left_btn);
+
+    auto larrow_c = enabled ? palette.text : palette.text_disabled;
+    auto ls = bs * 0.25f;
+    auto lcx = lbtn.x + lbtn.width / 2.0f;
+    auto lcy = lbtn.y + lbtn.height / 2.0f;
+    painter.fill_triangle({lcx - ls, lcy}, {lcx + ls, lcy - ls}, {lcx + ls, lcy + ls}, larrow_c);
+
+    // Right button
+    auto rbtn = Rect{rect.x + rect.width - bs, (rect.height - bs) / 2.0f, bs, bs};
+    auto rbtn_bg = pressed_right_btn ? palette.border
+                                     : (hovered_right_btn ? palette.alternate : palette.window);
+    painter.draw_filled_frame(rbtn, rbtn_bg, border_c, palette, pressed_right_btn);
+
+    auto rarrow_c = enabled ? palette.text : palette.text_disabled;
+    auto rs = bs * 0.25f;
+    auto rcx = rbtn.x + rbtn.width / 2.0f;
+    auto rcy = rbtn.y + rbtn.height / 2.0f;
+    painter.fill_triangle({rcx + rs, rcy}, {rcx - rs, rcy - rs}, {rcx - rs, rcy + rs}, rarrow_c);
+
+    // Thumb
+    auto thumb_bg = hovered_thumb ? palette.accent : palette.text;
+    thumb_bg.a = hovered_thumb ? 0.8f : 0.5f;
+    painter.fill_rounded_rect(thumb, thumb_bg, 3.0f);
+}
+
 void BaseTheme::draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const {
     Color ring = palette.border;
     ring.a = 0.5f;

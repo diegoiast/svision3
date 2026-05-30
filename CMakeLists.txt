@@ -89,6 +89,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/html_view.cpp
     src/toolkit/rich_label.cpp
     src/toolkit/scroll_area.cpp
+    src/toolkit/scrollbar.cpp
     src/toolkit/splitter.cpp
     src/toolkit/toast_widget.cpp
     src/toolkit/status_bar.cpp
