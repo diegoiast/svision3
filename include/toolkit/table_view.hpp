@@ -4,7 +4,7 @@
 #pragma once
 
 #include "toolkit/item_model.hpp"
-#include "toolkit/widget.hpp"
+#include "toolkit/scrollable_widget.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -15,7 +15,7 @@ namespace toolkit {
 
 enum class SortOrder { None, Ascending, Descending };
 
-class TableView : public Widget, public Fluent<TableView> {
+class TableView : public ScrollableWidget, public Fluent<TableView> {
   public:
     explicit TableView(std::shared_ptr<ItemModel> model);
 
@@ -58,13 +58,17 @@ class TableView : public Widget, public Fluent<TableView> {
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
     CursorShape cursor() const override;
+    void set_rect(Rect const &rect) override;
+
+  protected:
+    void on_scroll(float x, float y) override;
 
   private:
     float row_height() const;
     float header_height() const;
     float total_content_height() const;
     float total_content_width() const;
-    void clamp_scroll();
+    void update_scroll_state();
     std::optional<size_t> row_at_y(float y) const;
     int column_at_x(float x) const;
     int header_resize_hit(float x, float y) const;
@@ -83,8 +87,6 @@ class TableView : public Widget, public Fluent<TableView> {
     std::optional<size_t> anchor_row_;
     std::optional<size_t> cursor_row_;
     std::optional<size_t> hovered_row_;
-    float scroll_y_ = 0;
-    float scroll_x_ = 0;
     bool alternating_ = false;
     bool multi_select_ = false;
     bool show_header_ = true;

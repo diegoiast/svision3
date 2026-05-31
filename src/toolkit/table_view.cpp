@@ -16,7 +16,7 @@ TableView::TableView(std::shared_ptr<ItemModel> model) : model_(std::move(model)
         model_->on_data_changed = [this] {
             rebuild_sort_index();
             auto_fit_columns();
-            clamp_scroll();
+            update_scroll_state();
             if (window()) {
                 window()->request_redraw("table selection");
             }
@@ -39,7 +39,7 @@ TableView &TableView::set_model(std::shared_ptr<ItemModel> model) {
         model_->on_data_changed = [this] {
             rebuild_sort_index();
             auto_fit_columns();
-            clamp_scroll();
+            update_scroll_state();
             if (window()) {
                 window()->request_redraw("table selection");
             }
@@ -48,6 +48,16 @@ TableView &TableView::set_model(std::shared_ptr<ItemModel> model) {
         rebuild_sort_index();
     }
     return *this;
+}
+
+void TableView::on_scroll(float /*x*/, float /*y*/) {
+    if (window()) {
+        window()->request_redraw("table scroll");
+    }
+}
+
+void TableView::update_scroll_state() {
+    update_scrollbars({total_content_width(), total_content_height() + header_height()});
 }
 
 size_t TableView::model_row(size_t display_row) const {
@@ -279,36 +289,23 @@ float TableView::total_content_width() const {
     return w;
 }
 
-void TableView::clamp_scroll() {
-    auto bw = Theme::current().palette.border_width;
-    auto hh = header_height();
-    auto visible_h = rect_.height - hh - bw * 2;
-    auto content_h = total_content_height();
-    auto max_y = std::max(0.0f, content_h - visible_h);
-    auto visible_w = rect_.width - bw * 2;
-    auto content_w = total_content_width();
-    auto max_x = std::max(0.0f, content_w - visible_w);
-
-    scroll_y_ = std::clamp(scroll_y_, 0.0f, max_y);
-    scroll_x_ = std::clamp(scroll_x_, 0.0f, max_x);
-    if (window()) {
-        window()->request_redraw("TableView::clamp_scroll");
-    }
+void TableView::set_rect(Rect const &r) {
+    Widget::set_rect(r);
+    update_scroll_state();
 }
 
 std::optional<size_t> TableView::row_at_y(float y) const {
     if (!model_) {
         return std::nullopt;
     }
-    auto bw = Theme::current().palette.border_width;
+    auto vr = viewport_rect();
     auto hh = header_height();
-    auto local_y = y - hh - bw + scroll_y_;
+    auto local_y = y - vr.y + scroll_y_;
 
-    if (local_y < 0) {
+    if (local_y < hh) {
         return std::nullopt;
     }
-
-    auto idx = static_cast<size_t>(local_y / row_height());
+    auto idx = static_cast<size_t>((local_y - hh) / row_height());
     if (idx >= model_->row_count()) {
         return std::nullopt;
     }
@@ -316,51 +313,54 @@ std::optional<size_t> TableView::row_at_y(float y) const {
 }
 
 int TableView::column_at_x(float x) const {
-    auto bw = Theme::current().palette.border_width;
-    auto cx = bw - scroll_x_;
-    for (auto c = 0; c < static_cast<int>(column_widths_.size()); c++) {
-        cx += column_widths_[c];
-        if (x < cx) {
-            return c;
+    auto current_x = 0.0f;
+    for (size_t i = 0; i < column_widths_.size(); ++i) {
+        if (x >= current_x && x < current_x + column_widths_[i]) {
+            return static_cast<int>(i);
         }
+        current_x += column_widths_[i];
     }
     return -1;
 }
 
 int TableView::header_resize_hit(float x, float y) const {
-    auto bw = Theme::current().palette.border_width;
-    auto hh = header_height();
-    if (y < bw || y > hh + bw) {
+    if (!show_header_) {
         return -1;
     }
 
-    auto constexpr grip = 6.0f;
-    auto cx = bw - scroll_x_;
-    for (auto c = 0; c < static_cast<int>(column_widths_.size()); c++) {
-        cx += column_widths_[c];
-        if (x >= cx - grip && x <= cx + grip) {
-            return c;
+    auto vr = viewport_rect();
+    auto hh = header_height();
+    if (y < vr.y || y >= vr.y + hh) {
+        return -1;
+    }
+
+    auto current_x = vr.x - scroll_x_;
+    auto grip_width = 8.0f;
+
+    for (size_t i = 0; i < column_widths_.size(); ++i) {
+        current_x += column_widths_[i];
+        if (std::abs(x - current_x) < grip_width) {
+            return static_cast<int>(i);
         }
     }
+
     return -1;
 }
 
 void TableView::scroll_to_row(size_t row) {
-    // FIXME: modify variables to more descriptive names
-    auto bw = Theme::current().palette.border_width;
     auto rh = row_height();
     auto hh = header_height();
-    auto visible_h = rect_.height - hh - bw * 2;
+    auto vr = viewport_rect();
     auto top = rh * static_cast<float>(row);
     auto bot = top + rh;
 
-    if (bot > scroll_y_ + visible_h) {
-        scroll_y_ = bot - visible_h;
+    if (bot > scroll_y_ + vr.height - hh) {
+        scroll_y_ = bot - vr.height + hh;
     }
     if (top < scroll_y_) {
         scroll_y_ = top;
     }
-    clamp_scroll();
+    update_scroll_state();
 }
 
 void TableView::paint(Painter &painter) {
@@ -374,6 +374,7 @@ void TableView::paint(Painter &painter) {
     theme.draw_table_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
 
     if (!model_) {
+        draw_scrollbars(painter);
         return;
     }
     auto const &palette = theme.palette;
@@ -385,20 +386,18 @@ void TableView::paint(Painter &painter) {
     auto nrows = model_->row_count();
     auto ncols = model_->column_count();
     auto is_dark = palette.window.luma() < 0.5f;
+    auto vr = viewport_rect();
 
-    auto bw = palette.border_width;
+    // ── Header ───────────────────────────────────────────────────────────────
     if (show_header_) {
-        auto header_rect = Rect{bw, bw, rect_.width - bw * 2, hh};
-        auto hx = bw - scroll_x_;
+        auto header_rect = Rect{vr.x, vr.y, vr.width, hh};
+        auto hx = vr.x - scroll_x_;
         auto header_bg = is_dark ? palette.base : palette.alternate;
 
+        painter.push_clip(header_rect);
         if (palette.corner_radius > 0) {
-            auto cr = std::max(0.0f, palette.corner_radius - bw);
-            painter.push_clip(header_rect);
-            painter.fill_rounded_rect(
-                {header_rect.x, header_rect.y, header_rect.width, header_rect.height + cr},
-                header_bg, cr);
-            painter.pop_clip();
+            auto cr = std::max(0.0f, palette.corner_radius - palette.border_width);
+            painter.fill_rounded_rect({header_rect.x, header_rect.y, header_rect.width, header_rect.height + cr}, header_bg, cr);
         } else {
             painter.fill_rect(header_rect, header_bg);
         }
@@ -407,92 +406,63 @@ void TableView::paint(Painter &painter) {
             auto cw = column_widths_[c];
             auto sep_x = hx + cw;
 
-            if (sep_x > bw && hx < rect_.width - bw) {
-                auto text_y = bw + (hh - painter.font_metrics(palette.fonts.size).height) / 2.0f +
+            if (sep_x > vr.x && hx < vr.x + vr.width) {
+                auto text_y = vr.y + (hh - painter.font_metrics(palette.fonts.size).height) / 2.0f +
                               painter.font_metrics(palette.fonts.size).ascent;
                 auto text = model_->header_text(c);
 
                 if (static_cast<int>(c) == sort_column_ && sort_order_ != SortOrder::None) {
-                    text +=
-                        (sort_order_ == SortOrder::Ascending) ? " \xe2\x96\xb2" : " \xe2\x96\xbc";
+                    text += (sort_order_ == SortOrder::Ascending) ? " \xe2\x96\xb2" : " \xe2\x96\xbc";
                 }
 
-                // FIXME: add theme primitive to draw the table header
-                painter.push_clip(
-                    {std::max(hx, bw), bw, std::min(cw, rect_.width - bw - std::max(hx, bw)), hh});
-                painter.draw_text(text, {hx + style.item_padding_h, text_y}, palette.text,
-                                  palette.fonts.size);
+                painter.push_clip({std::max(hx, vr.x), vr.y, std::min(cw, vr.x + vr.width - std::max(hx, vr.x)), hh});
+                painter.draw_text(text, {hx + style.item_padding_h, text_y}, palette.text, palette.fonts.size);
                 painter.pop_clip();
             }
-            if (sep_x > bw && sep_x < rect_.width - bw) {
+            if (sep_x > vr.x && sep_x < vr.x + vr.width) {
                 auto border = is_dark ? palette.border.lighten(0.2f) : palette.border;
-                painter.draw_line({sep_x, bw}, {sep_x, bw + hh}, border, 0.5f);
+                painter.draw_line({sep_x, vr.y}, {sep_x, vr.y + hh}, border, 0.5f);
             }
             hx += cw;
         }
-        painter.draw_line({bw, bw + hh}, {rect_.width - bw, bw + hh}, palette.border);
+        painter.draw_line({vr.x, vr.y + hh}, {vr.x + vr.width, vr.y + hh}, palette.border);
+        painter.pop_clip();
     }
 
-    auto body_clip = Rect{bw, bw + hh, rect_.width - bw * 2, rect_.height - hh - bw * 2};
+    auto body_clip = Rect{vr.x, vr.y + hh, vr.width, vr.height - hh};
     auto first_visible = static_cast<size_t>(std::max(0.0f, scroll_y_) / rh);
-    auto last_visible =
-        nrows > 0 ? std::min(nrows - 1,
-                             static_cast<size_t>((scroll_y_ + rect_.height - hh - bw * 2) / rh))
-                  : size_t{0};
-    auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
+    auto last_visible = nrows > 0 ? std::min(nrows - 1, static_cast<size_t>((scroll_y_ + body_clip.height) / rh)) : size_t{0};
 
     painter.push_clip(body_clip);
     painter.fill_rect(body_clip, palette.base);
     for (auto i = first_visible; i <= last_visible; i++) {
         auto mr = model_row(i);
-        auto ry = bw + hh + rh * static_cast<float>(i) - scroll_y_;
+        auto ry = body_clip.y + rh * static_cast<float>(i) - scroll_y_;
         auto selected = is_selected(i);
         auto hovered = (hovered_row_ == i) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
 
-        auto cx = bw - scroll_x_;
+        auto cx = vr.x - scroll_x_;
         for (auto c = size_t{0}; c < ncols; c++) {
             auto cw = column_widths_[c];
-            if (cx + cw > bw && cx < rect_.width - bw) {
+            if (cx + cw > vr.x && cx < vr.x + vr.width) {
                 auto cell_rect = Rect{cx, ry, cw, rh};
-                painter.push_clip(
-                    {std::max(cx, bw), ry, std::min(cw, rect_.width - bw - std::max(cx, bw)), rh});
+                painter.push_clip({std::max(cx, vr.x), ry, std::min(cw, vr.x + vr.width - std::max(cx, vr.x)), rh});
 
                 if (c == 0) {
                     auto icon = model_->icon_at(mr, 0, 16);
-                    theme.draw_list_item(painter, cell_rect, model_->cell_text(mr, c), icon,
-                                         selected, hovered, alt_row);
+                    theme.draw_list_item(painter, cell_rect, model_->cell_text(mr, c), icon, selected, hovered, alt_row);
                 } else {
-                    theme.draw_list_item(painter, cell_rect, model_->cell_text(mr, c), nullptr,
-                                         selected, hovered, alt_row);
+                    theme.draw_list_item(painter, cell_rect, model_->cell_text(mr, c), nullptr, selected, hovered, alt_row);
                 }
                 painter.pop_clip();
             }
             cx += cw;
         }
     }
-
-    // ── Scrollbars ───────────────────────────────────────────────────────────
-    auto content_h = total_content_height();
-    auto visible_h = rect_.height - hh;
-    if (content_h > visible_h) {
-        auto bar_h = std::max(20.0f, visible_h * (visible_h / content_h));
-        auto bar_y = hh + (scroll_y_ / content_h) * visible_h;
-        auto sb_color = is_dark ? Color::rgba(1, 1, 1, 0.25f) : Color::rgba(0, 0, 0, 0.25f);
-        auto sb = Rect{rect_.width - 6.0f, bar_y, 4.0f, bar_h};
-        painter.fill_rounded_rect(sb, sb_color, 2.0f);
-    }
-
-    auto content_w = total_content_width();
-    if (content_w > rect_.width) {
-        auto bar_w = std::max(20.0f, rect_.width * (rect_.width / content_w));
-        auto bar_x = (scroll_x_ / content_w) * rect_.width;
-        auto sb_color = is_dark ? Color::rgba(1, 1, 1, 0.25f) : Color::rgba(0, 0, 0, 0.25f);
-        auto sb = Rect{bar_x, rect_.height - 6.0f, bar_w, 4.0f};
-        painter.fill_rounded_rect(sb, sb_color, 2.0f);
-    }
-
     painter.pop_clip(); // body
+
+    draw_scrollbars(painter);
 }
 
 bool TableView::handle_mouse(MouseEvent const &event) {
@@ -500,22 +470,19 @@ bool TableView::handle_mouse(MouseEvent const &event) {
         return false;
     }
 
-    auto const local_rect = Rect{0, 0, rect_.width, rect_.height};
-    if (event.type == MouseEvent::Type::Scroll) {
-        if (!local_rect.contains(event.position)) {
-            return false;
-        }
-        scroll_y_ -= event.scroll_dy;
-        scroll_x_ -= event.scroll_dx;
-        clamp_scroll();
+    if (handle_scrollbar_mouse(event)) {
         return true;
     }
 
-    if (event.type == MouseEvent::Type::Press) {
-        if (!local_rect.contains(event.position)) {
-            return false;
-        }
+    auto vr = viewport_rect();
+    if (!vr.contains(event.position)) {
+        return false;
+    }
 
+    auto local_x = event.position.x - vr.x + scroll_x_;
+    auto local_y = event.position.y - vr.y + scroll_y_;
+
+    if (event.type == MouseEvent::Type::Press) {
         auto col = header_resize_hit(event.position.x, event.position.y);
         if (col >= 0) {
             if (event.click_count >= 2) {
@@ -534,6 +501,7 @@ bool TableView::handle_mouse(MouseEvent const &event) {
         auto delta = event.position.x - resize_start_x_;
         auto min_w = Theme::current().table_view.min_column_width;
         column_widths_[resize_col_] = std::max(min_w, resize_start_w_ + delta);
+        update_scroll_state();
         return true;
     }
 
@@ -543,28 +511,19 @@ bool TableView::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Move) {
-        if (local_rect.contains(event.position)) {
-            over_resize_grip_ = header_resize_hit(event.position.x, event.position.y) >= 0;
-            hovered_row_ = row_at_y(event.position.y);
-            return true;
-        }
-        over_resize_grip_ = false;
-        hovered_row_ = std::nullopt;
-        return false;
+        over_resize_grip_ = header_resize_hit(event.position.x, event.position.y) >= 0;
+        hovered_row_ = row_at_y(event.position.y);
+        return true;
     }
 
     if (event.type == MouseEvent::Type::Press) {
-        if (!local_rect.contains(event.position)) {
-            return false;
-        }
-
         if (event.button == 3 && on_back_requested) {
             on_back_requested();
             return true;
         }
 
         auto hh = header_height();
-        if (event.position.y < hh) {
+        if (event.position.y < vr.y + hh) {
             return true;
         }
 
@@ -601,17 +560,12 @@ bool TableView::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Release) {
-        if (!local_rect.contains(event.position)) {
-            return false;
-        }
-
         auto hh = header_height();
-        if (event.position.y < hh) {
-            auto col = column_at_x(event.position.x);
+        if (event.position.y < vr.y + hh) {
+            auto col = column_at_x(local_x);
             if (col >= 0) {
                 if (sort_column_ == col) {
-                    sort_order_ = sort_order_ == SortOrder::Ascending ? SortOrder::Descending
-                                                                      : SortOrder::Ascending;
+                    sort_order_ = sort_order_ == SortOrder::Ascending ? SortOrder::Descending : SortOrder::Ascending;
                 } else {
                     sort_column_ = col;
                     sort_order_ = SortOrder::Ascending;

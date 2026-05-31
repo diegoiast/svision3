@@ -61,8 +61,10 @@ set(TOOLKIT_SOURCES
     src/toolkit/directory_dialog.cpp
     src/toolkit/undo_stack.cpp
     src/toolkit/slider.cpp
+    src/toolkit/splitter.cpp
     src/toolkit/spin_box.cpp
     src/toolkit/line_input.cpp
+    src/toolkit/line_input_undo.cpp
     src/toolkit/text_edit.cpp
     src/toolkit/table_view.cpp
     src/toolkit/tree_view.cpp
@@ -90,7 +92,8 @@ set(TOOLKIT_SOURCES
     src/toolkit/rich_label.cpp
     src/toolkit/scroll_area.cpp
     src/toolkit/scrollbar.cpp
-    src/toolkit/splitter.cpp
+    src/toolkit/scrollable_widget.cpp
+
     src/toolkit/toast_widget.cpp
     src/toolkit/status_bar.cpp
 )
