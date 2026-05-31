@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "toolkit/item_model.hpp"
 #include "toolkit/scrollable_widget.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
