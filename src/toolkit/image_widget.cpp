@@ -20,8 +20,6 @@ nlohmann::json ImageWidget::to_json() const {
     auto j = Widget::to_json();
     j["checkboard"] = show_checkerboard_;
     j["zoom"] = zoom_;
-    j["scroll_y"] = scroll_y_;
-    j["scroll_x"] = scroll_x_;
     return j;
 }
 
@@ -32,12 +30,6 @@ void ImageWidget::from_json(nlohmann::json const &j) {
     }
     if (j.contains("zoom")) {
         zoom_ = j["zoom"];
-    }
-    if (j.contains("scroll_y")) {
-        scroll_y_ = j["scroll_y"];
-    }
-    if (j.contains("scroll_x")) {
-        scroll_x_ = j["scroll_x"];
     }
 }
 
@@ -67,7 +59,7 @@ void ImageWidget::set_show_checkerboard(bool show) {
 
 void ImageWidget::set_zoom(float zoom) {
     zoom_ = std::clamp(zoom, 0.1f, 10.0f);
-    clamp_scroll();
+    update_scrollbars({content_w(), content_h()});
     if (window_) {
         window_->request_redraw("ImageWidget::set_zoom");
     }
@@ -89,16 +81,6 @@ float ImageWidget::content_h() const {
     return (float)image_->height * zoom_;
 }
 
-void ImageWidget::clamp_scroll() {
-    auto w = content_w();
-    auto h = content_h();
-
-    scroll_x_ = std::clamp(scroll_x_, 0.0f, std::max(0.0f, w - rect_.width));
-    scroll_y_ = std::clamp(scroll_y_, 0.0f, std::max(0.0f, h - rect_.height));
-}
-
-void ImageWidget::update_size() { clamp_scroll(); }
-
 void ImageWidget::fit_to_widget() {
     if (!image_) {
         return;
@@ -114,10 +96,15 @@ void ImageWidget::fit_to_widget() {
     } else {
         set_zoom(rect_.height / image_->height);
     }
-    scroll_x_ = 0;
-    scroll_y_ = 0;
+    scroll_to(0, 0);
     if (window_) {
         window_->request_redraw("ImageWidget::fit_to_widget");
+    }
+}
+
+void ImageWidget::on_scroll(float /*x*/, float /*y*/) {
+    if (window_) {
+        window_->request_redraw("ImageWidget::on_scroll");
     }
 }
 
@@ -136,8 +123,8 @@ void ImageWidget::paint(Painter &painter) {
     if (image_) {
         auto w = content_w();
         auto h = content_h();
-        auto x = -scroll_x_;
-        auto y = -scroll_y_;
+        auto x = -scroll_x();
+        auto y = -scroll_y();
 
         if (w < rect_.width) {
             x = (rect_.width - w) / 2.0f;
@@ -150,22 +137,7 @@ void ImageWidget::paint(Painter &painter) {
         painter.draw_image_scaled(*image_, dest);
     }
 
-    // Draw scrollbars
-    auto needs_h = content_w() > rect_.width;
-    auto needs_v = content_h() > rect_.height;
-
-    if (needs_h) {
-        auto ratio = rect_.width / content_w();
-        auto thumb_len = std::max(20.0f, ratio * rect_.width);
-        auto thumb_x = (scroll_x_ / (content_w() - rect_.width)) * (rect_.width - thumb_len);
-        painter.fill_rect({thumb_x, rect_.height - 6, thumb_len, 6}, Color::with_gray(0.5f));
-    }
-    if (needs_v) {
-        auto ratio = rect_.height / content_h();
-        auto thumb_len = std::max(20.0f, ratio * rect_.height);
-        auto thumb_y = (scroll_y_ / (content_h() - rect_.height)) * (rect_.height - thumb_len);
-        painter.fill_rect({rect_.width - 6, thumb_y, 6, thumb_len}, Color::with_gray(0.5f));
-    }
+    draw_scrollbars(painter);
 }
 
 bool ImageWidget::handle_mouse(MouseEvent const &event) {
@@ -196,9 +168,8 @@ bool ImageWidget::handle_mouse(MouseEvent const &event) {
 
     if (dragging_) {
         if (event.type == MouseEvent::Type::Drag) {
-            scroll_x_ -= (event.position.x - last_mouse_pos_.x);
-            scroll_y_ -= (event.position.y - last_mouse_pos_.y);
-            clamp_scroll();
+            scroll_to(scroll_x() - (event.position.x - last_mouse_pos_.x),
+                      scroll_y() - (event.position.y - last_mouse_pos_.y));
             last_mouse_pos_ = event.position;
             if (window_) {
                 window_->request_redraw("ImageWidget::handle_mouse");
@@ -218,13 +189,13 @@ bool ImageWidget::handle_key(KeyEvent const &event) {
     if (event.type == KeyEvent::Type::Press) {
         auto scroll_step = 20.0f;
         if (event.key == Key::Up) {
-            scroll_y_ -= scroll_step;
+            scroll_to(scroll_x(), scroll_y() - scroll_step);
         } else if (event.key == Key::Down) {
-            scroll_y_ += scroll_step;
+            scroll_to(scroll_x(), scroll_y() + scroll_step);
         } else if (event.key == Key::Left) {
-            scroll_x_ -= scroll_step;
+            scroll_to(scroll_x() - scroll_step, scroll_y());
         } else if (event.key == Key::Right) {
-            scroll_x_ += scroll_step;
+            scroll_to(scroll_x() + scroll_step, scroll_y());
         } else if (event.key == Key::Plus) {
             set_zoom(zoom_ * 1.1f);
             return true;
@@ -237,7 +208,6 @@ bool ImageWidget::handle_key(KeyEvent const &event) {
         } else {
             return false;
         }
-        clamp_scroll();
         if (window_) {
             window_->request_redraw("ImageWidget::handle_key");
         }

@@ -3,12 +3,12 @@
 
 #pragma once
 
-#include "toolkit/widget.hpp"
+#include "toolkit/scrollable_widget.hpp"
 #include <memory>
 
 namespace toolkit {
 
-class ImageWidget : public Widget {
+class ImageWidget : public ScrollableWidget {
     DECLARE_WIDGET(ImageWidget)
   public:
     ImageWidget();
@@ -37,17 +37,15 @@ class ImageWidget : public Widget {
     std::shared_ptr<ImageData> image_;
     bool show_checkerboard_ = true;
     float zoom_ = 1.0f;
-    float scroll_x_ = 0.0f;
-    float scroll_y_ = 0.0f;
 
     // For panning
     bool dragging_ = false;
     Point last_mouse_pos_;
 
     void update_size();
-    void clamp_scroll();
     float content_w() const;
     float content_h() const;
+    void on_scroll(float x, float y) override;
 };
 
 } // namespace toolkit
