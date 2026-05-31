@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "toolkit/item_model.hpp"
+#include "toolkit/scrollable_widget.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
 #include <memory>
@@ -42,7 +44,7 @@ class SimpleTreeModel : public TreeModel {
     std::vector<TreeNode> roots_;
 };
 
-class TreeView : public Widget, public Fluent<TreeView> {
+class TreeView : public ScrollableWidget, public Fluent<TreeView> {
   public:
     explicit TreeView(std::shared_ptr<TreeModel> model);
 
@@ -72,8 +74,12 @@ class TreeView : public Widget, public Fluent<TreeView> {
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
+    void set_rect(Rect const &rect) override;
     Size size_hint() const override;
     CursorShape cursor() const override;
+
+  protected:
+    void on_scroll(float x, float y) override;
 
   private:
     struct FlatNode {
@@ -84,7 +90,6 @@ class TreeView : public Widget, public Fluent<TreeView> {
     void rebuild_flattened();
     void flatten_node(TreeNode &node, int depth);
     float row_height() const;
-    float total_content_height() const;
     void clamp_scroll();
     int node_at_y(float y) const;
     void scroll_to_node(int index);
@@ -98,7 +103,6 @@ class TreeView : public Widget, public Fluent<TreeView> {
     int anchor_ = -1;
     int cursor_ = -1;
     int hovered_ = -1;
-    float scroll_offset_ = 0;
     bool alternating_ = false;
     bool multi_select_ = false;
 };

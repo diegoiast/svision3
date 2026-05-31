@@ -50,7 +50,7 @@ TreeView &TreeView::set_model(std::shared_ptr<TreeModel> model) {
     selection_.clear();
     anchor_ = -1;
     cursor_ = -1;
-    scroll_offset_ = 0;
+    scroll_to(0, 0);
     if (model_) {
         model_->on_data_changed = [this] {
             rebuild_flattened();
@@ -151,6 +151,7 @@ void TreeView::expand(int node_index) {
     if (flat.node_ptr && !flat.node_ptr->children.empty()) {
         flat.node_ptr->expanded = true;
         rebuild_flattened();
+        clamp_scroll();
         notify_expansion(node_index);
     }
 }
@@ -164,6 +165,7 @@ void TreeView::collapse(int node_index) {
     if (flat.node_ptr && !flat.node_ptr->children.empty()) {
         flat.node_ptr->expanded = false;
         rebuild_flattened();
+        clamp_scroll();
         notify_expansion(node_index);
     }
 }
@@ -191,17 +193,10 @@ TreeView &TreeView::set_alternating_row_colors(bool enabled) {
     return *this;
 }
 
-void TreeView::scroll_to_node(int index) {
-    auto rh = row_height();
-    auto top = rh * static_cast<float>(index);
-    auto bot = top + rh;
-    if (bot > scroll_offset_ + rect_.height) {
-        scroll_offset_ = bot - rect_.height;
+void TreeView::on_scroll(float /*x*/, float /*y*/) {
+    if (window()) {
+        window()->request_redraw("tree scroll");
     }
-    if (top < scroll_offset_) {
-        scroll_offset_ = top;
-    }
-    clamp_scroll();
 }
 
 float TreeView::row_height() const {
@@ -212,15 +207,21 @@ float TreeView::row_height() const {
     return fm.height + style.item_padding * 2;
 }
 
-float TreeView::total_content_height() const {
-    return row_height() * static_cast<float>(flat_nodes_.size());
+void TreeView::clamp_scroll() {
+    update_scrollbars({0.0f, row_height() * static_cast<float>(flat_nodes_.size())});
 }
 
-void TreeView::clamp_scroll() {
-    auto visible = rect_.height;
-    auto content = total_content_height();
-    auto max_scroll = std::max(0.0f, content - visible);
-    scroll_offset_ = std::clamp(scroll_offset_, 0.0f, max_scroll);
+void TreeView::scroll_to_node(int index) {
+    auto rh = row_height();
+    auto top = rh * static_cast<float>(index);
+    auto bot = top + rh;
+    auto vr = viewport_rect();
+    if (bot > scroll_y() + vr.height) {
+        scroll_to(scroll_x(), bot - vr.height);
+    }
+    if (top < scroll_y()) {
+        scroll_to(scroll_x(), top);
+    }
 }
 
 int TreeView::node_at_y(float y) const {
@@ -228,7 +229,7 @@ int TreeView::node_at_y(float y) const {
         return -1;
     }
 
-    auto local_y = y + scroll_offset_;
+    auto local_y = y + scroll_y();
     if (local_y < 0) {
         return -1;
     }
@@ -257,19 +258,21 @@ void TreeView::paint(Painter &painter) {
         .interaction   = ButtonState::Normal,
         .focused       = is_focused(),
         .enabled       = is_enabled(),
-        .window_active = window_ ? window_->is_active() : true,
+        .window_active = window() ? window()->is_active() : true,
     };
-    theme.draw_tree_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
+    theme.draw_tree_background(painter, {0, 0, rect().width, rect().height}, wstate);
 
-    painter.push_clip({0, 0, rect_.width, rect_.height});
+    auto vr = viewport_rect();
+    painter.push_clip(vr);
+    painter.push_translation({vr.x - scroll_x(), vr.y - scroll_y()});
 
-    auto first_visible = std::max(0, static_cast<int>(scroll_offset_ / rh));
-    auto last_visible = std::min(n - 1, static_cast<int>((scroll_offset_ + rect_.height) / rh));
+    auto first_visible = std::max(0, static_cast<int>(scroll_y() / rh));
+    auto last_visible = std::min(n - 1, static_cast<int>((scroll_y() + vr.height) / rh));
 
     for (auto i = first_visible; i <= last_visible; i++) {
         auto const &flat = flat_nodes_[i];
-        auto iy = rh * i - scroll_offset_;
-        auto item_rect = Rect{0, iy, rect_.width, rh};
+        auto iy = rh * i;
+        auto item_rect = Rect{vr.x, vr.y + iy, rect().width, rh};
         auto selected = is_selected(i);
         auto hovered = (i == hovered_) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
@@ -290,7 +293,7 @@ void TreeView::paint(Painter &painter) {
 
         if (flat.depth > 0) {
             for (int d = 0; d < flat.depth; d++) {
-                auto connector_x = item_padding_h + d * indent + indent / 2;
+                auto connector_x = vr.x + item_padding_h + d * indent + indent / 2;
                 auto should_draw_line = false;
                 for (auto j = i - 1; j >= 0; j--) {
                     if (flat_nodes_[j].depth == d) {
@@ -302,7 +305,7 @@ void TreeView::paint(Painter &painter) {
                     }
                 }
                 if (should_draw_line) {
-                    painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, palette.border,
+                    painter.draw_line({connector_x, vr.y + iy}, {connector_x, vr.y + iy + rh}, palette.border,
                                       1.0f);
                 }
             }
@@ -317,23 +320,23 @@ void TreeView::paint(Painter &painter) {
                 }
             }
             if (has_next_sibling) {
-                auto connector_x = item_padding_h + flat.depth * indent + indent / 2;
-                painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, palette.border, 1.0f);
+                auto connector_x = vr.x + item_padding_h + flat.depth * indent + indent / 2;
+                painter.draw_line({connector_x, vr.y + iy}, {connector_x, vr.y + iy + rh}, palette.border, 1.0f);
             }
 
-            auto handle_x = item_padding_h + flat.depth * indent + indent / 2;
-            auto handle_end_x = item_padding_h + flat.depth * indent + indent;
-            auto handle_y = iy + rh / 2;
+            auto handle_x = vr.x + item_padding_h + flat.depth * indent + indent / 2;
+            auto handle_end_x = vr.x + item_padding_h + flat.depth * indent + indent;
+            auto handle_y = vr.y + iy + rh / 2;
             painter.draw_line({handle_x, handle_y}, {handle_end_x, handle_y}, palette.border, 1.0f);
         } else {
             if (i < n - 1 && flat_nodes_[i + 1].depth == 0) {
-                auto connector_x = item_padding_h + indent / 2;
-                painter.draw_line({connector_x, iy}, {connector_x, iy + rh}, palette.border, 1.0f);
+                auto connector_x = vr.x + item_padding_h + indent / 2;
+                painter.draw_line({connector_x, vr.y + iy}, {connector_x, vr.y + iy + rh}, palette.border, 1.0f);
             }
 
-            auto handle_x = item_padding_h + indent / 2;
-            auto handle_end_x = item_padding_h + indent;
-            auto handle_y = iy + rh / 2;
+            auto handle_x = vr.x + item_padding_h + indent / 2;
+            auto handle_end_x = vr.x + item_padding_h + indent;
+            auto handle_y = vr.y + iy + rh / 2;
             painter.draw_line({handle_x, handle_y}, {handle_end_x, handle_y}, palette.border, 1.0f);
         }
 
@@ -346,17 +349,9 @@ void TreeView::paint(Painter &painter) {
                              flat.node_ptr->expanded, selected, hovered, alt_row);
     }
 
-    auto content_h = total_content_height();
-    if (content_h > rect_.height) {
-        auto bar_h = std::max(20.0f, rect_.height * (rect_.height / content_h));
-        auto bar_y = (scroll_offset_ / content_h) * rect_.height;
-        auto bar_x = rect_.width - 6.0f;
-        auto sb = Rect{bar_x, bar_y, 4.0f, bar_h};
-
-        painter.fill_rounded_rect(sb, palette.text, 2.0f);
-    }
-
+    painter.pop_translation();
     painter.pop_clip();
+    draw_scrollbars(painter);
 }
 
 bool TreeView::handle_mouse(MouseEvent const &event) {
@@ -364,75 +359,74 @@ bool TreeView::handle_mouse(MouseEvent const &event) {
         return false;
     }
 
-    auto const local_rect = Rect{0, 0, rect_.width, rect_.height};
-
-    if (event.type == MouseEvent::Type::Scroll) {
-        if (!local_rect.contains(event.position)) {
-            return false;
-        }
-        scroll_offset_ -= event.scroll_dy;
-        clamp_scroll();
+    if (handle_scrollbar_mouse(event)) {
         return true;
     }
 
-    if (event.type == MouseEvent::Type::Move) {
-        if (local_rect.contains(event.position)) {
-            hovered_ = node_at_y(event.position.y);
-            return true;
-        }
-        hovered_ = -1;
+    auto vr = viewport_rect();
+    if (!vr.contains(event.position)) {
         return false;
     }
 
-    if (event.type == MouseEvent::Type::Press) {
-        if (!local_rect.contains(event.position)) {
-            return false;
-        }
-        auto idx = node_at_y(event.position.y);
-        if (idx < 0) {
-            return false;
-        }
+    auto p = event.position;
+    p.x -= vr.x;
+    p.y -= vr.y;
+    p.y += scroll_y();
 
-        auto const &flat = flat_nodes_[idx];
-        auto *node_ptr = flat.node_ptr;
-        auto has_children = node_ptr && !node_ptr->children.empty();
-        auto indent = Theme::current().tree_view.indent;
-        auto click_x = event.position.x;
-        auto expected_x = flat.depth * indent;
+    auto idx = node_at_y(p.y);
+    if (idx < 0) {
+        return false;
+    }
 
-        if (has_children && click_x >= expected_x && click_x < expected_x + indent) {
-            toggle(idx);
-            return true;
-        }
-
-        if (event.click_count == 2 && has_children) {
-            toggle(idx);
-            return true;
-        }
-
-        auto toggle_mod = event.super || event.ctrl;
-
-        if (multi_select_ && event.shift && anchor_ >= 0) {
-            cursor_ = idx;
-            select_range_from_anchor();
-            notify_selection();
-        } else if (multi_select_ && toggle_mod) {
-            if (is_selected(idx)) {
-                selection_.erase(idx);
-            } else {
-                selection_.insert(idx);
-            }
-            anchor_ = idx;
-            cursor_ = idx;
-            notify_selection();
-        } else {
-            selection_.clear();
-            selection_.insert(idx);
-            anchor_ = idx;
-            cursor_ = idx;
-            notify_selection();
-        }
+    switch (event.type) {
+    case MouseEvent::Type::Move:
+        hovered_ = idx;
         return true;
+    case MouseEvent::Type::Press:
+        {
+            auto const &flat = flat_nodes_[idx];
+            auto *node_ptr = flat.node_ptr;
+            auto has_children = node_ptr && !node_ptr->children.empty();
+            auto indent = Theme::current().tree_view.indent;
+            auto click_x = p.x;
+            auto expected_x = flat.depth * indent;
+
+            if (has_children && click_x >= expected_x && click_x < expected_x + indent) {
+                toggle(idx);
+                return true;
+            }
+
+            if (event.click_count == 2 && has_children) {
+                toggle(idx);
+                return true;
+            }
+
+            auto toggle_mod = event.super || event.ctrl;
+
+            if (multi_select_ && event.shift && anchor_ >= 0) {
+                cursor_ = idx;
+                select_range_from_anchor();
+                notify_selection();
+            } else if (multi_select_ && toggle_mod) {
+                if (is_selected(idx)) {
+                    selection_.erase(idx);
+                } else {
+                    selection_.insert(idx);
+                }
+                anchor_ = idx;
+                cursor_ = idx;
+                notify_selection();
+            } else {
+                selection_.clear();
+                selection_.insert(idx);
+                anchor_ = idx;
+                cursor_ = idx;
+                notify_selection();
+            }
+            return true;
+        }
+    default:
+        break;
     }
 
     return false;
@@ -459,7 +453,7 @@ bool TreeView::handle_key(KeyEvent const &event) {
         }
         scroll_to_node(cursor_);
         notify_selection();
-        window()->request_redraw();
+        window()->request_redraw("tree key");
         return true;
     }
     case Key::Up: {
@@ -475,7 +469,7 @@ bool TreeView::handle_key(KeyEvent const &event) {
         }
         scroll_to_node(cursor_);
         notify_selection();
-        window()->request_redraw();
+        window()->request_redraw("tree key");
         return true;
     }
 
@@ -491,7 +485,7 @@ bool TreeView::handle_key(KeyEvent const &event) {
             set_selected_node(0);
         }
         scroll_to_node(0);
-        window()->request_redraw();
+        window()->request_redraw("tree key");
         return true;
     }
     case Key::End: {
@@ -506,7 +500,7 @@ bool TreeView::handle_key(KeyEvent const &event) {
             set_selected_node(n - 1);
         }
         scroll_to_node(n - 1);
-        window()->request_redraw();
+        window()->request_redraw("tree key");
         return true;
     }
 
@@ -517,7 +511,7 @@ bool TreeView::handle_key(KeyEvent const &event) {
             auto has_children = node_ptr && !node_ptr->children.empty();
             if (has_children && !node_ptr->expanded) {
                 expand(cursor_);
-                window()->request_redraw();
+                window()->request_redraw("tree key");
                 return true;
             }
         }
@@ -531,7 +525,7 @@ bool TreeView::handle_key(KeyEvent const &event) {
             auto has_children = node_ptr && !node_ptr->children.empty();
             if (has_children && node_ptr->expanded) {
                 collapse(cursor_);
-                window()->request_redraw();
+                window()->request_redraw("tree key");
                 return true;
             }
         }
@@ -542,6 +536,11 @@ bool TreeView::handle_key(KeyEvent const &event) {
     }
 
     return false;
+}
+
+void TreeView::set_rect(Rect const &rect) {
+    Widget::set_rect(rect);
+    clamp_scroll();
 }
 
 Size TreeView::size_hint() const {
