@@ -11,6 +11,9 @@ namespace toolkit {
 struct Point {
     float x = 0;
     float y = 0;
+
+    constexpr Point operator-(Point const &other) const { return {x - other.x, y - other.y}; }
+    constexpr Point operator+(Point const &other) const { return {x + other.x, y + other.y}; }
 };
 
 struct Size {
@@ -98,6 +101,8 @@ struct Margins {
     float bottom = 0;
     float left = 0;
 };
+
+enum class Orientation { Horizontal, Vertical };
 
 enum class Alignment { Fill, Start, Center, End };
 

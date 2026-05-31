@@ -1000,18 +1000,32 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
 }
 
 void BaseTheme::draw_scrollbar(Painter &painter, Rect const &rect, float value,
-                               WidgetState const &state, bool hovered_left_btn,
-                               bool pressed_left_btn, bool hovered_right_btn,
-                               bool pressed_right_btn, bool hovered_thumb) const {
+                                Orientation orientation, WidgetState const &state,
+                                bool hovered_left_btn, bool pressed_left_btn,
+                                bool hovered_right_btn, bool pressed_right_btn,
+                                bool hovered_thumb) const {
     auto enabled = state.enabled;
-    auto bs = std::min(rect.height, 16.0f);
-    auto track_rect = Rect{rect.x + bs, rect.y, rect.width - 2 * bs, rect.height};
-    auto thumb_h = rect.height - 4.0f;
-    auto thumb_w = std::max(20.0f, track_rect.width * 0.1f);
-    auto max_thumb_x = track_rect.width - thumb_w;
-    auto thumb_x = track_rect.x + value * max_thumb_x;
-    auto thumb_y = rect.y + (rect.height - thumb_h) / 2.0f;
-    auto thumb = Rect{thumb_x, thumb_y, thumb_w, thumb_h};
+    auto horizontal = orientation == Orientation::Horizontal;
+    auto bs = std::min(horizontal ? rect.height : rect.width, 16.0f);
+
+    auto track_rect = horizontal ? Rect{rect.x + bs, rect.y, rect.width - 2 * bs, rect.height}
+                                 : Rect{rect.x, rect.y + bs, rect.width, rect.height - 2 * bs};
+
+    auto thumb_size = std::max(20.0f, (horizontal ? track_rect.width : track_rect.height) * 0.1f);
+    auto max_thumb_move = (horizontal ? track_rect.width : track_rect.height) - thumb_size;
+
+    auto thumb = Rect{};
+    if (horizontal) {
+        auto thumb_h = rect.height - 4.0f;
+        auto thumb_x = track_rect.x + value * max_thumb_move;
+        auto thumb_y = rect.y + (rect.height - thumb_h) / 2.0f;
+        thumb = {thumb_x, thumb_y, thumb_size, thumb_h};
+    } else {
+        auto thumb_w = rect.width - 4.0f;
+        auto thumb_x = rect.x + (rect.width - thumb_w) / 2.0f;
+        auto thumb_y = track_rect.y + value * max_thumb_move;
+        thumb = {thumb_x, thumb_y, thumb_w, thumb_size};
+    }
 
     auto border_c = state.focused ? palette.accent : palette.border;
     auto track_c = state.focused ? palette.alternate : Color::mid(palette.window, palette.base);
@@ -1019,29 +1033,38 @@ void BaseTheme::draw_scrollbar(Painter &painter, Rect const &rect, float value,
     // Track background
     painter.draw_filled_frame(track_rect, track_c, border_c, palette, true);
 
-    // Left button
-    auto lbtn = Rect{rect.x, (rect.height - bs) / 2.0f, bs, bs};
-    auto lbtn_bg =
-        pressed_left_btn ? palette.border : (hovered_left_btn ? palette.alternate : palette.window);
-    painter.draw_filled_frame(lbtn, lbtn_bg, border_c, palette, pressed_left_btn);
+    // Buttons
+    auto lbtn = horizontal ? Rect{rect.x, (rect.height - bs) / 2.0f, bs, bs}
+                           : Rect{(rect.width - bs) / 2.0f, rect.y, bs, bs};
+    auto rbtn = horizontal ? Rect{rect.x + rect.width - bs, (rect.height - bs) / 2.0f, bs, bs}
+                           : Rect{(rect.width - bs) / 2.0f, rect.y + rect.height - bs, bs, bs};
 
-    auto larrow_c = enabled ? palette.text : palette.text_disabled;
-    auto ls = bs * 0.25f;
-    auto lcx = lbtn.x + lbtn.width / 2.0f;
-    auto lcy = lbtn.y + lbtn.height / 2.0f;
-    painter.fill_triangle({lcx - ls, lcy}, {lcx + ls, lcy - ls}, {lcx + ls, lcy + ls}, larrow_c);
+    auto draw_btn = [&](Rect const &r, bool pressed, bool hovered, bool is_next) {
+        auto bg = pressed ? palette.border : (hovered ? palette.alternate : palette.window);
+        painter.draw_filled_frame(r, bg, border_c, palette, pressed);
 
-    // Right button
-    auto rbtn = Rect{rect.x + rect.width - bs, (rect.height - bs) / 2.0f, bs, bs};
-    auto rbtn_bg = pressed_right_btn ? palette.border
-                                     : (hovered_right_btn ? palette.alternate : palette.window);
-    painter.draw_filled_frame(rbtn, rbtn_bg, border_c, palette, pressed_right_btn);
+        auto arrow_c = enabled ? palette.text : palette.text_disabled;
+        auto s = bs * 0.25f;
+        auto cx = r.x + r.width / 2.0f;
+        auto cy = r.y + r.height / 2.0f;
 
-    auto rarrow_c = enabled ? palette.text : palette.text_disabled;
-    auto rs = bs * 0.25f;
-    auto rcx = rbtn.x + rbtn.width / 2.0f;
-    auto rcy = rbtn.y + rbtn.height / 2.0f;
-    painter.fill_triangle({rcx + rs, rcy}, {rcx - rs, rcy - rs}, {rcx - rs, rcy + rs}, rarrow_c);
+        if (horizontal) {
+            if (is_next) {
+                painter.fill_triangle({cx + s, cy}, {cx - s, cy - s}, {cx - s, cy + s}, arrow_c);
+            } else {
+                painter.fill_triangle({cx - s, cy}, {cx + s, cy - s}, {cx + s, cy + s}, arrow_c);
+            }
+        } else {
+            if (is_next) {
+                painter.fill_triangle({cx, cy + s}, {cx - s, cy - s}, {cx + s, cy - s}, arrow_c);
+            } else {
+                painter.fill_triangle({cx, cy - s}, {cx - s, cy + s}, {cx + s, cy + s}, arrow_c);
+            }
+        }
+    };
+
+    draw_btn(lbtn, pressed_left_btn, hovered_left_btn, false);
+    draw_btn(rbtn, pressed_right_btn, hovered_right_btn, true);
 
     // Thumb
     auto thumb_bg = hovered_thumb ? palette.accent : palette.text;

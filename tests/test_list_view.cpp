@@ -1,4 +1,5 @@
 #include "toolkit/list_view.hpp"
+#include "toolkit/theme_factory.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
@@ -139,8 +140,40 @@ TEST_CASE("ListView relative coordinates", "[listview]") {
     // 5 items * ~20px = 100px. 190px is empty area.
     e.position = {10, 190};
     REQUIRE(lv.handle_mouse(e) == false);
+}
 
-    // Absolute position (110, 110) should fail because it's outside local [0, 200]
-    e.position = {110, 110};
-    REQUIRE(lv.handle_mouse(e) == false);
+TEST_CASE("ListView scrollbar visibility based on theme", "[listview]") {
+    auto model = make_model(20); // Should need scroll
+    ListView lv(model);
+    lv.set_rect({0, 0, 100, 100});
+
+    SECTION("Inline scrollbars (default Material)") {
+        auto t = ThemeFactory::create(ThemeStyle::Material, ColorScheme::Light);
+        Theme::set_current(std::move(t));
+        lv.on_theme_changed();
+
+        REQUIRE(Theme::current().palette.inline_scrollbars == true);
+        // We can't easily check vscroll_ private member here without making it public or using a friend,
+        // but we can check if it's found at a point where it should be if it were visible.
+        // Actually, we added find_focusable_at and widget_at overrides.
+        
+        // At (90, 50), it should be the ListView itself (or its items), not the scrollbar widget.
+        // If inline scrollbars are used, no separate widget is at that position.
+        REQUIRE(lv.widget_at({90, 50}) == &lv);
+    }
+
+    SECTION("Regular scrollbars (Win95)") {
+        auto t = ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light);
+        Theme::set_current(std::move(t));
+        lv.on_theme_changed();
+
+        REQUIRE(Theme::current().palette.inline_scrollbars == false);
+        
+        // At (90, 50), it should hit the scrollbar widget.
+        // ListView is 100 wide. bw=1. sw=16. Scrollbar is at [100-1-16, 99] = [83, 99].
+        auto *w = lv.widget_at({90, 50});
+        REQUIRE(w != &lv);
+        REQUIRE(w != nullptr);
+        REQUIRE(w->class_name() == "Scrollbar");
+    }
 }

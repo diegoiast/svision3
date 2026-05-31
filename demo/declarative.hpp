@@ -634,7 +634,7 @@ template <typename W> inline Element<toolkit::ScrollArea> scroll_area(Element<W>
 
 template <typename A, typename B>
 inline Element<toolkit::Splitter> hsplit(Element<A> first, Element<B> second, float ratio = 0.5f) {
-    auto sp = std::make_unique<toolkit::Splitter>(toolkit::Splitter::Orientation::Horizontal);
+    auto sp = std::make_unique<toolkit::Splitter>(toolkit::Orientation::Horizontal);
     sp->set_first(std::move(first.w));
     sp->set_second(std::move(second.w));
     sp->set_ratio(ratio);
@@ -643,7 +643,7 @@ inline Element<toolkit::Splitter> hsplit(Element<A> first, Element<B> second, fl
 
 template <typename A, typename B>
 inline Element<toolkit::Splitter> vsplit(Element<A> first, Element<B> second, float ratio = 0.5f) {
-    auto sp = std::make_unique<toolkit::Splitter>(toolkit::Splitter::Orientation::Vertical);
+    auto sp = std::make_unique<toolkit::Splitter>(toolkit::Orientation::Vertical);
     sp->set_first(std::move(first.w));
     sp->set_second(std::move(second.w));
     sp->set_ratio(ratio);

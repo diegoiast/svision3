@@ -932,7 +932,7 @@ int main(int argc, char *argv[]) {
     preview_editor->set_text(PREVIEW_DEFAULT_MD);
 
     auto preview_columns =
-        std::make_unique<toolkit::Splitter>(toolkit::Splitter::Orientation::Horizontal);
+        std::make_unique<toolkit::Splitter>(toolkit::Orientation::Horizontal);
     preview_columns->set_first(std::unique_ptr<toolkit::TextEdit>(preview_editor));
     preview_columns->set_second(std::move(preview_scroll));
 

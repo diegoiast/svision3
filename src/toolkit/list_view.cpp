@@ -14,7 +14,7 @@ ListView::ListView(std::shared_ptr<ItemModel> model) {
     state.focusable = true;
     if (model_) {
         model_->on_data_changed = [this] {
-            clamp_scroll();
+            update_scroll_state();
             if (window()) {
                 window()->request_redraw("list selection");
             }
@@ -27,10 +27,10 @@ ListView &ListView::set_model(std::shared_ptr<ItemModel> model) {
     selection_.clear();
     anchor_ = std::nullopt;
     cursor_ = std::nullopt;
-    scroll_offset_ = 0;
+    scroll_x_ = scroll_y_ = 0;
     if (model_) {
         model_->on_data_changed = [this] {
-            clamp_scroll();
+            update_scroll_state();
             if (window()) {
                 window()->request_redraw("list selection");
             }
@@ -108,19 +108,26 @@ void ListView::notify_selection() {
 }
 
 void ListView::scroll_to(size_t index) {
-    auto const &palette = Theme::current().palette;
-    auto bw = palette.border_width;
     auto ih = item_height();
     auto top = ih * static_cast<float>(index);
     auto bottom = top + ih;
-    auto visible_h = rect_.height - bw * 2;
-    if (bottom > scroll_offset_ + visible_h) {
-        scroll_offset_ = bottom - visible_h;
+    auto visible_h = viewport_rect().height;
+    if (bottom > scroll_y_ + visible_h) {
+        scroll_y_ = bottom - visible_h;
     }
-    if (top < scroll_offset_) {
-        scroll_offset_ = top;
+    if (top < scroll_y_) {
+        scroll_y_ = top;
     }
-    clamp_scroll();
+    update_scroll_state();
+}
+
+void ListView::set_rect(Rect const &r) {
+    Widget::set_rect(r);
+    update_scroll_state();
+}
+
+void ListView::update_scroll_state() {
+    update_scrollbars({0, total_content_height()});
 }
 
 float ListView::item_height() const {
@@ -137,23 +144,14 @@ float ListView::total_content_height() const {
     return item_height() * static_cast<float>(model_->row_count());
 }
 
-void ListView::clamp_scroll() {
-    auto const &palette = Theme::current().palette;
-    auto bw = palette.border_width;
-    auto visible = rect_.height - bw * 2;
-    auto content = total_content_height();
-    auto max_scroll = std::max(0.0f, content - visible);
-    scroll_offset_ = std::clamp(scroll_offset_, 0.0f, max_scroll);
-    this->window()->request_redraw("ListView::clamp_scroll");
-}
-
 std::optional<size_t> ListView::item_at_y(float y) const {
     if (!model_) {
         return std::nullopt;
     }
     auto const &palette = Theme::current().palette;
     auto bw = palette.border_width;
-    auto local_y = y - bw + scroll_offset_;
+
+    auto local_y = y - bw + scroll_y_;
     if (local_y < 0) {
         return std::nullopt;
     }
@@ -175,6 +173,7 @@ void ListView::paint(Painter &painter) {
     theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
 
     if (!model_ || model_->row_count() == 0) {
+        draw_scrollbars(painter);
         return;
     }
 
@@ -183,18 +182,15 @@ void ListView::paint(Painter &painter) {
     auto ih = item_height();
     auto n = model_->row_count();
     auto bw = palette.border_width;
-    auto is_dark = palette.window.luma() < 0.5f;
-    auto inner_w = rect_.width - bw * 2;
-    auto inner_h = rect_.height - bw * 2;
-    auto first_visible = static_cast<size_t>(scroll_offset_ / ih);
-    auto last_visible = std::min(n - 1, static_cast<size_t>((scroll_offset_ + inner_h) / ih));
-    auto alt_color = is_dark ? palette.base.lighten(0.03f) : palette.base.darken(0.02f);
 
-    auto body_clip = Rect{bw, bw, inner_w, inner_h};
-    painter.push_clip(body_clip);
+    auto vr = viewport_rect();
+    auto first_visible = static_cast<size_t>(scroll_y_ / ih);
+    auto last_visible = std::min(n - 1, static_cast<size_t>((scroll_y_ + vr.height) / ih));
+
+    painter.push_clip(vr);
     for (auto i = first_visible; i <= last_visible; i++) {
-        auto iy = bw + ih * static_cast<float>(i) - scroll_offset_;
-        auto item_rect = Rect{bw, iy, inner_w, ih};
+        auto iy = bw + ih * static_cast<float>(i) - scroll_y_;
+        auto item_rect = Rect{bw, iy, vr.width, ih};
         auto selected = is_selected(i);
         auto hovered = (hovered_ == i) && !selected;
         auto alt_row = alternating_ && (i % 2 == 1);
@@ -204,14 +200,7 @@ void ListView::paint(Painter &painter) {
     }
     painter.pop_clip();
 
-    auto content_h = total_content_height();
-    if (content_h > inner_h) {
-        auto bar_h = std::max(20.0f, inner_h * (inner_h / content_h));
-        auto bar_y = bw + (scroll_offset_ / content_h) * inner_h;
-        auto bar_x = rect_.width - bw - 6.0f;
-        auto sb = Rect{bar_x, bar_y, 4.0f, bar_h};
-        painter.fill_rounded_rect(sb, palette.text, 2.0f);
-    }
+    draw_scrollbars(painter);
 }
 
 bool ListView::handle_mouse(MouseEvent const &event) {
@@ -219,16 +208,11 @@ bool ListView::handle_mouse(MouseEvent const &event) {
         return false;
     }
 
-    auto const local_rect = Rect{0, 0, rect_.width, rect_.height};
-
-    if (event.type == MouseEvent::Type::Scroll) {
-        if (!local_rect.contains(event.position)) {
-            return false;
-        }
-        scroll_offset_ -= event.scroll_dy;
-        clamp_scroll();
+    if (handle_scrollbar_mouse(event)) {
         return true;
     }
+
+    auto const local_rect = Rect{0, 0, rect_.width, rect_.height};
 
     if (event.type == MouseEvent::Type::Move) {
         if (local_rect.contains(event.position)) {

@@ -4,8 +4,8 @@
 #pragma once
 
 #include "toolkit/context_menu.hpp"
+#include "toolkit/scrollable_widget.hpp"
 #include "toolkit/undo_stack.hpp"
-#include "toolkit/widget.hpp"
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -16,7 +16,7 @@ namespace toolkit {
 
 class TextEditCommand;
 
-class TextEdit : public Widget, public Fluent<TextEdit> {
+class TextEdit : public ScrollableWidget {
     DECLARE_WIDGET(TextEdit)
   public:
     struct Pos {
@@ -42,6 +42,7 @@ class TextEdit : public Widget, public Fluent<TextEdit> {
     TextEdit &set_focused(bool focused) override;
     void on_focus() override;
     void on_blur() override;
+    void set_rect(Rect const &rect) override;
 
     std::string text() const;
     // FIXME add API to read directly from stream
@@ -57,6 +58,9 @@ class TextEdit : public Widget, public Fluent<TextEdit> {
 
     std::function<void()> on_change;
 
+  protected:
+    void on_scroll(float x, float y) override;
+
   private:
     friend class TextEditCommand;
 
@@ -64,7 +68,7 @@ class TextEdit : public Widget, public Fluent<TextEdit> {
     Pos pos_from_point(Point p) const;
     float line_height() const;
     float gutter_width() const;
-    void clamp_scroll();
+    void update_scroll_state();
     void ensure_cursor_visible();
     void move_cursor(Pos p, bool extend_selection);
     void delete_selection();
@@ -88,8 +92,6 @@ class TextEdit : public Widget, public Fluent<TextEdit> {
     std::vector<std::string> lines_{""};
     Pos cursor_;
     Pos anchor_;
-    float scroll_x_ = 0;
-    float scroll_y_ = 0;
     bool dragging_ = false;
     std::chrono::steady_clock::time_point cursor_blink_time_;
     int blink_timer_id_ = 0;

@@ -12,7 +12,7 @@ namespace toolkit {
 class Scrollbar : public Widget, public Fluent<Scrollbar> {
     DECLARE_WIDGET(Scrollbar)
   public:
-    Scrollbar();
+    explicit Scrollbar(Orientation o = Orientation::Horizontal);
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
@@ -75,6 +75,8 @@ class Scrollbar : public Widget, public Fluent<Scrollbar> {
 
     void stop_auto_repeat();
     void start_auto_repeat(float direction);
+
+    Orientation orientation_;
 };
 
 } // namespace toolkit

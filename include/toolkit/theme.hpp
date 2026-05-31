@@ -159,6 +159,7 @@ struct Palette {
     bool beveled = false;
     // When false, no separator line is drawn below the menubar or toolbar (e.g. Win11)
     bool chrome_lines = true;
+    bool inline_scrollbars = true;
 
     // FIXME: this should be platform dependent, read from desktop configuration
     SystemFonts fonts;
@@ -237,9 +238,10 @@ class Theme {
     virtual void draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal,
                              WidgetState const &state) const = 0;
     virtual void draw_scrollbar(Painter &painter, Rect const &rect, float value,
-                                WidgetState const &state, bool hovered_left_btn,
-                                bool pressed_left_btn, bool hovered_right_btn,
-                                bool pressed_right_btn, bool hovered_thumb) const = 0;
+                                Orientation orientation, WidgetState const &state,
+                                bool hovered_left_btn, bool pressed_left_btn,
+                                bool hovered_right_btn, bool pressed_right_btn,
+                                bool hovered_thumb) const = 0;
     virtual void draw_tab_bar_background(Painter &painter, Rect const &rect,
                                          WidgetState const &state) const = 0;
     virtual void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,

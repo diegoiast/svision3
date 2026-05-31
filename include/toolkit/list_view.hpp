@@ -4,7 +4,7 @@
 #pragma once
 
 #include "toolkit/item_model.hpp"
-#include "toolkit/widget.hpp"
+#include "toolkit/scrollable_widget.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -12,7 +12,7 @@
 
 namespace toolkit {
 
-class ListView : public Widget {
+class ListView : public ScrollableWidget {
   public:
     explicit ListView(std::shared_ptr<ItemModel> model);
 
@@ -45,22 +45,22 @@ class ListView : public Widget {
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
+    void set_rect(Rect const &rect) override;
 
   private:
     float item_height() const;
     float total_content_height() const;
-    void clamp_scroll();
     std::optional<size_t> item_at_y(float y) const;
     void scroll_to(size_t index);
     void select_range_from_anchor();
     void notify_selection();
+    void update_scroll_state();
 
     std::shared_ptr<ItemModel> model_;
     std::set<size_t> selection_;
     std::optional<size_t> anchor_;
     std::optional<size_t> cursor_;
     std::optional<size_t> hovered_;
-    float scroll_offset_ = 0;
 
     bool alternating_ = false;
     bool multi_select_ = false;

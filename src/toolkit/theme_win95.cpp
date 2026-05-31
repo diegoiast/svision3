@@ -25,6 +25,7 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
     Color windows95_color = Color::from_argb(0xFF000080);
     p.beveled = true;
     p.progress_bar_height = 20;
+    p.inline_scrollbars = false;
 
     switch (scheme) {
     case ColorScheme::Light:

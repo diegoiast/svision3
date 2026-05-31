@@ -8,12 +8,10 @@
 
 namespace toolkit {
 
-enum class SliderOrientation { Horizontal, Vertical };
-
 class Slider : public Widget, public Fluent<Slider> {
     DECLARE_WIDGET(Slider)
   public:
-    explicit Slider(SliderOrientation orientation = SliderOrientation::Horizontal);
+    explicit Slider(Orientation orientation = Orientation::Horizontal);
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;
 
@@ -44,7 +42,7 @@ class Slider : public Widget, public Fluent<Slider> {
     float pos_to_value(float p) const;
     void update_value_from_pos(Point p);
 
-    SliderOrientation orientation_;
+    Orientation orientation_;
     float value_ = 0.0f;
     float min_ = 0.0f;
     float max_ = 100.0f;

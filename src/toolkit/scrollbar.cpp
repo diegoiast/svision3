@@ -11,12 +11,22 @@
 
 namespace toolkit {
 
-Scrollbar::Scrollbar() { state.focusable = true; }
+Scrollbar::Scrollbar(Orientation o) : orientation_(o) { state.focusable = true; }
 
-auto Scrollbar::size_hint() const -> Size { return {100, kButtonSize + 4}; }
+auto Scrollbar::size_hint() const -> Size {
+    if (orientation_ == Orientation::Horizontal) {
+        return {100, kButtonSize + 4};
+    } else {
+        return {kButtonSize + 4, 100};
+    }
+}
 
 auto Scrollbar::set_value(float v) -> Scrollbar & {
-    value_ = std::clamp(v, min_, max_);
+    v = std::clamp(v, min_, max_);
+    if (value_ == v) {
+        return *this;
+    }
+    value_ = v;
     if (on_change) {
         on_change(value_);
     }
@@ -90,34 +100,60 @@ void Scrollbar::start_auto_repeat(float direction) {
         false);
 }
 
-auto Scrollbar::button_size() const -> float { return std::min(kButtonSize, rect_.height); }
+auto Scrollbar::button_size() const -> float {
+    return std::min(kButtonSize,
+                    orientation_ == Orientation::Horizontal ? rect_.height : rect_.width);
+}
 
 auto Scrollbar::left_button_rect() const -> Rect {
     auto bs = button_size();
-    return {0, (rect_.height - bs) / 2.0f, bs, bs};
+    if (orientation_ == Orientation::Horizontal) {
+        return {0, (rect_.height - bs) / 2.0f, bs, bs};
+    } else {
+        return {(rect_.width - bs) / 2.0f, 0, bs, bs};
+    }
 }
 
 auto Scrollbar::right_button_rect() const -> Rect {
     auto bs = button_size();
-    return {rect_.width - bs, (rect_.height - bs) / 2.0f, bs, bs};
+    if (orientation_ == Orientation::Horizontal) {
+        return {rect_.width - bs, (rect_.height - bs) / 2.0f, bs, bs};
+    } else {
+        return {(rect_.width - bs) / 2.0f, rect_.height - bs, bs, bs};
+    }
 }
 
 auto Scrollbar::track_rect() const -> Rect {
     auto bs = button_size();
-    auto x = bs;
-    auto w = rect_.width - 2 * bs;
-    return {x, 0, w, rect_.height};
+    if (orientation_ == Orientation::Horizontal) {
+        auto x = bs;
+        auto w = rect_.width - 2 * bs;
+        return {x, 0, w, rect_.height};
+    } else {
+        auto y = bs;
+        auto h = rect_.height - 2 * bs;
+        return {0, y, rect_.width, h};
+    }
 }
 
 auto Scrollbar::thumb_rect() const -> Rect {
     auto bs = button_size();
-    auto track_w = rect_.width - 2 * bs;
     auto nv = normalized_value();
-    auto thumb_w = std::max(kMinThumbSize, track_w * 0.1f);
-    auto max_thumb_x = track_w - thumb_w;
-    auto thumb_x = bs + nv * max_thumb_x;
-    auto thumb_h = rect_.height - 4.0f;
-    return {thumb_x, (rect_.height - thumb_h) / 2.0f, thumb_w, thumb_h};
+    if (orientation_ == Orientation::Horizontal) {
+        auto track_w = rect_.width - 2 * bs;
+        auto thumb_w = std::max(kMinThumbSize, track_w * 0.1f);
+        auto max_thumb_x = track_w - thumb_w;
+        auto thumb_x = bs + nv * max_thumb_x;
+        auto thumb_h = rect_.height - 4.0f;
+        return {thumb_x, (rect_.height - thumb_h) / 2.0f, thumb_w, thumb_h};
+    } else {
+        auto track_h = rect_.height - 2 * bs;
+        auto thumb_h = std::max(kMinThumbSize, track_h * 0.1f);
+        auto max_thumb_y = track_h - thumb_h;
+        auto thumb_y = bs + nv * max_thumb_y;
+        auto thumb_w = rect_.width - 4.0f;
+        return {(rect_.width - thumb_w) / 2.0f, thumb_y, thumb_w, thumb_h};
+    }
 }
 
 auto Scrollbar::hit_left_button(Point p) const -> bool { return left_button_rect().contains(p); }
@@ -135,14 +171,16 @@ void Scrollbar::paint(Painter &painter) {
         .window_active = window_ ? window_->is_active() : true,
     };
 
-    Theme::current().draw_scrollbar(painter, rect, normalized_value(), wstate, hovered_left_,
-                                    pressed_left_, hovered_right_, pressed_right_, hovered_thumb_);
+    Theme::current().draw_scrollbar(painter, rect, normalized_value(), orientation_, wstate,
+                                    hovered_left_, pressed_left_, hovered_right_, pressed_right_,
+                                    hovered_thumb_);
 }
 
 bool Scrollbar::handle_mouse(MouseEvent const &event) {
+    auto horizontal = orientation_ == Orientation::Horizontal;
     if (event.type == MouseEvent::Type::Scroll) {
         if (hit_test(event.position)) {
-            auto delta = event.scroll_dx != 0.0f ? event.scroll_dx : -event.scroll_dy;
+            auto delta = horizontal ? event.scroll_dx : -event.scroll_dy;
             step_by(delta * step_small_);
             return true;
         }
@@ -164,13 +202,15 @@ bool Scrollbar::handle_mouse(MouseEvent const &event) {
         }
         if (hit_thumb(event.position)) {
             dragging_ = true;
-            drag_start_mouse_ = event.position.x;
+            drag_start_mouse_ = horizontal ? event.position.x : event.position.y;
             drag_start_value_ = value_;
             return true;
         }
         // Click on track
         auto thumb = thumb_rect();
-        if (event.position.x < thumb.x) {
+        auto pos = horizontal ? event.position.x : event.position.y;
+        auto thumb_pos = horizontal ? thumb.x : thumb.y;
+        if (pos < thumb_pos) {
             page_by(-step_page_);
         } else {
             page_by(step_page_);
@@ -193,13 +233,14 @@ bool Scrollbar::handle_mouse(MouseEvent const &event) {
 
         if (dragging_) {
             auto bs = button_size();
-            auto track_w = rect_.width - 2 * bs;
-            auto thumb_w = thumb_rect().width;
-            auto max_thumb_x = track_w - thumb_w;
-            if (max_thumb_x > 0) {
-                auto mouse_delta = event.position.x - drag_start_mouse_;
+            auto track_len = (horizontal ? rect_.width : rect_.height) - 2 * bs;
+            auto thumb_len = (horizontal ? thumb_rect().width : thumb_rect().height);
+            auto max_thumb_pos = track_len - thumb_len;
+            if (max_thumb_pos > 0) {
+                auto mouse_pos = horizontal ? event.position.x : event.position.y;
+                auto mouse_delta = mouse_pos - drag_start_mouse_;
                 auto nv = (drag_start_value_ - min_) / (max_ - min_);
-                nv += mouse_delta / max_thumb_x;
+                nv += mouse_delta / max_thumb_pos;
                 set_normalized_value(nv);
             }
         }
@@ -223,13 +264,20 @@ bool Scrollbar::handle_key(KeyEvent const &event) {
         return false;
     }
 
-    switch (event.key) {
-    case Key::Left:
+    auto horizontal = orientation_ == Orientation::Horizontal;
+    auto prev_key = horizontal ? Key::Left : Key::Up;
+    auto next_key = horizontal ? Key::Right : Key::Down;
+
+    if (event.key == prev_key) {
         step_by(-step_small_);
         return true;
-    case Key::Right:
+    }
+    if (event.key == next_key) {
         step_by(step_small_);
         return true;
+    }
+
+    switch (event.key) {
     case Key::Home:
         go_to_min();
         return true;
@@ -247,15 +295,16 @@ bool Scrollbar::handle_key(KeyEvent const &event) {
     }
 
     if (event.ctrl) {
-        switch (event.key) {
-        case Key::Up:
+        // Fallback or secondary keys
+        auto fallback_prev = horizontal ? Key::Up : Key::Left;
+        auto fallback_next = horizontal ? Key::Down : Key::Right;
+        if (event.key == fallback_prev) {
             step_by(-step_small_);
             return true;
-        case Key::Down:
+        }
+        if (event.key == fallback_next) {
             step_by(step_small_);
             return true;
-        default:
-            break;
         }
     }
 

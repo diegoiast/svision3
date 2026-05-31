@@ -107,6 +107,7 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
     Palette p;
     Theme::init_fonts(p);
     p.corner_radius = 6.0f;
+    p.inline_scrollbars = false;
     switch (scheme) {
     case ColorScheme::Light:
         p.window = Color::from_argb(0xFFFAFAFA);

@@ -11,8 +11,6 @@ namespace toolkit {
 
 class Splitter : public Widget, public Fluent<Splitter> {
   public:
-    enum class Orientation { Horizontal, Vertical };
-
     explicit Splitter(Orientation o = Orientation::Horizontal);
 
     Splitter &set_first(std::unique_ptr<Widget> w);

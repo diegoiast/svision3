@@ -79,3 +79,15 @@ TEST_CASE("ProgressBar style has Win95 chunked", "[theme]") {
     auto t = ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light);
     REQUIRE(t->palette.progress_bar_height == 20.0f);
 }
+
+TEST_CASE("Theme has correct inline_scrollbars defaults", "[theme]") {
+    // Regular scrollbars for Win95 and GNOME
+    REQUIRE(ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light)->palette.inline_scrollbars == false);
+    REQUIRE(ThemeFactory::create(ThemeStyle::GNOME, ColorScheme::Light)->palette.inline_scrollbars == false);
+
+    // Inline scrollbars for others
+    REQUIRE(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light)->palette.inline_scrollbars == true);
+    REQUIRE(ThemeFactory::create(ThemeStyle::Material, ColorScheme::Light)->palette.inline_scrollbars == true);
+    REQUIRE(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light)->palette.inline_scrollbars == true);
+    REQUIRE(ThemeFactory::create(ThemeStyle::Plasma6, ColorScheme::Light)->palette.inline_scrollbars == true);
+}

@@ -32,7 +32,7 @@ TEST_CASE("Slider set_range", "[slider]") {
 }
 
 TEST_CASE("Slider mouse interaction", "[slider]") {
-    Slider s(SliderOrientation::Horizontal);
+    Slider s(Orientation::Horizontal);
     s.set_range(0, 100);
     s.set_rect({0, 0, 100, 20});
     
@@ -73,7 +73,7 @@ TEST_CASE("Slider interaction in layout", "[slider]") {
     auto layout = std::make_unique<VBoxLayout>();
     layout->set_rect({10, 10, 200, 200});
     
-    auto s_ptr = std::make_unique<Slider>(SliderOrientation::Horizontal);
+    auto s_ptr = std::make_unique<Slider>(Orientation::Horizontal);
     auto s = s_ptr.get();
     s->set_range(0, 100);
     layout->add_widget(std::move(s_ptr));

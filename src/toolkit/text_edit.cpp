@@ -21,6 +21,8 @@
 
 namespace toolkit {
 
+static constexpr FontFamily kFont = FontFamily::Monospace;
+
 class TextEditCommand : public UndoCommand {
   public:
     TextEditCommand(TextEdit *edit, std::string old_text, std::string new_text,
@@ -134,6 +136,7 @@ void TextEdit::set_text(std::string const &text) {
     cursor_ = {0, 0};
     anchor_ = cursor_;
     scroll_x_ = scroll_y_ = 0;
+    update_scroll_state();
     sync_commands();
     if (window_) {
         window_->request_redraw("text change");
@@ -147,6 +150,34 @@ TextEdit &TextEdit::set_focused(bool focused) {
     }
     sync_commands();
     return *this;
+}
+
+void TextEdit::on_scroll(float /*x*/, float /*y*/) {
+    if (window_) {
+        window_->request_redraw("text scroll");
+    }
+}
+
+void TextEdit::set_rect(Rect const &r) {
+    Widget::set_rect(r);
+    update_scroll_state();
+}
+
+void TextEdit::update_scroll_state() {
+    auto lh = line_height();
+    auto const &palette = Theme::current().palette;
+    auto content_h = lh * static_cast<float>(lines_.size());
+    auto max_line_w = 0.0f;
+
+    for (auto const &ln : lines_) {
+        float w = measure_text(ln, palette.fonts.size, kFont).width;
+        if (w > max_line_w) {
+            max_line_w = w;
+        }
+    }
+    auto gw = gutter_width();
+    // FIXME what is this 20.0f?
+    update_scrollbars({max_line_w + gw + 20.0f, content_h});
 }
 
 void TextEdit::on_focus() {
@@ -172,8 +203,6 @@ void TextEdit::on_blur() {
 }
 
 void TextEdit::reset_cursor_blink() { cursor_blink_time_ = std::chrono::steady_clock::now(); }
-
-static constexpr FontFamily kFont = FontFamily::Monospace;
 
 float TextEdit::line_height() const {
     auto const &palette = Theme::current().palette;
@@ -229,38 +258,16 @@ TextEdit::Pos TextEdit::pos_from_point(Point p) const {
     return {line, static_cast<int>(col)};
 }
 
-void TextEdit::clamp_scroll() {
-    auto lh = line_height();
-    auto const &palette = Theme::current().palette;
-    auto content_h = lh * static_cast<float>(lines_.size());
-    auto visible_h = rect_.height;
-    auto max_line_w = 0.0f;
-
-    scroll_y_ = std::clamp(scroll_y_, 0.0f, std::max(0.0f, content_h - visible_h));
-    for (auto const &ln : lines_) {
-        float w = measure_text(ln, palette.fonts.size, kFont).width;
-        if (w > max_line_w) {
-            max_line_w = w;
-        }
-    }
-    auto gw = gutter_width();
-    auto visible_w = rect_.width - gw;
-
-    // FIXME what is this 20.0f?
-    scroll_x_ = std::clamp(scroll_x_, 0.0f, std::max(0.0f, max_line_w + 20.0f - visible_w));
-}
-
 void TextEdit::ensure_cursor_visible() {
     auto const &palette = Theme::current().palette;
     auto lh = line_height();
     auto gw = gutter_width();
     auto cy = lh * cursor_.line;
-    auto visible_h = rect_.height;
+    auto vr = viewport_rect();
     auto cx = 0.0f;
-    auto visible_w = rect_.width - gw;
 
-    if (cy + lh > scroll_y_ + visible_h) {
-        scroll_y_ = cy + lh - visible_h;
+    if (cy + lh > scroll_y_ + vr.height) {
+        scroll_y_ = cy + lh - vr.height;
     }
     if (cy < scroll_y_) {
         scroll_y_ = cy;
@@ -269,15 +276,17 @@ void TextEdit::ensure_cursor_visible() {
         cx = measure_text(lines_[cursor_.line].substr(0, cursor_.col), palette.fonts.size, kFont)
                  .width;
     }
+    cx += gw;
+
     // FIXME: what is this 10.0f?
-    if (cx - scroll_x_ > visible_w - 10.0f) {
-        scroll_x_ = cx - visible_w + 10.0f;
+    if (cx > scroll_x_ + vr.width - 10.0f) {
+        scroll_x_ = cx - vr.width + 10.0f;
     }
-    if (cx - scroll_x_ < 0) {
-        scroll_x_ = cx;
+    if (cx < scroll_x_ + gw) {
+        scroll_x_ = cx - gw;
     }
 
-    clamp_scroll();
+    update_scroll_state();
 }
 
 void TextEdit::move_cursor(Pos p, bool extend_selection) {
@@ -524,7 +533,7 @@ void TextEdit::paint(Painter &painter) {
     auto gw = gutter_width();
     auto local_rect = Rect{0, 0, rect_.width, rect_.height};
 
-    clamp_scroll();
+    update_scroll_state();
 
     auto first = std::max(0, static_cast<int>(scroll_y_ / lh));
     auto ss = sel_start();
@@ -543,18 +552,18 @@ void TextEdit::paint(Painter &painter) {
     theme.draw_text_edit(painter, local_rect, lines_, cursor_.line, cursor_.col, sel_start_line,
                          sel_start_col, sel_end_line, sel_end_col, first, lh, gw, scroll_x_,
                          scroll_y_, wstate, cursor_blink_time_);
+
+    draw_scrollbars(painter);
 }
 
 // ── Mouse ───────────────────────────────────────────────────────────────────
 
 bool TextEdit::handle_mouse(MouseEvent const &event) {
-    auto local_rect = Rect{0, 0, rect_.width, rect_.height};
-    if (event.type == MouseEvent::Type::Scroll && local_rect.contains(event.position)) {
-        scroll_y_ -= event.scroll_dy;
-        scroll_x_ -= event.scroll_dx;
-        clamp_scroll();
+    if (handle_scrollbar_mouse(event)) {
         return true;
     }
+
+    auto local_rect = Rect{0, 0, rect_.width, rect_.height};
 
     if (event.type == MouseEvent::Type::Press && local_rect.contains(event.position)) {
         if (event.button == 1) {

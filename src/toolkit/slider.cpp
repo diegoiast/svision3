@@ -9,7 +9,7 @@
 
 namespace toolkit {
 
-Slider::Slider(SliderOrientation orientation) : orientation_(orientation) {
+Slider::Slider(Orientation orientation) : orientation_(orientation) {
     Widget::set_focusable(true);
 }
 
@@ -62,7 +62,7 @@ Slider &Slider::set_range(float min, float max) {
 float Slider::value_to_pos(float v) const {
     auto const &style = Theme::current().slider;
     auto h_size = style.handle_size;
-    auto horizontal = orientation_ == SliderOrientation::Horizontal;
+    auto horizontal = orientation_ == Orientation::Horizontal;
     auto length = horizontal ? rect_.width : rect_.height;
 
     if (max_ <= min_) {
@@ -84,7 +84,7 @@ float Slider::value_to_pos(float v) const {
 float Slider::pos_to_value(float p) const {
     auto const &style = Theme::current().slider;
     auto h_size = style.handle_size;
-    auto horizontal = orientation_ == SliderOrientation::Horizontal;
+    auto horizontal = orientation_ == Orientation::Horizontal;
     auto length = horizontal ? rect_.width : rect_.height;
     auto track_len = length - h_size;
 
@@ -104,7 +104,7 @@ float Slider::pos_to_value(float p) const {
 }
 
 void Slider::update_value_from_pos(Point p) {
-    auto v = pos_to_value(orientation_ == SliderOrientation::Horizontal ? p.x : p.y);
+    auto v = pos_to_value(orientation_ == Orientation::Horizontal ? p.x : p.y);
     set_value(v);
     if (on_change) {
         on_change(*this, value_);
@@ -113,7 +113,7 @@ void Slider::update_value_from_pos(Point p) {
 
 void Slider::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
-    auto horizontal = orientation_ == SliderOrientation::Horizontal;
+    auto horizontal = orientation_ == Orientation::Horizontal;
     auto range = max_ - min_;
     auto normalized_value = (range > 0) ? (value_ - min_) / range : 0.0f;
 
@@ -190,7 +190,7 @@ bool Slider::handle_key(KeyEvent const &event) {
 Size Slider::size_hint() const {
     auto const &style = Theme::current().slider;
     auto s = style.handle_size + 4.0f;
-    if (orientation_ == SliderOrientation::Horizontal) {
+    if (orientation_ == Orientation::Horizontal) {
         return {100.0f, s};
     } else {
         return {s, 100.0f};
@@ -202,7 +202,7 @@ nlohmann::json Slider::to_json() const {
     j["value"] = value_;
     j["min"] = min_;
     j["max"] = max_;
-    j["orientation"] = (orientation_ == SliderOrientation::Horizontal) ? "Horizontal" : "Vertical";
+    j["orientation"] = (orientation_ == Orientation::Horizontal) ? "Horizontal" : "Vertical";
     return j;
 }
 
@@ -220,9 +220,9 @@ void Slider::from_json(nlohmann::json const &j) {
     if (j.contains("orientation")) {
         auto o = j["orientation"];
         if (o.is_string()) {
-            orientation_ = (o == "Horizontal") ? SliderOrientation::Horizontal : SliderOrientation::Vertical;
+            orientation_ = (o == "Horizontal") ? Orientation::Horizontal : Orientation::Vertical;
         } else if (o.is_number()) {
-            orientation_ = static_cast<SliderOrientation>(o.get<int>());
+            orientation_ = static_cast<Orientation>(o.get<int>());
         }
     }
 }
