@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/item_model.hpp"
+#include "toolkit/scrollable_widget.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
 #include <memory>
@@ -12,7 +13,7 @@
 
 namespace toolkit {
 
-class IconGrid : public Widget {
+class IconGrid : public ScrollableWidget, public Fluent<IconGrid> {
   public:
     explicit IconGrid(std::shared_ptr<ItemModel> model);
 
@@ -45,6 +46,9 @@ class IconGrid : public Widget {
     Size size_hint() const override;
     Widget *widget_at(Point p) override;
 
+  protected:
+    void on_scroll(float x, float y) override;
+
   private:
     struct LayoutInfo {
         size_t columns;
@@ -55,7 +59,6 @@ class IconGrid : public Widget {
 
     LayoutInfo compute_layout() const;
     std::optional<size_t> item_at(Point p) const;
-    size_t first_visible_item() const;
     void clamp_scroll();
     void scroll_to(size_t index);
 
@@ -66,7 +69,6 @@ class IconGrid : public Widget {
     std::set<size_t> selected_indices_;
     std::optional<size_t> hovered_;
     std::optional<size_t> selection_anchor_;
-    float scroll_offset_ = 0;
     bool rubber_selecting_ = false;
     bool rubber_add_ = false;
     Point rubber_start_;

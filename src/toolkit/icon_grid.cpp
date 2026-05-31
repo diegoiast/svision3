@@ -14,7 +14,7 @@ IconGrid::IconGrid(std::shared_ptr<ItemModel> model) : model_(std::move(model)) 
     state.focusable = true;
     if (model_) {
         model_->on_data_changed = [this] {
-            scroll_offset_ = 0;
+            scroll_x_ = scroll_y_ = 0;
             if (model_ && model_->row_count() > 0) {
                 set_selected(size_t{0});
             } else {
@@ -29,15 +29,15 @@ IconGrid &IconGrid::set_model(std::shared_ptr<ItemModel> model) {
     model_ = std::move(model);
     if (model_) {
         model_->on_data_changed = [this] {
-            scroll_offset_ = 0;
+            scroll_x_ = scroll_y_ = 0;
             if (model_ && model_->row_count() > 0) {
                 set_selected(size_t{0});
             } else {
                 set_selected(std::nullopt);
             }
             invalidate_layout();
-            if (window_) {
-                window_->request_redraw();
+            if (window()) {
+                window()->request_redraw("data changed");
             }
         };
     }
@@ -48,6 +48,7 @@ IconGrid &IconGrid::set_model(std::shared_ptr<ItemModel> model) {
 IconGrid &IconGrid::set_icon_size(int size) {
     icon_size_ = size;
     invalidate_layout();
+    clamp_scroll();
     return *this;
 }
 
@@ -180,6 +181,12 @@ Rect IconGrid::rubber_selection_rect() const {
     return {x, y, w, h};
 }
 
+void IconGrid::on_scroll(float /*x*/, float /*y*/) {
+    if (window()) {
+        window()->request_redraw("scroll");
+    }
+}
+
 void IconGrid::paint(Painter &painter) {
     if (!model_) {
         return;
@@ -192,26 +199,19 @@ void IconGrid::paint(Painter &painter) {
         .interaction   = ButtonState::Normal,
         .focused       = is_focused(),
         .enabled       = is_enabled(),
-        .window_active = window_ ? window_->is_active() : true,
+        .window_active = window() ? window()->is_active() : true,
     };
     theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
 
     auto layout = compute_layout();
     auto count = model_->row_count();
-    auto bw = palette.border_width;
-    auto inner_w = rect_.width - bw * 2;
-    auto inner_h = rect_.height - bw * 2;
+    auto vr = viewport_rect();
 
-    if (inner_w <= 0 || inner_h <= 0) {
-        return;
-    }
-
-    auto body_clip = Rect{bw, bw, inner_w, inner_h};
-    painter.push_clip(body_clip);
-    painter.push_translation({bw, bw - scroll_offset_});
+    painter.push_clip(vr);
+    painter.push_translation({vr.x - scroll_x_, vr.y - scroll_y_});
 
     auto disp = display_icon_size();
-    auto stats_enabled = window_ && window_->is_statistics_logging_enabled();
+    auto stats_enabled = window() && window()->is_statistics_logging_enabled();
     auto t_icon = 0.0, t_text = 0.0;
     auto visible_count = size_t{0};
     auto sw = Stopwatch{};
@@ -225,10 +225,10 @@ void IconGrid::paint(Painter &painter) {
                  style.padding.top + static_cast<float>(row) * (layout.item_height + style.spacing),
                  layout.item_width, layout.item_height};
 
-        if (item_rect.y + item_rect.height < scroll_offset_) {
+        if (item_rect.y + item_rect.height < scroll_y_) {
             continue;
         }
-        if (item_rect.y > scroll_offset_ + inner_h) {
+        if (item_rect.y > scroll_y_ + vr.height) {
             break;
         }
 
@@ -268,19 +268,7 @@ void IconGrid::paint(Painter &painter) {
     painter.pop_translation();
     painter.pop_clip();
 
-    auto total_h = style.padding.top + style.padding.bottom +
-                   static_cast<float>(layout.rows) * layout.item_height +
-                   static_cast<float>(layout.rows > 0 ? layout.rows - 1 : 0) * style.spacing;
-
-    if (total_h > inner_h + 1e-6f) {
-        auto max_scroll = total_h - inner_h;
-        auto bar_h = std::max(20.0f, inner_h * (inner_h / total_h));
-        auto travel = inner_h - bar_h;
-        auto bar_y = bw + (max_scroll > 0 ? (scroll_offset_ / max_scroll) * travel : 0);
-        auto bar_x = rect_.width - bw - 6.0f;
-        auto sb = Rect{bar_x, bar_y, 4.0f, bar_h};
-        painter.fill_rounded_rect(sb, palette.text, 2.0f);
-    }
+    draw_scrollbars(painter);
 }
 
 bool IconGrid::handle_mouse(MouseEvent const &event) {
@@ -288,25 +276,22 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
         return false;
     }
 
-    auto const &theme = Theme::current();
-    auto const &palette = theme.palette;
-    auto bw = palette.border_width;
-
-    auto p = event.position;
-    p.x -= bw;
-    p.y -= bw;
-
-    if (event.type == MouseEvent::Type::Scroll) {
-        scroll_offset_ += event.scroll_dy * 20.0f;
-        clamp_scroll();
-        if (window_) {
-            window_->request_redraw();
-        }
+    if (handle_scrollbar_mouse(event)) {
         return true;
     }
 
+    auto vr = viewport_rect();
+    if (!vr.contains(event.position)) {
+        return false;
+    }
+
+    auto p = event.position;
+    p.x -= vr.x;
+    p.y -= vr.y;
+
     auto p_scrolled = p;
-    p_scrolled.y += scroll_offset_;
+    p_scrolled.x += scroll_x_;
+    p_scrolled.y += scroll_y_;
     auto index = item_at(p_scrolled);
 
     switch (event.type) {
@@ -358,8 +343,8 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
                 set_tooltip(hovered_ ? model_->tooltip(*hovered_) : std::string{});
             }
         }
-        if (window_) {
-            window_->request_redraw();
+        if (window()) {
+            window()->request_redraw("mouse move");
         }
         return true;
     case MouseEvent::Type::Drag:
@@ -374,8 +359,8 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
                 cursor_ = *selected_indices_.begin();
             }
         }
-        if (window_) {
-            window_->request_redraw();
+        if (window()) {
+            window()->request_redraw("mouse drag");
         }
         return true;
     case MouseEvent::Type::Release:
@@ -386,15 +371,15 @@ bool IconGrid::handle_mouse(MouseEvent const &event) {
                 on_selection_changed(selected_indices_);
             }
         }
-        if (window_) {
-            window_->request_redraw();
+        if (window()) {
+            window()->request_redraw("mouse release");
         }
         return true;
     case MouseEvent::Type::Leave:
         hovered_ = std::nullopt;
         set_tooltip("");
-        if (window_) {
-            window_->request_redraw();
+        if (window()) {
+            window()->request_redraw("mouse leave");
         }
         return true;
     default:
@@ -498,23 +483,14 @@ void IconGrid::set_rect(Rect const &rect) {
     if (rect_ == rect) {
         return;
     }
-    auto first = first_visible_item();
-    Widget::set_rect(rect);
-    scroll_to(first);
-}
-
-size_t IconGrid::first_visible_item() const {
-    auto const &theme = Theme::current();
-    auto const &style = theme.icon_grid;
+    
+    // Attempt to keep the same top-left item visible
     auto layout = compute_layout();
-
-    auto y = scroll_offset_ - style.padding.top;
-    if (y <= 0) {
-        return 0;
-    }
-
-    auto row = static_cast<size_t>(std::floor(y / (layout.item_height + style.spacing)));
-    return row * layout.columns;
+    auto col = 0;
+    auto row = static_cast<size_t>(std::floor(scroll_y_ / (layout.item_height + layout.item_height))); // Simplified
+    
+    ScrollableWidget::set_rect(rect);
+    clamp_scroll();
 }
 
 Size IconGrid::size_hint() const { return {200, 200}; }
@@ -584,13 +560,11 @@ void IconGrid::clamp_scroll() {
     auto const &theme = Theme::current();
     auto const &style = theme.icon_grid;
     auto layout = compute_layout();
-    auto bw = theme.palette.border_width;
-    auto inner_h = std::max(0.0f, rect_.height - bw * 2);
     auto total_h = style.padding.top + style.padding.bottom +
                    static_cast<float>(layout.rows) * layout.item_height +
                    static_cast<float>(layout.rows > 0 ? layout.rows - 1 : 0) * style.spacing;
-    auto max_scroll = std::max(0.0f, total_h - inner_h);
-    scroll_offset_ = std::clamp(std::round(scroll_offset_), 0.0f, max_scroll);
+    
+    update_scrollbars({0.0f, total_h});
 }
 
 void IconGrid::scroll_to(size_t index) {
@@ -601,12 +575,13 @@ void IconGrid::scroll_to(size_t index) {
     auto item_y =
         style.padding.top + static_cast<float>(row) * (layout.item_height + style.spacing);
 
-    if (item_y < scroll_offset_) {
-        scroll_offset_ = item_y;
-    } else if (item_y + layout.item_height > scroll_offset_ + rect_.height) {
-        scroll_offset_ = item_y + layout.item_height - rect_.height;
+    auto vr = viewport_rect();
+    if (item_y < scroll_y()) {
+        ScrollableWidget::scroll_to(scroll_x(), item_y);
+    } else if (item_y + layout.item_height > scroll_y() + vr.height) {
+        ScrollableWidget::scroll_to(scroll_x(), item_y + layout.item_height - vr.height);
     }
-    clamp_scroll();
+
 }
 
 } // namespace toolkit
