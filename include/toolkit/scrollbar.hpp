@@ -54,7 +54,6 @@ class Scrollbar : public Widget, public Fluent<Scrollbar> {
     void go_to_min();
     void go_to_max();
 
-    static constexpr float kButtonSize = 16.0f;
     static constexpr float kMinThumbSize = 20.0f;
 
     float value_ = 0.0f;

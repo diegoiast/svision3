@@ -32,6 +32,9 @@ BaseTheme::BaseTheme(ColorScheme scheme, std::optional<Palette> p) {
     name = "Base";
     layout.margins = {8, 8, 8, 8};
     layout.spacing = 8.0f;
+    scrollbar.thickness = 16.0f;
+    scrollbar.button_size = 16.0f;
+    scrollbar.padding = {2, 2, 2, 2};
 }
 
 Palette BaseTheme::default_palette(ColorScheme scheme) const {
@@ -534,8 +537,6 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
         text_orientation = Painter::TextOrientation::VerticalCCW;
     } else if (orientation == TabOrientation::East) {
         text_orientation = Painter::TextOrientation::VerticalCW;
-    } else {
-        text_orientation = Painter::TextOrientation::Horizontal;
     }
 
     auto fm = painter.font_metrics(palette.fonts.size);
@@ -1004,25 +1005,41 @@ void BaseTheme::draw_scrollbar(Painter &painter, Rect const &rect, float value,
                                 bool hovered_left_btn, bool pressed_left_btn,
                                 bool hovered_right_btn, bool pressed_right_btn,
                                 bool hovered_thumb) const {
+    auto const &style = scrollbar;
     auto enabled = state.enabled;
     auto horizontal = orientation == Orientation::Horizontal;
-    auto bs = std::min(horizontal ? rect.height : rect.width, 16.0f);
 
-    auto track_rect = horizontal ? Rect{rect.x + bs, rect.y, rect.width - 2 * bs, rect.height}
-                                 : Rect{rect.x, rect.y + bs, rect.width, rect.height - 2 * bs};
+    auto r = rect;
+    if (horizontal) {
+        if (r.height > style.thickness) {
+            r.y += (r.height - style.thickness) / 2.0f;
+            r.height = style.thickness;
+        }
+    } else {
+        if (r.width > style.thickness) {
+            r.x += (r.width - style.thickness) / 2.0f;
+            r.width = style.thickness;
+        }
+    }
+
+    auto bs = style.show_buttons ? std::min(horizontal ? r.height : r.width, style.button_size)
+                                 : 0.0f;
+
+    auto track_rect = horizontal ? Rect{r.x + bs, r.y, r.width - 2 * bs, r.height}
+                                 : Rect{r.x, r.y + bs, r.width, r.height - 2 * bs};
 
     auto thumb_size = std::max(20.0f, (horizontal ? track_rect.width : track_rect.height) * 0.1f);
     auto max_thumb_move = (horizontal ? track_rect.width : track_rect.height) - thumb_size;
 
     auto thumb = Rect{};
     if (horizontal) {
-        auto thumb_h = rect.height - 4.0f;
+        auto thumb_h = std::max(1.0f, r.height - style.padding.top - style.padding.bottom);
         auto thumb_x = track_rect.x + value * max_thumb_move;
-        auto thumb_y = rect.y + (rect.height - thumb_h) / 2.0f;
+        auto thumb_y = r.y + (r.height - thumb_h) / 2.0f;
         thumb = {thumb_x, thumb_y, thumb_size, thumb_h};
     } else {
-        auto thumb_w = rect.width - 4.0f;
-        auto thumb_x = rect.x + (rect.width - thumb_w) / 2.0f;
+        auto thumb_w = std::max(1.0f, r.width - style.padding.left - style.padding.right);
+        auto thumb_x = r.x + (r.width - thumb_w) / 2.0f;
         auto thumb_y = track_rect.y + value * max_thumb_move;
         thumb = {thumb_x, thumb_y, thumb_w, thumb_size};
     }
@@ -1031,13 +1048,17 @@ void BaseTheme::draw_scrollbar(Painter &painter, Rect const &rect, float value,
     auto track_c = state.focused ? palette.alternate : Color::mid(palette.window, palette.base);
 
     // Track background
-    painter.draw_filled_frame(track_rect, track_c, border_c, palette, true);
+    if (style.show_frame) {
+        painter.draw_filled_frame(track_rect, track_c, border_c, palette, true);
+    } else {
+        painter.fill_rect(track_rect, track_c);
+    }
 
     // Buttons
-    auto lbtn = horizontal ? Rect{rect.x, (rect.height - bs) / 2.0f, bs, bs}
-                           : Rect{(rect.width - bs) / 2.0f, rect.y, bs, bs};
-    auto rbtn = horizontal ? Rect{rect.x + rect.width - bs, (rect.height - bs) / 2.0f, bs, bs}
-                           : Rect{(rect.width - bs) / 2.0f, rect.y + rect.height - bs, bs, bs};
+    auto lbtn = horizontal ? Rect{r.x, r.y + (r.height - bs) / 2.0f, bs, bs}
+                           : Rect{r.x + (r.width - bs) / 2.0f, r.y, bs, bs};
+    auto rbtn = horizontal ? Rect{r.x + r.width - bs, r.y + (r.height - bs) / 2.0f, bs, bs}
+                           : Rect{r.x + (r.width - bs) / 2.0f, r.y + r.height - bs, bs, bs};
 
     auto draw_btn = [&](Rect const &r, bool pressed, bool hovered, bool is_next) {
         auto bg = pressed ? palette.border : (hovered ? palette.alternate : palette.window);

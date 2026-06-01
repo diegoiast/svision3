@@ -14,10 +14,11 @@ namespace toolkit {
 Scrollbar::Scrollbar(Orientation o) : orientation_(o) { state.focusable = true; }
 
 auto Scrollbar::size_hint() const -> Size {
+    auto const &style = Theme::current().scrollbar;
     if (orientation_ == Orientation::Horizontal) {
-        return {100, kButtonSize + 4};
+        return {100, style.thickness};
     } else {
-        return {kButtonSize + 4, 100};
+        return {style.thickness, 100};
     }
 }
 
@@ -101,58 +102,87 @@ void Scrollbar::start_auto_repeat(float direction) {
 }
 
 auto Scrollbar::button_size() const -> float {
-    return std::min(kButtonSize,
-                    orientation_ == Orientation::Horizontal ? rect_.height : rect_.width);
+    auto const &style = Theme::current().scrollbar;
+    if (!style.show_buttons) {
+        return 0.0f;
+    }
+    float thickness = orientation_ == Orientation::Horizontal ? rect_.height : rect_.width;
+    thickness = std::min(thickness, style.thickness);
+    return std::min(style.button_size, thickness);
 }
 
 auto Scrollbar::left_button_rect() const -> Rect {
+    auto const &style = Theme::current().scrollbar;
     auto bs = button_size();
+    float thickness = orientation_ == Orientation::Horizontal ? rect_.height : rect_.width;
+    thickness = std::min(thickness, style.thickness);
+    float center_off =
+        ((orientation_ == Orientation::Horizontal ? rect_.height : rect_.width) - thickness) / 2.0f;
+
     if (orientation_ == Orientation::Horizontal) {
-        return {0, (rect_.height - bs) / 2.0f, bs, bs};
+        return {0, center_off + (thickness - bs) / 2.0f, bs, bs};
     } else {
-        return {(rect_.width - bs) / 2.0f, 0, bs, bs};
+        return {center_off + (thickness - bs) / 2.0f, 0, bs, bs};
     }
 }
 
 auto Scrollbar::right_button_rect() const -> Rect {
+    auto const &style = Theme::current().scrollbar;
     auto bs = button_size();
+    float thickness = orientation_ == Orientation::Horizontal ? rect_.height : rect_.width;
+    thickness = std::min(thickness, style.thickness);
+    float center_off =
+        ((orientation_ == Orientation::Horizontal ? rect_.height : rect_.width) - thickness) / 2.0f;
+
     if (orientation_ == Orientation::Horizontal) {
-        return {rect_.width - bs, (rect_.height - bs) / 2.0f, bs, bs};
+        return {rect_.width - bs, center_off + (thickness - bs) / 2.0f, bs, bs};
     } else {
-        return {(rect_.width - bs) / 2.0f, rect_.height - bs, bs, bs};
+        return {center_off + (thickness - bs) / 2.0f, rect_.height - bs, bs, bs};
     }
 }
 
 auto Scrollbar::track_rect() const -> Rect {
+    auto const &style = Theme::current().scrollbar;
     auto bs = button_size();
+    float thickness = orientation_ == Orientation::Horizontal ? rect_.height : rect_.width;
+    thickness = std::min(thickness, style.thickness);
+    float center_off =
+        ((orientation_ == Orientation::Horizontal ? rect_.height : rect_.width) - thickness) / 2.0f;
+
     if (orientation_ == Orientation::Horizontal) {
         auto x = bs;
         auto w = rect_.width - 2 * bs;
-        return {x, 0, w, rect_.height};
+        return {x, center_off, w, thickness};
     } else {
         auto y = bs;
         auto h = rect_.height - 2 * bs;
-        return {0, y, rect_.width, h};
+        return {center_off, y, thickness, h};
     }
 }
 
 auto Scrollbar::thumb_rect() const -> Rect {
+    auto const &style = Theme::current().scrollbar;
     auto bs = button_size();
     auto nv = normalized_value();
+    float thickness = orientation_ == Orientation::Horizontal ? rect_.height : rect_.width;
+    thickness = std::min(thickness, style.thickness);
+    float center_off =
+        ((orientation_ == Orientation::Horizontal ? rect_.height : rect_.width) - thickness) / 2.0f;
+
     if (orientation_ == Orientation::Horizontal) {
         auto track_w = rect_.width - 2 * bs;
         auto thumb_w = std::max(kMinThumbSize, track_w * 0.1f);
         auto max_thumb_x = track_w - thumb_w;
         auto thumb_x = bs + nv * max_thumb_x;
-        auto thumb_h = rect_.height - 4.0f;
-        return {thumb_x, (rect_.height - thumb_h) / 2.0f, thumb_w, thumb_h};
+        auto thumb_h = std::max(1.0f, thickness - style.padding.top - style.padding.bottom);
+        return {thumb_x, center_off + (thickness - thumb_h) / 2.0f, thumb_w, thumb_h};
     } else {
         auto track_h = rect_.height - 2 * bs;
         auto thumb_h = std::max(kMinThumbSize, track_h * 0.1f);
         auto max_thumb_y = track_h - thumb_h;
         auto thumb_y = bs + nv * max_thumb_y;
-        auto thumb_w = rect_.width - 4.0f;
-        return {(rect_.width - thumb_w) / 2.0f, thumb_y, thumb_w, thumb_h};
+        auto thumb_w = std::max(1.0f, thickness - style.padding.left - style.padding.right);
+        return {center_off + (thickness - thumb_w) / 2.0f, thumb_y, thumb_w, thumb_h};
     }
 }
 

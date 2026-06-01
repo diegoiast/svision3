@@ -100,6 +100,14 @@ struct TooltipStyle {
     float padding = 4.0f;
 };
 
+struct ScrollbarStyle {
+    float thickness = 16.0f;
+    float button_size = 16.0f;
+    Margins padding = {0, 0, 0, 0};
+    bool show_buttons = true;
+    bool show_frame = true;
+};
+
 struct LayoutStyle {
     Margins margins = {4, 4, 4, 4};
     float spacing = 4.0f;
@@ -323,6 +331,7 @@ class Theme {
     TableViewStyle table_view;
     TreeViewStyle tree_view;
     SliderStyle slider;
+    ScrollbarStyle scrollbar;
     TooltipStyle tooltip;
     LayoutStyle layout;
 };

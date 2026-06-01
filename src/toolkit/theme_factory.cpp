@@ -63,7 +63,7 @@ Palette MaterialTheme::default_palette(ColorScheme scheme) const {
         p.window = Color::from_rgb(0x1C1B1F);
         p.base = Color::from_rgb(0x1C1B1F);
         p.alternate = Color::from_rgb(0x292529);
-        p.text = Color::from_rgb(0xE6E1E5);
+        p.text = Color::from_rgb(0xab8587);
         p.text_disabled = Color::from_rgb(0x9E9E9E);
         p.placeholder = Color::from_rgb(0x79747E);
         p.highlight = material_purple;
@@ -92,44 +92,52 @@ GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme
         palette = this->default_palette(scheme);
     }
     name = "GNOME";
-    bool dark = palette.window.luma() < 0.5f;
+
+    button.padding = {10, 16, 10, 16};
+    // button.
 
     slider.handle_size = 22.0f;
     slider.groove_thickness = 6.0f;
 
     focus_ring_margin = 2.0f;
     focus_ring_corner_radius = 2.0f;
+
+    scrollbar.show_buttons = false;
+    scrollbar.thickness = 6.0f;
+    scrollbar.show_frame = false;
+    scrollbar.padding = {0, 0, 0, 0};
 }
 
 Palette GnomeTheme::default_palette(ColorScheme scheme) const {
-    auto adwaita_color = Color::from_argb(0xFF3465A4);
+    // auto adwaita_color = Color::from_argb(0xFF3465A4);
+    auto adwaita_color = Color::from_rgb(0x3584E4);
 
     Palette p;
     Theme::init_fonts(p);
-    p.corner_radius = 6.0f;
+    p.corner_radius = 4.0f;
     p.inline_scrollbars = false;
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::from_argb(0xFFFAFAFA);
-        p.base = Color::from_argb(0xFFFFFFFF);
-        p.alternate = Color::from_argb(0xFFF0F0F0);
-        p.text = Color::from_argb(0xFF2E3436);
-        p.text_disabled = Color::from_argb(0xFF888A85);
-        p.placeholder = Color::from_argb(0xFFAAAAAA);
+        p.window = Color::from_rgb(0xddd9d6);
+        p.base = Color::from_rgb(0xf6f5f4);
+        p.alternate = Color::from_rgb(0xeeeeec);
+        p.text = Color::from_rgb(0x4c4b4a);
+        p.text_disabled = Color::from_rgb(0x888a85);
+        p.placeholder = Color::from_rgb(0xaaaaaa);
         p.highlight = adwaita_color;
-        p.highlighted_text = Color::from_argb(0xFFFFFFFF);
-        p.border = Color::from_argb(0xFFE0E0E0);
+        p.highlighted_text = Color::from_rgb(0xffffff);
+        p.border = Color::from_rgb(0xcdc7c2);
         p.accent = adwaita_color;
         p.link = adwaita_color;
         p.shadow = Color::from_argb(0x22000000);
         p.dark_shadow = Color::from_argb(0x44000000);
         p.tooltip = Color::rgb(0.25f, 0.25f, 0.22f);
-        p.background_pressed = Color::from_argb(0xFFECECEC);
-        p.background_hovered = Color::from_argb(0xFFF5F5F5);
-        p.success = Color::from_argb(0xFF2E7D32);
-        p.warning = Color::from_argb(0xFFFBC02D);
-        p.error = Color::from_argb(0xFFC62828);
-        p.tab_select_background = p.base;
+        p.background_pressed = Color::from_rgb(0xd6d6d1);
+        p.background_hovered = Color::from_rgb(0xfdfdfd);
+        p.success = Color::from_rgb(0x2e7d32);
+        p.warning = Color::from_rgb(0xfbc02d);
+        p.error = Color::from_rgb(0xc62828);
+        p.tab_select_background = Color::from_rgb(0xebe9e7);
         p.tab_background = p.window;
         p.tab_radius = 4.0f;
         break;
