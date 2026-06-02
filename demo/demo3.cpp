@@ -485,13 +485,13 @@ int main(int argc, char *argv[]) {
                            .add(ui::hsplit(std::move(preview_editor_elem),
                                            ui::scroll_area(std::move(preview_html_elem))),
                                 ui::expand)
-                           .add(std::move(preview_progress_elem))
+                           .add(preview_progress_elem)
                            .add(ui::hbox()
                                     .margins({4, 8, 4, 8})
                                     .spacing(16)
-                                    .add(std::move(preview_md_btn))
-                                    .add(std::move(preview_html_mode_btn))
-                                    .add(std::move(github_css_cb)));
+                                    .add(preview_md_btn)
+                                    .add(preview_html_mode_btn)
+                                    .add(github_css_cb));
 
     auto debug_stats_widget = [&window]() {
         return ui::vbox()
@@ -529,9 +529,9 @@ int main(int argc, char *argv[]) {
                              .tri_state(true)
                              .tooltip("This checkbox cycles trough 3 state")
                              .checked(true))
-                    .add(std::move(main_theme_combo))
-                    .add(std::move(rb_light))
-                    .add(std::move(rb_dark))
+                    .add(main_theme_combo)
+                    .add(rb_light)
+                    .add(rb_dark)
                     .add(progressBar)
                     .add([&]() {
                         return ui::hbox()
@@ -708,7 +708,7 @@ int main(int argc, char *argv[]) {
                     .add(editor, ui::expand))
             .add_tab("Tree", ui::vbox().add(ui::tree_view(tree_model).alternate_row_colors(true),
                                             ui::expand))
-            .add_tab("Preview", std::move(preview_tab))
+            .add_tab("Preview", preview_tab)
             .add_tab(
                 "Tabs",
                 ui::vbox()
