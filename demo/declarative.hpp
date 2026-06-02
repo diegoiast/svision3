@@ -113,6 +113,15 @@ template <typename T> struct Element {
         w->set_selected(i);
         return std::move(*this);
     }
+    Element current(int i) {
+        if constexpr (std::is_same_v<T, toolkit::TabWidget>) {
+            w->set_current(i);
+        } else {
+            static_assert(std::is_same_v<T, void>, "current only works on TabWidget");
+        }
+        return std::move(*this);
+    }
+
     Element spacing(float s) {
         w->set_spacing(s);
         return std::move(*this);
