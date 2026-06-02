@@ -7,7 +7,7 @@
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"
-#include "toolkit/xdg_image_loader.hpp"
+#include <chrono>
 #include <cmath>
 #include <memory>
 #include <optional>
@@ -168,6 +168,7 @@ struct Palette {
     // When false, no separator line is drawn below the menubar or toolbar (e.g. Win11)
     bool chrome_lines = true;
     bool inline_scrollbars = true;
+    bool bottom_shadow = false;
 
     // FIXME: this should be platform dependent, read from desktop configuration
     SystemFonts fonts;
@@ -283,6 +284,7 @@ class Theme {
                               WidgetState const &state, bool hovered_up, bool pressed_up,
                               bool hovered_down, bool pressed_down,
                               bool cursor_visible = true) const = 0;
+    // FIXME: wtf is this chrono thingie? is it for cursor??
     virtual void draw_text_edit(Painter &painter, Rect const &rect,
                                 std::span<std::string const> lines, int cursor_line, int cursor_col,
                                 int selection_start_line, int selection_start_col,

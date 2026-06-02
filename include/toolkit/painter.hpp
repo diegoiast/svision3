@@ -65,7 +65,7 @@ class Painter {
 
     // FIXME: draw_filled_frame - this should be removed and use the version from the theme
     void draw_filled_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
-                           bool sunken = false);
+                           bool sunken = false, bool bottom_shadow = false);
 
     // FIXME: draw_focus_ring - this should be removed and use the version from the theme
     void draw_focus_ring(Rect const &rect, float corner_radius);

@@ -54,7 +54,6 @@ Palette BaseTheme::default_palette(ColorScheme scheme) const {
         p.accent = primary;
         p.tab_select_background = p.base;
         p.tab_background = p.window;
-        p.tab_radius = 4.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_rgb(0x1C1B1F);
@@ -65,7 +64,6 @@ Palette BaseTheme::default_palette(ColorScheme scheme) const {
         p.accent = primary;
         p.tab_select_background = p.base;
         p.tab_background = p.window;
-        p.tab_radius = 4.0f;
         break;
     }
     return p;
@@ -119,7 +117,8 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
         }
     }
     if (show_full_frame) {
-        painter.draw_filled_frame(rect, bg, border_c, palette, pressed && enabled);
+        auto use_shadow = palette.bottom_shadow && !hovered && !pressed;
+        painter.draw_filled_frame(rect, bg, border_c, palette, pressed && enabled, use_shadow);
     } else if (palette.corner_radius > 0.0f) {
         painter.fill_rounded_rect(rect, bg, palette.corner_radius);
     } else {
@@ -343,8 +342,8 @@ void BaseTheme::draw_menubar_background(Painter &painter, Rect const &rect,
         state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
     painter.fill_rect(rect, bg);
     if (palette.chrome_lines) {
-        // FIXME do not modify theme colors
-        auto border_c = bg.darken(0.08f);
+        auto border_c = palette.border;
+        painter.draw_line({rect.x, 0}, {rect.x + rect.width, 1.0f}, border_c, 1.0f);
         painter.draw_line({rect.x, rect.height - 1.0f}, {rect.x + rect.width, rect.height - 1.0f},
                           border_c, 1.0f);
     }

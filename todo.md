@@ -209,7 +209,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ### Gnome theme
 
-1. Fix
+1. Use proper gradient.
+2. Dark colors... are... not.
+3. Buttons on toolbars should not be flat.
 
 ### Material
 

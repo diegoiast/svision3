@@ -94,7 +94,6 @@ GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme
     name = "GNOME";
 
     button.padding = {10, 16, 10, 16};
-    // button.
 
     slider.handle_size = 22.0f;
     slider.groove_thickness = 6.0f;
@@ -106,40 +105,44 @@ GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme
     scrollbar.thickness = 6.0f;
     scrollbar.show_frame = false;
     scrollbar.padding = {0, 0, 0, 0};
+
+    tab_widget.indicator_weight = 4.0f;
 }
 
 Palette GnomeTheme::default_palette(ColorScheme scheme) const {
-    // auto adwaita_color = Color::from_argb(0xFF3465A4);
     auto adwaita_color = Color::from_rgb(0x3584E4);
 
     Palette p;
     Theme::init_fonts(p);
     p.corner_radius = 4.0f;
     p.inline_scrollbars = false;
+    p.bottom_shadow = true;
+    p.tab_radius = 4.0f;
+
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::from_rgb(0xddd9d6);
-        p.base = Color::from_rgb(0xf6f5f4);
-        p.alternate = Color::from_rgb(0xeeeeec);
-        p.text = Color::from_rgb(0x4c4b4a);
+        p.window = Color::from_rgb(0xe1dedb);
+        p.base = Color::from_rgb(0xedecea);
+        p.alternate = Color::from_rgb(0xf6f6f6);
+        p.text = Color::from_rgb(0x2e3436);
         p.text_disabled = Color::from_rgb(0x888a85);
         p.placeholder = Color::from_rgb(0xaaaaaa);
         p.highlight = adwaita_color;
         p.highlighted_text = Color::from_rgb(0xffffff);
-        p.border = Color::from_rgb(0xcdc7c2);
+        p.border = Color::from_rgb(0xcbcbcb);
         p.accent = adwaita_color;
         p.link = adwaita_color;
-        p.shadow = Color::from_argb(0x22000000);
-        p.dark_shadow = Color::from_argb(0x44000000);
+        p.shadow = Color::rgba(1, 1, 1, 0.8f);    // Top inner highlight
+        p.dark_shadow = Color::from_rgb(0xb0b0b0);  // Bottom silver lines
         p.tooltip = Color::rgb(0.25f, 0.25f, 0.22f);
         p.background_pressed = Color::from_rgb(0xd6d6d1);
         p.background_hovered = Color::from_rgb(0xfdfdfd);
+        p.tooltip = p.base;
         p.success = Color::from_rgb(0x2e7d32);
         p.warning = Color::from_rgb(0xfbc02d);
         p.error = Color::from_rgb(0xc62828);
         p.tab_select_background = Color::from_rgb(0xebe9e7);
         p.tab_background = p.window;
-        p.tab_radius = 4.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_argb(0xFF2E3436);
@@ -158,12 +161,12 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
         p.tooltip = Color::rgb(0.25f, 0.25f, 0.22f);
         p.background_pressed = Color::from_argb(0xFF484848);
         p.background_hovered = Color::from_argb(0xFF565656);
+        p.tooltip = p.base;
         p.success = Color::from_argb(0xFF2E7D32);
         p.warning = Color::from_argb(0xFFFBC02D);
         p.error = Color::from_argb(0xFFC62828);
         p.tab_select_background = p.base;
         p.tab_background = p.window;
-        p.tab_radius = 4.0f;
         break;
     }
     return p;
