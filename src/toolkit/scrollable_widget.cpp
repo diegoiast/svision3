@@ -10,6 +10,7 @@ namespace toolkit {
 
 ScrollableWidget::ScrollableWidget() {
     vscroll_ = std::make_unique<Scrollbar>(Orientation::Vertical);
+    vscroll_->set_focusable(false);
     vscroll_->set_parent(this);
     vscroll_->on_change = [this](float v) {
         scroll_y_ = v;
@@ -20,6 +21,7 @@ ScrollableWidget::ScrollableWidget() {
     };
 
     hscroll_ = std::make_unique<Scrollbar>(Orientation::Horizontal);
+    hscroll_->set_focusable(false);
     hscroll_->set_parent(this);
     hscroll_->on_change = [this](float v) {
         scroll_x_ = v;
