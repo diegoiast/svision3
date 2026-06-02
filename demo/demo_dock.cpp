@@ -13,7 +13,7 @@
 
 int main() {
     auto app = toolkit::Application{};
-    auto window = app.make_window(800, 600, "Dock Area Demo");
+    auto window = app.create_window("Dock Area Demo", {800, 600});
 
     auto dock_area = std::make_unique<toolkit::DockArea>();
 

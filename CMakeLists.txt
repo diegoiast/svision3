@@ -35,6 +35,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/button_state.cpp
     src/toolkit/checkbox.cpp
     src/toolkit/combobox.cpp
+    src/toolkit/dock_area.cpp
     src/toolkit/radio_button.cpp
     src/toolkit/label.cpp
     src/toolkit/progress_bar.cpp
@@ -415,6 +416,15 @@ if(WIN32)
     set_target_properties(sqlite_viewer PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
 endif()
 target_link_libraries(sqlite_viewer PRIVATE toolkit db nfd)
+
+
+add_executable(demo_dock demo/demo_dock.cpp)
+set_target_properties(demo_dock PROPERTIES WIN32_EXECUTABLE ON)
+if(WIN32)
+    set_target_properties(demo_dock PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+endif()
+target_link_libraries(demo_dock PRIVATE toolkit db nfd)
+
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 find_package(Catch2 REQUIRED)
