@@ -33,7 +33,9 @@ BaseTheme::BaseTheme(ColorScheme scheme, std::optional<Palette> p) {
 }
 
 std::unique_ptr<Widget> BaseTheme::create_title_bar(Window *window) const {
-    return std::make_unique<WindowTitleBar>(window);
+    auto b = std::make_unique<WindowTitleBar>(window);
+    b->initializeTitleBar();
+    return b;
 }
 
 // Initialize backward compatibility members

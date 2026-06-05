@@ -7,51 +7,93 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
+
 #include <memory>
+#include <spdlog/spdlog.h>
 
 namespace toolkit {
 
-WindowTitleBar::WindowTitleBar(Window *window) : window_(window) {
+TitlebarButton::TitlebarButton(DecorationButton type, std::string tooltip, Size size_hint)
+    : Button(""), type_(type), custom_size_hint(size_hint) {
+    set_flat(true);
+    set_tooltip(std::move(tooltip));
+}
+
+void TitlebarButton::paint(Painter &painter) {
+    auto interaction = ButtonState::Normal;
+    if (is_pressed()) {
+        interaction = ButtonState::ClickedInside;
+    } else if (is_hovered()) {
+        interaction = ButtonState::Hovered;
+    }
+    auto wstate = WidgetState{
+        .interaction = interaction,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
+        .window_active = window_ ? window_->is_active() : true,
+        .checked = false,
+    };
+    Theme::current().draw_window_button(painter, {0, 0, rect_.width, rect_.height}, type_, wstate);
+}
+
+WindowTitleBar::WindowTitleBar(Window *w) {
+    set_window(w);
     set_on_top(true);
-    layout_ = new HBoxLayout();
-    auto const &p = Theme::current().palette;
+}
 
-    {
-        auto btn = create_btn(DecorationButton::Menu);
-        btn->set_flat(true).set_text("=");
-        layout_->add_widget(std::unique_ptr<Widget>(btn));
-    }
+void WindowTitleBar::initializeTitleBar() {
+    layout = new HBoxLayout();
+    layout->set_spacing(8.0f);
 
-    title_label_ = new Label(std::string(window_->title()));
-    title_label_->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
-    layout_->add_widget(std::unique_ptr<Widget>(title_label_), 1);
+    auto *app_button = new TitlebarButton(DecorationButton::Menu, "Menu");
 
-    {
-        auto btn = create_btn(DecorationButton::Minimize);
-        btn->set_flat(true).set_text("-").set_tooltip("Minimize");
-        layout_->add_widget(std::unique_ptr<Button>(btn));
-    }
-    {
-        max_btn_ = new Button("");
-        max_btn_->on_click = [this] {
-            if (window_->is_maximized()) {
-                window_->restore();
-            } else {
-                window_->maximize();
-            }
-        };
-        max_btn_->set_text(window_->is_maximized() ? "\u29C9" : "\u29C8").set_flat(true);
-        layout_->add_widget(std::unique_ptr<Button>(max_btn_));
-    }
-    {
-        auto btn = create_btn(DecorationButton::Close);
-        btn->set_flat(true).set_text("x").set_tooltip("Close");
-        layout_->add_widget(std::unique_ptr<Button>(btn));
-    }
+    auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close");
+    close_btn->on_click = [this] { window_->close(); };
+
+    auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize");
+    min_btn->on_click = [this] { window_->minimize(); };
+
+    max_btn = new TitlebarButton(DecorationButton::Maximize, "Zoom");
+    max_btn->on_click = [this] {
+        if (window_->is_maximized()) {
+            window_->restore();
+        } else {
+            window_->maximize();
+        }
+    };
+
+    auto m = layout->get_margins();
+    m.right = 5.0;
+    m.left = 5.0;
+    layout->set_margins(m);
+    layout->add_widget(std::unique_ptr<Widget>(app_button));
+    title_label = new Label(std::string{window_->title()});
+    title_label->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
+    layout->add_widget(std::unique_ptr<Label>(title_label), 1);
+    layout->add_widget(std::unique_ptr<Widget>(min_btn));
+    layout->add_widget(std::unique_ptr<Widget>(max_btn));
+    layout->add_widget(std::unique_ptr<Widget>(close_btn));
 }
 
 auto WindowTitleBar::create_btn(DecorationButton type) -> Button * {
-    auto *btn = new Button("");
+    auto tooltip = std::string("");
+
+    switch (type) {
+    case DecorationButton::Close:
+        tooltip = "Close";
+        break;
+    case DecorationButton::Minimize:
+        tooltip = "Minimize";
+        break;
+    case DecorationButton::Maximize:
+        tooltip = "Maximize";
+        break;
+    case DecorationButton::Restore:
+        tooltip = "Restore";
+        break;
+    }
+
+    auto *btn = new TitlebarButton(type, tooltip);
     btn->on_click = [this, type] {
         if (type == DecorationButton::Close) {
             window_->close();
@@ -77,34 +119,34 @@ void WindowTitleBar::paint(Painter &painter) {
     auto bg = active ? pal.accent : pal.window;
     auto fg = active ? pal.highlighted_text : pal.text_disabled;
 
+    // FIXME: it would be nice for this to be changable from other themes
     painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
-
+    // FIXME: update window button tooltips on resize
     if (window_->is_maximized()) {
-        max_btn_->set_text("[]").set_tooltip("Restore");
+        max_btn->set_tooltip("Restore");
     } else {
-        max_btn_->set_text("^").set_tooltip("Maximized");
+        max_btn->set_tooltip("Maximized");
     }
-
     // FIXME: update window label only when the window title changed
-    title_label_->set_text(std::string(window_->title()));
+    title_label->set_text(std::string(window_->title()));
     // FIXME: update color on blur/active
-    title_label_->set_color(fg);
-
-    layout_->paint(painter);
+    title_label->set_color(fg);
+    layout->paint(painter);
 }
 
 void WindowTitleBar::set_rect(Rect const &rect) {
     Widget::set_rect(rect);
-    layout_->set_rect(rect);
+    layout->set_rect(rect);
 }
 
 bool WindowTitleBar::handle_mouse(MouseEvent const &event) {
-    if (layout_->handle_mouse(event)) {
+    if (layout->handle_mouse(event)) {
         return true;
     }
     if (!rect_.contains(event.position)) {
         return false;
     }
+
     if (event.type == MouseEvent::Type::Press) {
         if (event.click_count == 2) {
             if (window_->is_maximized()) {

@@ -28,6 +28,11 @@ class Win95Theme : public BaseTheme {
 
     void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                            WidgetState const &state) const override;
+
+    void draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                            WidgetState const &state) const override;
+
+    void draw_tab_content_background(Painter &painter, Rect const &rect) const override;
 };
 
 } // namespace toolkit

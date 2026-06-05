@@ -9,63 +9,28 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
+#include "toolkit/window_title_bar.hpp"
 #include <memory>
 
 namespace toolkit {
 
-// FIXME: the macos title has a very similar button, merge them
-class PlasmaButton : public Button {
+class PlasmaTitleBar : public WindowTitleBar {
   public:
-    PlasmaButton(DecorationButton type, std::string tooltip) : Button(""), type_(type) {
-        set_flat(true);
-        set_tooltip(std::move(tooltip));
-    }
+    using WindowTitleBar::WindowTitleBar;
 
-    void paint(Painter &painter) override {
-        auto interaction = ButtonState::Normal;
-        if (is_pressed()) {
-            interaction = ButtonState::ClickedInside;
-        } else if (is_hovered()) {
-            interaction = ButtonState::Hovered;
-        }
-        auto wstate = WidgetState{
-            .interaction = interaction,
-            .focused = is_focused(),
-            .enabled = is_enabled(),
-            .window_active = window_ ? window_->is_active() : true,
-            .checked = false,
-        };
-        Theme::current().draw_window_button(painter, {0, 0, rect_.width, rect_.height}, type_,
-                                            wstate);
-    }
-
-    Size size_hint() const override { return {20.0f, 20.0f}; }
-
-  private:
-    DecorationButton type_;
-};
-
-// FIXME: This class is very similar to the windows and macos titlebar
-class PlasmaTitleBar : public Widget {
-    HBoxLayout *layout = nullptr;
-    Label *title_label = nullptr;
-    Button *max_btn = nullptr;
-
-  public:
-    explicit PlasmaTitleBar(Window *window) : window_(window) {
-        // set_on_top(true);
+    void initializeTitleBar() override {
         layout = new HBoxLayout();
         layout->set_spacing(8.0f);
 
-        auto *app_button = new PlasmaButton(DecorationButton::Menu, "Menu");
+        auto *app_button = new TitlebarButton(DecorationButton::Menu, "Menu");
 
-        auto *close_btn = new PlasmaButton(DecorationButton::Close, "Close");
+        auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close");
         close_btn->on_click = [this] { window_->close(); };
 
-        auto *min_btn = new PlasmaButton(DecorationButton::Minimize, "Minimize");
+        auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize");
         min_btn->on_click = [this] { window_->minimize(); };
 
-        max_btn = new PlasmaButton(DecorationButton::Maximize, "Zoom");
+        max_btn = new TitlebarButton(DecorationButton::Maximize, "Zoom");
         max_btn->on_click = [this] {
             if (window_->is_maximized()) {
                 window_->restore();
@@ -79,7 +44,7 @@ class PlasmaTitleBar : public Widget {
         m.left = 5.0;
         layout->set_margins(m);
         layout->add_widget(std::unique_ptr<Widget>(app_button));
-        title_label = new Label(std::string{window->title()});
+        title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
         layout->add_widget(std::unique_ptr<Widget>(min_btn));
@@ -90,8 +55,8 @@ class PlasmaTitleBar : public Widget {
     void paint(Painter &painter) override {
         auto const &pal = Theme::current().palette;
         auto active = window_->is_active();
-        // auto fg = active ? pal.highlighted_text : pal.text_disabled;
-        // auto bg = active ? pal.window : pal.window_inactive.value_or(pal.window);
+
+        // FIXME: only reason to override this method is to modify the background
         auto fg = pal.text;
         auto bg = pal.window;
         if (!active && pal.window_inactive) {
@@ -99,61 +64,15 @@ class PlasmaTitleBar : public Widget {
         }
 
         painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
-
         if (window_->is_maximized()) {
             max_btn->set_tooltip("Restore");
         } else {
-            max_btn->set_tooltip("Maximize");
+            max_btn->set_tooltip("Maximized");
         }
-
-        // FIXME: update window label only when the window title changed
         title_label->set_text(std::string(window_->title()));
-        // FIXME: update color on blur/active
         title_label->set_color(fg);
-
         layout->paint(painter);
     }
-
-    void set_rect(Rect const &rect) override {
-        Widget::set_rect(rect);
-        layout->set_rect(rect);
-    }
-
-    bool handle_mouse(MouseEvent const &event) override {
-        if (layout->handle_mouse(event)) {
-            return true;
-        }
-        if (!rect_.contains(event.position)) {
-            return false;
-        }
-        if (event.type == MouseEvent::Type::Press) {
-            if (event.click_count == 2) {
-                if (window_->is_maximized()) {
-                    window_->restore();
-                } else {
-                    window_->maximize();
-                }
-                return true;
-            }
-            window_->start_system_move(event.serial);
-            return true;
-        }
-        return false;
-    }
-
-    void for_each_child(std::function<void(Widget *)> const &callback) override {
-        layout->for_each_child(callback);
-    }
-
-    void on_theme_changed() override { set_rect(rect_); }
-
-    Size size_hint() const override {
-        auto const &m = Theme::current().palette.window_decoration;
-        return {100.0f, m.top};
-    }
-
-  private:
-    Window *window_;
 };
 
 Plasma6Theme::Plasma6Theme(ColorScheme scheme, std::optional<Palette> p)
@@ -176,7 +95,9 @@ Plasma6Theme::Plasma6Theme(ColorScheme scheme, std::optional<Palette> p)
 }
 
 std::unique_ptr<Widget> Plasma6Theme::create_title_bar(Window *window) const {
-    return std::make_unique<PlasmaTitleBar>(window);
+    auto p = std::make_unique<PlasmaTitleBar>(window);
+    p->initializeTitleBar();
+    return p;
 }
 
 Palette Plasma6Theme::default_palette(ColorScheme scheme) const {

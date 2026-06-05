@@ -8,50 +8,67 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
+#include "toolkit/window_title_bar.hpp"
 #include <memory>
 
 namespace toolkit {
 
-class Win11TitleBar : public Widget {
+class Win11TitleBar : public WindowTitleBar {
   public:
-    Win11TitleBar(Window *window) : window_(window) { set_on_top(true); }
+    using WindowTitleBar::WindowTitleBar;
+
+    void initializeTitleBar() override {
+        layout = new HBoxLayout();
+        layout->set_spacing(0.0f);
+        layout->set_margins({0, 0, 0, 0});
+
+        title_label = new Label(std::string{window_->title()});
+        title_label->set_alignment(Alignment::Start).set_shrinkable(true).set_elide(true);
+
+/*        auto m = title_label->get_margins();
+        m.left = 12.0f;
+        title_label->set_margins(m);
+*/
+        layout->add_widget(std::unique_ptr<Label>(title_label), 1);
+
+        auto const &decoration = Theme::current().palette.window_decoration;
+        auto btn_size = Size{46, decoration.top};
+
+        auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
+        min_btn->on_click = [this] { window_->minimize(); };
+
+        max_btn = new TitlebarButton(DecorationButton::Maximize, "Maximize", btn_size);
+        max_btn->on_click = [this] {
+            if (window_->is_maximized()) {
+                window_->restore();
+            } else {
+                window_->maximize();
+            }
+        };
+
+        auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close", btn_size);
+        close_btn->on_click = [this] { window_->close(); };
+
+        layout->add_widget(std::unique_ptr<Widget>(min_btn));
+        layout->add_widget(std::unique_ptr<Widget>(max_btn));
+        layout->add_widget(std::unique_ptr<Widget>(close_btn));
+    }
 
     void paint(Painter &painter) override {
-        auto const &p = Theme::current().palette;
-        auto r = rect_;
+        auto const &pal = Theme::current().palette;
         auto active = window_->is_active();
-        auto bg = active ? p.window : p.window_inactive.value_or(p.window);
+        auto bg = active ? pal.window : pal.window_inactive.value_or(pal.window);
+        auto fg = active ? pal.text : pal.text_disabled;
 
-        painter.fill_rect(r, bg);
-        auto fm = painter.font_metrics(p.fonts.size);
-        auto text_y = (r.height - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(std::string{window_->title()}, {r.x + 10.0f, text_y}, p.text,
-                          p.fonts.size);
-    }
+        painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
 
-    bool handle_mouse(MouseEvent const &event) override {
-        if (event.type == MouseEvent::Type::Press) {
-            if (event.click_count == 2) {
-                if (window_->is_maximized()) {
-                    window_->restore();
-                } else {
-                    window_->maximize();
-                }
-                return true;
-            }
-            window_->start_system_move(event.serial);
-            return true;
+        if (title_label) {
+            title_label->set_text(std::string(window_->title()));
+            title_label->set_color(fg);
         }
-        return false;
-    }
 
-    Size size_hint() const override {
-        auto const &m = Theme::current().palette.window_decoration;
-        return {100.0f, m.top};
+        layout->paint(painter);
     }
-
-  private:
-    Window *window_;
 };
 
 Win11Theme::Win11Theme(ColorScheme scheme, std::optional<Palette> p)
@@ -70,8 +87,9 @@ Win11Theme::Win11Theme(ColorScheme scheme, std::optional<Palette> p)
 }
 
 std::unique_ptr<Widget> Win11Theme::create_title_bar(Window *window) const {
-    // return std::make_unique<Win11TitleBar>(window);
-    return BaseTheme::create_title_bar(window);
+    auto b = std::make_unique<Win11TitleBar>(window);
+    b->initializeTitleBar();
+    return b;
 }
 
 Palette Win11Theme::default_palette(ColorScheme scheme) const {
@@ -189,6 +207,69 @@ void Win11Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_
 
 void Win11Theme::draw_tab_content_background(Painter &painter, Rect const &rect) const {
     painter.fill_rect(rect, palette.base);
+}
+
+void Win11Theme::draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                                    WidgetState const &state) const {
+    auto active = state.window_active;
+    auto hovered = state.interaction == ButtonState::Hovered;
+    auto pressed = state.interaction == ButtonState::ClickedInside;
+
+    if (hovered || pressed) {
+        Color bg;
+        if (button == DecorationButton::Close) {
+            bg = pressed ? Color::from_rgb(0xC42B1C) : Color::from_rgb(0xE81123);
+        } else {
+            if (pressed) {
+                bg = palette.background_pressed.value_or(palette.base);
+            } else {
+                bg = palette.background_hovered.value_or(
+                    palette.background_pressed.value_or(palette.base));
+            }
+        }
+        painter.fill_rect(rect, bg);
+    }
+
+    auto symbol_c = palette.text;
+    if (button == DecorationButton::Close && (hovered || pressed)) {
+        symbol_c = Color::from_rgb(0xFFFFFF);
+    } else if (!active) {
+        symbol_c = palette.text_disabled;
+    }
+
+    auto center = Point{rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f};
+    auto s = 5.0f; // Half-size of the symbol
+
+    switch (button) {
+    case DecorationButton::Close:
+        painter.draw_line({center.x - s, center.y - s}, {center.x + s, center.y + s}, symbol_c,
+                          1.0f);
+        painter.draw_line({center.x + s, center.y - s}, {center.x - s, center.y + s}, symbol_c,
+                          1.0f);
+        break;
+    case DecorationButton::Minimize:
+        painter.draw_line({center.x - s, center.y}, {center.x + s, center.y}, symbol_c, 1.0f);
+        break;
+    case DecorationButton::Maximize:
+        painter.draw_rect({center.x - s, center.y - s, s * 2, s * 2}, symbol_c, 1.0f);
+        break;
+    case DecorationButton::Restore: {
+        auto r1 = Rect{center.x - s + 2, center.y - s, s * 2 - 2, s * 2 - 2};
+        auto r2 = Rect{center.x - s, center.y - s + 2, s * 2 - 2, s * 2 - 2};
+        // Draw the back one first (r1)
+        painter.draw_rect(r1, symbol_c, 1.0f);
+        painter.draw_rect(r2, symbol_c, 1.0f);
+        break;
+    }
+    case DecorationButton::Menu:
+        // Windows 11 usually doesn't have a menu button in the title bar, but if it does:
+        painter.draw_line({center.x - s, center.y - 3}, {center.x + s, center.y - 3}, symbol_c,
+                          1.0f);
+        painter.draw_line({center.x - s, center.y}, {center.x + s, center.y}, symbol_c, 1.0f);
+        painter.draw_line({center.x - s, center.y + 3}, {center.x + s, center.y + 3}, symbol_c,
+                          1.0f);
+        break;
+    }
 }
 
 } // namespace toolkit

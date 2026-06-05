@@ -3,7 +3,8 @@
 
 #pragma once
 
-#include "toolkit/widget.hpp"
+#include <toolkit/button.hpp>
+#include <toolkit/widget.hpp>
 
 namespace toolkit {
 
@@ -12,21 +13,53 @@ class HBoxLayout;
 class Label;
 class Window;
 
+// FIXME: we need to update window title bar and maximize button tooltip
+
+/*
+        if (window_->is_maximized()) {
+            max_btn->set_tooltip("Restore");
+        } else {
+            max_btn->set_tooltip("Maximize");
+        }
+
+        // FIXME: update window label only when the window title changed
+        title_label->set_text(std::string(window_->title()));
+        // FIXME: update color on blur/active
+        title_label->set_color(fg);
+*/
+
+class TitlebarButton : public Button {
+  public:
+    TitlebarButton(DecorationButton type, std::string tooltip, Size size_hint = {20, 20});
+    void paint(Painter &painter) override;
+    Size size_hint() const override { return custom_size_hint; }
+
+  private:
+    DecorationButton type_;
+    Size custom_size_hint;
+};
+
 class WindowTitleBar : public Widget {
   public:
     WindowTitleBar(Window *window);
 
     void paint(Painter &painter) override;
-    bool handle_mouse(MouseEvent const &event) override;
     void set_rect(Rect const &rect) override;
+    bool handle_mouse(MouseEvent const &event) override;
+    /*    void for_each_child(std::function<void(Widget *)> const &callback) {
+            layout->for_each_child(callback);
+        }
+    */
     Size size_hint() const override;
 
-  private:
+    // consusmers of this class should derive *this* method
+    virtual void initializeTitleBar();
+
+  protected:
     auto create_btn(DecorationButton type) -> Button *;
-    Window *window_;
-    HBoxLayout *layout_;
-    Label *title_label_;
-    Button *max_btn_ = nullptr;
+    Label *title_label;
+    Button *max_btn = nullptr;
+    HBoxLayout *layout;
 };
 
 } // namespace toolkit

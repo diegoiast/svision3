@@ -28,6 +28,9 @@ class Win11Theme : public BaseTheme {
                         bool alternate) const override;
 
     void draw_tab_content_background(Painter &painter, Rect const &rect) const override;
+
+    void draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                            WidgetState const &state) const override;
 };
 
 } // namespace toolkit
