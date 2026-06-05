@@ -32,7 +32,7 @@ class Win11TitleBar : public WindowTitleBar {
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
 
         auto const &decoration = Theme::current().palette.window_decoration;
-        auto btn_size = Size{46, decoration.top};
+        auto btn_size = Size{44, decoration.top};
 
         auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
         min_btn->on_click = [this] { window_->minimize(); };

@@ -15,6 +15,8 @@
 #include <windows.h>
 #include <objidl.h>
 #include <gdiplus.h>
+#include <Dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
 // clang-format on
 
 #include "toolkit/stopwatch.hpp"
@@ -259,8 +261,6 @@ void Win32PlatformApplication::paint_window(HWND hwnd, Window *win) {
     EndPaint(hwnd, &ps);
 }
 
-// --- WndProc ---
-
 LRESULT CALLBACK tk_tooltip_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcW(hwnd, msg, wp, lp);
 }
@@ -275,9 +275,21 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return DefWindowProcW(hwnd, msg, wp, lp);
     }
     auto &data = it->second;
-    Window *win = data.owner;
+    auto win = data.owner;
 
     switch (msg) {
+    case WM_NCHITTEST: {
+        if (win->options().csd) {
+            return HTCLIENT;
+        }
+        break;
+    }
+    case WM_NCCALCSIZE: {
+        if (win->options().csd && wp) {
+            return 0;
+        }
+        break;
+    }
     case WM_PAINT:
         Win32PlatformApplication::paint_window(hwnd, win);
         return 0;
@@ -696,8 +708,6 @@ void Win32PlatformApplication::clipboard_set_text(std::string const &text) {
     }
 }
 
-// --- Win32PlatformWindow ---
-
 Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::string_view title,
                                          Size size, Window *owner, WindowOptions options)
     : app_(app), owner_(owner) {
@@ -716,11 +726,19 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
     DWORD style = WS_OVERLAPPEDWINDOW;
     DWORD adjust_style = WS_OVERLAPPEDWINDOW;
 
+    if (options.csd) {
+        style = WS_POPUP | WS_VISIBLE | WS_CLIPCHILDREN | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME;
+        adjust_style = style;
+    }
+
     RECT r = {0, 0, static_cast<LONG>(size.width * scale), static_cast<LONG>(size.height * scale)};
     AdjustWindowRectEx(&r, adjust_style, FALSE, 0);
     hwnd = CreateWindowExW(0, Win32PlatformApplication::kWindowClassName, wtitle.c_str(), style,
                            CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
                            nullptr, nullptr, app_->hinstance, nullptr);
+
+    MARGINS margins = {1, 1, 1, 1};
+    DwmExtendFrameIntoClientArea(hwnd, &margins);
 
     // After creation, we might have a different scale if we are on a different monitor
     float actual_scale = get_window_scale(hwnd);
@@ -919,7 +937,7 @@ void Win32PlatformWindow::set_cursor(CursorShape shape) {
     default:
         hc = arrow_cursor;
         break;
-    }
+}
     auto it = app_->window_map.find(hwnd);
     if (it != app_->window_map.end()) {
         it->second.current_cursor = hc;
@@ -927,8 +945,44 @@ void Win32PlatformWindow::set_cursor(CursorShape shape) {
     SetCursor(hc);
 }
 
-void Win32PlatformWindow::start_system_move(uint32_t /*serial*/) {}
-void Win32PlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/) {}
+void Win32PlatformWindow::start_system_move(uint32_t /*serial*/) {
+    ReleaseCapture();
+    SendMessageW(hwnd, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
+}
+
+void Win32PlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/) {
+    ReleaseCapture();
+    WPARAM wparam = 0;
+    switch (edge) {
+    case WindowEdge::Left:
+        wparam = SC_SIZE | WMSZ_LEFT;
+        break;
+    case WindowEdge::Right:
+        wparam = SC_SIZE | WMSZ_RIGHT;
+        break;
+    case WindowEdge::Top:
+        wparam = SC_SIZE | WMSZ_TOP;
+        break;
+    case WindowEdge::Bottom:
+        wparam = SC_SIZE | WMSZ_BOTTOM;
+        break;
+    case WindowEdge::TopLeft:
+        wparam = SC_SIZE | WMSZ_TOPLEFT;
+        break;
+    case WindowEdge::TopRight:
+        wparam = SC_SIZE | WMSZ_TOPRIGHT;
+        break;
+    case WindowEdge::BottomLeft:
+        wparam = SC_SIZE | WMSZ_BOTTOMLEFT;
+        break;
+    case WindowEdge::BottomRight:
+        wparam = SC_SIZE | WMSZ_BOTTOMRIGHT;
+        break;
+    default:
+        return;
+    }
+    SendMessageW(hwnd, WM_SYSCOMMAND, wparam, 0);
+}
 void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
 
     float scale = get_window_scale(hwnd);
@@ -938,7 +992,7 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point pos
     auto text_sz = rasterizer_.measure(text, font_sz);
     auto fm = rasterizer_.metrics(font_sz);
     float w = text_sz.width + pad * 2, h = fm.height + pad * 2;
-    POINT pt = {static_cast<LONG>(local_pos.x * scale), static_cast<LONG>(local_pos.y * scale)};
+    POINT pt = {static_cast<LONG>(pos.x * scale), static_cast<LONG>(pos.y * scale)};
     ClientToScreen(hwnd, &pt);
     int piw = std::max(1, static_cast<int>(std::ceil(w * scale)));
     int pih = std::max(1, static_cast<int>(std::ceil(h * scale)));
