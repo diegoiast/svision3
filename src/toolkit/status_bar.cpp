@@ -246,14 +246,19 @@ void StatusBar::update_timer() {
 }
 
 void StatusBar::paint(Painter &painter) {
-    auto pallete = Theme::current().palette;
-    auto fs = pallete.fonts.size;
+    auto palette = Theme::current().palette;
+    auto fs = palette.fonts.size;
     auto fm = painter.font_metrics(fs);
     auto height = rect_.height;
     auto x = 4.0f;
     auto baseline = (height - fm.height) / 2.0f + fm.ascent;
-
-    painter.fill_rect({0, 0, rect_.width, height}, pallete.window);
+    auto bg = palette.window;
+    if (!window_->is_active()) {
+        if (palette.window_inactive) {
+            bg = palette.window_inactive.value();
+        }
+    }
+    painter.fill_rect({0, 0, rect_.width, height}, bg);
     for (auto &s : sections_) {
         if (!s->is_visible()) {
             continue;
@@ -263,7 +268,7 @@ void StatusBar::paint(Painter &painter) {
             continue;
         }
         auto tw = painter.measure_text(display, fs).width;
-        painter.draw_text(display, {x, baseline}, pallete.text, fs);
+        painter.draw_text(display, {x, baseline}, palette.text, fs);
         x += tw + 16.0f;
     }
 }
