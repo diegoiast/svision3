@@ -38,7 +38,6 @@ void TitlebarButton::paint(Painter &painter) {
 
 WindowTitleBar::WindowTitleBar(Window *w) {
     set_window(w);
-    set_on_top(true);
 }
 
 void WindowTitleBar::initializeTitleBar() {
