@@ -7,7 +7,9 @@
 #include "toolkit/platform.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/utf8.hpp"
+#include "toolkit/window.hpp"
 #include "toolkit/window_title_bar.hpp"
+
 #include <algorithm>
 #include <cmath>
 
@@ -62,6 +64,10 @@ Palette BaseTheme::default_palette(ColorScheme scheme) const {
     p.error = Color::from_rgb(0x800000);
     p.link = Color::from_rgb(0x0000FF);
     p.tooltip = Color::from_rgb(0xFFFFE0);
+
+    p.light = Color::from_rgb(0xFFFFFF);
+    p.shadow = Color::from_rgb(0x808080);
+    p.dark_shadow = Color::from_rgb(0x000000);
 
     p.window_decoration = {32, 0, 0, 0};
     p.corner_radius = 4.0f;

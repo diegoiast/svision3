@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "theme.hpp"
+#include <toolkit/theme.hpp>
 
 namespace toolkit {
 

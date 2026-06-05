@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/painter.hpp"
-#include "toolkit/theme.hpp"
 #include "toolkit/text_rasterizer.hpp"
+#include "toolkit/theme.hpp"
 
 #include <cmath>
 
@@ -22,15 +22,42 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
             return;
         }
 
-        auto top_left = sunken ? palette.shadow : palette.highlight;
-        auto bottom_right = sunken ? palette.highlight : palette.shadow;
+        // FIXME: should we move this to the theme instead?
+        if (palette.border_width >= 2.0f) {
+            // 2-pixel bevel (Windows 95 style)
+            auto c_tl_outer = sunken ? palette.shadow : palette.light;
+            auto c_tl_inner = sunken ? palette.dark_shadow : palette.window;
+            auto c_br_inner = sunken ? palette.window : palette.shadow;
+            auto c_br_outer = sunken ? palette.light : palette.dark_shadow;
 
-        draw_line({rect.x, rect.y}, {rect.x + rect.width - 1, rect.y}, top_left, 1.0f);
-        draw_line({rect.x, rect.y}, {rect.x, rect.y + rect.height - 1}, top_left, 1.0f);
-        draw_line({rect.x + rect.width - 1, rect.y},
-                  {rect.x + rect.width - 1, rect.y + rect.height - 1}, bottom_right, 1.0f);
-        draw_line({rect.x, rect.y + rect.height - 1},
-                  {rect.x + rect.width - 1, rect.y + rect.height - 1}, bottom_right, 1.0f);
+            auto x = rect.x;
+            auto y = rect.y;
+            auto w = rect.width;
+            auto h = rect.height;
+
+            // Outer bevel
+            draw_line({x, y}, {x + w - 1, y}, c_tl_outer, 1.0f);
+            draw_line({x, y}, {x, y + h - 1}, c_tl_outer, 1.0f);
+            draw_line({x + w - 1, y}, {x + w - 1, y + h - 1}, c_br_outer, 1.0f);
+            draw_line({x, y + h - 1}, {x + w - 1, y + h - 1}, c_br_outer, 1.0f);
+
+            // Inner bevel
+            draw_line({x + 1, y + 1}, {x + w - 2, y + 1}, c_tl_inner, 1.0f);
+            draw_line({x + 1, y + 1}, {x + 1, y + h - 2}, c_tl_inner, 1.0f);
+            draw_line({x + w - 2, y + 1}, {x + w - 2, y + h - 2}, c_br_inner, 1.0f);
+            draw_line({x + 1, y + h - 2}, {x + w - 2, y + h - 2}, c_br_inner, 1.0f);
+        } else {
+            // 1-pixel bevel (Classic / Plasma style)
+            auto top_left = sunken ? palette.shadow : palette.light;
+            auto bottom_right = sunken ? palette.light : palette.shadow;
+
+            draw_line({rect.x, rect.y}, {rect.x + rect.width - 1, rect.y}, top_left, 1.0f);
+            draw_line({rect.x, rect.y}, {rect.x, rect.y + rect.height - 1}, top_left, 1.0f);
+            draw_line({rect.x + rect.width - 1, rect.y},
+                      {rect.x + rect.width - 1, rect.y + rect.height - 1}, bottom_right, 1.0f);
+            draw_line({rect.x, rect.y + rect.height - 1},
+                      {rect.x + rect.width - 1, rect.y + rect.height - 1}, bottom_right, 1.0f);
+        }
     } else {
         auto bw = palette.border_width;
         auto frame_rect = rect;
@@ -101,6 +128,5 @@ Painter::FontMetrics Painter::font_metrics(float font_size, FontFamily family) {
     }
     return {};
 }
-
 
 } // namespace toolkit

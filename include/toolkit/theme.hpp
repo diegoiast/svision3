@@ -146,8 +146,8 @@ struct Palette {
     Color tab_background;
 
     // If the palette supports shadows, a shadow, otherwise the same as border
+    Color light;
     Color shadow;
-    // If the palette supports shadows, a shadow, otherwise the same as border
     Color dark_shadow;
 
     // Backgrond color used by buttons, may be ommited.

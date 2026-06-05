@@ -2,56 +2,81 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/theme_win95.hpp"
+#include "toolkit/button.hpp"
+#include "toolkit/label.hpp"
+#include "toolkit/layout.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
+#include "toolkit/window_title_bar.hpp"
 #include <algorithm>
 #include <cmath>
 #include <memory>
 
 namespace toolkit {
 
-class Win95TitleBar : public Widget {
+class Win95TitleBar : public WindowTitleBar {
   public:
-    Win95TitleBar(Window *window) : window_(window) { set_on_top(true); }
+    using WindowTitleBar::WindowTitleBar;
+
+    void initializeTitleBar() override {
+        layout = new HBoxLayout();
+        layout->set_spacing(2.0f);
+        layout->set_margins({2, 2, 2, 2});
+
+        title_label = new Label(std::string{window_->title()});
+        title_label->set_alignment(Alignment::Start).set_shrinkable(true).set_elide(true);
+
+        /*        auto m g= title_label->get_margins();
+                m.left = 4.0f;
+                title_label->set_margins(m);
+        */
+        layout->add_widget(std::unique_ptr<Label>(title_label), 1);
+
+        auto const &decoration = Theme::current().palette.window_decoration;
+        auto btn_size = Size{decoration.top - 4.0f, decoration.top - 4.0f};
+
+        auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
+        min_btn->on_click = [this] { window_->minimize(); };
+
+        max_btn = new TitlebarButton(DecorationButton::Maximize, "Maximize", btn_size);
+        max_btn->on_click = [this] {
+            if (window_->is_maximized()) {
+                window_->restore();
+            } else {
+                window_->maximize();
+            }
+        };
+
+        auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close", btn_size);
+        close_btn->on_click = [this] { window_->close(); };
+
+        layout->add_widget(std::unique_ptr<Widget>(min_btn));
+        layout->add_widget(std::unique_ptr<Widget>(max_btn));
+
+        auto *spacer = new Label("");
+        spacer->set_min_size({2, 0});
+        layout->add_widget(std::unique_ptr<Widget>(spacer));
+
+        layout->add_widget(std::unique_ptr<Widget>(close_btn));
+    }
 
     void paint(Painter &painter) override {
-        auto const &p = Theme::current().palette;
-        auto r = rect_;
+        auto const &pal = Theme::current().palette;
         auto active = window_->is_active();
-        auto bg = active ? p.highlight : p.window;
-        auto fg = active ? p.highlighted_text : p.text_disabled;
+        auto bg = active ? pal.highlight : pal.window;
+        auto fg = active ? pal.highlighted_text : pal.text_disabled;
 
-        painter.fill_rect(r, bg);
-        auto fm = painter.font_metrics(p.fonts.size);
-        auto text_y = (r.height - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(std::string{window_->title()}, {r.x + 4.0f, text_y}, fg, p.fonts.size);
-    }
+        painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
 
-    bool handle_mouse(MouseEvent const &event) override {
-        if (event.type == MouseEvent::Type::Press) {
-            if (event.click_count == 2) {
-                if (window_->is_maximized()) {
-                    window_->restore();
-                } else {
-                    window_->maximize();
-                }
-                return true;
-            }
-            window_->start_system_move(event.serial);
-            return true;
+        if (title_label) {
+            title_label->set_text(std::string(window_->title()));
+            title_label->set_color(fg);
         }
-        return false;
-    }
 
-    Size size_hint() const override {
-        auto const &m = Theme::current().palette.window_decoration;
-        return {100.0f, m.top};
+        layout->paint(painter);
     }
-
-  private:
-    Window *window_;
 };
 
 Win95Theme::Win95Theme(ColorScheme scheme, std::optional<Palette> p)
@@ -66,14 +91,61 @@ Win95Theme::Win95Theme(ColorScheme scheme, std::optional<Palette> p)
 }
 
 std::unique_ptr<Widget> Win95Theme::create_title_bar(Window *window) const {
-    // return std::make_unique<Win95TitleBar>(window);
-    return BaseTheme::create_title_bar(window);
+    auto b = std::make_unique<Win95TitleBar>(window);
+    b->initializeTitleBar();
+    return b;
+}
+
+void Win95Theme::draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                                    WidgetState const &state) const {
+    auto pressed = state.interaction == ButtonState::ClickedInside;
+    auto bg = palette.window;
+    painter.draw_filled_frame(rect, bg, palette.border, palette, pressed);
+
+    auto center = Point{rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f};
+    if (pressed) {
+        center.x += 1.0f;
+        center.y += 1.0f;
+    }
+
+    auto symbol_c = palette.text;
+    auto s = 4.0f;
+
+    switch (button) {
+    case DecorationButton::Close:
+        painter.draw_line({center.x - s, center.y - s}, {center.x + s, center.y + s}, symbol_c,
+                          2.0f);
+        painter.draw_line({center.x + s, center.y - s}, {center.x - s, center.y + s}, symbol_c,
+                          2.0f);
+        break;
+    case DecorationButton::Minimize:
+        painter.draw_line({center.x - s, center.y + s}, {center.x + s, center.y + s}, symbol_c,
+                          2.0f);
+        break;
+    case DecorationButton::Maximize:
+        painter.draw_rect({center.x - s, center.y - s, s * 2, 2.0f}, symbol_c, 1.0f); // Top bar
+        painter.draw_rect({center.x - s, center.y - s, s * 2, s * 2}, symbol_c, 1.0f);
+        break;
+    case DecorationButton::Restore: {
+        // Two overlapping rectangles
+        painter.draw_rect({center.x - s + 2, center.y - s, s * 2 - 2, 2.0f}, symbol_c, 1.0f);
+        painter.draw_rect({center.x - s + 2, center.y - s, s * 2 - 2, s * 2 - 2}, symbol_c, 1.0f);
+        painter.draw_rect({center.x - s, center.y - s + 2, s * 2 - 2, 2.0f}, symbol_c, 1.0f);
+        painter.draw_rect({center.x - s, center.y - s + 2, s * 2 - 2, s * 2 - 2}, symbol_c, 1.0f);
+        break;
+    }
+    case DecorationButton::Menu:
+        // Usually a small icon, but for now a simple dash
+        painter.draw_line({center.x - s, center.y}, {center.x + s, center.y}, symbol_c, 2.0f);
+        break;
+    }
 }
 
 Palette Win95Theme::default_palette(ColorScheme scheme) const {
     Palette p = BaseTheme::default_palette(scheme);
     Color windows95_color = Color::from_argb(0xFF000080);
     p.beveled = true;
+    p.border_width = 2.0f;
     p.progress_bar_height = 20;
     p.inline_scrollbars = false;
     p.window_decoration = {26, 0, 0, 0};
@@ -91,7 +163,8 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
         p.border = Color::from_argb(0xFF808080);
         p.accent = windows95_color;
         p.link = windows95_color;
-        p.shadow = Color::from_argb(0xFF404040);
+        p.light = Color::from_argb(0xFFFFFFFF);
+        p.shadow = Color::from_argb(0xFF808080);
         p.dark_shadow = Color::from_argb(0xFF000000);
         p.background_pressed = Color::from_argb(0xFFB0B0B0);
         p.background_hovered = Color::from_argb(0xFFB8B8B8);
@@ -115,7 +188,8 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
         p.border = Color::from_argb(0xFF404040);
         p.accent = windows95_color;
         p.link = windows95_color;
-        p.shadow = Color::from_argb(0xFF000000);
+        p.light = Color::from_argb(0xFF404040);
+        p.shadow = Color::from_argb(0xFF202020);
         p.dark_shadow = Color::from_argb(0xFF000000);
         p.background_pressed = windows95_color;
         p.background_hovered = Color::from_argb(0xFF303030);
@@ -236,6 +310,10 @@ void Win95Theme::draw_progress_bar(Painter &painter, Rect const &rect, float pro
         }
         painter.fill_rect({cx, inner.y, chunk_width, inner.height}, fill_c);
     }
+}
+
+void Win95Theme::draw_tab_content_background(Painter &painter, Rect const &rect) const {
+    painter.fill_rect(rect, palette.window);
 }
 
 } // namespace toolkit
