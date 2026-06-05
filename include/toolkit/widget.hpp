@@ -146,7 +146,7 @@ class Widget {
     auto map_to_window(Point p) const -> Point;
     auto map_from_window(Point p) const -> Point;
 
-    void set_tooltip(std::string text);
+    Widget &set_tooltip(std::string text);
     virtual std::string const &tooltip() const { return state.tooltip; }
 
     void set_markdown_tooltip(std::string markdown);

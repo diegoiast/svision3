@@ -76,14 +76,15 @@ Widget &Widget::set_visible(bool v) {
     return *this;
 }
 
-void Widget::set_tooltip(std::string text) {
+Widget &Widget::set_tooltip(std::string text) {
     if (state.tooltip == text) {
-        return;
+        return *this;
     }
     state.tooltip = std::move(text);
     if (window_ && is_effectively_visible()) {
         window_->request_redraw("property change (tooltip)");
     }
+    return *this;
 }
 
 void Widget::set_markdown_tooltip(std::string markdown) {
