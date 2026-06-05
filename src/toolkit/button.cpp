@@ -121,7 +121,7 @@ bool Button::should_fire_click() const {
     return state_handler_.button_state == ButtonState::ClickedInside;
 }
 
-void Button::set_text(std::string text) {
+Button &Button::set_text(std::string text) {
     auto pos = text.find('&');
     std::string new_display_text;
     int new_mnemonic_index = -1;
@@ -137,7 +137,7 @@ void Button::set_text(std::string text) {
     }
 
     if (display_text_ == new_display_text && mnemonic_index_ == new_mnemonic_index) {
-        return;
+        return *this;
     }
 
     display_text_ = std::move(new_display_text);
@@ -147,26 +147,30 @@ void Button::set_text(std::string text) {
     if (window_) {
         window_->request_redraw("button state");
     }
+
+    return *this;
 }
 
-void Button::set_icon(Icon icon) {
+Button &Button::set_icon(Icon icon) {
     if (icon_ == icon) {
-        return;
+        return *this;
     }
     icon_ = std::move(icon);
     if (window_) {
         window_->request_redraw("button icon");
     }
+    return *this;
 }
 
-void Button::clear_icon() {
+Button &Button::clear_icon() {
     if (!icon_) {
-        return;
+        return *this;
     }
     icon_ = nullptr;
     if (window_) {
         window_->request_redraw("button icon");
     }
+    return *this;
 }
 
 void Button::stop_auto_repeat() {

@@ -21,12 +21,6 @@ class Button : public Widget, public Fluent<Button> {
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;
 
-    void set_text(std::string text);
-    std::string const &text() const { return display_text_; }
-
-    void set_icon(Icon icon);
-    void clear_icon();
-
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
@@ -41,10 +35,17 @@ class Button : public Widget, public Fluent<Button> {
         }
     }
 
-    void set_padding(Margins const &padding) { padding_override_ = padding; }
+    Button &set_icon(Icon icon);
+    Button &clear_icon();
+    Button &set_text(std::string text);
+    std::string const &text() const { return display_text_; }
+    Button &set_padding(Margins const &padding) {
+        padding_override_ = padding;
+        return *this;
+    }
+    const std::optional<Margins> &get_padding() const { return padding_override_; }
     Button &set_flat(bool f);
     bool is_flat() const { return flat_; }
-
     Button &set_checkable(bool c);
     bool is_checkable() const { return checkable_; }
     Button &set_checked(bool c);
