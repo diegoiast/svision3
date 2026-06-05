@@ -268,6 +268,15 @@ void VBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
     }
 }
 
+auto VBoxLayout::release_item(int index) -> std::unique_ptr<Widget> {
+    if (index < 0 || index >= static_cast<int>(items_.size())) {
+        return nullptr;
+    }
+    auto widget = std::move(items_[index].widget);
+    items_.erase(items_.begin() + index);
+    return widget;
+}
+
 HBoxLayout::HBoxLayout() {}
 
 void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignment v_align) {
@@ -509,6 +518,15 @@ void HBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
     for (auto &item : items_) {
         callback(item.widget.get());
     }
+}
+
+auto HBoxLayout::release_item(int index) -> std::unique_ptr<Widget> {
+    if (index < 0 || index >= static_cast<int>(items_.size())) {
+        return nullptr;
+    }
+    auto widget = std::move(items_[index].widget);
+    items_.erase(items_.begin() + index);
+    return widget;
 }
 
 nlohmann::json VBoxLayout::to_json() const {

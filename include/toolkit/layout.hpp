@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"
 #include <memory>
 #include <vector>
@@ -32,6 +33,8 @@ class VBoxLayout : public Widget, public Fluent<VBoxLayout> {
 
     void set_margins(Margins const &m) { margins_ = m; }
     void set_spacing(float s) { spacing_ = s; }
+    void clear_items() { items_.clear(); }
+    auto release_item(int index) -> std::unique_ptr<Widget>;
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
@@ -77,7 +80,10 @@ class HBoxLayout : public Widget {
     }
 
     void set_margins(Margins const &m) { margins_ = m; }
+    const Margins &get_margins() const { return margins_; }
     void set_spacing(float s) { spacing_ = s; }
+    void clear_items() { items_.clear(); }
+    auto release_item(int index) -> std::unique_ptr<Widget>;
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
