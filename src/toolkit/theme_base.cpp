@@ -7,6 +7,7 @@
 #include "toolkit/platform.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/utf8.hpp"
+#include "toolkit/window_title_bar.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -15,20 +16,28 @@ namespace toolkit {
 BaseTheme::BaseTheme(ColorScheme scheme, std::optional<Palette> p) {
     if (p) {
         this->palette = std::move(*p);
-        if (palette.fonts.size <= 0) {
-            palette.fonts.size = 14.0f;
-        }
-        if (palette.fonts.system.empty()) {
-            palette.fonts.system = "sans-serif";
-        }
-        if (palette.fonts.monospace.empty()) {
-            palette.fonts.monospace = "monospace";
-        }
+    } else {
+        this->palette = default_palette(scheme);
     }
-    // When p is nullopt, derived class constructors initialize palette
-    // in their own body where virtual dispatch calls their default_palette.
 
-    // Initialize backward compatibility members
+    if (palette.fonts.size <= 0) {
+        palette.fonts.size = 14.0f;
+    }
+    if (palette.fonts.system.empty()) {
+        palette.fonts.system = "sans-serif";
+    }
+    if (palette.fonts.monospace.empty()) {
+        palette.fonts.monospace = "monospace";
+    }
+    init_compatibility();
+}
+
+std::unique_ptr<Widget> BaseTheme::create_title_bar(Window *window) const {
+    return std::make_unique<WindowTitleBar>(window);
+}
+
+// Initialize backward compatibility members
+void BaseTheme::init_compatibility() {
     name = "Base";
     layout.margins = {8, 8, 8, 8};
     layout.spacing = 8.0f;
@@ -40,28 +49,45 @@ BaseTheme::BaseTheme(ColorScheme scheme, std::optional<Palette> p) {
 Palette BaseTheme::default_palette(ColorScheme scheme) const {
     Palette p;
     Theme::init_fonts(p);
-    // Default to Material-like colors
-    auto primary = Color::from_rgb(0x6750A4);
+
+    // Default values for all colors to avoid black defaults
+    p.highlight = Color::from_rgb(0x6750A4);
+    p.accent = Color::from_rgb(0x6750A4);
+    p.shadow = Color::from_rgb(0x000000);
+    p.dark_shadow = Color::from_rgb(0x000000);
+    p.success = Color::from_rgb(0x008000);
+    p.warning = Color::from_rgb(0x808000);
+    p.error = Color::from_rgb(0x800000);
+    p.link = Color::from_rgb(0x0000FF);
+    p.tooltip = Color::from_rgb(0xFFFFE0);
+
+    p.window_decoration = {32, 0, 0, 0};
     p.corner_radius = 4.0f;
 
     switch (scheme) {
     case ColorScheme::Light:
         p.window = Color::from_rgb(0xFFFBFE);
         p.base = Color::from_rgb(0xFFFFFF);
+        p.alternate = Color::from_rgb(0xF2F2F2);
         p.text = Color::from_rgb(0x1C1B1F);
-        p.highlight = primary;
+        p.text_disabled = Color::from_rgb(0x9E9E9E);
+        p.placeholder = Color::from_rgb(0x79747E);
+        p.highlight = p.accent;
         p.highlighted_text = Color::from_rgb(0xFFFFFF);
-        p.accent = primary;
+        p.border = Color::from_rgb(0xE7E0EC);
         p.tab_select_background = p.base;
         p.tab_background = p.window;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_rgb(0x1C1B1F);
         p.base = Color::from_rgb(0x1C1B1F);
+        p.alternate = Color::from_rgb(0x2A2A2E);
         p.text = Color::from_rgb(0xE6E1E5);
-        p.highlight = primary;
+        p.text_disabled = Color::from_rgb(0x606060);
+        p.placeholder = Color::from_rgb(0x868686);
+        p.highlight = p.accent;
         p.highlighted_text = Color::from_rgb(0xFFFFFF);
-        p.accent = primary;
+        p.border = Color::from_rgb(0x3A3A3E);
         p.tab_select_background = p.base;
         p.tab_background = p.window;
         break;
@@ -343,9 +369,9 @@ void BaseTheme::draw_menubar_background(Painter &painter, Rect const &rect,
     painter.fill_rect(rect, bg);
     if (palette.chrome_lines) {
         auto border_c = palette.border;
-        painter.draw_line({rect.x, 0}, {rect.x + rect.width, 1.0f}, border_c, 1.0f);
+        painter.draw_line({rect.x, 0}, {rect.x + rect.width, 1.0f}, border_c, palette.border_width);
         painter.draw_line({rect.x, rect.height - 1.0f}, {rect.x + rect.width, rect.height - 1.0f},
-                          border_c, 1.0f);
+                          border_c, palette.border_width);
     }
 }
 
@@ -830,6 +856,40 @@ void BaseTheme::draw_tooltip(Painter &painter, Rect const &rect, std::string_vie
     painter.draw_text(text, {text_x, baseline_y}, palette.text, palette.fonts.size);
 }
 
+void BaseTheme::draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                                   WidgetState const &state) const {
+    auto bg = palette.window;
+    if (state.interaction == ButtonState::ClickedInside) {
+        bg = palette.border;
+    } else if (state.interaction == ButtonState::Hovered) {
+        bg = palette.alternate;
+    }
+
+    painter.fill_rect(rect, bg);
+
+    auto center = Point{rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f};
+    auto size = std::min(rect.width, rect.height) * 0.4f;
+
+    if (button == DecorationButton::Minimize) {
+        painter.draw_line({center.x - size, center.y}, {center.x + size, center.y}, palette.text,
+                          1.5f);
+    } else if (button == DecorationButton::Maximize) {
+        painter.draw_rect({center.x - size, center.y - size, size * 2, size * 2}, palette.text,
+                          1.5f);
+    } else if (button == DecorationButton::Restore) {
+        painter.draw_rect({center.x - size, center.y - size, size * 1.5f, size * 1.5f},
+                          palette.text, 1.5f);
+        painter.draw_rect(
+            {center.x - size + 0.5f, center.y - size + 0.5f, size * 1.5f, size * 1.5f},
+            palette.text, 1.5f);
+    } else if (button == DecorationButton::Close) {
+        painter.draw_line({center.x - size, center.y - size}, {center.x + size, center.y + size},
+                          palette.text, 1.5f);
+        painter.draw_line({center.x + size, center.y - size}, {center.x - size, center.y + size},
+                          palette.text, 1.5f);
+    }
+}
+
 void BaseTheme::draw_tab_content_background(Painter &painter, Rect const &rect) const {
     painter.fill_rect(rect, palette.window);
 }
@@ -837,14 +897,15 @@ void BaseTheme::draw_tab_content_background(Painter &painter, Rect const &rect) 
 void BaseTheme::draw_toolbar(Painter &painter, Rect const &rect, WidgetState const &state) const {
     auto bg =
         state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
+    auto bw = palette.border_width;
     if (palette.beveled) {
-        painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, palette.highlight, 1.0f);
+        painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, palette.highlight, bw);
         painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
-                          {rect.x + rect.width, rect.y + rect.height - 1.0f}, palette.shadow, 1.0f);
+                          {rect.x + rect.width, rect.y + rect.height - 1.0f}, palette.shadow, bw);
     } else if (palette.chrome_lines) {
         auto border_c = bg.darken(0.15f);
         painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
-                          {rect.x + rect.width, rect.y + rect.height - 1.0f}, border_c, 1.0f);
+                          {rect.x + rect.width, rect.y + rect.height - 1.0f}, border_c, bw);
     }
 }
 
@@ -853,7 +914,6 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
                              WidgetState const &state, bool hovered_up, bool pressed_up,
                              bool hovered_down, bool pressed_down, bool cursor_visible) const {
     auto const &style = line_input;
-    auto const &btn_style = button;
     auto focused = state.focused;
     auto enabled = state.enabled;
     auto bw = rect.height;
@@ -1000,10 +1060,9 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
 }
 
 void BaseTheme::draw_scrollbar(Painter &painter, Rect const &rect, float value,
-                                Orientation orientation, WidgetState const &state,
-                                bool hovered_left_btn, bool pressed_left_btn,
-                                bool hovered_right_btn, bool pressed_right_btn,
-                                bool hovered_thumb) const {
+                               Orientation orientation, WidgetState const &state,
+                               bool hovered_left_btn, bool pressed_left_btn, bool hovered_right_btn,
+                               bool pressed_right_btn, bool hovered_thumb) const {
     auto const &style = scrollbar;
     auto enabled = state.enabled;
     auto horizontal = orientation == Orientation::Horizontal;
@@ -1021,8 +1080,8 @@ void BaseTheme::draw_scrollbar(Painter &painter, Rect const &rect, float value,
         }
     }
 
-    auto bs = style.show_buttons ? std::min(horizontal ? r.height : r.width, style.button_size)
-                                 : 0.0f;
+    auto bs =
+        style.show_buttons ? std::min(horizontal ? r.height : r.width, style.button_size) : 0.0f;
 
     auto track_rect = horizontal ? Rect{r.x + bs, r.y, r.width - 2 * bs, r.height}
                                  : Rect{r.x, r.y + bs, r.width, r.height - 2 * bs};

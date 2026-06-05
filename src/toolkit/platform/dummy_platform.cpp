@@ -4,10 +4,9 @@
 namespace toolkit {
 
 std::unique_ptr<PlatformWindow> DummyPlatformApplication::create_window(std::string_view, Size,
-                                                                        Window *) {
+                                                                         Window *, WindowOptions) {
     return std::make_unique<DummyPlatformWindow>();
 }
-
 std::unique_ptr<ImageLoaderInterface> DummyPlatformApplication::create_image_loader() {
     return std::make_unique<StbImageLoader>();
 }

@@ -73,6 +73,23 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 11. [x] Wayland tooltips (xdg_popup)
 12. [ ] Date picker API dialog
 
+## CSD : client side decorations
+
+1. [ ] Basic infra
+1. [ ] Make a general window title, instead of copying class for each theme (using theme buttons)
+1. [ ] Window menu popup
+1. [ ] Option: use title from theme, or native desktop
+1. [ ] Test on mutter
+1. [ ] Add support for Window icon at platform level
+1. [ ] Use window icon in CSD
+1. [ ] Shadow: on KWin - when we have CSD, no shadow is available
+1. [ ] Plasma: "show on all desktops"
+1. [ ] macOS: verify against actual apps.
+1. [ ] Windows 11: implement
+1. [ ] GNome: implement
+1. [ ] Windows95: implement
+1. [ ] Material: implement
+
 ## Widgets [20/37]
 
 1. [x] Button (click callback, hover/pressed states).
@@ -205,7 +222,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 6. Radio button
     1. [ ] When selected - use tint background, black center
 7. Window
-    1. [ ] Default color should be darker.
+    1. [x] Default color should be darker.
 
 ### Gnome theme
 
@@ -254,6 +271,12 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## ScrollArea
 
 1. [ ] Review code
+
+
+## Image Widget
+
+1. [ ] Scrollbar drag is not working, instead it acts as dragging inside the main widget
+2. [ ] We got round cornders on the left side only
 
 ## LineInput Features [14/15]
 

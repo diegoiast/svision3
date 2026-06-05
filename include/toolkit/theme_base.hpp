@@ -75,7 +75,13 @@ class BaseTheme : public Theme {
                             bool hovered) const override;
 
     void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const override;
+    void draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                            WidgetState const &state) const override;
     void draw_tab_content_background(Painter &painter, Rect const &rect) const override;
+    std::unique_ptr<Widget> create_title_bar(Window *window) const override;
+
+  protected:
+    void init_compatibility();
     void draw_toolbar(Painter &painter, Rect const &rect, WidgetState const &state) const override;
     void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text, int cursor_pos,
                       int selection_start, int selection_end, WidgetState const &state,

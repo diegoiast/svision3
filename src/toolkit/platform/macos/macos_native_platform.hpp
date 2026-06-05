@@ -6,16 +6,16 @@ namespace toolkit {
 
 class MacOSNativePlatformApplication : public MacOSPlatformApplicationBase {
   public:
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title,
-                                                   Size size,
-                                                   Window *owner) override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
+                                                  WindowOptions options) override;
+
     std::string_view name() const override { return "macOS"; }
     std::string_view painter_name() const override { return "Native"; }
 };
 
 class MacOSNativePlatformWindow : public PlatformWindow {
   public:
-    MacOSNativePlatformWindow(std::string_view title, Size size, Window *owner);
+    MacOSNativePlatformWindow(std::string_view title, Size size, Window *owner, WindowOptions options);
     ~MacOSNativePlatformWindow() override;
     void show() override;
     void close() override;
@@ -27,6 +27,8 @@ class MacOSNativePlatformWindow : public PlatformWindow {
                     bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
+    void start_system_move(uint32_t serial) override;
+    void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
     bool save_to_png(std::string const &path) override;

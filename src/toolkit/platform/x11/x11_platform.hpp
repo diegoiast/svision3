@@ -12,8 +12,8 @@ class X11PlatformApplication : public PlatformApplication {
   public:
     X11PlatformApplication();
     ~X11PlatformApplication() override;
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
-                                                  Window *owner) override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
+                                                  WindowOptions options) override;
     std::unique_ptr<ImageLoaderInterface> create_image_loader() override;
     int run() override;
     void run_until(std::function<bool()> should_exit) override;
@@ -35,13 +35,14 @@ class X11PlatformApplication : public PlatformApplication {
 
 class X11PlatformWindow : public PlatformWindow {
   public:
-    X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
-                      Window *owner);
+    X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size, Window *owner,
+                      WindowOptions options);
     ~X11PlatformWindow() override;
     void show() override;
     void close() override;
     void minimize() override;
     void maximize() override;
+    void restore() override;
     void set_size(Size s) override;
     void request_redraw() override;
     void set_min_size(Size s) override;
@@ -49,6 +50,9 @@ class X11PlatformWindow : public PlatformWindow {
     int start_timer(float interval_sec, std::function<void()> callback, bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
+    void set_title(std::string_view t) override;
+    void start_system_move(uint32_t serial) override;
+    void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
     void set_modal_for(PlatformWindow *parent) override;

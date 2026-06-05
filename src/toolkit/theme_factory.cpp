@@ -3,16 +3,65 @@
 
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/painter.hpp"
+#include "toolkit/theme.hpp"
 #include "toolkit/theme_base.hpp"
 #include "toolkit/theme_macos.hpp"
 #include "toolkit/theme_plasma.hpp"
 #include "toolkit/theme_win11.hpp"
 #include "toolkit/theme_win95.hpp"
 #include "toolkit/types.hpp"
+#include "toolkit/widget.hpp"
+#include "toolkit/window.hpp"
+
+#include <assert.h>
+#include <memory>
 
 namespace toolkit {
 
-MaterialTheme::MaterialTheme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme(scheme, std::move(p)) {
+class GnomeTitleBar : public Widget {
+  public:
+    GnomeTitleBar(Window *window) : window_(window) { set_on_top(true); }
+
+    void paint(Painter &painter) override {
+        auto const &p = Theme::current().palette;
+        auto r = rect_;
+        auto active = window_->is_active();
+        auto bg = active ? p.window : p.window_inactive.value_or(p.window);
+
+        painter.fill_rect(r, bg);
+        auto fm = painter.font_metrics(p.fonts.size);
+        auto text_y = (r.height - fm.height) / 2.0f + fm.ascent;
+        painter.draw_text(std::string{window_->title()}, {r.x + 10.0f, text_y}, p.text,
+                          p.fonts.size);
+    }
+
+    bool handle_mouse(MouseEvent const &event) override {
+        if (event.type == MouseEvent::Type::Press) {
+            if (event.click_count == 2) {
+                if (window_->is_maximized()) {
+                    window_->restore();
+                } else {
+                    window_->maximize();
+                }
+                return true;
+            }
+            window_->start_system_move(event.serial);
+            return true;
+        }
+        return false;
+    }
+
+    Size size_hint() const override {
+        auto const &m = Theme::current().palette.window_decoration;
+        return {100.0f, m.top};
+    }
+
+  private:
+    Window *window_;
+};
+
+MaterialTheme::MaterialTheme(ColorScheme scheme, std::optional<Palette> p)
+    : BaseTheme(scheme, std::move(p)) {
     if (!p) {
         palette = this->default_palette(scheme);
     }
@@ -28,11 +77,10 @@ MaterialTheme::MaterialTheme(ColorScheme scheme, std::optional<Palette> p) : Bas
 
 Palette MaterialTheme::default_palette(ColorScheme scheme) const {
     auto material_purple = Color::from_rgb(0x6750A4);
-
-    Palette p;
-    Theme::init_fonts(p);
+    Palette p = BaseTheme::default_palette(scheme);
     p.corner_radius = 4.0f;
     p.tab_radius = 0.0f;
+    p.window_decoration = {32, 0, 0, 0};
 
     switch (scheme) {
     case ColorScheme::Light:
@@ -87,7 +135,8 @@ Palette MaterialTheme::default_palette(ColorScheme scheme) const {
     return p;
 }
 
-GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme(scheme, std::move(p)) {
+GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p)
+    : BaseTheme(scheme, std::move(p)) {
     if (!p) {
         palette = this->default_palette(scheme);
     }
@@ -110,14 +159,14 @@ GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme
 }
 
 Palette GnomeTheme::default_palette(ColorScheme scheme) const {
-    auto adwaita_color = Color::from_rgb(0x3584E4);
-
-    Palette p;
-    Theme::init_fonts(p);
+    auto adwaita_color = Color::from_argb(0xFF3465A4);
+    Palette p = BaseTheme::default_palette(scheme);
     p.corner_radius = 4.0f;
     p.inline_scrollbars = false;
+
     p.bottom_shadow = true;
     p.tab_radius = 4.0f;
+    p.window_decoration = {32, 0, 0, 0};
 
     switch (scheme) {
     case ColorScheme::Light:
@@ -132,8 +181,8 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
         p.border = Color::from_rgb(0xcbcbcb);
         p.accent = adwaita_color;
         p.link = adwaita_color;
-        p.shadow = Color::rgba(1, 1, 1, 0.8f);    // Top inner highlight
-        p.dark_shadow = Color::from_rgb(0xb0b0b0);  // Bottom silver lines
+        p.shadow = Color::rgba(1, 1, 1, 0.8f);     // Top inner highlight
+        p.dark_shadow = Color::from_rgb(0xb0b0b0); // Bottom silver lines
         p.tooltip = Color::rgb(0.25f, 0.25f, 0.22f);
         p.background_pressed = Color::from_rgb(0xd6d6d1);
         p.background_hovered = Color::from_rgb(0xfdfdfd);
@@ -167,9 +216,15 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
         p.error = Color::from_argb(0xFFC62828);
         p.tab_select_background = p.base;
         p.tab_background = p.window;
+        p.bottom_shadow = true;
         break;
     }
     return p;
+}
+
+std::unique_ptr<Widget> GnomeTheme::create_title_bar(Window *window) const {
+    // return std::make_unique<GnomeTitleBar>(window);
+    return BaseTheme::create_title_bar(window);
 }
 
 namespace ThemeFactory {

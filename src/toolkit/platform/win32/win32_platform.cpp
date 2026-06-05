@@ -580,10 +580,10 @@ SystemFonts Win32PlatformApplication::system_fonts() const {
 }
 
 std::unique_ptr<PlatformWindow> Win32PlatformApplication::create_window(std::string_view title,
-                                                                        Size size, Window *owner) {
-    return std::make_unique<Win32PlatformWindow>(this, title, size, owner);
+                                                                        Size size, Window *owner,
+                                                                        WindowOptions options) {
+    return std::make_unique<Win32PlatformWindow>(this, title, size, owner, options);
 }
-
 std::unique_ptr<ImageLoaderInterface> Win32PlatformApplication::create_image_loader() {
     return std::make_unique<StbImageLoader>();
 }
@@ -699,7 +699,7 @@ void Win32PlatformApplication::clipboard_set_text(std::string const &text) {
 // --- Win32PlatformWindow ---
 
 Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::string_view title,
-                                         Size size, Window *owner)
+                                         Size size, Window *owner, WindowOptions options)
     : app_(app), owner_(owner) {
     arrow_cursor = LoadCursorW(nullptr, IDC_ARROW);
     ibeam_cursor = LoadCursorW(nullptr, IDC_IBEAM);
@@ -707,6 +707,8 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
     not_allowed_cursor = LoadCursorW(nullptr, IDC_NO);
     resize_ew_cursor = LoadCursorW(nullptr, IDC_SIZEWE);
     resize_ns_cursor = LoadCursorW(nullptr, IDC_SIZENS);
+    resize_nw_cursor = LoadCursorW(nullptr, IDC_SIZENWSE);
+    resize_nesw_cursor = LoadCursorW(nullptr, IDC_SIZENESW);
     move_cursor = LoadCursorW(nullptr, IDC_SIZEALL);
     std::wstring wtitle = utf8_to_wide(title);
     float scale = static_cast<float>(get_system_dpi()) / 96.0f;
@@ -818,7 +820,13 @@ void Win32PlatformWindow::minimize() {
 
 void Win32PlatformWindow::maximize() {
     if (hwnd) {
-        ShowWindow(hwnd, IsZoomed(hwnd) ? SW_RESTORE : SW_MAXIMIZE);
+        ShowWindow(hwnd, SW_MAXIMIZE);
+    }
+}
+
+void Win32PlatformWindow::restore() {
+    if (hwnd) {
+        ShowWindow(hwnd, SW_RESTORE);
     }
 }
 
@@ -877,6 +885,10 @@ void Win32PlatformWindow::stop_timer(int timer_id) {
     }
 }
 
+void Win32PlatformWindow::set_title(std::string_view t) {
+    SetWindowTextW(hwnd, std::wstring(t.begin(), t.end()).c_str());
+}
+
 void Win32PlatformWindow::set_cursor(CursorShape shape) {
     HCURSOR hc;
     switch (shape) {
@@ -895,6 +907,12 @@ void Win32PlatformWindow::set_cursor(CursorShape shape) {
     case CursorShape::ResizeNS:
         hc = resize_ns_cursor;
         break;
+    case CursorShape::ResizeNW:
+        hc = resize_nw_cursor;
+        break;
+    case CursorShape::ResizeNESW:
+        hc = resize_nesw_cursor;
+        break;
     case CursorShape::Move:
         hc = move_cursor;
         break;
@@ -909,7 +927,10 @@ void Win32PlatformWindow::set_cursor(CursorShape shape) {
     SetCursor(hc);
 }
 
-void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point local_pos) {
+void Win32PlatformWindow::start_system_move(uint32_t /*serial*/) {}
+void Win32PlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/) {}
+void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
+
     float scale = get_window_scale(hwnd);
     auto const &style = Theme::current().tooltip;
     auto &palette = Theme::current().palette;

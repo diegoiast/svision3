@@ -23,7 +23,7 @@ class Application {
     Application(Application const &) = delete;
     Application &operator=(Application const &) = delete;
 
-    Window *create_window(std::string_view title, Size size);
+    Window *create_window(std::string_view title, Size size, WindowOptions options = {});
     int run();
     void run_until(std::function<bool()> should_exit);
     void quit();

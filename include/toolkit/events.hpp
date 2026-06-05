@@ -12,6 +12,7 @@ struct MouseEvent {
     enum class Type { Press, Release, Move, Drag, Scroll, Leave };
     Type type = Type::Move;
     Point position;
+    uint32_t serial = 0;
     // FIXME: we should have constants for button numbers
     int button = 0;
     int click_count = 1;

@@ -96,6 +96,7 @@ set(TOOLKIT_SOURCES
 
     src/toolkit/toast_widget.cpp
     src/toolkit/status_bar.cpp
+    src/toolkit/window_title_bar.cpp
 )
 
 if(TOOLKIT_WITH_CAIRO)

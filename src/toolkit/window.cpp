@@ -112,13 +112,25 @@ struct Window::Impl {
     Point rich_tooltip_pos;
 };
 
-Window::Window(std::string_view title, Size size)
-    : title_(title), size_(size), impl_(std::make_unique<Impl>()) {
-    impl_->platform = detail::current_platform()->create_window(title, size, this);
-    spdlog::info("Window '{}' created ({}x{})", title_, size.width, size.height);
+Window::Window(std::string_view title, Size size, WindowOptions options)
+    : title_(title), size_(size), options_(options), impl_(std::make_unique<Impl>()) {
+    if (options_.csd) {
+        auto const &m = Theme::current().palette.window_decoration;
+        size_.width += m.left + m.right;
+        size_.height += m.top + m.bottom;
+    }
+    impl_->platform = detail::current_platform()->create_window(title, size_, this, options);
+
+    theme_observer_alive_ = std::make_shared<bool>(true);
+    Theme::add_theme_observer([this, alive = theme_observer_alive_](const Theme &) {
+        if (*alive) {
+            on_theme_changed();
+        }
+    });
 }
 
 Window::~Window() {
+    *theme_observer_alive_ = false;
     if (impl_->platform) {
         impl_->platform->hide_tooltip_window();
     }
@@ -227,6 +239,22 @@ static void on_theme_changed_recursive(Widget *w) {
 }
 
 void Window::on_theme_changed() {
+    if (options_.csd) {
+        if (auto *layout = dynamic_cast<VBoxLayout *>(root_.get())) {
+            if (layout->items().size() >= 2) {
+                auto content = layout->release_item(1);
+                layout->clear_items();
+                auto new_layout = std::make_unique<VBoxLayout>();
+                new_layout->set_spacing(0);
+                new_layout->set_margins({0, 0, 0, 0});
+                auto *title_bar = Theme::current().create_title_bar(this).release();
+                new_layout->add_widget(std::unique_ptr<Widget>(title_bar));
+                title_bar->set_window(this);
+                new_layout->add_widget(std::move(content), 1);
+                root_ = std::move(new_layout);
+            }
+        }
+    }
     if (root_) {
         on_theme_changed_recursive(root_.get());
     }
@@ -282,6 +310,52 @@ void Window::set_cursor(CursorShape shape) {
     }
 }
 
+void Window::start_system_move(uint32_t serial) {
+    if (impl_->platform) {
+        impl_->platform->start_system_move(serial);
+    }
+}
+
+void Window::start_system_resize(WindowEdge edge, uint32_t serial) {
+    if (impl_->platform) {
+        impl_->platform->start_system_resize(edge, serial);
+    }
+}
+
+void Window::minimize() {
+    if (impl_->platform) {
+        impl_->platform->minimize();
+    }
+}
+
+void Window::maximize() {
+    is_maximized_ = true;
+    if (impl_->platform) {
+        impl_->platform->maximize();
+    }
+}
+
+void Window::restore() {
+    is_maximized_ = false;
+    if (impl_->platform) {
+        impl_->platform->restore();
+    }
+}
+
+void Window::set_title(std::string_view t) {
+    title_ = t;
+    if (impl_->platform) {
+        impl_->platform->set_title(t);
+    }
+}
+
+void Window::handle_maximized(bool maximized) {
+    if (is_maximized_ == maximized) {
+        return;
+    }
+    is_maximized_ = maximized;
+}
+
 void Window::show_tooltip_window(std::string const &text, Point pos) {
     if (impl_->platform) {
         impl_->platform->show_tooltip_window(text, pos);
@@ -295,14 +369,23 @@ void Window::hide_tooltip_window() {
 }
 
 Window &Window::set_root(std::unique_ptr<Widget> root) {
-    root_ = std::move(root);
+    if (options_.csd) {
+        auto layout = std::make_unique<VBoxLayout>();
+        layout->set_spacing(0);
+        layout->set_margins({0, 0, 0, 0});
+        auto *title_bar = Theme::current().create_title_bar(this).release();
+        layout->add_widget(std::unique_ptr<Widget>(title_bar));
+        title_bar->set_window(this);
+        layout->add_widget(std::move(root), 1);
+        root_ = std::move(layout);
+    } else {
+        root_ = std::move(root);
+    }
     if (root_) {
         root_->set_window(this);
-        root_->set_rect({0, 0, size_.width, size_.height});
-        if (impl_->platform) {
-            impl_->platform->set_min_size(min_size());
-        }
     }
+
+    relayout();
     return *this;
 }
 
@@ -450,11 +533,15 @@ void Window::handle_paint(Painter &painter) {
     impl_->stats.total_draws++;
     impl_->draws_since_last_log++;
 
-    auto const &style = Theme::current();
-    auto const &palette = style.palette;
-    auto bg = is_active_ ? palette.window : palette.window_inactive.value_or(palette.window);
+    auto const &pal = Theme::current().palette;
+    auto bg = is_active_ ? pal.window : pal.window_inactive.value_or(pal.window);
     auto repaint_start = std::chrono::steady_clock::now();
     painter.fill_rect({0, 0, size_.width, size_.height}, bg);
+
+    if (options_.csd && pal.border_width > 0) {
+        painter.draw_rect(Rect{0, 0, size_.width, size_.height}.inset(pal.border_width / 2.0f),
+                          pal.border, pal.border_width);
+    }
 
     if (root_) {
         root_->draw(painter);
@@ -552,6 +639,65 @@ void Window::focus_next(bool reverse) {
 
 void Window::handle_mouse(MouseEvent const &event) {
     auto needs_redraw = false;
+
+    if (event.type == MouseEvent::Type::Press) {
+        last_serial_ = event.serial;
+    }
+
+    if (options_.csd) {
+        auto const &m = Theme::current().palette.window_decoration;
+        auto const &r = event.position;
+        float corner_area = 25.0f;
+        float edge_area = 5.0f;
+        WindowEdge edge = WindowEdge::None;
+
+        // Bottom corners: 25px threshold
+        if (r.y > size_.height - corner_area) {
+            if (r.x < corner_area) {
+                edge = WindowEdge::BottomLeft;
+            } else if (r.x > size_.width - corner_area) {
+                edge = WindowEdge::BottomRight;
+            }
+        }
+
+        // Everything else: 5px threshold
+        if (edge == WindowEdge::None) {
+            if (r.y < edge_area) {
+                if (r.x < edge_area) {
+                    edge = WindowEdge::TopLeft;
+                } else if (r.x > size_.width - edge_area) {
+                    edge = WindowEdge::TopRight;
+                } else {
+                    edge = WindowEdge::Top;
+                }
+            } else if (r.y > size_.height - edge_area) {
+                edge = WindowEdge::Bottom;
+            } else if (r.x < edge_area) {
+                edge = WindowEdge::Left;
+            } else if (r.x > size_.width - edge_area) {
+                edge = WindowEdge::Right;
+            }
+        }
+
+        if (edge != WindowEdge::None) {
+            if (event.type == MouseEvent::Type::Press) {
+                start_system_resize(edge, event.serial);
+                return;
+            } else if (event.type == MouseEvent::Type::Move ||
+                       event.type == MouseEvent::Type::Drag) {
+                if (edge == WindowEdge::Left || edge == WindowEdge::Right) {
+                    set_cursor(CursorShape::ResizeEW);
+                } else if (edge == WindowEdge::Top || edge == WindowEdge::Bottom) {
+                    set_cursor(CursorShape::ResizeNS);
+                } else if (edge == WindowEdge::TopLeft || edge == WindowEdge::BottomRight) {
+                    set_cursor(CursorShape::ResizeNW);
+                } else {
+                    set_cursor(CursorShape::ResizeNESW);
+                }
+                return;
+            }
+        }
+    }
 
     if (event.type == MouseEvent::Type::Press) {
         hide_tooltip();
@@ -841,9 +987,7 @@ void Window::handle_resize(Size new_size) {
     if (has_popup()) {
         close_all_popups();
     }
-    if (root_) {
-        root_->set_rect({0, 0, size_.width, size_.height});
-    }
+    relayout();
 }
 
 void Window::handle_activate(bool active) {
@@ -856,9 +1000,10 @@ void Window::handle_activate(bool active) {
 
 void Window::relayout() {
     if (root_) {
-        root_->set_rect({0, 0, size_.width, size_.height});
-        request_redraw();
+        auto bw = options_.csd ? Theme::current().palette.border_width : 0.0f;
+        root_->set_rect({bw, bw, size_.width - 2 * bw, size_.height - 2 * bw});
     }
+    request_redraw();
 }
 
 Window &Window::resize_to_fit() {
@@ -868,25 +1013,24 @@ Window &Window::resize_to_fit() {
     // First pass: layout at the current width so height-dependent widgets
     // (e.g. RichLabel/HtmlView) render at their actual allocated width
     // before we query their size_hint for the final height.
-    root_->set_rect({0, 0, size_.width, size_.height});
+    auto bw = options_.csd ? Theme::current().palette.border_width : 0.0f;
+    root_->set_rect({bw, bw, size_.width - 2 * bw, size_.height - 2 * bw});
     auto hint = root_->size_hint();
-    auto new_size = size_;
     auto changed = false;
     if (hint.width > size_.width) {
-        new_size.width = hint.width;
+        size_.width = hint.width;
         changed = true;
     }
     if (hint.height > size_.height) {
-        new_size.height = hint.height;
+        size_.height = hint.height;
         changed = true;
     }
     if (changed) {
-        size_ = new_size;
         if (impl_->platform) {
             impl_->platform->set_size(size_);
         }
-        root_->set_rect({0, 0, size_.width, size_.height});
     }
+    relayout();
     return *this;
 }
 

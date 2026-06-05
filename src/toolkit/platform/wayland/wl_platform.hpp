@@ -48,8 +48,8 @@ class WaylandPlatformApplication : public PlatformApplication {
   public:
     WaylandPlatformApplication();
     ~WaylandPlatformApplication() override;
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
-                                                  Window *owner) override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
+                                                  WindowOptions options) override;
     std::unique_ptr<ImageLoaderInterface> create_image_loader() override;
     int run() override;
     void run_until(std::function<bool()> should_exit) override;
@@ -91,6 +91,7 @@ class WaylandPlatformApplication : public PlatformApplication {
     WaylandPlatformWindow *modal_parent = nullptr;
     float pointer_x = 0, pointer_y = 0;
     uint32_t pointer_enter_serial = 0;
+    uint32_t pressed_button_serial = 0;
 
     bool mod_shift = false, mod_ctrl = false;
     bool mod_alt = false, mod_super = false;
@@ -133,12 +134,13 @@ class RenderingBackend;
 class WaylandPlatformWindow : public PlatformWindow {
   public:
     WaylandPlatformWindow(WaylandPlatformApplication *app, std::string_view title, Size size,
-                          Window *owner);
+                          Window *owner, WindowOptions options);
     ~WaylandPlatformWindow() override;
     void show() override;
     void close() override;
     void minimize() override;
     void maximize() override;
+    void restore() override;
     void set_size(Size s) override;
     void request_redraw() override;
     void set_min_size(Size s) override;
@@ -146,12 +148,15 @@ class WaylandPlatformWindow : public PlatformWindow {
     int start_timer(float interval_sec, std::function<void()> callback, bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
+    void start_system_move(uint32_t serial) override;
+    void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
     void set_modal_for(PlatformWindow *parent) override;
     bool save_to_png(std::string const &path) override;
     float scale_factor() const override;
     std::string_view painter_name() const override { return backend->name(); };
+    void set_title(std::string_view t) override;
 
     void do_paint();
     void paint_tooltip();
@@ -159,16 +164,18 @@ class WaylandPlatformWindow : public PlatformWindow {
     WaylandPlatformApplication *app_;
     Window *owner_;
     wl_surface *surface = nullptr;
-    xdg_surface *xdg_surf = nullptr;
-    xdg_toplevel *toplevel = nullptr;
-    xdg_popup *popup = nullptr;
-    xdg_positioner *positioner = nullptr;
+
+    // FIXME: make a xdg_protocols struct with these variables
+    xdg_surface *xdg_surface_ = nullptr;
+    xdg_toplevel *xdg_toplevel_ = nullptr;
+    xdg_popup *xdg_popup_ = nullptr;
+    xdg_positioner *xdg_positioner_ = nullptr;
+    xdg_dialog_v1 *xdg_dialog = nullptr;
 
     wl_callback *frame_cb = nullptr;
     wp_fractional_scale_v1 *fractional_scale = nullptr;
     wp_viewport *viewport = nullptr;
     zxdg_toplevel_decoration_v1 *toplevel_decoration = nullptr;
-    xdg_dialog_v1 *xdg_dialog = nullptr;
     float scale = 1.0f;
     bool configured = false;
     bool needs_redraw = true;

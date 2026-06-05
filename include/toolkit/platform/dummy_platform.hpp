@@ -11,6 +11,7 @@ class DummyPlatformWindow : public PlatformWindow {
     void close() override {}
     void minimize() override {}
     void maximize() override {}
+    void restore() override {}
     void set_size(Size) override {}
     void request_redraw() override {}
     void set_min_size(Size) override {}
@@ -20,6 +21,9 @@ class DummyPlatformWindow : public PlatformWindow {
     void set_cursor(CursorShape) override {}
     void show_tooltip_window(std::string const &, Point) override {}
     void hide_tooltip_window() override {}
+    void start_system_move(uint32_t) override {}
+    void start_system_resize(WindowEdge, uint32_t) override {}
+    void set_modal_for(PlatformWindow *) override {}
     bool save_to_png(std::string const &) override { return true; }
     float scale_factor() const override { return 1.0f; }
     std::string_view painter_name() const override { return "none"; }
@@ -27,8 +31,8 @@ class DummyPlatformWindow : public PlatformWindow {
 
 class DummyPlatformApplication : public PlatformApplication {
   public:
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
-                                                  Window *owner) override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
+                                                  WindowOptions options) override;
     std::unique_ptr<ImageLoaderInterface> create_image_loader() override;
     int run() override { return 0; }
     void run_until(std::function<bool()>) override {}

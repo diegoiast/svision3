@@ -439,10 +439,12 @@ class CoreGraphicsPainter : public Painter {
 
 namespace toolkit {
 
-std::unique_ptr<PlatformWindow>
-MacOSNativePlatformApplication::create_window(std::string_view title,
-                                              Size size, Window *owner) {
-    return std::make_unique<MacOSNativePlatformWindow>(title, size, owner);
+std::unique_ptr<PlatformWindow> MacOSNativePlatformApplication::create_window(std::string_view title,
+                                                                                Size size, Window *owner,
+                                                                                WindowOptions options) {
+    return std::make_unique<MacOSNativePlatformWindow>(title, size, owner, options);
+}
+
 }
 
 // ── MacOSNativePlatformWindow ───────────────────────────────────────────────
@@ -458,7 +460,8 @@ struct MacOSNativePlatformWindow::Impl {
 
 MacOSNativePlatformWindow::MacOSNativePlatformWindow(std::string_view title,
                                                      Size size,
-                                                     Window *owner)
+                                                     Window *owner,
+                                                     WindowOptions options)
     : impl_(std::make_unique<Impl>()), owner_(owner) {
     NSRect frame = NSMakeRect(200, 200, size.width, size.height);
     NSWindowStyleMask style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
@@ -513,8 +516,15 @@ void MacOSNativePlatformWindow::set_max_size(Size s) {
         [impl_->ns_window setContentMaxSize:NSMakeSize(s.width, s.height)];
 }
 
-int MacOSNativePlatformWindow::start_timer(float interval_sec,
-                                           std::function<void()> callback,
+void MacOSNativePlatformWindow::minimize() {}
+void MacOSNativePlatformWindow::maximize() {}
+void MacOSNativePlatformWindow::restore() {}
+
+void MacOSNativePlatformWindow::start_system_move(uint32_t /*serial*/) {}
+void MacOSNativePlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/) {}
+
+int MacOSNativePlatformWindow::start_timer(float interval_sec, std::function<void()> callback,
+
                                            bool repeats) {
     int tid = impl_->next_timer_id++;
     auto cb = std::make_shared<std::function<void()>>(std::move(callback));

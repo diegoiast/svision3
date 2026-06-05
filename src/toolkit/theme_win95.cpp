@@ -3,10 +3,56 @@
 
 #include "toolkit/theme_win95.hpp"
 #include "toolkit/painter.hpp"
+#include "toolkit/theme.hpp"
+#include "toolkit/widget.hpp"
+#include "toolkit/window.hpp"
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace toolkit {
+
+class Win95TitleBar : public Widget {
+  public:
+    Win95TitleBar(Window *window) : window_(window) { set_on_top(true); }
+
+    void paint(Painter &painter) override {
+        auto const &p = Theme::current().palette;
+        auto r = rect_;
+        auto active = window_->is_active();
+        auto bg = active ? p.highlight : p.window;
+        auto fg = active ? p.highlighted_text : p.text_disabled;
+
+        painter.fill_rect(r, bg);
+        auto fm = painter.font_metrics(p.fonts.size);
+        auto text_y = (r.height - fm.height) / 2.0f + fm.ascent;
+        painter.draw_text(std::string{window_->title()}, {r.x + 4.0f, text_y}, fg, p.fonts.size);
+    }
+
+    bool handle_mouse(MouseEvent const &event) override {
+        if (event.type == MouseEvent::Type::Press) {
+            if (event.click_count == 2) {
+                if (window_->is_maximized()) {
+                    window_->restore();
+                } else {
+                    window_->maximize();
+                }
+                return true;
+            }
+            window_->start_system_move(event.serial);
+            return true;
+        }
+        return false;
+    }
+
+    Size size_hint() const override {
+        auto const &m = Theme::current().palette.window_decoration;
+        return {100.0f, m.top};
+    }
+
+  private:
+    Window *window_;
+};
 
 Win95Theme::Win95Theme(ColorScheme scheme, std::optional<Palette> p)
     : BaseTheme(scheme, std::move(p)) {
@@ -19,13 +65,18 @@ Win95Theme::Win95Theme(ColorScheme scheme, std::optional<Palette> p)
     focus_ring_line_style = Painter::LineStyle::Dotted;
 }
 
+std::unique_ptr<Widget> Win95Theme::create_title_bar(Window *window) const {
+    // return std::make_unique<Win95TitleBar>(window);
+    return BaseTheme::create_title_bar(window);
+}
+
 Palette Win95Theme::default_palette(ColorScheme scheme) const {
-    Palette p;
-    Theme::init_fonts(p);
+    Palette p = BaseTheme::default_palette(scheme);
     Color windows95_color = Color::from_argb(0xFF000080);
     p.beveled = true;
     p.progress_bar_height = 20;
     p.inline_scrollbars = false;
+    p.window_decoration = {26, 0, 0, 0};
 
     switch (scheme) {
     case ColorScheme::Light:

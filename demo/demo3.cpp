@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
         style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
     }
     style_names.push_back("Other");
-    auto window = app.create_window("Declarative Kitchen sink", {600, 400});
+    auto window = app.create_window("Declarative Kitchen sink", {600, 400}, {.csd = true});
     auto platformText =
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name());
     auto group = ui::radio_group().on_change([&app, window](int index) {

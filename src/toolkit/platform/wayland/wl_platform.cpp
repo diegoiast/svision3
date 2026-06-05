@@ -280,6 +280,10 @@ static const char *cursor_name_for(CursorShape shape) {
         return "ew-resize";
     case CursorShape::ResizeNS:
         return "ns-resize";
+    case CursorShape::ResizeNW:
+        return "nw-resize";
+    case CursorShape::ResizeNESW:
+        return "ne-resize";
     case CursorShape::Move:
         return "all-scroll";
     default:
@@ -299,6 +303,10 @@ static wp_cursor_shape_device_v1_shape cursor_shape_for(CursorShape shape) {
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE;
     case CursorShape::ResizeNS:
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NS_RESIZE;
+    case CursorShape::ResizeNW:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NW_RESIZE;
+    case CursorShape::ResizeNESW:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NE_RESIZE;
     case CursorShape::Move:
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ALL_SCROLL;
     case CursorShape::Arrow:
@@ -435,6 +443,7 @@ static void pointer_motion(void *data, wl_pointer *, uint32_t, wl_fixed_t sx, wl
         return;
     }
     MouseEvent e{};
+    e.serial = 0; // Not available for motion
     if (app->pressed_button != -1) {
         e.type = MouseEvent::Type::Drag;
         e.button = app->pressed_button;
@@ -448,8 +457,8 @@ static void pointer_motion(void *data, wl_pointer *, uint32_t, wl_fixed_t sx, wl
     app->pointer_focus->owner_->handle_mouse(e);
 }
 
-static void pointer_button(void *data, wl_pointer *, uint32_t, uint32_t time, uint32_t button,
-                           uint32_t state) {
+static void pointer_button(void *data, wl_pointer *, uint32_t serial, uint32_t time,
+                           uint32_t button, uint32_t state) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
     if (!app->pointer_focus) {
         return;
@@ -457,6 +466,16 @@ static void pointer_button(void *data, wl_pointer *, uint32_t, uint32_t time, ui
     if (app->modal_window && app->pointer_focus != app->modal_window) {
         return;
     }
+    app->pressed_button_serial = serial;
+
+    MouseEvent e{};
+
+    e.serial = serial;
+    e.position = {app->pointer_x, app->pointer_y};
+    e.shift = app->mod_shift;
+    e.ctrl = app->mod_ctrl;
+    e.super = app->mod_super;
+
     int btn = 0;
     if (button == 0x110) {
         btn = 0; // BTN_LEFT
@@ -472,12 +491,7 @@ static void pointer_button(void *data, wl_pointer *, uint32_t, uint32_t time, ui
         btn = 5 + (button - 0x115);
     }
 
-    MouseEvent e{};
-    e.position = {app->pointer_x, app->pointer_y};
     e.button = btn;
-    e.shift = app->mod_shift;
-    e.ctrl = app->mod_ctrl;
-    e.super = app->mod_ctrl;
 
     if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
         app->pressed_button = btn;
@@ -760,13 +774,15 @@ static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_
         win->pending_height = h;
     }
     auto activated = false;
+    auto maximized = false;
     if (states) {
         auto *first = static_cast<uint32_t *>(states->data);
         auto count = states->size / sizeof(uint32_t);
         for (size_t i = 0; i < count; ++i) {
             if (first[i] == XDG_TOPLEVEL_STATE_ACTIVATED) {
                 activated = true;
-                break;
+            } else if (first[i] == XDG_TOPLEVEL_STATE_MAXIMIZED) {
+                maximized = true;
             }
         }
     }
@@ -775,6 +791,7 @@ static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_
             win->owner_->hide_tooltip();
         }
         win->owner_->handle_activate(activated);
+        win->owner_->handle_maximized(maximized);
     }
 }
 
@@ -989,9 +1006,10 @@ WaylandPlatformApplication::~WaylandPlatformApplication() {
     }
 }
 
-std::unique_ptr<PlatformWindow>
-WaylandPlatformApplication::create_window(std::string_view title, Size size, Window *owner) {
-    return std::make_unique<WaylandPlatformWindow>(this, title, size, owner);
+std::unique_ptr<PlatformWindow> WaylandPlatformApplication::create_window(std::string_view title,
+                                                                          Size size, Window *owner,
+                                                                          WindowOptions options) {
+    return std::make_unique<WaylandPlatformWindow>(this, title, size, owner, options);
 }
 
 std::unique_ptr<ImageLoaderInterface> WaylandPlatformApplication::create_image_loader() {
@@ -1121,17 +1139,19 @@ void WaylandPlatformApplication::clipboard_set_text(std::string const &text) {
 // --- WaylandPlatformWindow ---
 
 WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
-                                             std::string_view title, Size size, Window *owner)
+                                             std::string_view title, Size size, Window *owner,
+                                             WindowOptions options)
     : app_(app), owner_(owner) {
+
     surface = wl_compositor_create_surface(app_->compositor);
-    xdg_surf = xdg_wm_base_get_xdg_surface(app_->wm_base, surface);
-    xdg_surface_add_listener(xdg_surf, &xdg_surf_listener, this);
-    toplevel = xdg_surface_get_toplevel(xdg_surf);
-    xdg_toplevel_add_listener(toplevel, &toplevel_listener, this);
+    xdg_surface_ = xdg_wm_base_get_xdg_surface(app_->wm_base, surface);
+    xdg_surface_add_listener(xdg_surface_, &xdg_surf_listener, this);
+    xdg_toplevel_ = xdg_surface_get_toplevel(xdg_surface_);
+    xdg_toplevel_add_listener(xdg_toplevel_, &toplevel_listener, this);
 
     if (app_->decoration_manager) {
-        toplevel_decoration =
-            zxdg_decoration_manager_v1_get_toplevel_decoration(app_->decoration_manager, toplevel);
+        toplevel_decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(
+            app_->decoration_manager, xdg_toplevel_);
 
         static const zxdg_toplevel_decoration_v1_listener decoration_listener = {
             // configure
@@ -1144,7 +1164,7 @@ WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
                     break;
 
                 case ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:
-                    spdlog::warn("Wayland compositor requires client-side decorations");
+                    spdlog::info("Wayland compositor using client-side decorations");
                     break;
 
                 default:
@@ -1155,12 +1175,14 @@ WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
 
         zxdg_toplevel_decoration_v1_add_listener(toplevel_decoration, &decoration_listener, this);
 
-        zxdg_toplevel_decoration_v1_set_mode(toplevel_decoration,
-                                             ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+        auto mode = (options.csd || options.frameless)
+                        ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE
+                        : ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+        zxdg_toplevel_decoration_v1_set_mode(toplevel_decoration, mode);
     }
     std::string t(title);
-    xdg_toplevel_set_title(toplevel, t.c_str());
-    xdg_toplevel_set_app_id(toplevel, "toolkit-app");
+    xdg_toplevel_set_title(xdg_toplevel_, t.c_str());
+    xdg_toplevel_set_app_id(xdg_toplevel_, "toolkit-app");
 
     pending_width = static_cast<int>(size.width);
     pending_height = static_cast<int>(size.height);
@@ -1211,8 +1233,8 @@ WaylandPlatformWindow::~WaylandPlatformWindow() {
     if (xdg_dialog) {
         xdg_dialog_v1_destroy(xdg_dialog);
     }
-    if (toplevel) {
-        xdg_toplevel_destroy(toplevel);
+    if (xdg_toplevel_) {
+        xdg_toplevel_destroy(xdg_toplevel_);
     }
     if (toplevel_decoration) {
         zxdg_toplevel_decoration_v1_destroy(toplevel_decoration);
@@ -1223,8 +1245,8 @@ WaylandPlatformWindow::~WaylandPlatformWindow() {
     if (viewport) {
         wp_viewport_destroy(viewport);
     }
-    if (xdg_surf) {
-        xdg_surface_destroy(xdg_surf);
+    if (xdg_surface_) {
+        xdg_surface_destroy(xdg_surface_);
     }
     if (egl_surface) {
         eglDestroySurface(app_->egl_display, egl_surface);
@@ -1268,9 +1290,9 @@ void WaylandPlatformWindow::close() {
         zxdg_toplevel_decoration_v1_destroy(toplevel_decoration);
         toplevel_decoration = nullptr;
     }
-    if (toplevel) {
-        xdg_toplevel_destroy(toplevel);
-        toplevel = nullptr;
+    if (xdg_toplevel_) {
+        xdg_toplevel_destroy(xdg_toplevel_);
+        xdg_toplevel_ = nullptr;
     }
     if (fractional_scale) {
         wp_fractional_scale_v1_destroy(fractional_scale);
@@ -1280,9 +1302,9 @@ void WaylandPlatformWindow::close() {
         wp_viewport_destroy(viewport);
         viewport = nullptr;
     }
-    if (xdg_surf) {
-        xdg_surface_destroy(xdg_surf);
-        xdg_surf = nullptr;
+    if (xdg_surface_) {
+        xdg_surface_destroy(xdg_surface_);
+        xdg_surface_ = nullptr;
     }
     if (surface) {
         wl_surface_destroy(surface);
@@ -1292,14 +1314,20 @@ void WaylandPlatformWindow::close() {
 }
 
 void WaylandPlatformWindow::minimize() {
-    if (toplevel) {
-        xdg_toplevel_set_minimized(toplevel);
+    if (xdg_toplevel_) {
+        xdg_toplevel_set_minimized(xdg_toplevel_);
     }
 }
 
 void WaylandPlatformWindow::maximize() {
-    if (toplevel) {
-        xdg_toplevel_set_maximized(toplevel);
+    if (xdg_toplevel_) {
+        xdg_toplevel_set_maximized(xdg_toplevel_);
+    }
+}
+
+void WaylandPlatformWindow::restore() {
+    if (xdg_toplevel_) {
+        xdg_toplevel_unset_maximized(xdg_toplevel_);
     }
 }
 
@@ -1314,15 +1342,15 @@ void WaylandPlatformWindow::set_size(Size s) {
 void WaylandPlatformWindow::request_redraw() { needs_redraw = true; }
 
 void WaylandPlatformWindow::set_min_size(Size s) {
-    if (toplevel) {
-        xdg_toplevel_set_min_size(toplevel, static_cast<int32_t>(s.width),
+    if (xdg_toplevel_) {
+        xdg_toplevel_set_min_size(xdg_toplevel_, static_cast<int32_t>(s.width),
                                   static_cast<int32_t>(s.height));
     }
 }
 
 void WaylandPlatformWindow::set_max_size(Size s) {
-    if (toplevel && s.width > 0 && s.height > 0) {
-        xdg_toplevel_set_max_size(toplevel, static_cast<int32_t>(s.width),
+    if (xdg_toplevel_ && s.width > 0 && s.height > 0) {
+        xdg_toplevel_set_max_size(xdg_toplevel_, static_cast<int32_t>(s.width),
                                   static_cast<int32_t>(s.height));
     }
 }
@@ -1349,6 +1377,10 @@ void WaylandPlatformWindow::stop_timer(int timer_id) {
                  timers.end());
 }
 
+void WaylandPlatformWindow::set_title(std::string_view t) {
+    xdg_toplevel_set_title(xdg_toplevel_, std::string(t).c_str());
+}
+
 void WaylandPlatformWindow::set_cursor(CursorShape shape) {
     if (current_cursor == shape) {
         return;
@@ -1357,8 +1389,46 @@ void WaylandPlatformWindow::set_cursor(CursorShape shape) {
     apply_cursor(app_, shape);
 }
 
+void WaylandPlatformWindow::start_system_move(uint32_t serial) {
+    app_->pressed_button = -1;
+    xdg_toplevel_move(xdg_toplevel_, app_->seat, serial);
+}
+
+void WaylandPlatformWindow::start_system_resize(WindowEdge edge, uint32_t serial) {
+    app_->pressed_button = -1;
+    uint32_t edges = 0;
+    switch (edge) {
+    case WindowEdge::Top:
+        edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
+        break;
+    case WindowEdge::Bottom:
+        edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
+        break;
+    case WindowEdge::Left:
+        edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
+        break;
+    case WindowEdge::Right:
+        edges = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
+        break;
+    case WindowEdge::TopLeft:
+        edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
+        break;
+    case WindowEdge::TopRight:
+        edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
+        break;
+    case WindowEdge::BottomLeft:
+        edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
+        break;
+    case WindowEdge::BottomRight:
+        edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
+        break;
+    default:
+        return;
+    }
+    xdg_toplevel_resize(xdg_toplevel_, app_->seat, serial, edges);
+}
 void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
-    if (!xdg_surf || !configured) {
+    if (!xdg_surface_ || !configured) {
         return;
     }
     if (tooltip_data && tooltip_data->text == text) {
@@ -1395,7 +1465,7 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
     xdg_positioner_set_anchor(pos_obj, XDG_POSITIONER_ANCHOR_TOP_LEFT);
     xdg_positioner_set_offset(pos_obj, 0, 10);
 
-    tooltip_data->popup = xdg_surface_get_popup(tooltip_data->xdg_surf, xdg_surf, pos_obj);
+    tooltip_data->popup = xdg_surface_get_popup(tooltip_data->xdg_surf, xdg_surface_, pos_obj);
     xdg_popup_add_listener(tooltip_data->popup, &xdg_popup_listener, this);
     xdg_positioner_destroy(pos_obj);
 
@@ -1416,11 +1486,11 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
 
 void WaylandPlatformWindow::set_modal_for(PlatformWindow *parent) {
     auto *p = static_cast<WaylandPlatformWindow *>(parent);
-    if (toplevel && p && p->toplevel) {
-        xdg_toplevel_set_parent(toplevel, p->toplevel);
+    if (xdg_toplevel_ && p && p->xdg_toplevel_) {
+        xdg_toplevel_set_parent(xdg_toplevel_, p->xdg_toplevel_);
     }
-    if (app_->wm_dialog && toplevel && !xdg_dialog) {
-        xdg_dialog = xdg_wm_dialog_v1_get_xdg_dialog(app_->wm_dialog, toplevel);
+    if (app_->wm_dialog && xdg_toplevel_ && !xdg_dialog) {
+        xdg_dialog = xdg_wm_dialog_v1_get_xdg_dialog(app_->wm_dialog, xdg_toplevel_);
         xdg_dialog_v1_set_modal(xdg_dialog);
     }
     app_->modal_window = this;

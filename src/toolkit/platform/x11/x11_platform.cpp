@@ -54,6 +54,7 @@ struct X11PlatformApplication::Impl {
     Atom wm_delete_window, wm_protocols, net_wm_name, utf8_string;
     Atom clipboard_atom, targets_atom, tk_sel;
     Atom motif_wm_hints;
+    Atom net_wm_state, net_wm_state_max_horz, net_wm_state_max_vert;
     XIM xim = nullptr;
 
     struct WindowData {
@@ -93,6 +94,8 @@ struct X11PlatformWindow::Impl {
     Cursor not_allowed_cursor = 0L;
     Cursor resize_ew_cursor = 0L;
     Cursor resize_ns_cursor = 0L;
+    Cursor resize_nw_cursor = 0L;
+    Cursor resize_nesw_cursor = 0L;
     Cursor move_cursor = 0L;
     std::unique_ptr<RenderingBackend> backend;
 
@@ -487,6 +490,31 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
             win->close();
         }
         break;
+    case PropertyNotify: {
+        if (xev.xproperty.atom == app->net_wm_state) {
+            auto maximized = false;
+            Atom actual_type;
+            int actual_format;
+            unsigned long nitems, bytes_after;
+            Atom *states = nullptr;
+            if (XGetWindowProperty(app->display, xwin, app->net_wm_state, 0, 1024, False, XA_ATOM,
+                                   &actual_type, &actual_format, &nitems, &bytes_after,
+                                   reinterpret_cast<unsigned char **>(&states)) == Success) {
+                auto has_horz = false, has_vert = false;
+                for (unsigned long i = 0; i < nitems; i++) {
+                    if (states[i] == app->net_wm_state_max_horz) {
+                        has_horz = true;
+                    } else if (states[i] == app->net_wm_state_max_vert) {
+                        has_vert = true;
+                    }
+                }
+                XFree(states);
+                maximized = has_horz && has_vert;
+            }
+            win->handle_maximized(maximized);
+        }
+        break;
+    }
     case FocusIn:
         win->handle_activate(true);
         break;
@@ -513,6 +541,8 @@ static ::Window extract_event_window(XEvent &ev) {
     case KeyPress:
     case KeyRelease:
         return ev.xkey.window;
+    case PropertyNotify:
+        return ev.xproperty.window;
     case ClientMessage:
         return ev.xclient.window;
     case FocusIn:
@@ -603,6 +633,9 @@ X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>(
     d->targets_atom = XInternAtom(d->display, "TARGETS", False);
     d->tk_sel = XInternAtom(d->display, "TK_SELECTION", False);
     d->motif_wm_hints = XInternAtom(d->display, "_MOTIF_WM_HINTS", False);
+    d->net_wm_state = XInternAtom(d->display, "_NET_WM_STATE", False);
+    d->net_wm_state_max_horz = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    d->net_wm_state_max_vert = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_VERT", False);
     XSetLocaleModifiers("");
     d->xim = XOpenIM(d->display, nullptr, nullptr, nullptr);
     if (!d->xim) {
@@ -648,8 +681,9 @@ X11PlatformApplication::~X11PlatformApplication() {
 }
 
 std::unique_ptr<PlatformWindow> X11PlatformApplication::create_window(std::string_view title,
-                                                                      Size size, Window *owner) {
-    return std::make_unique<X11PlatformWindow>(this, title, size, owner);
+                                                                      Size size, Window *owner,
+                                                                      WindowOptions options) {
+    return std::make_unique<X11PlatformWindow>(this, title, size, owner, options);
 }
 
 std::unique_ptr<ImageLoaderInterface> X11PlatformApplication::create_image_loader() {
@@ -835,7 +869,7 @@ void X11PlatformApplication::clipboard_set_text(std::string const &text) {
 }
 
 X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_view title, Size size,
-                                     Window *owner)
+                                     Window *owner, WindowOptions options)
     : impl_(std::make_unique<Impl>()), app_(app), owner_(owner) {
     auto *d = app_->impl_.get();
     auto *w = impl_.get();
@@ -861,7 +895,8 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
 
     XSetWindowAttributes swa = {};
     swa.event_mask = ExposureMask | StructureNotifyMask | ButtonPressMask | ButtonReleaseMask |
-                     PointerMotionMask | KeyPressMask | KeyReleaseMask | FocusChangeMask;
+                     PointerMotionMask | KeyPressMask | KeyReleaseMask | FocusChangeMask |
+                     PropertyChangeMask;
     swa.colormap = colormap;
     swa.background_pixmap = 0L; // None
     swa.bit_gravity = StaticGravity;
@@ -890,6 +925,46 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     XChangeProperty(d->display, w->xwindow, d->net_wm_name, d->utf8_string, 8, PropModeReplace,
                     reinterpret_cast<unsigned char const *>(t.c_str()), static_cast<int>(t.size()));
     XSetWMProtocols(d->display, w->xwindow, &d->wm_delete_window, 1);
+
+    if (options.frameless || options.csd) {
+        Atom motif_hints_atom = XInternAtom(d->display, "_MOTIF_WM_HINTS", False);
+        if (motif_hints_atom != 0L) {
+            struct MotifWmHints {
+                unsigned long flags;
+                unsigned long functions;
+                unsigned long decorations;
+                long input_mode;
+                unsigned long status;
+            };
+            MotifWmHints hints = {};
+            hints.flags = 2;       // MWM_HINTS_DECORATIONS
+            hints.decorations = 0; // 0 = no decorations
+            XChangeProperty(d->display, w->xwindow, motif_hints_atom, motif_hints_atom, 32,
+                            PropModeReplace, reinterpret_cast<unsigned char *>(&hints), 5);
+        }
+
+        // Tell the WM that this is a normal window, even if it's frameless/CSD
+        // This helps the WM decide to draw shadows
+        Atom net_wm_window_type = XInternAtom(d->display, "_NET_WM_WINDOW_TYPE", False);
+        Atom net_wm_window_type_normal =
+            XInternAtom(d->display, "_NET_WM_WINDOW_TYPE_NORMAL", False);
+        XChangeProperty(d->display, w->xwindow, net_wm_window_type, XA_ATOM, 32, PropModeReplace,
+                        reinterpret_cast<unsigned char *>(&net_wm_window_type_normal), 1);
+
+        // For KWin: allow shadows even if the window is frameless
+        Atom allow_shadow = XInternAtom(d->display, "_KDE_NET_WM_ALLOW_SHADOW", False);
+        unsigned long allow = 1;
+        XChangeProperty(d->display, w->xwindow, allow_shadow, XA_CARDINAL, 32, PropModeReplace,
+                        reinterpret_cast<unsigned char *>(&allow), 1);
+
+        // Tell the WM that our "client side decorations" are part of the window
+        // This helps the WM draw shadows correctly around the surface
+        Atom gtk_frame_extents = XInternAtom(d->display, "_GTK_FRAME_EXTENTS", False);
+        unsigned long extents[4] = {0, 0, 0, 0}; // left, right, top, bottom
+        XChangeProperty(d->display, w->xwindow, gtk_frame_extents, XA_CARDINAL, 32, PropModeReplace,
+                        reinterpret_cast<unsigned char *>(extents), 4);
+    }
+
     XIC xic = nullptr;
     if (d->xim) {
         xic = XCreateIC(d->xim, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow,
@@ -901,6 +976,8 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     w->not_allowed_cursor = XCreateFontCursor(d->display, XC_X_cursor);
     w->resize_ew_cursor = XCreateFontCursor(d->display, XC_sb_h_double_arrow);
     w->resize_ns_cursor = XCreateFontCursor(d->display, XC_sb_v_double_arrow);
+    w->resize_nw_cursor = XCreateFontCursor(d->display, XC_top_left_corner);
+    w->resize_nesw_cursor = XCreateFontCursor(d->display, XC_top_right_corner);
     w->move_cursor = XCreateFontCursor(d->display, XC_fleur);
     d->window_map[w->xwindow] = {owner, xic};
 
@@ -951,6 +1028,14 @@ void X11PlatformWindow::cleanup_resources() {
     if (w->resize_ns_cursor) {
         XFreeCursor(d->display, w->resize_ns_cursor);
         w->resize_ns_cursor = 0L;
+    }
+    if (w->resize_nw_cursor) {
+        XFreeCursor(d->display, w->resize_nw_cursor);
+        w->resize_nw_cursor = 0L;
+    }
+    if (w->resize_nesw_cursor) {
+        XFreeCursor(d->display, w->resize_nesw_cursor);
+        w->resize_nesw_cursor = 0L;
     }
     if (w->tooltip_xwindow != 0L) {
         XDestroyWindow(d->display, w->tooltip_xwindow);
@@ -1027,13 +1112,42 @@ void X11PlatformWindow::maximize() {
     event.xclient.window = impl_->xwindow;
     event.xclient.message_type = net_wm_state;
     event.xclient.format = 32;
-    event.xclient.data.l[0] = 1;
+    event.xclient.data.l[0] = 1; // ADD
     event.xclient.data.l[1] = net_wm_max_horz;
     event.xclient.data.l[2] = net_wm_max_vert;
     event.xclient.data.l[3] = 0;
     XSendEvent(d->display, d->root, False, SubstructureNotifyMask | SubstructureRedirectMask,
                &event);
     XFlush(d->display);
+}
+
+void X11PlatformWindow::restore() {
+    auto *d = app_->impl_.get();
+    Atom net_wm_state = XInternAtom(d->display, "_NET_WM_STATE", False);
+    Atom net_wm_max_horz = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    Atom net_wm_max_vert = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+
+    XEvent event = {};
+    event.type = ClientMessage;
+    event.xclient.window = impl_->xwindow;
+    event.xclient.message_type = net_wm_state;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = 0; // REMOVE
+    event.xclient.data.l[1] = net_wm_max_horz;
+    event.xclient.data.l[2] = net_wm_max_vert;
+    event.xclient.data.l[3] = 0;
+    XSendEvent(d->display, d->root, False, SubstructureNotifyMask | SubstructureRedirectMask,
+               &event);
+    XFlush(d->display);
+}
+
+void X11PlatformWindow::set_title(std::string_view t) {
+    auto *d = app_->impl_.get();
+    auto t_str = std::string(t);
+    XStoreName(d->display, impl_->xwindow, t_str.c_str());
+    XChangeProperty(d->display, impl_->xwindow, d->net_wm_name, d->utf8_string, 8, PropModeReplace,
+                    reinterpret_cast<unsigned char const *>(t_str.c_str()),
+                    static_cast<int>(t_str.size()));
 }
 
 void X11PlatformWindow::set_size(Size s) {
@@ -1151,6 +1265,12 @@ void X11PlatformWindow::set_cursor(CursorShape shape) {
     case CursorShape::ResizeNS:
         c = w->resize_ns_cursor;
         break;
+    case CursorShape::ResizeNW:
+        c = w->resize_nw_cursor;
+        break;
+    case CursorShape::ResizeNESW:
+        c = w->resize_nesw_cursor;
+        break;
     case CursorShape::Move:
         c = w->move_cursor;
         break;
@@ -1161,7 +1281,89 @@ void X11PlatformWindow::set_cursor(CursorShape shape) {
     XDefineCursor(static_cast<Display *>(app_->impl_->display), w->xwindow, c);
 }
 
-void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local_pos) {
+void X11PlatformWindow::start_system_move(uint32_t /*serial*/) {
+    auto *d = app_->impl_.get();
+    Atom net_wm_moveresize = XInternAtom(d->display, "_NET_WM_MOVERESIZE", False);
+
+    // Query current pointer position in root window coordinates
+    ::Window root_ret, child_ret;
+    int root_x = 0, root_y = 0, win_x, win_y;
+    unsigned int mask;
+    XQueryPointer(d->display, d->root, &root_ret, &child_ret, &root_x, &root_y, &win_x, &win_y,
+                  &mask);
+
+    XEvent event = {};
+    event.type = ClientMessage;
+    event.xclient.window = impl_->xwindow;
+    event.xclient.message_type = net_wm_moveresize;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = root_x;
+    event.xclient.data.l[1] = root_y;
+    event.xclient.data.l[2] = 8; // _NET_WM_MOVERESIZE_MOVE
+    event.xclient.data.l[3] = 0; // button (0 = unspecified)
+    event.xclient.data.l[4] = 1; // source (1 = application)
+    XUngrabPointer(d->display, CurrentTime);
+    XSendEvent(d->display, d->root, False, SubstructureRedirectMask | SubstructureNotifyMask,
+               &event);
+    XFlush(d->display);
+}
+
+void X11PlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/) {
+    auto *d = app_->impl_.get();
+    int direction = 0;
+    switch (edge) {
+    case WindowEdge::Top:
+        direction = 0;
+        break;
+    case WindowEdge::Bottom:
+        direction = 1;
+        break;
+    case WindowEdge::Left:
+        direction = 2;
+        break;
+    case WindowEdge::Right:
+        direction = 3;
+        break;
+    case WindowEdge::TopLeft:
+        direction = 4;
+        break;
+    case WindowEdge::TopRight:
+        direction = 5;
+        break;
+    case WindowEdge::BottomLeft:
+        direction = 6;
+        break;
+    case WindowEdge::BottomRight:
+        direction = 7;
+        break;
+    default:
+        return;
+    }
+
+    ::Window root_ret, child_ret;
+    int root_x = 0, root_y = 0, win_x, win_y;
+    unsigned int mask;
+    XQueryPointer(d->display, d->root, &root_ret, &child_ret, &root_x, &root_y, &win_x, &win_y,
+                  &mask);
+
+    Atom net_wm_moveresize = XInternAtom(d->display, "_NET_WM_MOVERESIZE", False);
+    XEvent event = {};
+    event.type = ClientMessage;
+    event.xclient.window = impl_->xwindow;
+    event.xclient.message_type = net_wm_moveresize;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = root_x;
+    event.xclient.data.l[1] = root_y;
+    event.xclient.data.l[2] = direction + 9; // _NET_WM_MOVERESIZE_SIZE_TOPLEFT etc.
+    event.xclient.data.l[3] = 0;             // button (0 = unspecified)
+    event.xclient.data.l[4] = 1;             // source (1 = application)
+    XUngrabPointer(d->display, CurrentTime);
+    XSendEvent(d->display, d->root, False, SubstructureRedirectMask | SubstructureNotifyMask,
+               &event);
+    XFlush(d->display);
+}
+void X11PlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
+
     auto *d = app_->impl_.get();
     auto *w = impl_.get();
     auto scale = d->scale;
@@ -1177,8 +1379,8 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point local
 
     int sx, sy;
     ::Window child;
-    XTranslateCoordinates(d->display, w->xwindow, d->root, static_cast<int>(local_pos.x * scale),
-                          static_cast<int>(local_pos.y * scale), &sx, &sy, &child);
+    XTranslateCoordinates(d->display, w->xwindow, d->root, static_cast<int>(pos.x * scale),
+                          static_cast<int>(pos.y * scale), &sx, &sy, &child);
     auto piw = std::max(1, static_cast<int>(std::ceil(tw * scale)));
     auto pih = std::max(1, static_cast<int>(std::ceil(th * scale)));
     auto screen_w = DisplayWidth(d->display, d->screen);

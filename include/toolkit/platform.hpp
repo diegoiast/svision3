@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "toolkit/painter.hpp"
 #include "toolkit/image.hpp"
+#include "toolkit/painter.hpp"
 #include "toolkit/text_rasterizer.hpp"
 #include "toolkit/types.hpp"
 #include <cstdint>
@@ -37,6 +37,7 @@ class PlatformWindow {
     virtual void close() = 0;
     virtual void minimize() = 0;
     virtual void maximize() = 0;
+    virtual void restore() = 0;
     virtual void set_size(Size s) = 0;
     virtual void request_redraw() = 0;
     virtual void set_min_size(Size s) = 0;
@@ -48,7 +49,9 @@ class PlatformWindow {
     virtual void set_cursor(CursorShape shape) = 0;
     virtual void show_tooltip_window(std::string const &text, Point pos) = 0;
     virtual void hide_tooltip_window() = 0;
-    virtual void set_modal_for(PlatformWindow *parent) {}
+    virtual void start_system_move(uint32_t serial) = 0;
+    virtual void start_system_resize(WindowEdge edge, uint32_t serial) = 0;
+    virtual void set_modal_for(PlatformWindow *parent) = 0;
 
     // FIXME: remove this function, and return a pure image, saving should be done by the
     //        application using proper APIs
@@ -56,13 +59,14 @@ class PlatformWindow {
     virtual float scale_factor() const = 0;
 
     virtual std::string_view painter_name() const = 0;
+    virtual void set_title(std::string_view) {}
 };
 
 class PlatformApplication {
   public:
     virtual ~PlatformApplication() = default;
     virtual std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
-                                                          Window *owner) = 0;
+                                                          Window *owner, WindowOptions options) = 0;
     virtual std::unique_ptr<ImageLoaderInterface> create_image_loader() = 0;
     virtual int run() = 0;
     virtual void run_until(std::function<bool()> should_exit) = 0;
@@ -76,14 +80,15 @@ class PlatformApplication {
 
     Size measure_text(std::string_view text, float font_size,
                       FontFamily font = FontFamily::System) const {
-        if (rasterizer_)
+        if (rasterizer_) {
             return rasterizer_->measure(text, font_size, font);
+        }
         return {};
     }
-    Painter::FontMetrics font_metrics(float font_size,
-                                      FontFamily font = FontFamily::System) const {
-        if (rasterizer_)
+    Painter::FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) const {
+        if (rasterizer_) {
             return rasterizer_->metrics(font_size, font);
+        }
         return {};
     }
 

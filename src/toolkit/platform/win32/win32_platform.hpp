@@ -22,8 +22,8 @@ class Win32PlatformApplication : public PlatformApplication {
   public:
     Win32PlatformApplication();
     ~Win32PlatformApplication() override;
-    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
-                                                  Window *owner) override;
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
+                                                  WindowOptions options) override;
     std::unique_ptr<ImageLoaderInterface> create_image_loader() override;
     int run() override;
     void run_until(std::function<bool()> should_exit) override;
@@ -68,6 +68,7 @@ class Win32PlatformApplication : public PlatformApplication {
     static constexpr UINT WM_TK_INVOKE = WM_APP + 1;
 
     static void paint_window(HWND hwnd, Window *win);
+
   private:
     Win32TextRasterizer app_rasterizer_;
 };
@@ -75,12 +76,13 @@ class Win32PlatformApplication : public PlatformApplication {
 class Win32PlatformWindow : public PlatformWindow {
   public:
     Win32PlatformWindow(Win32PlatformApplication *app, std::string_view title, Size size,
-                        Window *owner);
+                        Window *owner, WindowOptions options);
     ~Win32PlatformWindow() override;
     void show() override;
     void close() override;
     void minimize() override;
     void maximize() override;
+    void restore() override;
     void set_size(Size s) override;
     void request_redraw() override;
     void set_min_size(Size s) override;
@@ -88,6 +90,9 @@ class Win32PlatformWindow : public PlatformWindow {
     int start_timer(float interval_sec, std::function<void()> callback, bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
+    void set_title(std::string_view t) override;
+    void start_system_move(uint32_t serial) override;
+    void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
     void set_modal_for(PlatformWindow *parent) override;
@@ -103,7 +108,8 @@ class Win32PlatformWindow : public PlatformWindow {
     HGLRC hglrc = nullptr;
     HCURSOR arrow_cursor = nullptr, ibeam_cursor = nullptr;
     HCURSOR hand_cursor = nullptr, not_allowed_cursor = nullptr;
-    HCURSOR resize_ew_cursor = nullptr, resize_ns_cursor = nullptr, move_cursor = nullptr;
+    HCURSOR resize_ew_cursor = nullptr, resize_ns_cursor = nullptr;
+    HCURSOR resize_nw_cursor = nullptr, resize_nesw_cursor = nullptr, move_cursor = nullptr;
     Win32TextRasterizer rasterizer_;
     std::unique_ptr<RenderingBackend> backend_;
 };

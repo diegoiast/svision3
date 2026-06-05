@@ -147,8 +147,8 @@ Application::~Application() {
 
 Application &Application::instance() { return *detail::current_application(); }
 
-Window *Application::create_window(std::string_view title, Size size) {
-    windows_.push_back(std::make_unique<Window>(title, size));
+Window *Application::create_window(std::string_view title, Size size, WindowOptions options) {
+    windows_.push_back(std::make_unique<Window>(title, size, options));
     return windows_.back().get();
 }
 

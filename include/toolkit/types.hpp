@@ -110,7 +110,17 @@ enum class TabOrientation { North, South, East, West, WestVertical, EastVertical
 
 enum class CheckState { Unchecked, Checked, Partial };
 
-enum class CursorShape { Arrow, IBeam, Hand, NotAllowed, ResizeEW, ResizeNS, Move };
+enum class CursorShape {
+    Arrow,
+    IBeam,
+    Hand,
+    NotAllowed,
+    ResizeEW,
+    ResizeNS,
+    ResizeNW,
+    ResizeNESW,
+    Move
+};
 
 enum class FontFamily { System, Monospace };
 
@@ -121,5 +131,24 @@ struct SystemFonts {
     float auto_repeat_delay = 0;
     float auto_repeat_interval = 0;
 };
+
+struct WindowOptions {
+    bool csd = false;
+    bool frameless = false;
+};
+
+enum class WindowEdge {
+    None,
+    Top,
+    Bottom,
+    Left,
+    Right,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight
+};
+
+enum class DecorationButton { Minimize, Maximize, Restore, Close, Menu };
 
 } // namespace toolkit

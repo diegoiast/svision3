@@ -164,7 +164,9 @@ struct Palette {
     float corner_radius = 0.0f;
     float border_width = 1.0f;
     float tab_radius = 0.0f;
+    Margins window_decoration = {0, 0, 0, 0};
     bool beveled = false;
+
     // When false, no separator line is drawn below the menubar or toolbar (e.g. Win11)
     bool chrome_lines = true;
     bool inline_scrollbars = true;
@@ -276,6 +278,9 @@ class Theme {
     virtual void draw_combobox_item(Painter &painter, Rect const &rect, std::string_view text,
                                     bool hovered) const = 0;
     virtual void draw_tooltip(Painter &painter, Rect const &rect, std::string_view text) const = 0;
+    virtual void draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                                    WidgetState const &state) const = 0;
+    virtual std::unique_ptr<Widget> create_title_bar(Window *window) const = 0;
     virtual void draw_tab_content_background(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_toolbar(Painter &painter, Rect const &rect,
                               WidgetState const &state) const = 0;

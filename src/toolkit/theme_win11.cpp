@@ -2,11 +2,60 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/theme_win11.hpp"
+#include "toolkit/label.hpp"
+#include "toolkit/layout.hpp"
 #include "toolkit/painter.hpp"
+#include "toolkit/theme.hpp"
+#include "toolkit/widget.hpp"
+#include "toolkit/window.hpp"
+#include <memory>
 
 namespace toolkit {
 
-Win11Theme::Win11Theme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme(scheme, std::move(p)) {
+class Win11TitleBar : public Widget {
+  public:
+    Win11TitleBar(Window *window) : window_(window) { set_on_top(true); }
+
+    void paint(Painter &painter) override {
+        auto const &p = Theme::current().palette;
+        auto r = rect_;
+        auto active = window_->is_active();
+        auto bg = active ? p.window : p.window_inactive.value_or(p.window);
+
+        painter.fill_rect(r, bg);
+        auto fm = painter.font_metrics(p.fonts.size);
+        auto text_y = (r.height - fm.height) / 2.0f + fm.ascent;
+        painter.draw_text(std::string{window_->title()}, {r.x + 10.0f, text_y}, p.text,
+                          p.fonts.size);
+    }
+
+    bool handle_mouse(MouseEvent const &event) override {
+        if (event.type == MouseEvent::Type::Press) {
+            if (event.click_count == 2) {
+                if (window_->is_maximized()) {
+                    window_->restore();
+                } else {
+                    window_->maximize();
+                }
+                return true;
+            }
+            window_->start_system_move(event.serial);
+            return true;
+        }
+        return false;
+    }
+
+    Size size_hint() const override {
+        auto const &m = Theme::current().palette.window_decoration;
+        return {100.0f, m.top};
+    }
+
+  private:
+    Window *window_;
+};
+
+Win11Theme::Win11Theme(ColorScheme scheme, std::optional<Palette> p)
+    : BaseTheme(scheme, std::move(p)) {
     if (!p) {
         palette = this->default_palette(scheme);
     }
@@ -20,13 +69,18 @@ Win11Theme::Win11Theme(ColorScheme scheme, std::optional<Palette> p) : BaseTheme
     radio.accent_fill = true;
 }
 
+std::unique_ptr<Widget> Win11Theme::create_title_bar(Window *window) const {
+    // return std::make_unique<Win11TitleBar>(window);
+    return BaseTheme::create_title_bar(window);
+}
+
 Palette Win11Theme::default_palette(ColorScheme scheme) const {
-    Palette p;
-    Theme::init_fonts(p);
-    auto windows_blue = Color::from_argb(0xFF0078D4);
+    Palette p = BaseTheme::default_palette(scheme);
+    auto windows_blue = Color::from_rgb(0x0078D4);
     p.tab_radius = 4.0f;
     p.corner_radius = 4.0f;
     p.chrome_lines = false;
+    p.window_decoration = {32, 0, 0, 0};
 
     switch (scheme) {
     case ColorScheme::Light:

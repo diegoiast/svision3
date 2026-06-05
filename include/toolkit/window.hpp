@@ -31,7 +31,7 @@ struct Popup {
 
 class Window {
   public:
-    Window(std::string_view title, Size size);
+    Window(std::string_view title, Size size, WindowOptions options = {});
     ~Window();
 
     Window(Window const &) = delete;
@@ -72,13 +72,26 @@ class Window {
     void handle_key(KeyEvent const &event);
     void handle_resize(Size new_size);
     void handle_activate(bool active);
+    void handle_maximized(bool maximized);
     bool is_active() const { return is_active_; }
+    bool is_maximized() const { return is_maximized_; }
     void relayout();
 
     Window &resize_to_fit();
 
     void set_cursor(CursorShape shape);
 
+    void set_options(WindowOptions options) { options_ = options; }
+    WindowOptions options() const { return options_; }
+
+    void start_system_move(uint32_t serial);
+    void start_system_resize(WindowEdge edge, uint32_t serial);
+    void minimize();
+    void maximize();
+    void restore();
+
+    std::string_view title() const { return title_; }
+    void set_title(std::string_view t);
     void set_min_size(Size s);
     void set_max_size(Size s);
     Size min_size() const;
@@ -126,6 +139,8 @@ class Window {
 
     std::string title_;
     Size size_;
+    uint32_t last_serial_ = 0;
+    WindowOptions options_;
     Size min_size_;
     Size max_size_;
     // FIXME: do we really need a "root" widget?
@@ -133,6 +148,8 @@ class Window {
     std::vector<std::unique_ptr<Widget>> widgets_;
     std::vector<Command::Ptr> global_commands_;
     bool is_active_ = true;
+    bool is_maximized_ = false;
+    std::shared_ptr<bool> theme_observer_alive_ = std::make_shared<bool>(true);
     Widget *focused_widget_ = nullptr;
     Widget *saved_focus_ = nullptr;
     std::vector<Popup> popups_;
