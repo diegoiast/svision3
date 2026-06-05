@@ -808,11 +808,10 @@ void Window::handle_mouse(MouseEvent const &event) {
             }
         }
         if (root_) {
+            // FIXME: what is the difference between these 2? This triggers clicking 2 times
             if (dispatch_to_on_top(root_.get(), event)) {
                 needs_redraw = true;
             }
-        }
-        if (root_) {
             if (Widget::dispatch_mouse_event(root_.get(), event)) {
                 needs_redraw = true;
             }

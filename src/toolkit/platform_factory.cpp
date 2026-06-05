@@ -7,6 +7,7 @@
 #include "toolkit/widget.hpp"
 #include "toolkit/xdg_image_loader.hpp"
 
+#include <cctype>
 #include <cstdlib>
 #include <map>
 #include <spdlog/fmt/fmt.h>
@@ -36,6 +37,8 @@
 #endif
 
 namespace toolkit {
+
+bool is_wayland_session() { return std::getenv("WAYLAND_DISPLAY") != nullptr; }
 
 class DummyIconProvider : public IconProvider {
   public:
@@ -96,7 +99,7 @@ std::unique_ptr<PlatformApplication> create_platform_application() {
 #endif
     }
 #ifdef TOOLKIT_HAS_WAYLAND
-    if (std::getenv("WAYLAND_DISPLAY")) {
+    if (is_wayland_session()) {
         try {
             return std::make_unique<WaylandPlatformApplication>();
         } catch (...) {
@@ -147,7 +150,26 @@ Application::~Application() {
 
 Application &Application::instance() { return *detail::current_application(); }
 
+bool platformNeedsCSD() {
+    // FIXME: what other sessions must have CSD?
+    auto xdg = std::getenv("XDG_CURRENT_DESKTOP");
+    auto is_gnome = false;
+    if (xdg) {
+        std::string s(xdg);
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+        if (s.find("gnome") != std::string::npos) {
+            is_gnome = true;
+        }
+    }
+    auto is_wayland = std::getenv("WAYLAND_DISPLAY") != nullptr;
+    return is_gnome && is_wayland;
+}
+
 Window *Application::create_window(std::string_view title, Size size, WindowOptions options) {
+    if (platformNeedsCSD()) {
+        options.csd = true;
+    }
     windows_.push_back(std::make_unique<Window>(title, size, options));
     return windows_.back().get();
 }

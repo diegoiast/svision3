@@ -16,6 +16,8 @@
 
 namespace toolkit {
 
+bool platformNeedsCSD();
+
 class Window;
 class PlatformApplication;
 class PlatformWindow;

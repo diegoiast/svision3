@@ -102,15 +102,16 @@ For a debug build (we just hijack the default profile, and modify
 the build type):
 
 ```bash
-conan install .  -pr=default -s build_type=Debug --build=missing
 
 # If on Windows (Visual Studio):
+conan install . -pr=default -s build_type=Debug --build=missing
 cmake --preset conan-default
 cmake --build --preset conan-debug
 
 # If on Linux/macOS (Ninja/Make):
-cmake --preset conan-debug
-cmake --build --preset conan-debug
+conan install . -s build_type=Debug --build=missing
+cmake --preset conan-debug -G Ninja
+cmake --build --preset conan-debug 
 ```
 
 ### Run
