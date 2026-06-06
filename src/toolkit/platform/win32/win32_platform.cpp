@@ -28,13 +28,21 @@
 
 namespace toolkit {
 
+// NOTE: usualy code in this library tends to use `auto` for variables. However
+//       for this module in particular, I think deviating from this gui and using
+//       explicit Win32 types is the best. This will make it easier to find online
+//       code and port exising snippets from C. This is how the platform works,
+//       and I do not want to deviate from it.
+
+// NOTE: this code is riddled with the number "96". In Windows, 96 DPI is 100% scale.
+
 static Win32PlatformApplication *s_win32_app = nullptr;
 Win32PlatformApplication *win32_app_instance() { return s_win32_app; }
 
 // --- DPI helpers ---
 
 static void enable_dpi_awareness() {
-    auto user32 = GetModuleHandleW(L"user32.dll");
+    HMODULE  user32 = GetModuleHandleW(L"user32.dll");
     if (user32) {
         using Fn = BOOL(WINAPI *)(void *);
         auto fn = reinterpret_cast<Fn>(GetProcAddress(user32, "SetProcessDpiAwarenessContext"));
