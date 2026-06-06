@@ -154,6 +154,7 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
     case ColorScheme::Light:
         p.window = Color::from_argb(0xFFC0C0C0);
         p.base = Color::from_argb(0xFFFFFFFF);
+        p.base = p.window;
         p.alternate = Color::from_argb(0xFFC0C0C0);
         p.text = Color::from_argb(0xFF000000);
         p.text_disabled = Color::from_argb(0xFF808080);
@@ -167,7 +168,8 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
         p.shadow = Color::from_argb(0xFF808080);
         p.dark_shadow = Color::from_argb(0xFF000000);
         p.background_pressed = Color::from_argb(0xFFB0B0B0);
-        p.background_hovered = Color::from_argb(0xFFB8B8B8);
+        p.background_hovered = Color::from_argb(0xFFFFFFFF);
+        p.background_hovered = p.window;
         p.tooltip = Color::from_argb(0xFFFFFFE1);
         p.success = Color::from_argb(0xFF008000);
         p.warning = Color::from_argb(0xFFFF8000);
