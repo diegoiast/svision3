@@ -310,7 +310,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         auto min_s = win->min_size();
         auto max_s = win->max_size();
         float scale = get_window_scale(hwnd);
-        DWORD style = WS_OVERLAPPEDWINDOW;
+        DWORD style = win->options().csd ? WS_POPUP : WS_OVERLAPPEDWINDOW;
         if (min_s.width > 0 && min_s.height > 0) {
             RECT r = {0, 0, static_cast<LONG>(min_s.width * scale),
                       static_cast<LONG>(min_s.height * scale)};
@@ -723,12 +723,15 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
     std::wstring wtitle = utf8_to_wide(title);
     float scale = static_cast<float>(get_system_dpi()) / 96.0f;
 
-    DWORD style = WS_OVERLAPPEDWINDOW;
+    DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
     DWORD adjust_style = WS_OVERLAPPEDWINDOW;
 
     if (options.csd) {
-        style = WS_POPUP | WS_VISIBLE | WS_CLIPCHILDREN | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME;
-        adjust_style = style;
+        // Use WS_OVERLAPPEDWINDOW to get standard animations even for CSD.
+        // We handle WM_NCCALCSIZE to remove the standard frame.
+        style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
+        // For CSD, client area == window area.
+        adjust_style = WS_POPUP;
     }
 
     RECT r = {0, 0, static_cast<LONG>(size.width * scale), static_cast<LONG>(size.height * scale)};
@@ -854,7 +857,8 @@ void Win32PlatformWindow::set_size(Size s) {
     }
     float scale = get_window_scale(hwnd);
     RECT r = {0, 0, static_cast<LONG>(s.width * scale), static_cast<LONG>(s.height * scale)};
-    AdjustWindowRectEx(&r, WS_OVERLAPPEDWINDOW, FALSE, 0);
+    DWORD style = owner_->options().csd ? WS_POPUP : WS_OVERLAPPEDWINDOW;
+    AdjustWindowRectEx(&r, style, FALSE, 0);
     SetWindowPos(hwnd, nullptr, 0, 0, r.right - r.left, r.bottom - r.top,
                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
