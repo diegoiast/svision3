@@ -349,6 +349,19 @@ void Window::set_title(std::string_view t) {
     }
 }
 
+void Window::set_icon(Image const &icon) {
+    if (impl_->platform) {
+        impl_->platform->set_icon(icon);
+    }
+}
+
+Image Window::get_icon() const {
+    if (impl_->platform) {
+        return impl_->platform->get_icon();
+    }
+    return nullptr;
+}
+
 void Window::handle_maximized(bool maximized) {
     if (is_maximized_ == maximized) {
         return;

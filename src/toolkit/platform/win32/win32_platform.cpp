@@ -808,6 +808,10 @@ Win32PlatformWindow::~Win32PlatformWindow() {
         if (hglrc) {
             wglDeleteContext(hglrc);
         }
+        if (hicon) {
+            DestroyIcon(hicon);
+            hicon = nullptr;
+        }
         DestroyWindow(hwnd);
         hwnd = nullptr;
     }
@@ -917,6 +921,74 @@ void Win32PlatformWindow::stop_timer(int timer_id) {
 
 void Win32PlatformWindow::set_title(std::string_view t) {
     SetWindowTextW(hwnd, std::wstring(t.begin(), t.end()).c_str());
+}
+
+void Win32PlatformWindow::set_icon(Image const &icon) {
+    if (hicon) {
+        DestroyIcon(hicon);
+        hicon = nullptr;
+    }
+
+    if (!icon || icon->pixels.empty() || !hwnd) {
+        return;
+    }
+
+    int width = icon->width;
+    int height = icon->height;
+
+    BITMAPV5HEADER bi = {0};
+    bi.bV5Size = sizeof(BITMAPV5HEADER);
+    bi.bV5Width = width;
+    bi.bV5Height = -height;
+    bi.bV5Planes = 1;
+    bi.bV5BitCount = 32;
+    bi.bV5Compression = BI_BITFIELDS;
+    bi.bV5RedMask = 0x00FF0000;
+    bi.bV5GreenMask = 0x0000FF00;
+    bi.bV5BlueMask = 0x000000FF;
+    bi.bV5AlphaMask = 0xFF000000;
+
+    void *bits = nullptr;
+    HDC hdc = GetDC(nullptr);
+    HBITMAP hBitmap = CreateDIBSection(hdc, (BITMAPINFO *)&bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    ReleaseDC(nullptr, hdc);
+
+    if (!hBitmap) {
+        return;
+    }
+
+    uint8_t *dest = static_cast<uint8_t *>(bits);
+    const uint8_t *src = icon->pixels.data();
+    for (int i = 0; i < width * height; i++) {
+        dest[i * 4 + 0] = src[i * 4 + 2];
+        dest[i * 4 + 1] = src[i * 4 + 1];
+        dest[i * 4 + 2] = src[i * 4 + 0];
+        dest[i * 4 + 3] = src[i * 4 + 3];
+    }
+
+    HBITMAP hMonoBitmap = CreateBitmap(width, height, 1, 1, nullptr);
+
+    ICONINFO ii = {0};
+    ii.fIcon = TRUE;
+    ii.xHotspot = 0;
+    ii.yHotspot = 0;
+    ii.hbmMask = hMonoBitmap;
+    ii.hbmColor = hBitmap;
+
+    hicon = CreateIconIndirect(&ii);
+
+    if (hicon) {
+        SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hicon);
+        SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hicon);
+    }
+
+    DeleteObject(hBitmap);
+    DeleteObject(hMonoBitmap);
+}
+
+Image Win32PlatformWindow::get_icon() {
+    // FIXME: implement HICON to Image conversion
+    return nullptr;
 }
 
 void Win32PlatformWindow::set_cursor(CursorShape shape) {

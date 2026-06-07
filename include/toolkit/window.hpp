@@ -5,6 +5,7 @@
 
 #include "toolkit/command.hpp"
 #include "toolkit/events.hpp"
+#include "toolkit/image.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/toast_widget.hpp"
 #include "toolkit/types.hpp"
@@ -92,6 +93,8 @@ class Window {
 
     std::string_view title() const { return title_; }
     void set_title(std::string_view t);
+    void set_icon(Image const &icon);
+    Image get_icon() const;
     void set_min_size(Size s);
     void set_max_size(Size s);
     Size min_size() const;

@@ -20,7 +20,7 @@ class Win11TitleBar : public WindowTitleBar {
     void initializeTitleBar() override {
         layout = new HBoxLayout();
         layout->set_spacing(0.0f);
-        layout->set_margins({0, 0, 0, 0});
+        layout->set_margins({0, 0, 0, 5.0f});
 
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Start).set_shrinkable(true).set_elide(true);

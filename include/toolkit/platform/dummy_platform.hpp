@@ -27,6 +27,8 @@ class DummyPlatformWindow : public PlatformWindow {
     bool save_to_png(std::string const &) override { return true; }
     float scale_factor() const override { return 1.0f; }
     std::string_view painter_name() const override { return "none"; }
+    void set_icon(Image const &) override {}
+    Image get_icon() override { return nullptr; }
 };
 
 class DummyPlatformApplication : public PlatformApplication {

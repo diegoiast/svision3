@@ -91,6 +91,8 @@ class Win32PlatformWindow : public PlatformWindow {
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
     void set_title(std::string_view t) override;
+    void set_icon(Image const &icon) override;
+    Image get_icon() override;
     void start_system_move(uint32_t serial) override;
     void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
@@ -105,6 +107,7 @@ class Win32PlatformWindow : public PlatformWindow {
     HWND hwnd = nullptr;
     HWND modal_parent_hwnd = nullptr;
     HWND tooltip_hwnd = nullptr;
+    HICON hicon = nullptr;
     HGLRC hglrc = nullptr;
     HCURSOR arrow_cursor = nullptr, ibeam_cursor = nullptr;
     HCURSOR hand_cursor = nullptr, not_allowed_cursor = nullptr;
