@@ -43,7 +43,6 @@ class GLPainter : public Painter {
     std::vector<Point> translations_;
     Painter::LineStyle style_ = Painter::LineStyle::Solid;
 
-    void set_color(Color const &c);
     void apply_line_style();
     void apply_scissor(Rect const &r);
 };

@@ -30,7 +30,7 @@ class CoreTextRasterizer : public TextRasterizer {
     }
 
     RasterizedText rasterize(std::string_view text, float font_size, float scale,
-                             FontFamily family = FontFamily::System, bool bold = false,
+                             Color const &color, FontFamily family = FontFamily::System, bool bold = false,
                              bool italic = false) override {
         NSFont *font = ns_font(font_size, family);
         NSString *str =
@@ -42,7 +42,7 @@ class CoreTextRasterizer : public TextRasterizer {
         NSDictionary *attrs = @{
             NSFontAttributeName : font,
             NSForegroundColorAttributeName :
-                [NSColor colorWithRed:1 green:1 blue:1 alpha:1]
+                [NSColor colorWithRed:color.r green:color.g blue:color.b alpha:color.a]
         };
         NSAttributedString *astr =
             [[NSAttributedString alloc] initWithString:str attributes:attrs];
@@ -114,7 +114,7 @@ class CoreTextRasterizer : public TextRasterizer {
         // Fallback for macOS: rasterize and draw as image
         // FIXME: we need the scale.
         float scale = 1.0f;
-        auto rt = rasterize(text, font_size, scale, font, bold, italic);
+        auto rt = rasterize(text, font_size, scale, color, font, bold, italic);
         if (rt.pixels.empty()) {
             return;
         }

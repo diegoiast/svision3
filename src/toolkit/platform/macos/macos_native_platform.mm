@@ -111,7 +111,9 @@ class CoreGraphicsPainter : public Painter {
     }
 
     void draw_image(ImageData const &image, Point position) override;
-    void draw_image_scaled(ImageData const &image, Rect const &dest) override;
+    void draw_image_scaled(ImageData const &image, Rect const &dest) override {
+        // FIXME: implement
+    }
 
     std::string_view name() const override { return "Native"; }
 

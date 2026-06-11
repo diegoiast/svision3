@@ -23,8 +23,8 @@ class TextRasterizer {
     virtual ~TextRasterizer() = default;
 
     virtual RasterizedText rasterize(std::string_view text, float font_size, float scale,
-                                     FontFamily font = FontFamily::System, bool bold = false,
-                                     bool italic = false) = 0;
+                                     Color const &color, FontFamily font = FontFamily::System,
+                                     bool bold = false, bool italic = false) = 0;
 
     // FIXME: those functions seem very similar. We could merge them
     // FIXME: Maybe cache the font metrics, instead of computing them?
@@ -43,7 +43,8 @@ class TextRasterizer {
 class DummyRasterizer : public TextRasterizer {
   public:
     virtual RasterizedText rasterize(std::string_view t, float font_size, float scale,
-                                     FontFamily f, bool /*bold*/ = false, bool /*italic*/ = false) {
+                                     Color const & /*color*/, FontFamily f, bool /*bold*/ = false,
+                                     bool /*italic*/ = false) {
         auto r = RasterizedText{};
         auto m = measure(t, font_size, f);
         r.width = m.width;

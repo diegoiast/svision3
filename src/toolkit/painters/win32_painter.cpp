@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
 #ifdef _WIN32
 
 #ifndef NOMINMAX
@@ -91,7 +94,8 @@ Win32TextRasterizer::~Win32TextRasterizer() {
 }
 
 RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_size, float scale,
-                                              FontFamily font, bool bold, bool italic) {
+                                              Color const &color, FontFamily font, bool bold,
+                                              bool italic) {
     auto wtext = to_wide(text);
     if (wtext.empty()) {
         return {};
@@ -135,7 +139,11 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
     RECT rc = {0, 0, w, h};
     FillRect(impl_->hdc, &rc, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
 
-    SetTextColor(impl_->hdc, RGB(255, 255, 255));
+    int r_c = static_cast<int>(std::round(std::clamp(color.r, 0.0f, 1.0f) * 255));
+    int g_c = static_cast<int>(std::round(std::clamp(color.g, 0.0f, 1.0f) * 255));
+    int b_c = static_cast<int>(std::round(std::clamp(color.b, 0.0f, 1.0f) * 255));
+
+    SetTextColor(impl_->hdc, RGB(r_c, g_c, b_c));
     SetBkMode(impl_->hdc, TRANSPARENT);
     TextOutW(impl_->hdc, 0, 0, wtext.c_str(), static_cast<int>(wtext.size()));
     GdiFlush();
@@ -147,15 +155,15 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
     result.height = h;
     result.ascent = static_cast<float>(tm.tmAscent) / scale;
 
+    float tint_a = std::clamp(color.a, 0.0f, 1.0f);
     for (int i = 0; i < w * h; i++) {
-        uint8_t b = src[i * 4 + 0];
-        uint8_t g = src[i * 4 + 1];
-        uint8_t r = src[i * 4 + 2];
-        uint8_t a = static_cast<uint8_t>((r + g + b) / 3);
-        result.pixels[i * 4 + 0] = a;
-        result.pixels[i * 4 + 1] = a;
-        result.pixels[i * 4 + 2] = a;
-        result.pixels[i * 4 + 3] = a;
+        uint8_t a = src[i * 4 + 3];
+        float alpha = (a / 255.0f) * tint_a;
+
+        result.pixels[i * 4 + 0] = static_cast<uint8_t>(r_c * alpha);
+        result.pixels[i * 4 + 1] = static_cast<uint8_t>(g_c * alpha);
+        result.pixels[i * 4 + 2] = static_cast<uint8_t>(b_c * alpha);
+        result.pixels[i * 4 + 3] = static_cast<uint8_t>(alpha * 255.0f);
     }
 
     SelectObject(impl_->hdc, old_bm);
@@ -493,8 +501,8 @@ void GDIPainter::draw_circle(Point center, float radius, Color const &c, float l
 }
 
 void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos, Color const &c,
-                                   float font_size, FontFamily family,
-                                   Painter::TextOrientation orientation, bool bold, bool italic) {
+                                    float font_size, FontFamily family,
+                                    Painter::TextOrientation orientation, bool bold, bool italic) {
     if (auto *gp = dynamic_cast<GDIPainter *>(&p)) {
         if (text.empty()) {
             return;
@@ -546,7 +554,7 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             // Instead, rasterize the text horizontally (full ClearType quality), colorize the
             // resulting bitmap, then draw it rotated.  At exactly ±90° the pixel mapping is
             // 1-to-1 so there are no interpolation artifacts from the rotation itself.
-            auto rast = rasterize(text, font_size, scale, family, bold, italic);
+            auto rast = rasterize(text, font_size, scale, c, family, bold, italic);
             if (rast.pixels.empty()) {
                 return;
             }
@@ -555,8 +563,11 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             Gdiplus::Bitmap bmp(rast.width, rast.height, rast.width * 4, PixelFormat32bppARGB,
                                 (BYTE *)rast.pixels.data());
 
-            Gdiplus::ColorMatrix matrix = {
-                {{c.r, 0, 0, 0, 0}, {0, c.g, 0, 0, 0}, {0, 0, c.b, 0, 0}, {0, 0, 0, c.a, 0}, {0, 0, 0, 0, 1}}};
+            Gdiplus::ColorMatrix matrix = {{{c.r, 0, 0, 0, 0},
+                                            {0, c.g, 0, 0, 0},
+                                            {0, 0, c.b, 0, 0},
+                                            {0, 0, 0, c.a, 0},
+                                            {0, 0, 0, 0, 1}}};
 
             Gdiplus::ImageAttributes attrs;
             attrs.SetColorMatrix(&matrix, Gdiplus::ColorMatrixFlagsDefault,
@@ -582,7 +593,7 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         // FIXME: we need a way to get the scale from the painter.
         // For now, let's assume 1.0 or find it from the painter if possible.
         float scale = 1.0f; // Placeholder
-        auto rast = rasterize(text, font_size, scale, family, bold, italic);
+        auto rast = rasterize(text, font_size, scale, c, family, bold, italic);
         if (rast.pixels.empty()) {
             return;
         }
@@ -597,10 +608,8 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             pixels[i * 4 + 3] = static_cast<uint8_t>(c.a * 255 * a);
         }
 
-        p.draw_image(
-            ImageData{std::move(pixels), rast.width, rast.height},
-            {pos.x, pos.y - rast.ascent}
-        );
+        p.draw_image(ImageData{std::move(pixels), rast.width, rast.height},
+                     {pos.x, pos.y - rast.ascent});
     }
 }
 

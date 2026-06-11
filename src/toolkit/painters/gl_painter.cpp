@@ -123,7 +123,7 @@ void GLPainter::apply_line_style() {
 void GLPainter::fill_rect(Rect const &r, Color const &c) {
     glDisable(GL_LINE_STIPPLE);
     glDisable(GL_LINE_SMOOTH);
-    set_color(c);
+    glColor4f(c.r, c.g, c.b, c.a);
     glBegin(GL_QUADS);
     glVertex2f(r.x, r.y);
     glVertex2f(r.x + r.width, r.y);
@@ -133,7 +133,7 @@ void GLPainter::fill_rect(Rect const &r, Color const &c) {
 }
 
 void GLPainter::draw_rect(Rect const &r, Color const &c, float lw) {
-    set_color(c);
+    glColor4f(c.r, c.g, c.b, c.a);
     glLineWidth(lw * scale_);
     apply_line_style();
 
@@ -153,7 +153,7 @@ void GLPainter::fill_rounded_rect(Rect const &r, Color const &c, float radius) {
         fill_rect(r, c);
         return;
     }
-    set_color(c);
+    glColor4f(c.r, c.g, c.b, c.a);
     auto pts = rounded_rect_verts(r.x, r.y, r.width, r.height, rad);
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(r.x + r.width / 2, r.y + r.height / 2);
@@ -171,7 +171,7 @@ void GLPainter::draw_rounded_rect(Rect const &r, Color const &c, float radius, f
         return;
     }
 
-    set_color(c);
+    glColor4f(c.r, c.g, c.b, c.a);
     glLineWidth(lw * scale_);
     apply_line_style();
     auto pts = rounded_rect_verts(r.x, r.y, r.width, r.height, rad);
@@ -184,7 +184,7 @@ void GLPainter::draw_rounded_rect(Rect const &r, Color const &c, float radius, f
 
 void GLPainter::fill_triangle(Point a, Point b, Point c, Color const &color) {
     glDisable(GL_LINE_STIPPLE);
-    set_color(color);
+    glColor4f(color.r, color.g, color.b, color.a);
     glBegin(GL_TRIANGLES);
     glVertex2f(a.x, a.y);
     glVertex2f(b.x, b.y);
@@ -193,7 +193,7 @@ void GLPainter::fill_triangle(Point a, Point b, Point c, Color const &color) {
 }
 
 void GLPainter::draw_line(Point a, Point b, Color const &c, float lw) {
-    set_color(c);
+    glColor4f(c.r, c.g, c.b, c.a);
     glLineWidth(lw * scale_);
     apply_line_style();
 
@@ -205,7 +205,7 @@ void GLPainter::draw_line(Point a, Point b, Color const &c, float lw) {
 
 void GLPainter::fill_circle(Point center, float radius, Color const &c) {
     glDisable(GL_LINE_STIPPLE);
-    set_color(c);
+    glColor4f(c.r, c.g, c.b, c.a);
 
     int seg = 64;
     glBegin(GL_TRIANGLE_FAN);
@@ -229,7 +229,7 @@ void GLPainter::fill_circle(Point center, float radius, Color const &c) {
 }
 
 void GLPainter::draw_circle(Point center, float radius, Color const &c, float lw) {
-    set_color(c);
+    glColor4f(c.r, c.g, c.b, c.a);
     glLineWidth(lw * scale_);
     apply_line_style();
     glEnable(GL_LINE_SMOOTH);
@@ -264,7 +264,6 @@ void GLPainter::draw_image(ImageData const &image, Point position) {
     glPushMatrix();
     glTranslatef(position.x, position.y, 0);
 
-    glColor4f(1, 1, 1, 1);
     glBegin(GL_QUADS);
     glTexCoord2f(0, 0);
     glVertex2f(0, 0);
@@ -298,7 +297,6 @@ void GLPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     glEnable(GL_TEXTURE_2D);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glColor4f(1, 1, 1, 1);
     glBegin(GL_QUADS);
     glTexCoord2f(0, 0);
     glVertex2f(dest.x, dest.y);
@@ -313,8 +311,6 @@ void GLPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     glDisable(GL_TEXTURE_2D);
     glDeleteTextures(1, &tex);
 }
-
-void GLPainter::set_color(Color const &c) { glColor4f(c.r, c.g, c.b, c.a); }
 
 void GLPainter::apply_scissor(Rect const &r) {
     glEnable(GL_SCISSOR_TEST);

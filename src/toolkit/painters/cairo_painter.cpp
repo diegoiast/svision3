@@ -134,10 +134,9 @@ void CairoPainter::draw_circle(Point center, float radius, Color const &color, f
 // Detect a monospace font by checking that 'i' and 'm' have equal advances.
 // Reuses the caller's cairo_t (save/restore keeps it clean) — no extra surface.
 static std::string find_monospace_font(cairo_t *cr) {
-    static const char *candidates[] = {"DejaVu Sans Mono", "Liberation Mono",
-                                       "Courier New",      "Noto Mono",
-                                       "Hack",             "Ubuntu Mono",
-                                       "Courier",          nullptr};
+    static const char *candidates[] = {
+        "DejaVu Sans Mono", "Liberation Mono", "Courier New", "Noto Mono", "Hack",
+        "Ubuntu Mono",      "Courier",         nullptr};
     cairo_save(cr);
     cairo_set_font_size(cr, 12.0);
     std::string found;
@@ -163,8 +162,8 @@ static std::string cairo_font_face(FontFamily f, cairo_t *cr) {
 }
 
 void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point position,
-                                   Color const &color, float font_size, FontFamily font,
-                                   Painter::TextOrientation orientation, bool bold, bool italic) {
+                                    Color const &color, float font_size, FontFamily font,
+                                    Painter::TextOrientation orientation, bool bold, bool italic) {
     if (auto *cp = dynamic_cast<CairoPainter *>(&p)) {
         auto cr = cp->cairo();
         cairo_new_path(cr);
@@ -197,16 +196,15 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         // FIXME: we need a way to get the scale from the painter.
         // For now, let's assume 1.0 or find it from the painter if possible.
         float scale = 1.0f; // Placeholder
-        auto rt = rasterize(text, font_size, scale, font, bold, italic);
+        auto rt = rasterize(text, font_size, scale, color, font, bold, italic);
         if (rt.pixels.empty()) {
             return;
         }
 
         // FIXME: we need draw_image_tinted or similar to apply 'color'
         // For now just draw as is (which will be white)
-        p.draw_image(
-            ImageData{std::move(rt.pixels), rt.width, rt.height},
-            {position.x, position.y - rt.ascent} // Approximation
+        p.draw_image(ImageData{std::move(rt.pixels), rt.width, rt.height},
+                     {position.x, position.y - rt.ascent} // Approximation
         );
     }
 }
@@ -292,9 +290,9 @@ bool cairo_save_to_png(Window *window, std::string const &path) {
     return status == CAIRO_STATUS_SUCCESS;
 }
 
-
 RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_size, float scale,
-                                              FontFamily font, bool bold, bool italic) {
+                                              Color const &color, FontFamily font, bool bold,
+                                              bool italic) {
     if (text.empty()) {
         return {};
     }
@@ -338,7 +336,7 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     apply_font_options(cr);
     cairo_scale(cr, scale, scale);
 
-    cairo_set_source_rgba(cr, 1, 1, 1, 1);
+    cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
     cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(), slant, weight);
     cairo_set_font_size(cr, std::floor(font_size));
 
