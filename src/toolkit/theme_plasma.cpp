@@ -225,7 +225,7 @@ void Plasma6Theme::draw_window_button(Painter &painter, Rect const &rect, Decora
         }
     }
 
-    auto size = std::min(rect.width, rect.height) * 0.25f;
+    auto size = 5.0f;
     auto fg = (hovered || pressed) ? palette.window : palette.text;
 
     if (button == DecorationButton::Minimize) {

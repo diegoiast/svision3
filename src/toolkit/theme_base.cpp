@@ -876,7 +876,7 @@ void BaseTheme::draw_window_button(Painter &painter, Rect const &rect, Decoratio
     painter.fill_rect(rect, bg);
 
     auto center = Point{rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f};
-    auto size = std::min(rect.width, rect.height) * 0.4f;
+    auto size = 5.0f;
 
     if (button == DecorationButton::Minimize) {
         painter.draw_line({center.x - size, center.y}, {center.x + size, center.y}, palette.text,
