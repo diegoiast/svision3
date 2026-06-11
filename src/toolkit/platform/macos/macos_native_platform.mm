@@ -523,6 +523,33 @@ void MacOSNativePlatformWindow::restore() {}
 void MacOSNativePlatformWindow::start_system_move(uint32_t /*serial*/) {}
 void MacOSNativePlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/) {}
 
+void MacOSNativePlatformWindow::set_icon(Image const &icon) {
+    if (!icon || icon->pixels.empty()) return;
+    NSBitmapImageRep *rep = [[NSBitmapImageRep alloc]
+        initWithBitmapDataPlanes:nullptr
+                      pixelsWide:icon->width
+                      pixelsHigh:icon->height
+                   bitsPerSample:8
+                 samplesPerPixel:4
+                        hasAlpha:YES
+                        isPlanar:NO
+                  colorSpaceName:NSDeviceRGBColorSpace
+                     bytesPerRow:icon->width * 4
+                    bitsPerPixel:32];
+    
+    unsigned char *bitmapData = [rep bitmapData];
+    std::memcpy(bitmapData, icon->pixels.data(), icon->pixels.size());
+    
+    NSImage *image = [[NSImage alloc] initWithSize:NSMakeSize(icon->width, icon->height)];
+    [image addRepresentation:rep];
+    [impl_->ns_window setRepresentedImage:image];
+}
+
+Image MacOSNativePlatformWindow::get_icon() {
+    // FIXME: Implement NSImage to Image conversion
+    return nullptr;
+}
+
 int MacOSNativePlatformWindow::start_timer(float interval_sec, std::function<void()> callback,
 
                                            bool repeats) {

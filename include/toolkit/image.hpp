@@ -61,4 +61,6 @@ class IconProvider {
                       std::string_view context = XDG::IconContexts::actions) -> Icon = 0;
 };
 
+std::shared_ptr<ImageData> parse_xpm(std::string_view xpm_data);
+
 } // namespace toolkit

@@ -62,8 +62,9 @@ class PlatformWindow {
 
     virtual std::string_view painter_name() const = 0;
     virtual void set_title(std::string_view) {}
-    virtual void set_icon(Image const &icon) = 0;
-    virtual Image get_icon() = 0;
+    virtual void set_icon(Icon const &icon) = 0;
+    virtual Icon get_icon() = 0;
+    virtual void show_system_menu(Point p) = 0;
 };
 
 class PlatformApplication {

@@ -5,7 +5,9 @@
 #include "toolkit/button.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
+#include "toolkit/image_widget.hpp"
 #include "toolkit/painter.hpp"
+#include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
@@ -20,9 +22,15 @@ class PlasmaTitleBar : public WindowTitleBar {
 
     void initializeTitleBar() override {
         layout = new HBoxLayout();
+        layout->set_window(window_);
         layout->set_spacing(8.0f);
+        layout->set_margins({8, 12, 8, 12.0f});
 
-        auto *app_button = new TitlebarButton(DecorationButton::Menu, "Menu");
+        icon_widget = new TitleBarIcon(window_);
+        icon_widget->set_window(window_);
+        icon_widget->set_min_size({16, 16});
+        icon_widget->set_max_size({16, 16});
+        icon_widget->set_image(window_->get_icon());
 
         auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close");
         close_btn->on_click = [this] { window_->close(); };
@@ -39,11 +47,7 @@ class PlasmaTitleBar : public WindowTitleBar {
             }
         };
 
-        auto m = layout->get_margins();
-        m.right = 5.0;
-        m.left = 5.0;
-        layout->set_margins(m);
-        layout->add_widget(std::unique_ptr<Widget>(app_button));
+        layout->add_widget(std::unique_ptr<Widget>(icon_widget));
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);

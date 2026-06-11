@@ -28,6 +28,7 @@ class X11PlatformApplication : public PlatformApplication {
     // Forward to get X11 handles, without X11 includes
     void *get_display() const;
     void *get_visual() const;
+    unsigned long get_net_wm_icon_atom() const;
 
     struct Impl;
     std::unique_ptr<Impl> impl_;
@@ -51,6 +52,9 @@ class X11PlatformWindow : public PlatformWindow {
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
     void set_title(std::string_view t) override;
+    void set_icon(Image const &icon) override;
+    Image get_icon() override;
+    void show_system_menu(Point) override {}
     void start_system_move(uint32_t serial) override;
     void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;

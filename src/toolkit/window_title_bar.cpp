@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/window_title_bar.hpp"
+#include "toolkit/image_widget.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
@@ -36,15 +37,37 @@ void TitlebarButton::paint(Painter &painter) {
     Theme::current().draw_window_button(painter, {0, 0, rect_.width, rect_.height}, type_, wstate);
 }
 
-WindowTitleBar::WindowTitleBar(Window *w) {
-    set_window(w);
+TitleBarIcon::TitleBarIcon(Window *w) : window_(w) {
+    set_focusable(false);
+    set_show_checkerboard(false);
 }
+
+bool TitleBarIcon::handle_mouse(MouseEvent const &event) {
+    if (!hit_test(event.position)) {
+        return false;
+    }
+    if (event.type == MouseEvent::Type::Press) {
+        auto menu_pos = map_to_window({0, rect_.height});
+        window_->platform_window()->show_system_menu(menu_pos);
+        return true;
+    }
+    return false;
+}
+
+WindowTitleBar::WindowTitleBar(Window *w) { set_window(w); }
 
 void WindowTitleBar::initializeTitleBar() {
     layout = new HBoxLayout();
+    layout->set_window(window_);
+    layout->set_margins(Margins{8.0f, 12.0, 8.0, 12.0f});
     layout->set_spacing(8.0f);
 
-    auto *app_button = new TitlebarButton(DecorationButton::Menu, "Menu");
+    icon_widget = new TitleBarIcon(window_);
+    icon_widget->set_window(window_);
+    icon_widget->set_min_size({16, 16});
+    icon_widget->set_max_size({16, 16});
+    icon_widget->set_image(window_->get_icon());
+    spdlog::info("WindowTitleBar::initializeTitleBar icon_widget={:p}", (void *)icon_widget);
 
     auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close");
     close_btn->on_click = [this] { window_->close(); };
@@ -61,11 +84,7 @@ void WindowTitleBar::initializeTitleBar() {
         }
     };
 
-    auto m = layout->get_margins();
-    m.right = 5.0;
-    m.left = 5.0;
-    layout->set_margins(m);
-    layout->add_widget(std::unique_ptr<Widget>(app_button));
+    layout->add_widget(std::unique_ptr<Widget>(icon_widget));
     title_label = new Label(std::string{window_->title()});
     title_label->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
     layout->add_widget(std::unique_ptr<Label>(title_label), 1);
@@ -90,18 +109,29 @@ auto WindowTitleBar::create_btn(DecorationButton type) -> Button * {
     case DecorationButton::Restore:
         tooltip = "Restore";
         break;
+    case DecorationButton::Menu:
+        tooltip = "Menu";
+        break;
     }
 
     auto *btn = new TitlebarButton(type, tooltip);
     btn->on_click = [this, type] {
-        if (type == DecorationButton::Close) {
+        switch (type) {
+        case DecorationButton::Close:
             window_->close();
-        } else if (type == DecorationButton::Minimize) {
+            break;
+        case DecorationButton::Minimize:
             window_->minimize();
-        } else if (type == DecorationButton::Maximize) {
+            break;
+        case DecorationButton::Maximize:
             window_->maximize();
-        } else if (type == DecorationButton::Restore) {
+            break;
+        case DecorationButton::Restore:
             window_->restore();
+            break;
+        case DecorationButton::Menu:
+            // FIXME: implement
+            break;
         }
     };
     return btn;
@@ -138,11 +168,19 @@ void WindowTitleBar::set_rect(Rect const &rect) {
     layout->set_rect(rect);
 }
 
+void WindowTitleBar::set_icon(Icon const &icon) {
+    if (icon_widget) {
+        icon_widget->set_image(icon);
+    }
+}
+
 bool WindowTitleBar::handle_mouse(MouseEvent const &event) {
     if (layout->handle_mouse(event)) {
         return true;
     }
-    if (!rect_.contains(event.position)) {
+
+    auto local_rect = Rect{0, 0, rect_.width, rect_.height};
+    if (!local_rect.contains(event.position)) {
         return false;
     }
 

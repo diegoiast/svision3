@@ -3,9 +3,11 @@
 
 #include "toolkit/theme_macos.hpp"
 #include "toolkit/button.hpp"
+#include "toolkit/image_widget.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/painter.hpp"
+#include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
@@ -20,11 +22,9 @@ class MacOSTitleBar : public WindowTitleBar {
 
     virtual void initializeTitleBar() override {
         layout = new HBoxLayout();
+        layout->set_window(window_);
         layout->set_spacing(8.0f);
-
-        auto p = layout->get_margins();
-        p.left = 5.0f;
-        layout->set_margins(p);
+        layout->set_margins({11, 72, 11, 12.0f});
 
         auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close");
         close_btn->on_click = [this] { window_->close(); };
@@ -41,12 +41,19 @@ class MacOSTitleBar : public WindowTitleBar {
             }
         };
 
+        icon_widget = new TitleBarIcon(window_);
+        icon_widget->set_window(window_);
+        icon_widget->set_min_size({16, 16});
+        icon_widget->set_max_size({16, 16});
+        icon_widget->set_image(window_->get_icon());
+
         layout->add_widget(std::unique_ptr<Widget>(close_btn));
         layout->add_widget(std::unique_ptr<Widget>(min_btn));
         layout->add_widget(std::unique_ptr<Widget>(max_btn));
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
+        layout->add_widget(std::unique_ptr<ImageWidget>(icon_widget));
     }
 };
 

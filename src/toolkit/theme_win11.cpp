@@ -2,9 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/theme_win11.hpp"
+#include "toolkit/image_widget.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
 #include "toolkit/painter.hpp"
+#include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
@@ -19,20 +21,28 @@ class Win11TitleBar : public WindowTitleBar {
 
     void initializeTitleBar() override {
         layout = new HBoxLayout();
-        layout->set_spacing(0.0f);
-        layout->set_margins({0, 0, 0, 5.0f});
+        layout->set_window(window_);
+        layout->set_spacing(8.0f);
+        layout->set_margins({0, 0, 0, 8.0f});
+
+        icon_widget = new TitleBarIcon(window_);
+        icon_widget->set_window(window_);
+        icon_widget->set_min_size({16, 16});
+        icon_widget->set_max_size({16, 16});
+        icon_widget->set_image(window_->get_icon());
 
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Start).set_shrinkable(true).set_elide(true);
 
-/*        auto m = title_label->get_margins();
-        m.left = 12.0f;
-        title_label->set_margins(m);
-*/
+        layout->add_widget(std::unique_ptr<ImageWidget>(icon_widget));
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
 
         auto const &decoration = Theme::current().palette.window_decoration;
         auto btn_size = Size{44, decoration.top};
+
+        auto *button_layout = new HBoxLayout();
+        button_layout->set_spacing(0.0f);
+        button_layout->set_margins({0, 0, 0, 0});
 
         auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
         min_btn->on_click = [this] { window_->minimize(); };
@@ -49,9 +59,11 @@ class Win11TitleBar : public WindowTitleBar {
         auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close", btn_size);
         close_btn->on_click = [this] { window_->close(); };
 
-        layout->add_widget(std::unique_ptr<Widget>(min_btn));
-        layout->add_widget(std::unique_ptr<Widget>(max_btn));
-        layout->add_widget(std::unique_ptr<Widget>(close_btn));
+        button_layout->add_widget(std::unique_ptr<Widget>(min_btn), 0, Alignment::Fill);
+        button_layout->add_widget(std::unique_ptr<Widget>(max_btn), 0, Alignment::Fill);
+        button_layout->add_widget(std::unique_ptr<Widget>(close_btn), 0, Alignment::Fill);
+
+        layout->add_widget(std::unique_ptr<Widget>(button_layout), 0, Alignment::Fill);
     }
 
     void paint(Painter &painter) override {

@@ -19,6 +19,9 @@ class MacOSNativePlatformWindow : public PlatformWindow {
     ~MacOSNativePlatformWindow() override;
     void show() override;
     void close() override;
+    void minimize() override;
+    void maximize() override;
+    void restore() override;
     void set_size(Size s) override;
     void request_redraw() override;
     void set_min_size(Size s) override;
@@ -27,6 +30,9 @@ class MacOSNativePlatformWindow : public PlatformWindow {
                     bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
+    void set_icon(Image const &) override {}
+    Image get_icon() override { return nullptr; }
+    void show_system_menu(Point) override {}
     void start_system_move(uint32_t serial) override;
     void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;

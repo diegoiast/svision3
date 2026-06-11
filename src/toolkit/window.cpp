@@ -7,6 +7,7 @@
 #include "toolkit/platform.hpp"
 #include "toolkit/tab_widget.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/window_title_bar.hpp"
 #include <cctype>
 #include <chrono>
 #include <nlohmann/json.hpp>
@@ -227,6 +228,9 @@ auto Window::painter_name() const -> std::string_view { return impl_->platform->
 void Window::show() {
     if (impl_->platform) {
         impl_->platform->show();
+        // Sync icon from platform to titlebar
+        auto icon = get_icon();
+        set_icon(icon);
     }
 }
 
@@ -299,63 +303,77 @@ auto Window::start_timer(float interval_sec, std::function<void()> callback, boo
 }
 
 void Window::stop_timer(int id) {
-    if (impl_->platform) {
+    if (impl_ && impl_->platform) {
         impl_->platform->stop_timer(id);
     }
 }
 
 void Window::set_cursor(CursorShape shape) {
-    if (impl_->platform) {
+    if (impl_ && impl_->platform) {
         impl_->platform->set_cursor(shape);
     }
 }
 
 void Window::start_system_move(uint32_t serial) {
-    if (impl_->platform) {
+    if (impl_ && impl_->platform) {
         impl_->platform->start_system_move(serial);
     }
 }
 
 void Window::start_system_resize(WindowEdge edge, uint32_t serial) {
-    if (impl_->platform) {
+    if (impl_ && impl_->platform) {
         impl_->platform->start_system_resize(edge, serial);
     }
 }
 
 void Window::minimize() {
-    if (impl_->platform) {
+    if (impl_ && impl_->platform) {
         impl_->platform->minimize();
     }
 }
 
 void Window::maximize() {
     is_maximized_ = true;
-    if (impl_->platform) {
+    if (impl_ && impl_->platform) {
         impl_->platform->maximize();
     }
 }
 
 void Window::restore() {
     is_maximized_ = false;
-    if (impl_->platform) {
+    if (impl_ && impl_->platform) {
         impl_->platform->restore();
     }
 }
 
 void Window::set_title(std::string_view t) {
     title_ = t;
-    if (impl_->platform) {
+    if (impl_ && impl_->platform) {
         impl_->platform->set_title(t);
     }
 }
 
-void Window::set_icon(Image const &icon) {
+void Window::set_icon(Icon const &icon) {
+    spdlog::log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::info,
+                "Window::set_icon called, icon valid: {}", (bool)icon);
     if (impl_->platform) {
         impl_->platform->set_icon(icon);
     }
+    if (options_.csd && root_) {
+        // FIXME: keep a pointer to the title. It should be non null if CSD
+        auto *layout = dynamic_cast<VBoxLayout *>(root_.get());
+        if (layout && !layout->items().empty()) {
+            auto *title_bar = dynamic_cast<WindowTitleBar *>(layout->items().front().widget.get());
+            if (title_bar) {
+                spdlog::info("WindowTitleBar::set_icon calling (title_bar={:p})",
+                             (void *)title_bar);
+                title_bar->set_icon(icon);
+            }
+        }
+    }
 }
 
-Image Window::get_icon() const {
+Icon Window::get_icon() const {
     if (impl_->platform) {
         return impl_->platform->get_icon();
     }

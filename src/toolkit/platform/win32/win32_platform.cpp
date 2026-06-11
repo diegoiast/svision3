@@ -19,12 +19,12 @@
 #pragma comment(lib, "dwmapi.lib")
 // clang-format on
 
-#include "toolkit/stopwatch.hpp"
 #include <GL/gl.h>
 #include <algorithm>
 #include <cmath>
 #include <objidl.h>
 #include <spdlog/spdlog.h>
+#include <sstream>
 
 namespace toolkit {
 
@@ -42,7 +42,7 @@ Win32PlatformApplication *win32_app_instance() { return s_win32_app; }
 // --- DPI helpers ---
 
 static void enable_dpi_awareness() {
-    HMODULE  user32 = GetModuleHandleW(L"user32.dll");
+    HMODULE user32 = GetModuleHandleW(L"user32.dll");
     if (user32) {
         using Fn = BOOL(WINAPI *)(void *);
         auto fn = reinterpret_cast<Fn>(GetProcAddress(user32, "SetProcessDpiAwarenessContext"));
@@ -294,10 +294,24 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     case WM_NCCALCSIZE: {
         if (win->options().csd && wp) {
+            auto *params = reinterpret_cast<NCCALCSIZE_PARAMS *>(lp);
+            if (IsZoomed(hwnd)) {
+                auto monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+                if (monitor) {
+                    MONITORINFO mi = {sizeof(mi)};
+                    if (GetMonitorInfoW(monitor, &mi)) {
+                        params->rgrc[0] = mi.rcWork;
+                    }
+                }
+            }
             return 0;
         }
         break;
     }
+    case WM_SYSCOMMAND:
+        // For CSD windows, we still want standard system commands to work.
+        // They will be handled by DefWindowProcW.
+        break;
     case WM_PAINT:
         Win32PlatformApplication::paint_window(hwnd, win);
         return 0;
@@ -821,11 +835,7 @@ std::string_view Win32PlatformWindow::painter_name() const {
     if (hglrc) {
         return "OpenGL";
     }
-#ifdef TOOLKIT_HAS_CAIRO
-    return "Cairo";
-#else
     return "GDI+";
-#endif
 }
 
 void Win32PlatformWindow::show() {
@@ -923,7 +933,11 @@ void Win32PlatformWindow::set_title(std::string_view t) {
     SetWindowTextW(hwnd, std::wstring(t.begin(), t.end()).c_str());
 }
 
-void Win32PlatformWindow::set_icon(Image const &icon) {
+void Win32PlatformWindow::set_icon(Icon const &icon) {
+    if (icon_ == icon && hicon) {
+        return;
+    }
+    icon_ = icon;
     if (hicon) {
         DestroyIcon(hicon);
         hicon = nullptr;
@@ -936,21 +950,17 @@ void Win32PlatformWindow::set_icon(Image const &icon) {
     int width = icon->width;
     int height = icon->height;
 
-    BITMAPV5HEADER bi = {0};
-    bi.bV5Size = sizeof(BITMAPV5HEADER);
-    bi.bV5Width = width;
-    bi.bV5Height = -height;
-    bi.bV5Planes = 1;
-    bi.bV5BitCount = 32;
-    bi.bV5Compression = BI_BITFIELDS;
-    bi.bV5RedMask = 0x00FF0000;
-    bi.bV5GreenMask = 0x0000FF00;
-    bi.bV5BlueMask = 0x000000FF;
-    bi.bV5AlphaMask = 0xFF000000;
+    BITMAPINFO bi = {0};
+    bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bi.bmiHeader.biWidth = width;
+    bi.bmiHeader.biHeight = -height;
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    bi.bmiHeader.biCompression = BI_RGB;
 
     void *bits = nullptr;
     HDC hdc = GetDC(nullptr);
-    HBITMAP hBitmap = CreateDIBSection(hdc, (BITMAPINFO *)&bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    HBITMAP hBitmap = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
     ReleaseDC(nullptr, hdc);
 
     if (!hBitmap) {
@@ -960,13 +970,19 @@ void Win32PlatformWindow::set_icon(Image const &icon) {
     uint8_t *dest = static_cast<uint8_t *>(bits);
     const uint8_t *src = icon->pixels.data();
     for (int i = 0; i < width * height; i++) {
-        dest[i * 4 + 0] = src[i * 4 + 2];
-        dest[i * 4 + 1] = src[i * 4 + 1];
-        dest[i * 4 + 2] = src[i * 4 + 0];
-        dest[i * 4 + 3] = src[i * 4 + 3];
+        dest[i * 4 + 0] = src[i * 4 + 2]; // B
+        dest[i * 4 + 1] = src[i * 4 + 1]; // G
+        dest[i * 4 + 2] = src[i * 4 + 0]; // R
+        dest[i * 4 + 3] = src[i * 4 + 3]; // A
     }
 
+    // Create a zeroed-out AND mask
     HBITMAP hMonoBitmap = CreateBitmap(width, height, 1, 1, nullptr);
+    HDC hdcMask = CreateCompatibleDC(nullptr);
+    HBITMAP hOldMask = (HBITMAP)SelectObject(hdcMask, hMonoBitmap);
+    PatBlt(hdcMask, 0, 0, width, height, BLACKNESS);
+    SelectObject(hdcMask, hOldMask);
+    DeleteDC(hdcMask);
 
     ICONINFO ii = {0};
     ii.fIcon = TRUE;
@@ -978,17 +994,155 @@ void Win32PlatformWindow::set_icon(Image const &icon) {
     hicon = CreateIconIndirect(&ii);
 
     if (hicon) {
+        spdlog::info("Win32PlatformWindow::set_icon created HICON={:p} ({}x{})", (void*)hicon, width, height);
         SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hicon);
         SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hicon);
+    } else {
+        spdlog::error("Win32PlatformWindow::set_icon CreateIconIndirect failed, error={}", GetLastError());
     }
 
     DeleteObject(hBitmap);
     DeleteObject(hMonoBitmap);
 }
 
-Image Win32PlatformWindow::get_icon() {
-    // FIXME: implement HICON to Image conversion
-    return nullptr;
+
+// Helper to convert HICON to ImageData
+static std::shared_ptr<ImageData> hicon_to_image(HICON hicon) {
+    if (!hicon) return nullptr;
+
+    ICONINFO ii;
+    if (!GetIconInfo(hicon, &ii)) return nullptr;
+
+    int width = 0;
+    int height = 0;
+    bool has_alpha = false;
+
+    if (ii.hbmColor) {
+        BITMAP bmp;
+        GetObject(ii.hbmColor, sizeof(BITMAP), &bmp);
+        width = bmp.bmWidth;
+        height = bmp.bmHeight;
+        has_alpha = (bmp.bmBitsPixel == 32);
+    } else if (ii.hbmMask) {
+        BITMAP bmp;
+        GetObject(ii.hbmMask, sizeof(BITMAP), &bmp);
+        width = bmp.bmWidth;
+        height = bmp.bmHeight / 2;
+    } else {
+        return nullptr;
+    }
+
+    auto img = std::make_shared<ImageData>();
+    img->width = width;
+    img->height = height;
+    img->channels = 4;
+    img->pixels.resize(width * height * 4);
+
+    HDC hdc = GetDC(nullptr);
+    BITMAPINFO bi = {0};
+    bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bi.bmiHeader.biWidth = width;
+    bi.bmiHeader.biHeight = -height;
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    bi.bmiHeader.biCompression = BI_RGB;
+
+    if (ii.hbmColor) {
+        GetDIBits(hdc, ii.hbmColor, 0, height, img->pixels.data(), &bi, DIB_RGB_COLORS);
+    } else {
+        GetDIBits(hdc, ii.hbmMask, 0, height, img->pixels.data(), &bi, DIB_RGB_COLORS);
+    }
+    ReleaseDC(nullptr, hdc);
+
+    // Convert BGRA to RGBA and check if alpha is all zeros
+    bool all_alpha_zero = true;
+    for (size_t i = 0; i < img->pixels.size(); i += 4) {
+        std::swap(img->pixels[i], img->pixels[i + 2]);
+        if (img->pixels[i + 3] != 0) {
+            all_alpha_zero = false;
+        }
+    }
+
+    // If alpha is all zeros (common for 24-bit icons loaded into 32-bit DIB)
+    // or if we know it doesn't have alpha, set it to opaque.
+    if (all_alpha_zero || !has_alpha) {
+        for (size_t i = 0; i < img->pixels.size(); i += 4) {
+            img->pixels[i + 3] = 255;
+        }
+    }
+
+    DeleteObject(ii.hbmMask);
+    if (ii.hbmColor) DeleteObject(ii.hbmColor);
+    return img;
+}
+
+static constexpr std::string_view default_windows_icon_xpm = R"(/* XPM */
+static char *icon[] = {
+"16 16 4 1",
+"  c None",
+". c #0078D4",
+"X c #FFFFFF",
+"o c #76B9ED",
+"                ",
+"  ............  ",
+"  .oooooooooo.  ",
+"  .oXXXXXXXXo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oXXXXXXXXo.  ",
+"  .oooooooooo.  ",
+"  ............  ",
+"                ",
+"                "
+};)";
+
+
+Icon Win32PlatformWindow::get_icon() {
+    if (icon_) {
+        return icon_;
+    }
+    HICON hicon_small = (HICON)SendMessageW(hwnd, WM_GETICON, ICON_SMALL, 0);
+    if (!hicon_small) {
+        hicon_small = (HICON)GetClassLongPtrW(hwnd, GCLP_HICONSM);
+    }
+    if (hicon_small) {
+        icon_ = hicon_to_image(hicon_small);
+        if (icon_) return icon_;
+    }
+    icon_ = parse_xpm(default_windows_icon_xpm);
+    return icon_;
+}
+
+
+void Win32PlatformWindow::show_system_menu(Point p) {
+    HMENU hMenu = GetSystemMenu(hwnd, FALSE);
+    if (!hMenu) {
+        return;
+    }
+
+    WINDOWPLACEMENT wp = {sizeof(wp)};
+    GetWindowPlacement(hwnd, &wp);
+    bool maximized = (wp.showCmd == SW_SHOWMAXIMIZED);
+    bool minimized = (wp.showCmd == SW_SHOWMINIMIZED);
+
+    EnableMenuItem(hMenu, SC_RESTORE, MF_BYCOMMAND | (maximized || minimized ? MF_ENABLED : MF_GRAYED));
+    EnableMenuItem(hMenu, SC_MOVE, MF_BYCOMMAND | (maximized ? MF_GRAYED : MF_ENABLED));
+    EnableMenuItem(hMenu, SC_SIZE, MF_BYCOMMAND | (maximized ? MF_GRAYED : MF_ENABLED));
+    EnableMenuItem(hMenu, SC_MINIMIZE, MF_BYCOMMAND | (minimized ? MF_GRAYED : MF_ENABLED));
+    EnableMenuItem(hMenu, SC_MAXIMIZE, MF_BYCOMMAND | (maximized ? MF_GRAYED : MF_ENABLED));
+
+    float scale = get_window_scale(hwnd);
+    POINT pt = {static_cast<LONG>(p.x * scale), static_cast<LONG>(p.y * scale)};
+    ClientToScreen(hwnd, &pt);
+
+    // TrackPopupMenu with hwnd (instead of TPM_RETURNCMD) sends WM_SYSCOMMAND
+    // to the window proc, which is more reliable for system menu integration.
+    TrackPopupMenu(hMenu, TPM_LEFTBUTTON | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
 }
 
 void Win32PlatformWindow::set_cursor(CursorShape shape) {
@@ -1021,7 +1175,7 @@ void Win32PlatformWindow::set_cursor(CursorShape shape) {
     default:
         hc = arrow_cursor;
         break;
-}
+    }
     auto it = app_->window_map.find(hwnd);
     if (it != app_->window_map.end()) {
         it->second.current_cursor = hc;

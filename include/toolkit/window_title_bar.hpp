@@ -4,6 +4,7 @@
 #pragma once
 
 #include <toolkit/button.hpp>
+#include <toolkit/image_widget.hpp>
 #include <toolkit/widget.hpp>
 
 namespace toolkit {
@@ -39,6 +40,15 @@ class TitlebarButton : public Button {
     Size custom_size_hint;
 };
 
+class TitleBarIcon : public ImageWidget {
+  public:
+    TitleBarIcon(Window *w);
+    bool handle_mouse(MouseEvent const &event) override;
+
+  private:
+    Window *window_;
+};
+
 class WindowTitleBar : public Widget {
   public:
     WindowTitleBar(Window *window);
@@ -54,9 +64,11 @@ class WindowTitleBar : public Widget {
 
     // consusmers of this class should derive *this* method
     virtual void initializeTitleBar();
+    void set_icon(Icon const &icon);
 
   protected:
     auto create_btn(DecorationButton type) -> Button *;
+    ImageWidget *icon_widget = nullptr;
     Label *title_label;
     Button *max_btn = nullptr;
     HBoxLayout *layout;

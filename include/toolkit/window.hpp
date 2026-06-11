@@ -93,8 +93,8 @@ class Window {
 
     std::string_view title() const { return title_; }
     void set_title(std::string_view t);
-    void set_icon(Image const &icon);
-    Image get_icon() const;
+    void set_icon(Icon const &icon);
+    Icon get_icon() const;
     void set_min_size(Size s);
     void set_max_size(Size s);
     Size min_size() const;

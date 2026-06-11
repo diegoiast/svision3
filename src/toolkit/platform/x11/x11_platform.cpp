@@ -52,6 +52,7 @@ struct X11PlatformApplication::Impl {
     float scale = 1.0f;
     bool running = false;
     Atom wm_delete_window, wm_protocols, net_wm_name, utf8_string;
+    Atom net_wm_icon;
     Atom clipboard_atom, targets_atom, tk_sel;
     Atom motif_wm_hints;
     Atom net_wm_state, net_wm_state_max_horz, net_wm_state_max_vert;
@@ -628,6 +629,7 @@ X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>(
     d->wm_delete_window = XInternAtom(d->display, "WM_DELETE_WINDOW", False);
     d->wm_protocols = XInternAtom(d->display, "WM_PROTOCOLS", False);
     d->net_wm_name = XInternAtom(d->display, "_NET_WM_NAME", False);
+    d->net_wm_icon = XInternAtom(d->display, "_NET_WM_ICON", False);
     d->utf8_string = XInternAtom(d->display, "UTF8_STRING", False);
     d->clipboard_atom = XInternAtom(d->display, "CLIPBOARD", False);
     d->targets_atom = XInternAtom(d->display, "TARGETS", False);
@@ -660,6 +662,7 @@ X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>(
 
 void *X11PlatformApplication::get_display() const { return impl_->display; }
 void *X11PlatformApplication::get_visual() const { return impl_->visual; }
+unsigned long X11PlatformApplication::get_net_wm_icon_atom() const { return impl_->net_wm_icon; }
 
 X11PlatformApplication::~X11PlatformApplication() {
     auto *d = impl_.get();
@@ -1150,11 +1153,107 @@ void X11PlatformWindow::set_title(std::string_view t) {
                     static_cast<int>(t_str.size()));
 }
 
+void X11PlatformWindow::set_icon(Image const &icon) {
+    if (!icon || icon->pixels.empty()) return;
+
+    auto *d = app_->impl_.get();
+    auto width = icon->width;
+    auto height = icon->height;
+    std::vector<uint32_t> data;
+    data.reserve(2 + width * height);
+    data.push_back(width);
+    data.push_back(height);
+
+    const uint8_t *src = icon->pixels.data();
+    for (int i = 0; i < width * height; i++) {
+        uint32_t r = src[i * 4 + 0];
+        uint32_t g = src[i * 4 + 1];
+        uint32_t b = src[i * 4 + 2];
+        uint32_t a = src[i * 4 + 3];
+        data.push_back((a << 24) | (r << 16) | (g << 8) | b);
+    }
+
+    XChangeProperty(d->display, impl_->xwindow, app_->get_net_wm_icon_atom(), XA_CARDINAL, 32,
+                    PropModeReplace, reinterpret_cast<unsigned char *>(data.data()),
+                    static_cast<int>(data.size()));
+    XFlush(d->display);
+}
+
+Image X11PlatformWindow::get_icon() {
+    auto *d = app_->impl_.get();
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems, bytes_after;
+    uint32_t *data = nullptr;
+
+    if (XGetWindowProperty(d->display, impl_->xwindow, app_->get_net_wm_icon_atom(), 0, 1 << 20, False, XA_CARDINAL,
+                           &actual_type, &actual_format, &nitems, &bytes_after,
+                           reinterpret_cast<unsigned char **>(&data)) != Success) {
+        return nullptr;
+    }
+
+    if (!data || nitems < 2) {
+        if (data) XFree(data);
+        return nullptr;
+    }
+
+    int width = data[0];
+    int height = data[1];
+    if (nitems < (unsigned long)(2 + width * height)) {
+        XFree(data);
+        return nullptr;
+    }
+
+    auto img_data = std::make_shared<ImageData>();
+    img_data->width = width;
+    img_data->height = height;
+    img_data->channels = 4;
+    img_data->pixels.resize(width * height * 4);
+
+    for (int i = 0; i < width * height; i++) {
+        uint32_t pixel = data[2 + i];
+        img_data->pixels[i * 4 + 0] = (pixel >> 16) & 0xFF; // R
+        img_data->pixels[i * 4 + 1] = (pixel >> 8) & 0xFF;  // G
+        img_data->pixels[i * 4 + 2] = pixel & 0xFF;         // B
+        img_data->pixels[i * 4 + 3] = (pixel >> 24) & 0xFF; // A
+    }
+
+    XFree(data);
+    return img_data;
+}
+
 void X11PlatformWindow::set_size(Size s) {
     float scale = scale_factor();
     XResizeWindow(static_cast<Display *>(app_->impl_->display), impl_->xwindow,
                   static_cast<unsigned int>(std::max(1.0f, s.width * scale)),
                   static_cast<unsigned int>(std::max(1.0f, s.height * scale)));
+}
+
+void X11PlatformWindow::start_system_move(uint32_t /*serial*/) {
+    auto *d = app_->impl_.get();
+    Atom net_wm_moveresize = XInternAtom(d->display, "_NET_WM_MOVERESIZE", False);
+
+    // Query current pointer position in root window coordinates
+    ::Window root_ret, child_ret;
+    int root_x = 0, root_y = 0, win_x, win_y;
+    unsigned int mask;
+    XQueryPointer(d->display, d->root, &root_ret, &child_ret, &root_x, &root_y, &win_x, &win_y,
+                  &mask);
+
+    XEvent event = {};
+    event.type = ClientMessage;
+    event.xclient.window = impl_->xwindow;
+    event.xclient.message_type = net_wm_moveresize;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = root_x;
+    event.xclient.data.l[1] = root_y;
+    event.xclient.data.l[2] = 8; // _NET_WM_MOVERESIZE_MOVE
+    event.xclient.data.l[3] = 0; // button (0 = unspecified)
+    event.xclient.data.l[4] = 1; // source (1 = application)
+    XUngrabPointer(d->display, CurrentTime);
+    XSendEvent(d->display, d->root, False, SubstructureRedirectMask | SubstructureNotifyMask,
+               &event);
+    XFlush(d->display);
 }
 
 void X11PlatformWindow::request_redraw() { impl_->needs_redraw = true; }

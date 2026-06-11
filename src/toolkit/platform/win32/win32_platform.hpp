@@ -1,5 +1,6 @@
 #pragma once
 
+#include "toolkit/image.hpp"
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/platform.hpp"
 #include <memory>
@@ -91,8 +92,9 @@ class Win32PlatformWindow : public PlatformWindow {
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
     void set_title(std::string_view t) override;
-    void set_icon(Image const &icon) override;
-    Image get_icon() override;
+    void set_icon(Icon const &icon) override;
+    Icon get_icon() override;
+    void show_system_menu(Point p) override;
     void start_system_move(uint32_t serial) override;
     void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
@@ -108,6 +110,7 @@ class Win32PlatformWindow : public PlatformWindow {
     HWND modal_parent_hwnd = nullptr;
     HWND tooltip_hwnd = nullptr;
     HICON hicon = nullptr;
+    Icon icon_;
     HGLRC hglrc = nullptr;
     HCURSOR arrow_cursor = nullptr, ibeam_cursor = nullptr;
     HCURSOR hand_cursor = nullptr, not_allowed_cursor = nullptr;
