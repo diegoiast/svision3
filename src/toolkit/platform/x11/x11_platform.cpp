@@ -1153,8 +1153,10 @@ void X11PlatformWindow::set_title(std::string_view t) {
                     static_cast<int>(t_str.size()));
 }
 
-void X11PlatformWindow::set_icon(Image const &icon) {
-    if (!icon || icon->pixels.empty()) return;
+void X11PlatformWindow::set_icon(Icon const &icon) {
+    if (!icon || icon->pixels.empty()) {
+        return;
+    }
 
     auto *d = app_->impl_.get();
     auto width = icon->width;
@@ -1179,21 +1181,23 @@ void X11PlatformWindow::set_icon(Image const &icon) {
     XFlush(d->display);
 }
 
-Image X11PlatformWindow::get_icon() {
+Icon X11PlatformWindow::get_icon() {
     auto *d = app_->impl_.get();
     Atom actual_type;
     int actual_format;
     unsigned long nitems, bytes_after;
     uint32_t *data = nullptr;
 
-    if (XGetWindowProperty(d->display, impl_->xwindow, app_->get_net_wm_icon_atom(), 0, 1 << 20, False, XA_CARDINAL,
-                           &actual_type, &actual_format, &nitems, &bytes_after,
+    if (XGetWindowProperty(d->display, impl_->xwindow, app_->get_net_wm_icon_atom(), 0, 1 << 20,
+                           False, XA_CARDINAL, &actual_type, &actual_format, &nitems, &bytes_after,
                            reinterpret_cast<unsigned char **>(&data)) != Success) {
         return nullptr;
     }
 
     if (!data || nitems < 2) {
-        if (data) XFree(data);
+        if (data) {
+            XFree(data);
+        }
         return nullptr;
     }
 
@@ -1227,33 +1231,6 @@ void X11PlatformWindow::set_size(Size s) {
     XResizeWindow(static_cast<Display *>(app_->impl_->display), impl_->xwindow,
                   static_cast<unsigned int>(std::max(1.0f, s.width * scale)),
                   static_cast<unsigned int>(std::max(1.0f, s.height * scale)));
-}
-
-void X11PlatformWindow::start_system_move(uint32_t /*serial*/) {
-    auto *d = app_->impl_.get();
-    Atom net_wm_moveresize = XInternAtom(d->display, "_NET_WM_MOVERESIZE", False);
-
-    // Query current pointer position in root window coordinates
-    ::Window root_ret, child_ret;
-    int root_x = 0, root_y = 0, win_x, win_y;
-    unsigned int mask;
-    XQueryPointer(d->display, d->root, &root_ret, &child_ret, &root_x, &root_y, &win_x, &win_y,
-                  &mask);
-
-    XEvent event = {};
-    event.type = ClientMessage;
-    event.xclient.window = impl_->xwindow;
-    event.xclient.message_type = net_wm_moveresize;
-    event.xclient.format = 32;
-    event.xclient.data.l[0] = root_x;
-    event.xclient.data.l[1] = root_y;
-    event.xclient.data.l[2] = 8; // _NET_WM_MOVERESIZE_MOVE
-    event.xclient.data.l[3] = 0; // button (0 = unspecified)
-    event.xclient.data.l[4] = 1; // source (1 = application)
-    XUngrabPointer(d->display, CurrentTime);
-    XSendEvent(d->display, d->root, False, SubstructureRedirectMask | SubstructureNotifyMask,
-               &event);
-    XFlush(d->display);
 }
 
 void X11PlatformWindow::request_redraw() { impl_->needs_redraw = true; }

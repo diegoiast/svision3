@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/platform.hpp"
+#include "toolkit/image.hpp"
 #include <memory>
 
 namespace toolkit {
@@ -52,8 +53,8 @@ class X11PlatformWindow : public PlatformWindow {
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
     void set_title(std::string_view t) override;
-    void set_icon(Image const &icon) override;
-    Image get_icon() override;
+    void set_icon(Icon const &icon) override;
+    Icon get_icon() override;
     void show_system_menu(Point) override {}
     void start_system_move(uint32_t serial) override;
     void start_system_resize(WindowEdge edge, uint32_t serial) override;
