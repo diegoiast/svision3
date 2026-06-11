@@ -1142,7 +1142,10 @@ void Win32PlatformWindow::show_system_menu(Point p) {
 
     // TrackPopupMenu with hwnd (instead of TPM_RETURNCMD) sends WM_SYSCOMMAND
     // to the window proc, which is more reliable for system menu integration.
-    TrackPopupMenu(hMenu, TPM_LEFTBUTTON | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
+    int cmd = TrackPopupMenu(hMenu, TPM_LEFTBUTTON | TPM_RETURNCMD, pt.x, pt.y, 0, hwnd, nullptr);
+    if (cmd) {
+        PostMessageW(hwnd, WM_SYSCOMMAND, cmd, 0);
+    }
 }
 
 void Win32PlatformWindow::set_cursor(CursorShape shape) {
