@@ -110,10 +110,13 @@ void VBoxLayout::apply_layout() {
         item_h = clamp_dim(item_h, mins.height, maxs.height);
 
         if (item.h_align != Alignment::Fill) {
-            auto hint_w = item.widget->size_hint().width;
-            if (hint_w > 0 && hint_w < content_w) {
-                item_w = hint_w;
-            }
+            item_w = item.widget->size_hint().width;
+        } else {
+            item_w = content_w;
+        }
+        item_w = clamp_dim(item_w, mins.width, maxs.width);
+
+        if (item.h_align != Alignment::Fill) {
             switch (item.h_align) {
             case Alignment::Center:
                 item_x = content_x + (content_w - item_w) / 2.0f;
@@ -126,7 +129,6 @@ void VBoxLayout::apply_layout() {
                 break;
             }
         }
-        item_w = clamp_dim(item_w, mins.width, maxs.width);
         item.widget->set_rect({item_x, current_y, item_w, item_h});
         current_y += item_h + spacing_;
     }
@@ -369,10 +371,13 @@ void HBoxLayout::apply_layout() {
         item_w = clamp_dim(item_w, mins.width, maxs.width);
 
         if (item.v_align != Alignment::Fill) {
-            auto hint_h = item.widget->size_hint().height;
-            if (hint_h > 0 && hint_h < content_h) {
-                item_h = hint_h;
-            }
+            item_h = item.widget->size_hint().height;
+        } else {
+            item_h = content_h;
+        }
+        item_h = clamp_dim(item_h, mins.height, maxs.height);
+
+        if (item.v_align != Alignment::Fill) {
             switch (item.v_align) {
             case Alignment::Center:
                 item_y = content_y + (content_h - item_h) / 2.0f;
@@ -385,7 +390,6 @@ void HBoxLayout::apply_layout() {
                 break;
             }
         }
-        item_h = clamp_dim(item_h, mins.height, maxs.height);
 
         item.widget->set_rect({current_x, item_y, item_w, item_h});
         current_x += item_w + spacing_;
