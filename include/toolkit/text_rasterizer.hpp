@@ -34,6 +34,10 @@ class TextRasterizer {
     virtual Size measure(std::string_view text, float font_size,
                          FontFamily font = FontFamily::System) = 0;
     virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) = 0;
+
+    virtual void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
+                           float font_size, FontFamily font, Painter::TextOrientation orientation,
+                           bool bold, bool italic) = 0;
 };
 
 class DummyRasterizer : public TextRasterizer {
@@ -58,6 +62,9 @@ class DummyRasterizer : public TextRasterizer {
     virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) {
         return {0, 0, 0};
     };
+
+    virtual void draw_text(Painter &, std::string_view, Point, Color const &, float, FontFamily,
+                           Painter::TextOrientation, bool, bool) {}
 };
 
 } // namespace toolkit

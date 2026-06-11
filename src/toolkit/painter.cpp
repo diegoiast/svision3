@@ -115,6 +115,14 @@ float Painter::snap_to_pixel(float val, float scale) {
     return std::floor(val * scale + 0.5f) / scale;
 }
 
+void Painter::draw_text(std::string_view text, Point position, Color const &color, float font_size,
+                        FontFamily font, TextOrientation orientation, bool bold, bool italic) {
+    if (rasterizer_) {
+        rasterizer_->draw_text(*this, text, position, color, font_size, font, orientation, bold,
+                               italic);
+    }
+}
+
 Size Painter::measure_text(std::string_view text, float font_size, FontFamily family) {
     if (!rasterizer_ || text.empty()) {
         return {0, 0};

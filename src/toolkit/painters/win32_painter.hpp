@@ -24,6 +24,9 @@ class Win32TextRasterizer : public TextRasterizer {
     Size measure(std::string_view text, float font_size,
                  FontFamily font = FontFamily::System) override;
     Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) override;
+    void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
+                   float font_size, FontFamily font, Painter::TextOrientation orientation,
+                   bool bold, bool italic) override;
 
   private:
     struct Impl;
@@ -54,16 +57,15 @@ class GDIPainter : public Painter {
     void draw_line(Point from, Point to, Color const &color, float line_width) override;
     void fill_circle(Point center, float radius, Color const &color) override;
     void draw_circle(Point center, float radius, Color const &color, float line_width) override;
-    void draw_text(std::string_view text, Point position, Color const &color, float font_size,
-                   FontFamily font = FontFamily::System,
-                   TextOrientation orientation = TextOrientation::Horizontal,
-                   bool bold = false, bool italic = false) override;
     void draw_image(ImageData const &image, Point position) override;
     void draw_image_scaled(ImageData const &image, Rect const &dest) override;
 
     static bool save_to_png(Window *window, std::string const &path);
 
     std::string_view name() const override { return "GDI+"; }
+
+    float scale() const;
+    void *graphics(); // Actually Gdiplus::Graphics*
 
   private:
     struct Impl;

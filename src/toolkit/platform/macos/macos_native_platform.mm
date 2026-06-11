@@ -14,7 +14,8 @@ namespace toolkit {
 
 class CoreGraphicsPainter : public Painter {
   public:
-    explicit CoreGraphicsPainter(CGContextRef ctx) : ctx_(ctx) {}
+    explicit CoreGraphicsPainter(CGContextRef ctx, TextRasterizer *rasterizer = nullptr)
+        : Painter(rasterizer), ctx_(ctx) {}
 
     void push_clip(Rect const &r) override {
         CGContextSaveGState(ctx_);
@@ -109,64 +110,12 @@ class CoreGraphicsPainter : public Painter {
         CGContextStrokeEllipseInRect(ctx_, er);
     }
 
-    static NSFont *ns_font(float size, FontFamily family) {
-        if (family == FontFamily::Monospace)
-            return [NSFont monospacedSystemFontOfSize:size weight:NSFontWeightRegular];
-        return [NSFont systemFontOfSize:size];
-    }
-
-    void draw_text(std::string_view text, Point pos, Color const &c,
-                   float font_size, FontFamily family,
-                   TextOrientation orientation) override {
-        NSFont *font = ns_font(font_size, family);
-        NSString *str = [[NSString alloc] initWithBytes:text.data()
-                                                 length:text.size()
-                                               encoding:NSUTF8StringEncoding];
-        if (!str) return;
-        NSDictionary *attrs = @{
-            NSFontAttributeName : font,
-            NSForegroundColorAttributeName :
-                [NSColor colorWithRed:c.r green:c.g blue:c.b alpha:c.a]
-        };
-        NSAttributedString *astr =
-            [[NSAttributedString alloc] initWithString:str attributes:attrs];
-        CTLineRef line =
-            CTLineCreateWithAttributedString((__bridge CFAttributedStringRef)astr);
-        CGContextSaveGState(ctx_);
-        CGContextTranslateCTM(ctx_, pos.x, pos.y);
-        if (orientation == TextOrientation::VerticalCCW) {
-            CGContextRotateCTM(ctx_, -M_PI / 2.0);
-        } else if (orientation == TextOrientation::VerticalCW) {
-            CGContextRotateCTM(ctx_, M_PI / 2.0);
-        }
-        CGContextScaleCTM(ctx_, 1.0, -1.0);
-        CGContextSetTextPosition(ctx_, 0, 0);
-        CTLineDraw(line, ctx_);
-        CGContextRestoreGState(ctx_);
-        CFRelease(line);
-    }
-
-    Size measure_text(std::string_view text, float font_size,
-                   FontFamily family = FontFamily::System) override {
-        NSFont *font = ns_font(font_size, family);
-        NSString *str = [[NSString alloc] initWithBytes:text.data()
-                                                 length:text.size()
-                                               encoding:NSUTF8StringEncoding];
-        if (!str) return {0, 0};
-        NSDictionary *attrs = @{NSFontAttributeName : font};
-        NSSize sz = [str sizeWithAttributes:attrs];
-        return {static_cast<float>(sz.width), static_cast<float>(sz.height)};
-    }
-
-    FontMetrics font_metrics(float font_size,
-                             FontFamily family = FontFamily::System) override {
-        NSFont *font = ns_font(font_size, family);
-        float ascent = static_cast<float>(font.ascender);
-        float descent = static_cast<float>(-font.descender);
-        return {ascent, descent, ascent + descent};
-    }
+    void draw_image(ImageData const &image, Point position) override;
+    void draw_image_scaled(ImageData const &image, Rect const &dest) override;
 
     std::string_view name() const override { return "Native"; }
+
+    CGContextRef context() const { return ctx_; }
 
   private:
     CGContextRef ctx_;
@@ -191,6 +140,85 @@ class CoreGraphicsPainter : public Painter {
         }
     }
 };
+
+class CoreGraphicsTextRasterizer : public TextRasterizer {
+  public:
+    static NSFont *ns_font(float size, FontFamily family) {
+        if (family == FontFamily::Monospace)
+            return [NSFont monospacedSystemFontOfSize:size weight:NSFontWeightRegular];
+        return [NSFont systemFontOfSize:size];
+    }
+
+    RasterizedText rasterize(std::string_view text, float font_size, float scale,
+                             FontFamily family = FontFamily::System, bool bold = false,
+                             bool italic = false) override {
+        // Fallback to a bitmap if needed, but for native we prefer draw_text
+        (void)text;
+        (void)font_size;
+        (void)scale;
+        (void)family;
+        (void)bold;
+        (void)italic;
+        return {};
+    }
+
+    Size measure(std::string_view text, float font_size,
+                 FontFamily family = FontFamily::System) override {
+        NSFont *font = ns_font(font_size, family);
+        NSString *str = [[NSString alloc] initWithBytes:text.data()
+                                                 length:text.size()
+                                               encoding:NSUTF8StringEncoding];
+        if (!str) return {0, 0};
+        NSDictionary *attrs = @{NSFontAttributeName : font};
+        NSSize sz = [str sizeWithAttributes:attrs];
+        return {static_cast<float>(sz.width), static_cast<float>(sz.height)};
+    }
+
+    Painter::FontMetrics metrics(float font_size,
+                                 FontFamily family = FontFamily::System) override {
+        NSFont *font = ns_font(font_size, family);
+        float ascent = static_cast<float>(font.ascender);
+        float descent = static_cast<float>(-font.descender);
+        return {ascent, descent, ascent + descent};
+    }
+
+    void draw_text(Painter &p, std::string_view text, Point pos, Color const &c,
+                   float font_size, FontFamily family,
+                   Painter::TextOrientation orientation, bool bold, bool italic) override {
+        auto *cgp = dynamic_cast<CoreGraphicsPainter *>(&p);
+        if (!cgp) return;
+
+        CGContextRef ctx = cgp->context();
+        NSFont *font = ns_font(font_size, family);
+        NSString *str = [[NSString alloc] initWithBytes:text.data()
+                                                 length:text.size()
+                                               encoding:NSUTF8StringEncoding];
+        if (!str) return;
+        NSDictionary *attrs = @{
+            NSFontAttributeName : font,
+            NSForegroundColorAttributeName :
+                [NSColor colorWithRed:c.r green:c.g blue:c.b alpha:c.a]
+        };
+        NSAttributedString *astr =
+            [[NSAttributedString alloc] initWithString:str attributes:attrs];
+        CTLineRef line =
+            CTLineCreateWithAttributedString((__bridge CFAttributedStringRef)astr);
+        CGContextSaveGState(ctx);
+        CGContextTranslateCTM(ctx, pos.x, pos.y);
+        if (orientation == Painter::TextOrientation::VerticalCCW) {
+            CGContextRotateCTM(ctx, -M_PI / 2.0);
+        } else if (orientation == Painter::TextOrientation::VerticalCW) {
+            CGContextRotateCTM(ctx, M_PI / 2.0);
+        }
+        CGContextScaleCTM(ctx, 1.0, -1.0);
+        CGContextSetTextPosition(ctx, 0, 0);
+        CTLineDraw(line, ctx);
+        CGContextRestoreGState(ctx);
+        CFRelease(line);
+    }
+};
+
+static CoreGraphicsTextRasterizer s_mac_rasterizer;
 
 } // namespace toolkit
 
@@ -244,7 +272,7 @@ class CoreGraphicsPainter : public Painter {
 - (void)drawRect:(NSRect)dirtyRect {
     NSRect bounds = [self bounds];
     CGContextRef ctx = [[NSGraphicsContext currentContext] CGContext];
-    toolkit::CoreGraphicsPainter painter(ctx);
+    toolkit::CoreGraphicsPainter painter(ctx, &s_mac_rasterizer);
     toolkit::Rect r{0, 0, static_cast<float>(bounds.size.width),
                     static_cast<float>(bounds.size.height)};
     painter.fill_rounded_rect(r, self.bgColor, self.cornerRadius);
@@ -268,7 +296,7 @@ class CoreGraphicsPainter : public Painter {
 - (void)drawRect:(NSRect)dirtyRect {
     if (!self.owner) return;
     CGContextRef ctx = [[NSGraphicsContext currentContext] CGContext];
-    toolkit::CoreGraphicsPainter painter(ctx);
+    toolkit::CoreGraphicsPainter painter(ctx, &s_mac_rasterizer);
     self.owner->handle_paint(painter);
 }
 
@@ -651,7 +679,7 @@ bool MacOSNativePlatformWindow::save_to_png(std::string const &path) {
     if (!ctx) return false;
     CGContextTranslateCTM(ctx, 0, h);
     CGContextScaleCTM(ctx, 1.0, -1.0);
-    CoreGraphicsPainter painter(ctx);
+    CoreGraphicsPainter painter(ctx, &s_mac_rasterizer);
     owner_->handle_paint(painter);
     CGImageRef image = CGBitmapContextCreateImage(ctx);
     CGContextRelease(ctx);

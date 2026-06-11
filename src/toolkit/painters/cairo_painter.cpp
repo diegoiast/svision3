@@ -162,34 +162,53 @@ static std::string cairo_font_face(FontFamily f, cairo_t *cr) {
     return Theme::current().palette.fonts.system;
 }
 
-void CairoPainter::draw_text(std::string_view text, Point position, Color const &color,
-                             float font_size, FontFamily font, TextOrientation orientation,
-                             bool bold, bool italic) {
-    cairo_new_path(cr_);
-    cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
-    cairo_select_font_face(cr_, cairo_font_face(font, cr_).c_str(),
-                           italic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL,
-                           bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(cr_, std::round(font_size));
+void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point position,
+                                   Color const &color, float font_size, FontFamily font,
+                                   Painter::TextOrientation orientation, bool bold, bool italic) {
+    if (auto *cp = dynamic_cast<CairoPainter *>(&p)) {
+        auto cr = cp->cairo();
+        cairo_new_path(cr);
+        cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
+        cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(),
+                               italic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL,
+                               bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
+        cairo_set_font_size(cr, std::round(font_size));
 
-    cairo_save(cr_);
-    cairo_move_to(cr_, position.x, position.y);
-    if (orientation == TextOrientation::VerticalCCW) {
-        cairo_rotate(cr_, -M_PI / 2.0);
-    } else if (orientation == TextOrientation::VerticalCW) {
-        cairo_rotate(cr_, M_PI / 2.0);
+        cairo_save(cr);
+        cairo_move_to(cr, position.x, position.y);
+        if (orientation == Painter::TextOrientation::VerticalCCW) {
+            cairo_rotate(cr, -M_PI / 2.0);
+        } else if (orientation == Painter::TextOrientation::VerticalCW) {
+            cairo_rotate(cr, M_PI / 2.0);
+        }
+
+        std::string s{text};
+        cairo_show_text(cr, s.c_str());
+
+        auto status = cairo_status(cr);
+        if (status != CAIRO_STATUS_SUCCESS) {
+            spdlog::error("CairoPainter: draw_text error for '{}': {}", s,
+                          cairo_status_to_string(status));
+        }
+
+        cairo_restore(cr);
+    } else {
+        // Fallback for non-Cairo painters: rasterize and draw as image
+        // FIXME: we need a way to get the scale from the painter.
+        // For now, let's assume 1.0 or find it from the painter if possible.
+        float scale = 1.0f; // Placeholder
+        auto rt = rasterize(text, font_size, scale, font, bold, italic);
+        if (rt.pixels.empty()) {
+            return;
+        }
+
+        // FIXME: we need draw_image_tinted or similar to apply 'color'
+        // For now just draw as is (which will be white)
+        p.draw_image(
+            ImageData{std::move(rt.pixels), rt.width, rt.height},
+            {position.x, position.y - rt.ascent} // Approximation
+        );
     }
-
-    std::string s{text};
-    cairo_show_text(cr_, s.c_str());
-
-    auto status = cairo_status(cr_);
-    if (status != CAIRO_STATUS_SUCCESS) {
-        spdlog::error("CairoPainter: draw_text error for '{}': {}", s,
-                      cairo_status_to_string(status));
-    }
-
-    cairo_restore(cr_);
 }
 
 static void rgba_to_cairo_argb32(uint8_t *dst, std::vector<uint8_t> const &src) {

@@ -29,8 +29,9 @@ class CoreTextRasterizer : public TextRasterizer {
         return [NSFont systemFontOfSize:size];
     }
 
-    RasterizedText rasterize(std::string_view text, float font_size,
-                             float scale, FontFamily family = FontFamily::System) override {
+    RasterizedText rasterize(std::string_view text, float font_size, float scale,
+                             FontFamily family = FontFamily::System, bool bold = false,
+                             bool italic = false) override {
         NSFont *font = ns_font(font_size, family);
         NSString *str =
             [[NSString alloc] initWithBytes:text.data()
@@ -105,6 +106,22 @@ class CoreTextRasterizer : public TextRasterizer {
         float ascent = static_cast<float>(font.ascender);
         float descent = static_cast<float>(-font.descender);
         return {ascent, descent, ascent + descent};
+    }
+
+    void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
+                   float font_size, FontFamily font, Painter::TextOrientation orientation,
+                   bool bold, bool italic) override {
+        // Fallback for macOS: rasterize and draw as image
+        // FIXME: we need the scale.
+        float scale = 1.0f;
+        auto rt = rasterize(text, font_size, scale, font, bold, italic);
+        if (rt.pixels.empty()) {
+            return;
+        }
+
+        // FIXME: we need to apply 'color' if draw_image doesn't tint
+        p.draw_image(ImageData{std::move(rt.pixels), rt.width, rt.height},
+                     {position.x, position.y - rt.ascent});
     }
 };
 

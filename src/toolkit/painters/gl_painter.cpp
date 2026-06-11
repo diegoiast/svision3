@@ -244,58 +244,6 @@ void GLPainter::draw_circle(Point center, float radius, Color const &c, float lw
     glDisable(GL_LINE_SMOOTH);
 }
 
-void GLPainter::draw_text(std::string_view text, Point pos, Color const &c, float font_size,
-                          FontFamily font, TextOrientation orientation, bool bold, bool italic) {
-    auto rt = rasterizer_->rasterize(text, font_size, scale_, font, bold, italic);
-    if (rt.width <= 0 || rt.height <= 0) {
-        return;
-    }
-
-    GLuint tex;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rt.width, rt.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                 rt.pixels.data());
-
-    glEnable(GL_TEXTURE_2D);
-    // Note: GL_BLEND is already enabled globally by the platform code.
-    // Cairo provides premultiplied alpha, so we use GL_ONE here.
-    glColor4f(c.r * c.a, c.g * c.a, c.b * c.a, c.a);
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-    glPushMatrix();
-    glTranslatef(pos.x, pos.y, 0);
-    if (orientation == TextOrientation::VerticalCCW) {
-        glRotatef(-90.0f, 0, 0, 1);
-    } else if (orientation == TextOrientation::VerticalCW) {
-        glRotatef(90.0f, 0, 0, 1);
-    }
-
-    float top_y = -std::round(rt.ascent);
-    float left_x = 0;
-    float qw = static_cast<float>(rt.width) / scale_;
-    float qh = static_cast<float>(rt.height) / scale_;
-
-    glBegin(GL_QUADS);
-    glTexCoord2f(0, 0);
-    glVertex2f(left_x, top_y);
-    glTexCoord2f(1, 0);
-    glVertex2f(left_x + qw, top_y);
-    glTexCoord2f(1, 1);
-    glVertex2f(left_x + qw, top_y + qh);
-    glTexCoord2f(0, 1);
-    glVertex2f(left_x, top_y + qh);
-    glEnd();
-    glPopMatrix();
-
-    glDisable(GL_TEXTURE_2D);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDeleteTextures(1, &tex);
-}
-
 void GLPainter::draw_image(ImageData const &image, Point position) {
     if (image.width <= 0 || image.height <= 0) {
         return;
