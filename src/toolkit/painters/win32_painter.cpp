@@ -585,7 +585,6 @@ void GDIPainter::draw_text(std::string_view text, Point pos, Color const &c, flo
 
 void GDIPainter::draw_image(ImageData const &image, Point position) {
     if (image.width <= 0 || image.height <= 0) {
-        spdlog::error("draw_image: image is empty ({}x{})", image.width, image.height);
         return;
     }
 
@@ -600,15 +599,25 @@ void GDIPainter::draw_image(ImageData const &image, Point position) {
                       (int)bmp.GetLastStatus());
         return;
     }
-    impl_->graphics->DrawImage(&bmp, x, y, static_cast<float>(image.width),
-                               static_cast<float>(image.height));
+
+    Gdiplus::ColorMatrix swapRB = {{
+        {0, 0, 1, 0, 0}, // Red output comes from Blue input
+        {0, 1, 0, 0, 0}, // Green remains Green
+        {1, 0, 0, 0, 0}, // Blue output comes from Red input
+        {0, 0, 0, 1, 0}, // Alpha remains Alpha
+        {0, 0, 0, 0, 1}  // Dummy
+    }};
+
+    Gdiplus::ImageAttributes attrs;
+    attrs.SetColorMatrix(&swapRB, Gdiplus::ColorMatrixFlagsDefault, Gdiplus::ColorAdjustTypeBitmap);
+
+    impl_->graphics->DrawImage(&bmp, Gdiplus::RectF(x, y, (float)image.width, (float)image.height),
+                               0, 0, (float)image.width, (float)image.height, Gdiplus::UnitPixel,
+                               &attrs);
 }
 
 void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     if (image.width <= 0 || image.height <= 0 || dest.width <= 0 || dest.height <= 0) {
-        spdlog::error(
-            "draw_image_scaled: image or destination is empty (image: {}x{}, dest: {}x{})",
-            image.width, image.height, dest.width, dest.height);
         return;
     }
 
@@ -626,12 +635,24 @@ void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
         return;
     }
 
+    Gdiplus::ColorMatrix swapRB = {{
+        {0, 0, 1, 0, 0}, // Red output comes from Blue input
+        {0, 1, 0, 0, 0}, // Green remains Green
+        {1, 0, 0, 0, 0}, // Blue output comes from Red input
+        {0, 0, 0, 1, 0}, // Alpha remains Alpha
+        {0, 0, 0, 0, 1}  // Dummy
+    }};
+
+    Gdiplus::ImageAttributes attrs;
+    attrs.SetColorMatrix(&swapRB, Gdiplus::ColorMatrixFlagsDefault, Gdiplus::ColorAdjustTypeBitmap);
+
     Gdiplus::SmoothingMode old_s = impl_->graphics->GetSmoothingMode();
     Gdiplus::InterpolationMode old_i = impl_->graphics->GetInterpolationMode();
     impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
     impl_->graphics->SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
 
-    impl_->graphics->DrawImage(&bmp, x, y, w, h);
+    impl_->graphics->DrawImage(&bmp, Gdiplus::RectF(x, y, w, h), 0, 0, (float)image.width,
+                               (float)image.height, Gdiplus::UnitPixel, &attrs);
 
     impl_->graphics->SetSmoothingMode(old_s);
     impl_->graphics->SetInterpolationMode(old_i);
