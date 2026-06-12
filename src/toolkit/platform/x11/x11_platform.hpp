@@ -55,7 +55,7 @@ class X11PlatformWindow : public PlatformWindow {
     void set_title(std::string_view t) override;
     void set_icon(Icon const &icon) override;
     Icon get_icon() override;
-    void show_system_menu(Point) override {}
+    void show_system_menu(Point p) override;
     void start_system_move(uint32_t serial) override;
     void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;

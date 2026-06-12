@@ -115,7 +115,7 @@ auto WindowTitleBar::create_btn(DecorationButton type) -> Button * {
     }
 
     auto *btn = new TitlebarButton(type, tooltip);
-    btn->on_click = [this, type] {
+    btn->on_click = [this, type, btn] {
         switch (type) {
         case DecorationButton::Close:
             window_->close();
@@ -129,9 +129,11 @@ auto WindowTitleBar::create_btn(DecorationButton type) -> Button * {
         case DecorationButton::Restore:
             window_->restore();
             break;
-        case DecorationButton::Menu:
-            // FIXME: implement
+        case DecorationButton::Menu: {
+            auto menu_pos = map_to_window({btn->rect().x, btn->rect().y + btn->rect().height});
+            window_->platform_window()->show_system_menu(menu_pos);
             break;
+        }
         }
     };
     return btn;
@@ -185,6 +187,11 @@ bool WindowTitleBar::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press) {
+        if (event.button == 1) { // Right click
+            auto menu_pos = map_to_window(event.position);
+            window_->platform_window()->show_system_menu(menu_pos);
+            return true;
+        }
         if (event.click_count == 2) {
             if (window_->is_maximized()) {
                 window_->restore();

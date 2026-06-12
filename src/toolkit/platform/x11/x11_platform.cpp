@@ -56,6 +56,7 @@ struct X11PlatformApplication::Impl {
     Atom clipboard_atom, targets_atom, tk_sel;
     Atom motif_wm_hints;
     Atom net_wm_state, net_wm_state_max_horz, net_wm_state_max_vert;
+    Atom gtk_show_window_menu;
     XIM xim = nullptr;
 
     struct WindowData {
@@ -638,6 +639,7 @@ X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>(
     d->net_wm_state = XInternAtom(d->display, "_NET_WM_STATE", False);
     d->net_wm_state_max_horz = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
     d->net_wm_state_max_vert = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+    d->gtk_show_window_menu = XInternAtom(d->display, "_GTK_SHOW_WINDOW_MENU", False);
     XSetLocaleModifiers("");
     d->xim = XOpenIM(d->display, nullptr, nullptr, nullptr);
     if (!d->xim) {
@@ -1224,6 +1226,29 @@ Icon X11PlatformWindow::get_icon() {
 
     XFree(data);
     return img_data;
+}
+
+void X11PlatformWindow::show_system_menu(Point p) {
+    auto *d = app_->impl_.get();
+
+    int root_x, root_y;
+    ::Window child;
+    XTranslateCoordinates(d->display, impl_->xwindow, d->root, static_cast<int>(p.x * d->scale),
+                          static_cast<int>(p.y * d->scale), &root_x, &root_y, &child);
+
+    XEvent ev = {};
+    ev.xclient.type = ClientMessage;
+    ev.xclient.window = impl_->xwindow;
+    ev.xclient.message_type = d->gtk_show_window_menu;
+    ev.xclient.format = 32;
+    ev.xclient.data.l[0] = 0; // Device ID
+    ev.xclient.data.l[1] = root_x;
+    ev.xclient.data.l[2] = root_y;
+    ev.xclient.data.l[3] = 0; // Button
+    ev.xclient.data.l[4] = 0; // Timestamp
+
+    XSendEvent(d->display, d->root, False, SubstructureRedirectMask | SubstructureNotifyMask, &ev);
+    XFlush(d->display);
 }
 
 void X11PlatformWindow::set_size(Size s) {
