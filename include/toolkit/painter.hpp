@@ -39,6 +39,9 @@ class Painter {
     virtual void push_translation(Point p) = 0;
     virtual void pop_translation() = 0;
 
+    virtual void push_rotation(float degrees) = 0;
+    virtual void pop_rotation() = 0;
+
     virtual void set_line_style(LineStyle style) = 0;
 
     virtual void fill_rect(Rect const &rect, Color const &color) = 0;
@@ -58,6 +61,7 @@ class Painter {
     virtual void draw_image(ImageData const &image, Point position) = 0;
     virtual void draw_image_scaled(ImageData const &image, Rect const &dest) = 0;
     virtual std::string_view name() const = 0;
+    virtual float scale_factor() const { return 1.0f; }
 
     Size measure_text(std::string_view text, float font_size = 14.0f,
                       FontFamily font = FontFamily::System);
@@ -84,6 +88,8 @@ class MockPainter : public Painter {
     void pop_clip() override {}
     void push_translation(Point) override {}
     void pop_translation() override {}
+    void push_rotation(float) override {}
+    void pop_rotation() override {}
     void set_line_style(LineStyle) override {}
     void fill_rect(Rect const &, Color const &) override {}
     void draw_rect(Rect const &, Color const &, float) override {}

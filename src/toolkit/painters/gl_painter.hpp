@@ -19,6 +19,9 @@ class GLPainter : public Painter {
     void push_translation(Point p) override;
     void pop_translation() override;
 
+    void push_rotation(float degrees) override;
+    void pop_rotation() override;
+
     void set_line_style(Painter::LineStyle style) override;
 
     void fill_rect(Rect const &rect, Color const &color) override;
@@ -35,6 +38,7 @@ class GLPainter : public Painter {
     void draw_image_scaled(ImageData const &image, Rect const &dest) override;
 
     std::string_view name() const override { return "OpenGL"; }
+    float scale_factor() const override { return scale_; }
 
   private:
     float vh_;

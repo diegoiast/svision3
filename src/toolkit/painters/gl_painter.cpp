@@ -99,6 +99,17 @@ void GLPainter::pop_translation() {
     glPopMatrix();
 }
 
+void GLPainter::push_rotation(float degrees) {
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glRotatef(degrees, 0, 0, 1);
+}
+
+void GLPainter::pop_rotation() {
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+}
+
 void GLPainter::apply_line_style() {
     switch (style_) {
     case Painter::LineStyle::Dashed:
@@ -259,20 +270,25 @@ void GLPainter::draw_image(ImageData const &image, Point position) {
                  image.pixels.data());
 
     glEnable(GL_TEXTURE_2D);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(1, 1, 1, 1);
 
     glPushMatrix();
     glTranslatef(position.x, position.y, 0);
+
+    float w = static_cast<float>(image.width) / scale_;
+    float h = static_cast<float>(image.height) / scale_;
 
     glBegin(GL_QUADS);
     glTexCoord2f(0, 0);
     glVertex2f(0, 0);
     glTexCoord2f(1, 0);
-    glVertex2f(static_cast<float>(image.width), 0);
+    glVertex2f(w, 0);
     glTexCoord2f(1, 1);
-    glVertex2f(static_cast<float>(image.width), static_cast<float>(image.height));
+    glVertex2f(w, h);
     glTexCoord2f(0, 1);
-    glVertex2f(0, static_cast<float>(image.height));
+    glVertex2f(0, h);
     glEnd();
     glPopMatrix();
 
@@ -295,7 +311,9 @@ void GLPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
                  image.pixels.data());
 
     glEnable(GL_TEXTURE_2D);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(1, 1, 1, 1);
 
     glBegin(GL_QUADS);
     glTexCoord2f(0, 0);

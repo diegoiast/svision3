@@ -3,6 +3,7 @@
 
 #include "x11_platform.hpp"
 #include "../linux_utils.hpp"
+#include "toolkit/application.hpp"
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/painters/gl_painter.hpp"
 #include "toolkit/stb_image_loader.hpp"
@@ -931,6 +932,37 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
                     reinterpret_cast<unsigned char const *>(t.c_str()), static_cast<int>(t.size()));
     XSetWMProtocols(d->display, w->xwindow, &d->wm_delete_window, 1);
 
+    XClassHint *class_hint = XAllocClassHint();
+    if (class_hint) {
+        std::string app_name = "svision3";
+        if (Application::has_instance()) {
+            app_name = Application::instance().application_name();
+        }
+        std::string class_name = app_name;
+        if (!class_name.empty()) {
+            class_name[0] = std::toupper(class_name[0]);
+        }
+
+        class_hint->res_name = (char *)app_name.c_str();
+        class_hint->res_class = (char *)class_name.c_str();
+        XSetClassHint(d->display, w->xwindow, class_hint);
+        XFree(class_hint);
+    }
+
+    XWMHints *wm_hints = XAllocWMHints();
+    if (wm_hints) {
+        wm_hints->flags = InputHint | StateHint;
+        wm_hints->input = True;
+        wm_hints->initial_state = NormalState;
+        XSetWMHints(d->display, w->xwindow, wm_hints);
+        XFree(wm_hints);
+    }
+
+    Atom net_wm_pid = XInternAtom(d->display, "_NET_WM_PID", False);
+    unsigned long pid = getpid();
+    XChangeProperty(d->display, w->xwindow, net_wm_pid, XA_CARDINAL, 32, PropModeReplace,
+                    reinterpret_cast<unsigned char *>(&pid), 1);
+
     if (options.frameless || options.csd) {
         Atom motif_hints_atom = XInternAtom(d->display, "_MOTIF_WM_HINTS", False);
         if (motif_hints_atom != 0L) {
@@ -1156,24 +1188,28 @@ void X11PlatformWindow::set_title(std::string_view t) {
 }
 
 void X11PlatformWindow::set_icon(Icon const &icon) {
+    icon_ = icon;
+
+    auto *d = app_->impl_.get();
     if (!icon || icon->pixels.empty()) {
+        XDeleteProperty(d->display, impl_->xwindow, app_->get_net_wm_icon_atom());
+        XFlush(d->display);
         return;
     }
 
-    auto *d = app_->impl_.get();
     auto width = icon->width;
     auto height = icon->height;
-    std::vector<uint32_t> data;
+    std::vector<unsigned long> data;
     data.reserve(2 + width * height);
     data.push_back(width);
     data.push_back(height);
 
     const uint8_t *src = icon->pixels.data();
     for (int i = 0; i < width * height; i++) {
-        uint32_t r = src[i * 4 + 0];
-        uint32_t g = src[i * 4 + 1];
-        uint32_t b = src[i * 4 + 2];
-        uint32_t a = src[i * 4 + 3];
+        unsigned long r = src[i * 4 + 0];
+        unsigned long g = src[i * 4 + 1];
+        unsigned long b = src[i * 4 + 2];
+        unsigned long a = src[i * 4 + 3];
         data.push_back((a << 24) | (r << 16) | (g << 8) | b);
     }
 
@@ -1183,49 +1219,76 @@ void X11PlatformWindow::set_icon(Icon const &icon) {
     XFlush(d->display);
 }
 
+static constexpr std::string_view default_x11_icon_xpm = R"(/* XPM */
+static char *icon[] = {
+"16 16 4 1",
+"  c None",
+". c #0078D4",
+"X c #FFFFFF",
+"o c #76B9ED",
+"                ",
+"  ............  ",
+"  .oooooooooo.  ",
+"  .oXXXXXXXXo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oX      Xo.  ",
+"  .oXXXXXXXXo.  ",
+"  .oooooooooo.  ",
+"  ............  ",
+"                ",
+"                "
+};)";
+
 Icon X11PlatformWindow::get_icon() {
+    if (icon_) {
+        return icon_;
+    }
+
     auto *d = app_->impl_.get();
     Atom actual_type;
     int actual_format;
     unsigned long nitems, bytes_after;
-    uint32_t *data = nullptr;
+    unsigned long *data = nullptr;
 
     if (XGetWindowProperty(d->display, impl_->xwindow, app_->get_net_wm_icon_atom(), 0, 1 << 20,
                            False, XA_CARDINAL, &actual_type, &actual_format, &nitems, &bytes_after,
-                           reinterpret_cast<unsigned char **>(&data)) != Success) {
-        return nullptr;
-    }
+                           reinterpret_cast<unsigned char **>(&data)) == Success &&
+        data && nitems >= 2) {
 
-    if (!data || nitems < 2) {
-        if (data) {
-            XFree(data);
+        int width = static_cast<int>(data[0]);
+        int height = static_cast<int>(data[1]);
+        if (nitems >= (unsigned long)(2 + width * height)) {
+            auto img_data = std::make_shared<ImageData>();
+            img_data->width = width;
+            img_data->height = height;
+            img_data->channels = 4;
+            img_data->pixels.resize(width * height * 4);
+
+            for (int i = 0; i < width * height; i++) {
+                unsigned long pixel = data[2 + i];
+                img_data->pixels[i * 4 + 0] = (pixel >> 16) & 0xFF; // R
+                img_data->pixels[i * 4 + 1] = (pixel >> 8) & 0xFF;  // G
+                img_data->pixels[i * 4 + 2] = pixel & 0xFF;         // B
+                img_data->pixels[i * 4 + 3] = (pixel >> 24) & 0xFF; // A
+            }
+            icon_ = img_data;
         }
-        return nullptr;
     }
 
-    int width = data[0];
-    int height = data[1];
-    if (nitems < (unsigned long)(2 + width * height)) {
+    if (data) {
         XFree(data);
-        return nullptr;
     }
 
-    auto img_data = std::make_shared<ImageData>();
-    img_data->width = width;
-    img_data->height = height;
-    img_data->channels = 4;
-    img_data->pixels.resize(width * height * 4);
-
-    for (int i = 0; i < width * height; i++) {
-        uint32_t pixel = data[2 + i];
-        img_data->pixels[i * 4 + 0] = (pixel >> 16) & 0xFF; // R
-        img_data->pixels[i * 4 + 1] = (pixel >> 8) & 0xFF;  // G
-        img_data->pixels[i * 4 + 2] = pixel & 0xFF;         // B
-        img_data->pixels[i * 4 + 3] = (pixel >> 24) & 0xFF; // A
+    if (!icon_) {
+        icon_ = parse_xpm(default_x11_icon_xpm);
     }
 
-    XFree(data);
-    return img_data;
+    return icon_;
 }
 
 void X11PlatformWindow::show_system_menu(Point p) {

@@ -28,6 +28,9 @@ class Application {
     void run_until(std::function<bool()> should_exit);
     void quit();
 
+    void set_application_name(std::string_view name);
+    std::string_view application_name() const;
+
     std::string_view platform_name() const;
 
     void notify_theme_changed();

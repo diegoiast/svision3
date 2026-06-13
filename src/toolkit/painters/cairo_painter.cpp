@@ -35,6 +35,13 @@ void CairoPainter::push_translation(Point p) {
 
 void CairoPainter::pop_translation() { cairo_restore(cr_); }
 
+void CairoPainter::push_rotation(float degrees) {
+    cairo_save(cr_);
+    cairo_rotate(cr_, degrees * M_PI / 180.0);
+}
+
+void CairoPainter::pop_rotation() { cairo_restore(cr_); }
+
 void CairoPainter::set_line_style(LineStyle style) {
     if (style == LineStyle::Solid) {
         cairo_set_dash(cr_, nullptr, 0, 0);
@@ -191,23 +198,36 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         }
 
         cairo_restore(cr);
-    } else {
+        } else {
         // Fallback for non-Cairo painters: rasterize and draw as image
-        // FIXME: we need a way to get the scale from the painter.
-        // For now, let's assume 1.0 or find it from the painter if possible.
-        float scale = 1.0f; // Placeholder
+        float scale = p.scale_factor();
         auto rt = rasterize(text, font_size, scale, color, font, bold, italic);
         if (rt.pixels.empty()) {
             return;
         }
 
-        // FIXME: we need draw_image_tinted or similar to apply 'color'
-        // For now just draw as is (which will be white)
+        Point snapped_pos = {
+            std::floor(position.x * scale + 0.5f) / scale,
+            std::floor(position.y * scale + 0.5f) / scale
+        };
+
+        p.push_translation(snapped_pos);
+        if (orientation == Painter::TextOrientation::VerticalCCW) {
+            p.push_rotation(-90.0f);
+        } else if (orientation == Painter::TextOrientation::VerticalCW) {
+            p.push_rotation(90.0f);
+        }
+
+        // Add 1px padding offset from rasterize() below
         p.draw_image(ImageData{std::move(rt.pixels), rt.width, rt.height},
-                     {position.x, position.y - rt.ascent} // Approximation
-        );
-    }
-}
+                     {(rt.x_offset - 1.0f) / scale, (-rt.ascent - 1.0f) / scale});
+
+        if (orientation != Painter::TextOrientation::Horizontal) {
+            p.pop_rotation();
+        }
+        p.pop_translation();
+        }
+        }
 
 static void rgba_to_cairo_argb32(uint8_t *dst, std::vector<uint8_t> const &src) {
     auto size = src.size() / 4;
@@ -322,17 +342,23 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     cairo_destroy(temp_cr);
     cairo_surface_destroy(temp_surf);
 
-    float lw = static_cast<float>(te.width + te.x_bearing);
-    float lh = static_cast<float>(fe.height);
-
-    int pw = static_cast<int>(std::ceil(lw * scale)) + 2;
-    int ph = static_cast<int>(std::ceil(lh * scale)) + 2;
+    // Ink bounding box starts at x_bearing and spans width
+    // Add 2px padding (1px on each side) to avoid clipping and aliasing artifacts
+    auto pw = static_cast<int>(std::ceil(te.width * scale)) + 2;
+    auto ph = static_cast<int>(std::ceil(fe.height * scale)) + 2;
     if (pw <= 0 || ph <= 0) {
         return {};
     }
 
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
     cairo_t *cr = cairo_create(surf);
+
+    // Ensure surface is transparent
+    cairo_set_source_rgba(cr, 0, 0, 0, 0);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    cairo_paint(cr);
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+
     apply_font_options(cr);
     cairo_scale(cr, scale, scale);
 
@@ -340,7 +366,9 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(), slant, weight);
     cairo_set_font_size(cr, std::floor(font_size));
 
-    cairo_move_to(cr, 0, fe.ascent);
+    // Align ink to the left edge of our surface, plus 1px padding (logical)
+    auto pad = 1.0f / scale;
+    cairo_move_to(cr, -te.x_bearing + pad, fe.ascent + pad);
     cairo_show_text(cr, str.c_str());
     cairo_surface_flush(surf);
 
@@ -349,10 +377,12 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     result.width = pw;
     result.height = ph;
     result.ascent = static_cast<float>(fe.ascent);
+    result.x_offset = static_cast<float>(te.x_bearing);
 
-    size_t size = static_cast<size_t>(pw * ph * 4);
+    auto size = static_cast<size_t>(pw * ph * 4);
     result.pixels.resize(size);
-    for (size_t i = 0; i < size; i += 4) {
+    for (auto i = 0; i < size; i += 4) {
+        // FIXME: how about we do this without copying?
         // Cairo ARGB32 is BGRA in memory on little-endian
         result.pixels[i + 0] = data[i + 2]; // R
         result.pixels[i + 1] = data[i + 1]; // G

@@ -16,6 +16,7 @@ struct RasterizedText {
     int width = 0;               // pixel width
     int height = 0;              // pixel height
     float ascent = 0;            // font ascent in points
+    float x_offset = 0;          // horizontal offset in points (for bearing)
 };
 
 class TextRasterizer {

@@ -71,10 +71,14 @@ class WaylandlOpenGlBackend : public RenderingBackend {
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-        glClearColor(1, 1, 1, 1);
+        glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+#ifdef GL_FRAMEBUFFER_SRGB
+        glDisable(GL_FRAMEBUFFER_SRGB);
+#endif
 
         // FIXME: do not use cairo inside opengl.
         GLPainter painter(static_cast<float>(lh), window->scale, &rasterizer_);

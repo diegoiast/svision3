@@ -74,6 +74,7 @@ class X11PlatformWindow : public PlatformWindow {
     void cleanup_resources();
     X11PlatformApplication *app_;
     Window *owner_;
+    Icon icon_;
 };
 
 } // namespace toolkit

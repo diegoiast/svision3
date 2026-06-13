@@ -26,6 +26,9 @@ class CairoPainter : public Painter {
     void push_translation(Point p) override;
     void pop_translation() override;
 
+    void push_rotation(float degrees) override;
+    void pop_rotation() override;
+
     void set_line_style(LineStyle style) override;
 
     void fill_rect(Rect const &rect, Color const &color) override;

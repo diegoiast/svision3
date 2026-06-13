@@ -14,6 +14,7 @@
 #include <spdlog/spdlog.h>
 
 #if defined(__APPLE__)
+#include <mach-o/dyld.h>
 #ifdef TOOLKIT_HAS_CAIRO
 #include "platform/macos/macos_cairo_platform.hpp"
 #endif
@@ -22,6 +23,7 @@
 #elif defined(_WIN32)
 #include "platform/win32/win32_platform.hpp"
 #else
+#include <unistd.h>
 #ifdef TOOLKIT_HAS_X11
 #include "platform/x11/x11_platform.hpp"
 #endif
@@ -121,9 +123,48 @@ struct Application::Impl {
     std::unique_ptr<PlatformApplication> platform;
     std::unique_ptr<IconProvider> icon_provider;
     std::map<std::string, Icon> icon_cache;
+    std::string application_name;
 };
 
+static std::string get_executable_name() {
+#if defined(_WIN32)
+    wchar_t buffer[MAX_PATH];
+    GetModuleFileNameW(NULL, buffer, MAX_PATH);
+    std::wstring path(buffer);
+    size_t last_slash = path.find_last_of(L"\\/");
+    std::wstring filename = (last_slash == std::wstring::npos) ? path : path.substr(last_slash + 1);
+    size_t last_dot = filename.find_last_of(L".");
+    if (last_dot != std::wstring::npos) {
+        filename = filename.substr(0, last_dot);
+    }
+    int len = WideCharToMultiByte(CP_UTF8, 0, filename.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string result(len - 1, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, filename.c_str(), -1, result.data(), len, nullptr, nullptr);
+    return result;
+#elif defined(__APPLE__)
+    char buffer[1024];
+    uint32_t size = sizeof(buffer);
+    if (_NSGetExecutablePath(buffer, &size) == 0) {
+        std::string path(buffer);
+        size_t last_slash = path.find_last_of("/");
+        return (last_slash == std::string::npos) ? path : path.substr(last_slash + 1);
+    }
+    return "svision3";
+#else
+    char buffer[1024];
+    ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (len != -1) {
+        buffer[len] = '\0';
+        std::string path(buffer);
+        size_t last_slash = path.find_last_of("/");
+        return (last_slash == std::string::npos) ? path : path.substr(last_slash + 1);
+    }
+    return "svision3";
+#endif
+}
+
 Application::Application() : impl_(std::make_unique<Impl>()) {
+    impl_->application_name = get_executable_name();
     detail::set_current_application(this);
     impl_->platform = create_platform_application();
     detail::set_current_platform(impl_->platform.get());
@@ -179,6 +220,10 @@ void Application::run_until(std::function<bool()> should_exit) {
     impl_->platform->run_until(std::move(should_exit));
 }
 void Application::quit() { impl_->platform->quit(); }
+
+void Application::set_application_name(std::string_view name) { impl_->application_name = name; }
+
+std::string_view Application::application_name() const { return impl_->application_name; }
 
 std::string_view Application::platform_name() const { return impl_->platform->name(); }
 

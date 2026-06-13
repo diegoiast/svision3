@@ -1,5 +1,6 @@
 #include "wl_platform.hpp"
 #include "../linux_utils.hpp"
+#include "toolkit/application.hpp"
 #include "toolkit/stb_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
@@ -1182,7 +1183,11 @@ WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
     }
     std::string t(title);
     xdg_toplevel_set_title(xdg_toplevel_, t.c_str());
-    xdg_toplevel_set_app_id(xdg_toplevel_, "toolkit-app");
+    std::string app_id = "svision3";
+    if (Application::has_instance()) {
+        app_id = Application::instance().application_name();
+    }
+    xdg_toplevel_set_app_id(xdg_toplevel_, app_id.c_str());
 
     pending_width = static_cast<int>(size.width);
     pending_height = static_cast<int>(size.height);
