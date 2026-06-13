@@ -139,11 +139,7 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
     RECT rc = {0, 0, w, h};
     FillRect(impl_->hdc, &rc, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
 
-    int r_c = static_cast<int>(std::round(std::clamp(color.r, 0.0f, 1.0f) * 255));
-    int g_c = static_cast<int>(std::round(std::clamp(color.g, 0.0f, 1.0f) * 255));
-    int b_c = static_cast<int>(std::round(std::clamp(color.b, 0.0f, 1.0f) * 255));
-
-    SetTextColor(impl_->hdc, RGB(r_c, g_c, b_c));
+    SetTextColor(impl_->hdc, RGB(255, 255, 255));
     SetBkMode(impl_->hdc, TRANSPARENT);
     TextOutW(impl_->hdc, 0, 0, wtext.c_str(), static_cast<int>(wtext.size()));
     GdiFlush();
@@ -157,12 +153,15 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
 
     float tint_a = std::clamp(color.a, 0.0f, 1.0f);
     for (int i = 0; i < w * h; i++) {
-        uint8_t a = src[i * 4 + 3];
-        float alpha = (a / 255.0f) * tint_a;
+        // GDI TextOut on a 32bpp DIB doesn't touch the alpha channel (it remains 0 from the
+        // BlackBrush fill). Since we drew white on black, the coverage is in the RGB channels.
+        // We use the green channel as a good approximation for the coverage.
+        uint8_t coverage = src[i * 4 + 1];
+        float alpha = (coverage / 255.0f) * tint_a;
 
-        result.pixels[i * 4 + 0] = static_cast<uint8_t>(r_c * alpha);
-        result.pixels[i * 4 + 1] = static_cast<uint8_t>(g_c * alpha);
-        result.pixels[i * 4 + 2] = static_cast<uint8_t>(b_c * alpha);
+        result.pixels[i * 4 + 0] = 255;
+        result.pixels[i * 4 + 1] = 255;
+        result.pixels[i * 4 + 2] = 255;
         result.pixels[i * 4 + 3] = static_cast<uint8_t>(alpha * 255.0f);
     }
 
@@ -315,6 +314,18 @@ void GDIPainter::push_translation(Point p) {
 }
 
 void GDIPainter::pop_translation() {
+    if (!impl_->state_stack.empty()) {
+        impl_->graphics->Restore(impl_->state_stack.back());
+        impl_->state_stack.pop_back();
+    }
+}
+
+void GDIPainter::push_rotation(float degrees) {
+    impl_->state_stack.push_back(impl_->graphics->Save());
+    impl_->graphics->RotateTransform(degrees);
+}
+
+void GDIPainter::pop_rotation() {
     if (!impl_->state_stack.empty()) {
         impl_->graphics->Restore(impl_->state_stack.back());
         impl_->state_stack.pop_back();
