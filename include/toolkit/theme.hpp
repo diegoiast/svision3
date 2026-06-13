@@ -164,6 +164,8 @@ struct Palette {
     float corner_radius = 0.0f;
     float border_width = 1.0f;
     float tab_radius = 0.0f;
+    float tab_padding = 0.0f;
+    bool tab_fully_rounded = false;
     Margins window_decoration = {0, 0, 0, 0};
     bool beveled = false;
 

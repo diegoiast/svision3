@@ -377,6 +377,7 @@ void BaseTheme::draw_menubar_background(Painter &painter, Rect const &rect,
     painter.fill_rect(rect, bg);
     if (palette.chrome_lines) {
         auto border_c = palette.border;
+
         painter.draw_line({rect.x, 0}, {rect.x + rect.width, 1.0f}, border_c, palette.border_width);
         painter.draw_line({rect.x, rect.height - 1.0f}, {rect.x + rect.width, rect.height - 1.0f},
                           border_c, palette.border_width);
@@ -384,7 +385,7 @@ void BaseTheme::draw_menubar_background(Painter &painter, Rect const &rect,
 }
 
 void BaseTheme::draw_menu_background(Painter &painter, Rect const &rect) const {
-    auto shadow = Color::rgba(0, 0, 0, 0.12f);
+    auto shadow = palette.shadow;
     painter.fill_rounded_rect({rect.x + 1, rect.y + 1, rect.width, rect.height}, shadow,
                               palette.corner_radius);
     painter.fill_rounded_rect(rect, palette.base, palette.corner_radius);
@@ -433,8 +434,6 @@ void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_v
 void BaseTheme::draw_menu_separator(Painter &painter, Rect const &rect) const {
     auto mid_y = rect.y + rect.height / 2.0f;
     auto sep_col = palette.border;
-    // FIXME: remove this alpha channel changing
-    sep_col.a *= 0.5f;
     painter.draw_line({rect.x + 8, mid_y}, {rect.x + rect.width - 8, mid_y}, sep_col, 0.5f);
 }
 
@@ -532,30 +531,37 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
     }
 
     auto text_c = state.enabled ? palette.text : palette.text_disabled;
-
-    if (active) {
-        painter.fill_rounded_rect(rect, bg, palette.tab_radius);
-        float r = palette.tab_radius;
-        float bw = palette.border_width;
-        if (r > 0 || bw > 0) {
-            float fill_r = std::max(r, bw);
-            switch (orientation) {
-            case TabOrientation::North:
-                painter.fill_rect({rect.x, rect.y + rect.height - fill_r, rect.width, fill_r + bw},
-                                  bg);
-                break;
-            case TabOrientation::South:
-                painter.fill_rect({rect.x, rect.y - bw, rect.width, fill_r + bw}, bg);
-                break;
-            case TabOrientation::West:
-            case TabOrientation::WestVertical:
-                painter.fill_rect({rect.x + rect.width - fill_r, rect.y, fill_r + bw, rect.height},
-                                  bg);
-                break;
-            case TabOrientation::East:
-            case TabOrientation::EastVertical:
-                painter.fill_rect({rect.x - bw, rect.y, fill_r + bw, rect.height}, bg);
-                break;
+    auto use_rounded = active || (hovered && palette.tab_fully_rounded);
+    if (use_rounded) {
+        auto tab_rect = palette.tab_padding > 0 ? rect.inset(palette.tab_padding) : rect;
+        painter.fill_rounded_rect(tab_rect, bg, palette.tab_radius);
+        if (active && !palette.tab_fully_rounded) {
+            float r = palette.tab_radius;
+            float bw = palette.border_width;
+            if (r > 0 || bw > 0) {
+                float fill_r = std::max(r, bw);
+                switch (orientation) {
+                case TabOrientation::North:
+                    painter.fill_rect({tab_rect.x, tab_rect.y + tab_rect.height - fill_r,
+                                       tab_rect.width, fill_r + bw},
+                                      bg);
+                    break;
+                case TabOrientation::South:
+                    painter.fill_rect({tab_rect.x, tab_rect.y - bw, tab_rect.width, fill_r + bw},
+                                      bg);
+                    break;
+                case TabOrientation::West:
+                case TabOrientation::WestVertical:
+                    painter.fill_rect({tab_rect.x + tab_rect.width - fill_r, tab_rect.y,
+                                       fill_r + bw, tab_rect.height},
+                                      bg);
+                    break;
+                case TabOrientation::East:
+                case TabOrientation::EastVertical:
+                    painter.fill_rect({tab_rect.x - bw, tab_rect.y, fill_r + bw, tab_rect.height},
+                                      bg);
+                    break;
+                }
             }
         }
     } else {
@@ -907,7 +913,6 @@ void BaseTheme::draw_toolbar(Painter &painter, Rect const &rect, WidgetState con
         state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
     auto bw = palette.border_width;
     if (palette.beveled) {
-        painter.draw_line({rect.x, rect.y}, {rect.x + rect.width, rect.y}, palette.highlight, bw);
         painter.draw_line({rect.x, rect.y + rect.height - 1.0f},
                           {rect.x + rect.width, rect.y + rect.height - 1.0f}, palette.shadow, bw);
     } else if (palette.chrome_lines) {

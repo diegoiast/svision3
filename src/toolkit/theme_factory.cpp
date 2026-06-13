@@ -12,52 +12,58 @@
 #include "toolkit/types.hpp"
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
+#include "toolkit/window_title_bar.hpp"
 
 #include <assert.h>
 #include <memory>
 
 namespace toolkit {
 
-class GnomeTitleBar : public Widget {
+class GnomeTitleBar : public WindowTitleBar {
   public:
-    GnomeTitleBar(Window *window) : window_(window) { set_on_top(true); }
+    GnomeTitleBar(Window *window) : WindowTitleBar(window) {
+        // Anything else...?
+    }
 
-    void paint(Painter &painter) override {
-        auto const &p = Theme::current().palette;
-        auto r = rect_;
+    void initializeTitleBar() {
+        layout = new HBoxLayout();
+        layout->set_window(window_);
+        // 36px total height. 24px buttons, centered means (36-24)/2 = 8px vertical margin.
+        layout->set_margins(Margins{8.0f, 10.0f, 8.0f, 10.0f});
+        layout->set_spacing(10.0f);
+
+        icon_widget = new TitleBarIcon(window_);
+        icon_widget->set_min_size({22, 22});
+        icon_widget->set_max_size({22, 22});
+        icon_widget->set_image(window_->get_icon());
+
+        // Set buttons to 32px height.
+        auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close", {22, 22});
+        close_btn->on_click = [this] { window_->close(); };
+        close_btn->set_min_size({22, 22});
+        close_btn->set_max_size({22, 22});
+
+        title_label = new Label(std::string{window_->title()});
+        title_label->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
+
+        layout->add_widget(std::unique_ptr<Widget>(icon_widget));
+        layout->add_widget(std::unique_ptr<Label>(title_label), 1);
+        layout->add_widget(std::unique_ptr<Widget>(close_btn));
+    }
+
+    void paint(Painter &painter) {
+        auto const &pal = Theme::current().palette;
         auto active = window_->is_active();
-        auto bg = active ? p.window : p.window_inactive.value_or(p.window);
+        auto bg = active ? pal.window : pal.window_inactive.value_or(pal.window);
+        // Needed to override this method, because default uses another color
+        auto fg = active ? pal.text : pal.text_disabled;
 
-        painter.fill_rect(r, bg);
-        auto fm = painter.font_metrics(p.fonts.size);
-        auto text_y = (r.height - fm.height) / 2.0f + fm.ascent;
-        painter.draw_text(std::string{window_->title()}, {r.x + 10.0f, text_y}, p.text,
-                          p.fonts.size);
+        painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
+
+        title_label->set_text(std::string(window_->title()));
+        title_label->set_color(fg);
+        layout->paint(painter);
     }
-
-    bool handle_mouse(MouseEvent const &event) override {
-        if (event.type == MouseEvent::Type::Press) {
-            if (event.click_count == 2) {
-                if (window_->is_maximized()) {
-                    window_->restore();
-                } else {
-                    window_->maximize();
-                }
-                return true;
-            }
-            window_->start_system_move(event.serial);
-            return true;
-        }
-        return false;
-    }
-
-    Size size_hint() const override {
-        auto const &m = Theme::current().palette.window_decoration;
-        return {100.0f, m.top};
-    }
-
-  private:
-    Window *window_;
 };
 
 MaterialTheme::MaterialTheme(ColorScheme scheme, std::optional<Palette> p)
@@ -78,9 +84,10 @@ MaterialTheme::MaterialTheme(ColorScheme scheme, std::optional<Palette> p)
 Palette MaterialTheme::default_palette(ColorScheme scheme) const {
     auto material_purple = Color::from_rgb(0x6750A4);
     Palette p = BaseTheme::default_palette(scheme);
-    p.corner_radius = 4.0f;
+    p.corner_radius = 10.0f;
     p.tab_radius = 0.0f;
     p.window_decoration = {32, 0, 0, 0};
+    p.tab_radius = 4.0f;
 
     switch (scheme) {
     case ColorScheme::Light:
@@ -105,7 +112,6 @@ Palette MaterialTheme::default_palette(ColorScheme scheme) const {
         p.error = Color::from_rgb(0xB3261E);
         p.tab_select_background = p.base;
         p.tab_background = p.window;
-        p.tab_radius = 4.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_rgb(0x1C1B1F);
@@ -129,7 +135,6 @@ Palette MaterialTheme::default_palette(ColorScheme scheme) const {
         p.error = Color::from_rgb(0xB3261E);
         p.tab_select_background = p.base;
         p.tab_background = p.window;
-        p.tab_radius = 4.0f;
         break;
     }
     return p;
@@ -155,23 +160,28 @@ GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p)
     scrollbar.show_frame = false;
     scrollbar.padding = {0, 0, 0, 0};
 
-    tab_widget.indicator_weight = 4.0f;
+    tab_widget.indicator_weight = 0.0f;
+    tab_widget.tab_padding_v = 12.0f;
 }
 
 Palette GnomeTheme::default_palette(ColorScheme scheme) const {
     auto adwaita_color = Color::from_argb(0xFF3465A4);
     Palette p = BaseTheme::default_palette(scheme);
-    p.corner_radius = 4.0f;
+    p.beveled = true;
+    p.chrome_lines = false;
+    p.corner_radius = 10.0f;
     p.inline_scrollbars = false;
 
     p.bottom_shadow = true;
-    p.tab_radius = 4.0f;
-    p.window_decoration = {32, 0, 0, 0};
+    p.tab_radius = 10.0f;
+    p.tab_padding = 4.0f;
+    p.tab_fully_rounded = true;
+    p.window_decoration = {36, 0, 0, 0};
 
     switch (scheme) {
     case ColorScheme::Light:
-        p.window = Color::from_rgb(0xe1dedb);
-        p.base = Color::from_rgb(0xedecea);
+        p.window = Color::from_rgb(0xffffff);
+        p.base = Color::from_rgb(0xebebed);
         p.alternate = Color::from_rgb(0xf6f6f6);
         p.text = Color::from_rgb(0x2e3436);
         p.text_disabled = Color::from_rgb(0x888a85);
@@ -181,17 +191,17 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
         p.border = Color::from_rgb(0xcbcbcb);
         p.accent = adwaita_color;
         p.link = adwaita_color;
-        p.shadow = Color::rgba(1, 1, 1, 0.8f);     // Top inner highlight
-        p.dark_shadow = Color::from_rgb(0xb0b0b0); // Bottom silver lines
-        p.tooltip = Color::rgb(0.25f, 0.25f, 0.22f);
-        p.background_pressed = Color::from_rgb(0xd6d6d1);
-        p.background_hovered = Color::from_rgb(0xfdfdfd);
+        p.shadow = Color::rgba(1, 1, 1, 0.8f);
+        p.dark_shadow = Color::from_rgb(0xb0b0b0);
+        p.light = p.shadow;
+        p.background_pressed = Color::from_rgb(0xdedee0);
+        p.background_hovered = Color::from_rgb(0xdedee0);
         p.tooltip = p.base;
         p.success = Color::from_rgb(0x2e7d32);
         p.warning = Color::from_rgb(0xfbc02d);
         p.error = Color::from_rgb(0xc62828);
-        p.tab_select_background = Color::from_rgb(0xebe9e7);
-        p.tab_background = p.window;
+        p.tab_select_background = Color::from_rgb(0xd8d8db);
+        p.tab_background = p.base;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_argb(0xFF2E3436);
@@ -206,7 +216,8 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
         p.accent = adwaita_color;
         p.link = adwaita_color;
         p.shadow = Color::from_argb(0x66000000);
-        p.dark_shadow = Color::from_argb(0x99000000);
+        p.dark_shadow = p.shadow;
+        p.light = p.shadow;
         p.tooltip = Color::rgb(0.25f, 0.25f, 0.22f);
         p.background_pressed = Color::from_argb(0xFF484848);
         p.background_hovered = Color::from_argb(0xFF565656);
@@ -219,12 +230,48 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
         p.bottom_shadow = true;
         break;
     }
+
+    // p.accent = Color::from_rgb(0xFF0000);
+    // p.highlight = Color::from_rgb(0xFFFF00);
     return p;
+}
+
+void GnomeTheme::draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                                    WidgetState const &state) const {
+    Color bg = palette.base;
+    if (state.interaction == ButtonState::Hovered) {
+        bg = palette.tab_select_background;
+    }
+    if (state.interaction == ButtonState::ClickedInside) {
+        bg = palette.tab_select_background;
+    }
+
+    painter.fill_rounded_rect(rect, bg, rect.height);
+
+    if (button == DecorationButton::Close) {
+        auto padding = 15.0f;
+        painter.draw_line({rect.x + padding, rect.y + padding},
+                          {rect.x + rect.width - padding, rect.y + rect.height - padding},
+                          palette.text);
+        painter.draw_line({rect.x + rect.width - padding, rect.y + padding},
+                          {rect.x + padding, rect.y + rect.height - padding}, palette.text);
+    } else if (button == DecorationButton::Menu) {
+        auto padding = 2.0f;
+        auto spacing = 2.0f;
+        auto y = rect.y + rect.height / 2.0f;
+        painter.draw_line({rect.x + padding, y - spacing},
+                          {rect.x + rect.width - padding, y - spacing}, palette.text);
+        painter.draw_line({rect.x + padding, y}, {rect.x + rect.width - padding, y}, palette.text);
+        painter.draw_line({rect.x + padding, y + spacing},
+                          {rect.x + rect.width - padding, y + spacing}, palette.text);
+    }
 }
 
 std::unique_ptr<Widget> GnomeTheme::create_title_bar(Window *window) const {
     // return std::make_unique<GnomeTitleBar>(window);
-    return BaseTheme::create_title_bar(window);
+    auto p = std::make_unique<toolkit::GnomeTitleBar>(window);
+    p->initializeTitleBar();
+    return p;
 }
 
 namespace ThemeFactory {

@@ -75,20 +75,22 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ## CSD : client side decorations
 
-1. [ ] Basic infra
-1. [ ] Make a general window title, instead of copying class for each theme (using theme buttons)
-1. [ ] Window menu popup
-1. [ ] Option: use title from theme, or native desktop
-1. [ ] Test on mutter
-1. [ ] Add support for Window icon at platform level
-1. [ ] Use window icon in CSD
-1. [ ] Shadow: on KWin - when we have CSD, no shadow is available
+1. [x] Basic infra
+1. [x] Make a general window title, instead of copying class for each theme (using theme buttons)
+1. [x] Test on mutter
+1. [x] Option: use title from theme, or native desktop
+1. [x] Window menu popup (system menu on windows terms)
+1. [x] Add support for Window icon at platform level
+1. [?] Use window icon in CSD (WIP, need iconset(
+1. [ ] Shadow: "needsShadow" - implement in CSD on wayland.
 1. [ ] Plasma: "show on all desktops"
 1. [ ] macOS: verify against actual apps.
-1. [ ] Windows 11: implement
-1. [ ] GNome: implement
-1. [ ] Windows95: implement
+1. [x] Windows 11: implement
+1. [x] GNome: implement
+1. [x] Windows95: implement
 1. [ ] Material: implement
+1. [ ] Disable close/max/min buttons when needed.
+1. [ ] Do not support resize or move (on popups for example, under mutter).
 
 ## Widgets [20/37]
 
@@ -352,10 +354,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 1. [x] Text alignment (left / center / right).
 2. [ ] Word wrap / multi-line.
-3. [ ] Selectable text for checkbox.
-4. [x] Rich text / markdown.
-5. [ ] Buddy support - when clicking a label, mark the buddy active.
-6. [x] Markdown label using litehtml+(markdown processor for C++).
+3. [x] Rich text / markdown.
+4. [ ] Buddy support - when clicking a label, mark the buddy active.
+5. [x] Markdown label using litehtml+(markdown processor for C++).
 
 ## Combobox Features [0/2]
 

@@ -26,6 +26,9 @@ class GnomeTheme : public BaseTheme {
                         std::optional<Palette> p = std::nullopt);
     Palette default_palette(ColorScheme scheme) const override;
     std::unique_ptr<Widget> create_title_bar(Window *window) const override;
+
+    void draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                            WidgetState const &state) const override;
 };
 
 namespace ThemeFactory {

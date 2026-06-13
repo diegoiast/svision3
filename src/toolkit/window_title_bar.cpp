@@ -63,11 +63,9 @@ void WindowTitleBar::initializeTitleBar() {
     layout->set_spacing(8.0f);
 
     icon_widget = new TitleBarIcon(window_);
-    icon_widget->set_window(window_);
     icon_widget->set_min_size({16, 16});
     icon_widget->set_max_size({16, 16});
     icon_widget->set_image(window_->get_icon());
-    spdlog::info("WindowTitleBar::initializeTitleBar icon_widget={:p}", (void *)icon_widget);
 
     auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close");
     close_btn->on_click = [this] { window_->close(); };
@@ -153,11 +151,14 @@ void WindowTitleBar::paint(Painter &painter) {
     // FIXME: it would be nice for this to be changable from other themes
     painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
     // FIXME: update window button tooltips on resize
-    if (window_->is_maximized()) {
-        max_btn->set_tooltip("Restore");
-    } else {
-        max_btn->set_tooltip("Maximized");
+    if (max_btn) {
+        if (window_->is_maximized()) {
+            max_btn->set_tooltip("Restore");
+        } else {
+            max_btn->set_tooltip("Maximized");
+        }
     }
+
     // FIXME: update window label only when the window title changed
     title_label->set_text(std::string(window_->title()));
     // FIXME: update color on blur/active
