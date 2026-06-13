@@ -605,6 +605,7 @@ inline Element<toolkit::TabWidget> tab_widget() {
 
 // Layouts
 inline toolkit::Margins default_margins() { return {10, 10, 10, 10}; }
+inline toolkit::Margins default_margins_no_bottom() { return {10, 10, 0, 10}; }
 inline toolkit::Margins no_margins() { return {0, 0, 0, 0}; }
 
 inline int default_padding() { return 10; }

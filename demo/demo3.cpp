@@ -604,6 +604,7 @@ int main(int argc, char *argv[]) {
             .add_tab(
                 "Songs",
                 ui::vbox()
+                    .margins(ui::default_margins_no_bottom())
                     .add(ui::hbox()
                              .margins(ui::no_margins())
                              .add(ui::line_input("Filter songs...")
@@ -617,13 +618,16 @@ int main(int argc, char *argv[]) {
                              })))
                     .add(filter_progress)
                     .add(ui::list_view(filter_adapter).alternate_row_colors(true), ui::expand))
-            .add_tab("Table", ui::vbox().add(ui::table_view(table_model).alternate_row_colors(true),
-                                             ui::expand))
+            .add_tab("Table",
+                     ui::vbox()
+                         .margins(ui::default_margins_no_bottom())
+                         .add(ui::table_view(table_model).alternate_row_colors(true), ui::expand))
             .add_tab("Image",
                      [&]() {
                          auto iw = ui::image_widget();
                          auto *iw_ptr = iw.get();
                          return ui::vbox()
+                             .margins(ui::default_margins_no_bottom())
                              .add(ui::button("Open Image").on_click([window, iw_ptr]() {
                                  toolkit::FileDialog(window)
                                      .title("Open Image")
@@ -648,6 +652,7 @@ int main(int argc, char *argv[]) {
                          auto iconGrid = ui::icon_grid(grid_model);
                          auto sizeLabel = ui::label("48px");
                          return ui::vbox()
+                             .margins(ui::default_margins_no_bottom())
                              .add(ui::hbox()
                                       .margins(ui::no_margins())
                                       .add(ui::label("Icon Size:"))
@@ -669,8 +674,8 @@ int main(int argc, char *argv[]) {
             .add_tab(
                 "Editor",
                 ui::vbox()
+                    .margins(ui::default_margins_no_bottom())
                     .add(ui::hbox()
-                             .margins(ui::no_margins())
                              .spacing(8)
                              .add(ui::button("Open...").on_click(open_action))
                              .add(ui::button("Save As...")
@@ -706,8 +711,10 @@ int main(int argc, char *argv[]) {
                              .add(use_native_cb)
                              .add(ui::spacer(), ui::expand))
                     .add(editor, ui::expand))
-            .add_tab("Tree", ui::vbox().add(ui::tree_view(tree_model).alternate_row_colors(true),
-                                            ui::expand))
+            .add_tab("Tree",
+                     ui::vbox()
+                         .margins(ui::default_margins_no_bottom())
+                         .add(ui::tree_view(tree_model).alternate_row_colors(true), ui::expand))
             .add_tab("Preview", preview_tab)
             .add_tab(
                 "Tabs",
