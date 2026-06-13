@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "toolkit/platform.hpp"
 #include "toolkit/image.hpp"
+#include "toolkit/platform.hpp"
 #include <memory>
 
 namespace toolkit {
@@ -63,7 +63,7 @@ class X11PlatformWindow : public PlatformWindow {
     void set_modal_for(PlatformWindow *parent) override;
     bool save_to_png(std::string const &path) override;
     float scale_factor() const override;
-    std::string_view painter_name() const;
+    std::string_view painter_name() const override;
 
     void do_paint();
 
