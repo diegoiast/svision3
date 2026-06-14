@@ -283,7 +283,7 @@ float LineInput::peek_btn_size() const {
 }
 
 float LineInput::content_right_inset() const {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().style.lineInput;
     auto inset = style.padding.right;
     auto clear_visible = !text_.empty() && !read_only_;
 
@@ -297,7 +297,7 @@ float LineInput::content_right_inset() const {
 }
 
 float LineInput::content_available_width() const {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().style.lineInput;
     return rect_.width - style.padding.left - content_right_inset();
 }
 
@@ -306,7 +306,7 @@ bool LineInput::hit_clear_btn(Point pos) const {
         return false;
     }
     auto sz = clear_btn_size();
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().style.lineInput;
     auto bx = rect_.width - style.padding.right - sz;
     auto by = (rect_.height - sz) / 2.0f;
 
@@ -318,7 +318,7 @@ bool LineInput::hit_peek_btn(Point pos) const {
         return false;
     }
     auto sz = peek_btn_size();
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().style.lineInput;
     float bx = rect_.width - style.padding.right - sz;
     bool clear_visible = !text_.empty() && !read_only_;
     if (clear_visible) {
@@ -329,7 +329,7 @@ bool LineInput::hit_peek_btn(Point pos) const {
 }
 
 size_t LineInput::pos_from_x(float x) const {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().style.lineInput;
     auto const &palette = Theme::current().palette;
     auto click_x = x - style.padding.left + scroll_offset_;
     size_t current_pos = 0;
@@ -368,7 +368,7 @@ bool LineInput::is_valid() const {
 
 void LineInput::paint(Painter &painter) {
     auto const &theme = Theme::current();
-    auto const &style = theme.line_input;
+    auto const &style = theme.style.lineInput;
     auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto sel_start_pos = has_selection() ? static_cast<int>(sel_start()) : -1;
     auto sel_end_pos = has_selection() ? static_cast<int>(sel_end()) : -1;
@@ -406,7 +406,7 @@ void LineInput::paint_buttons(Painter &painter) {
     auto const &palette = Theme::current().palette;
     auto clear_visible = !text_.empty() && !read_only_;
     if (clear_visible || is_password_field_) {
-        auto const &style = Theme::current().line_input;
+        auto const &style = Theme::current().style.lineInput;
 
         if (clear_visible) {
             auto sz = clear_btn_size();
@@ -867,7 +867,7 @@ void LineInput::show_context_menu(Point pos) {
 }
 
 Size LineInput::size_hint() const {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().style.lineInput;
     auto const &palette = Theme::current().palette;
     auto fm = font_metrics(palette.fonts.size);
     auto h = fm.height + style.padding.top + style.padding.bottom;

@@ -438,7 +438,7 @@ void HtmlView::relayout() {
     if (!document_) {
         return;
     }
-    auto bw = Theme::current().palette.frame_inset();
+    auto bw = Theme::current().style.frame_inset();
     auto inner_w = rect_.width > 2 * bw ? rect_.width - 2 * bw : rect_.width;
     auto w = inner_w > 0 ? static_cast<int>(inner_w) : 800;
     document_->render(w);
@@ -461,10 +461,10 @@ void HtmlView::paint(Painter &painter) {
 
     container_->current_painter_ = &painter;
     if (document_) {
-        auto bw = draw_frame_ ? pal.frame_inset() : 0.0f;
+        auto bw = draw_frame_ ? Theme::current().style.frame_inset() : 0.0f;
         auto inner_w = rect_.width - 2 * bw;
         auto inner_h = rect_.height - 2 * bw;
-        auto inner_radius = std::max(0.0f, pal.corner_radius - bw);
+        auto inner_radius = std::max(0.0f, Theme::current().style.corner_radius - bw);
         painter.push_clip({bw, bw, inner_w, inner_h}, inner_radius);
         painter.push_translation({bw, bw});
         litehtml::position clip{0, 0, static_cast<int>(inner_w), static_cast<int>(inner_h)};
@@ -512,7 +512,7 @@ bool HtmlView::handle_mouse(MouseEvent const &event) {
 
 Size HtmlView::size_hint() const {
     if (document_) {
-        auto bw = draw_frame_ ? Theme::current().palette.frame_inset() : 0.0f;
+        auto bw = draw_frame_ ? Theme::current().style.frame_inset() : 0.0f;
         // Returning 0 width allows the layout system to shrink this widget as much as it wants.
         // The HTML document will re-render to this new width on set_rect.
         return {0.0f, static_cast<float>(document_->height()) + 2 * bw};

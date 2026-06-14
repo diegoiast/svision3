@@ -314,7 +314,7 @@ auto TabWidget::tab_bar_thickness() const -> float {
 
 auto TabWidget::tab_size(int i) const -> float {
     auto const &theme = Theme::current();
-    auto const &style = theme.tab_widget;
+    auto const &style = theme.style.tabWidget;
 
     if (orientation_ == TabOrientation::WestVertical ||
         orientation_ == TabOrientation::EastVertical) {
@@ -434,7 +434,7 @@ void TabWidget::layout_content() {
 auto TabWidget::hit_test_tab(Point p) const -> HitResult {
     auto const &theme = Theme::current();
     auto const &palette = theme.palette;
-    auto const &style = theme.tab_widget;
+    auto const &style = theme.style.tabWidget;
     auto thickness = tab_bar_thickness();
     auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
                      orientation_ == TabOrientation::EastVertical ||
@@ -578,7 +578,7 @@ void TabWidget::paint(Painter &painter) {
 
     auto const &theme = Theme::current();
     auto const &palette = theme.palette;
-    auto const &style = theme.tab_widget;
+    auto const &style = theme.style.tabWidget;
     auto fm = font_metrics(palette.fonts.size);
     auto thickness = tab_bar_thickness();
     auto vertical = (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
@@ -658,29 +658,29 @@ void TabWidget::paint(Painter &painter) {
         }
     }
 
-    if (palette.border_width > 0) {
+    if (Theme::current().style.border_width > 0) {
         if (orientation_ == TabOrientation::North) {
             painter.draw_line({0, thickness}, {rect_.width, thickness}, palette.border,
-                              palette.border_width);
+                              Theme::current().style.border_width);
         } else if (orientation_ == TabOrientation::South) {
             painter.draw_line({0, rect_.height - thickness},
                               {rect_.width, rect_.height - thickness}, palette.border,
-                              palette.border_width);
+                              Theme::current().style.border_width);
         } else if (orientation_ == TabOrientation::West ||
                    orientation_ == TabOrientation::WestVertical) {
             painter.draw_line({thickness, 0}, {thickness, rect_.height}, palette.border,
-                              palette.border_width);
+                              Theme::current().style.border_width);
         } else if (orientation_ == TabOrientation::East ||
                    orientation_ == TabOrientation::EastVertical) {
             painter.draw_line({rect_.width - thickness, 0}, {rect_.width - thickness, rect_.height},
-                              palette.border, palette.border_width);
+                              palette.border, Theme::current().style.border_width);
         }
     }
 
     auto scrollable_rect = vertical ? Rect{bar_x, bar_start, thickness, bar_end - bar_start}
                                     : Rect{bar_start, bar_y, bar_end - bar_start, thickness};
 
-    auto bw = palette.border_width;
+    auto bw = Theme::current().style.border_width;
     if (orientation_ == TabOrientation::North) {
         scrollable_rect.height += bw;
     } else if (orientation_ == TabOrientation::South) {

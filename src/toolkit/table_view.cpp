@@ -98,7 +98,7 @@ void TableView::ensure_column_widths() {
         return;
     }
     auto cols = model_->column_count();
-    auto const &style = Theme::current().table_view;
+    auto const &style = Theme::current().style.tableView;
 
     while (column_widths_.size() < cols) {
         column_widths_.push_back(style.default_column_width);
@@ -110,7 +110,7 @@ void TableView::auto_fit_column(int col) {
         return;
     }
     auto const &theme = Theme::current();
-    auto const &style = Theme::current().table_view;
+    auto const &style = Theme::current().style.tableView;
     auto const &palette = theme.palette;
 
     auto padding = style.item_padding_h * 2;
@@ -152,7 +152,7 @@ CursorShape TableView::cursor() const {
 
 TableView &TableView::set_column_width(int column, float width) {
     ensure_column_widths();
-    auto const &style = Theme::current().table_view;
+    auto const &style = Theme::current().style.tableView;
     if (column >= 0 && column < static_cast<int>(column_widths_.size())) {
         column_widths_[column] = std::max(width, style.min_column_width);
     }
@@ -163,7 +163,7 @@ float TableView::column_width(int column) const {
     if (column >= 0 && column < static_cast<int>(column_widths_.size())) {
         return column_widths_[column];
     }
-    return Theme::current().table_view.default_column_width;
+    return Theme::current().style.tableView.default_column_width;
 }
 
 // ── Selection ────────────────────────────────────────────────────────────────
@@ -258,7 +258,7 @@ void TableView::notify_selection() {
 // ── Geometry ─────────────────────────────────────────────────────────────────
 
 float TableView::row_height() const {
-    auto const &style = Theme::current().table_view;
+    auto const &style = Theme::current().style.tableView;
     auto const &palette = Theme::current().palette;
     auto fm = font_metrics(palette.fonts.size);
     return fm.height + style.item_padding * 2;
@@ -268,7 +268,7 @@ float TableView::header_height() const {
     if (!show_header_) {
         return 0.0f;
     }
-    auto const &style = Theme::current().table_view;
+    auto const &style = Theme::current().style.tableView;
     auto const &palette = Theme::current().palette;
     auto fm = font_metrics(palette.fonts.size);
     return fm.height + style.header_padding_v * 2;
@@ -378,7 +378,7 @@ void TableView::paint(Painter &painter) {
         return;
     }
     auto const &palette = theme.palette;
-    auto const &style = theme.table_view;
+    auto const &style = theme.style.tableView;
     ensure_column_widths();
 
     auto rh = row_height();
@@ -395,8 +395,8 @@ void TableView::paint(Painter &painter) {
         auto header_bg = is_dark ? palette.base : palette.alternate;
 
         painter.push_clip(header_rect);
-        if (palette.corner_radius > 0) {
-            auto cr = std::max(0.0f, palette.corner_radius - palette.border_width);
+        if (Theme::current().style.corner_radius > 0) {
+            auto cr = std::max(0.0f, Theme::current().style.corner_radius - Theme::current().style.border_width);
             painter.fill_rounded_rect({header_rect.x, header_rect.y, header_rect.width, header_rect.height + cr}, header_bg, cr);
         } else {
             painter.fill_rect(header_rect, header_bg);
@@ -499,7 +499,7 @@ bool TableView::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Drag && resize_col_ >= 0) {
         auto delta = event.position.x - resize_start_x_;
-        auto min_w = Theme::current().table_view.min_column_width;
+        auto min_w = Theme::current().style.tableView.min_column_width;
         column_widths_[resize_col_] = std::max(min_w, resize_start_w_ + delta);
         update_scroll_state();
         return true;
@@ -651,7 +651,7 @@ bool TableView::handle_key(KeyEvent const &event) {
         scroll_to_row(last);
         return true;
     } else if (event.key == Key::PageDown) {
-        auto bw = Theme::current().palette.border_width;
+        auto bw = Theme::current().Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / row_height()));
         auto next = cursor_row_ ? std::min(*cursor_row_ + page, n - 1) : size_t{0};
@@ -668,7 +668,7 @@ bool TableView::handle_key(KeyEvent const &event) {
         scroll_to_row(*cursor_row_);
         return true;
     } else if (event.key == Key::PageUp) {
-        auto bw = Theme::current().palette.border_width;
+        auto bw = Theme::current().Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / row_height()));
         auto next = (cursor_row_ && *cursor_row_ >= page) ? *cursor_row_ - page : size_t{0};

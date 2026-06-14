@@ -139,7 +139,7 @@ IconGrid &IconGrid::select_in_rect(Rect const &r) {
 
     auto old_indices = selected_indices_;
     auto const &theme = Theme::current();
-    auto const &style = theme.icon_grid;
+    auto const &style = theme.style.iconGrid;
     auto layout = compute_layout();
     auto count = model_->row_count();
 
@@ -193,7 +193,7 @@ void IconGrid::paint(Painter &painter) {
     }
 
     auto const &theme = Theme::current();
-    auto const &style = theme.icon_grid;
+    auto const &style = theme.style.iconGrid;
     auto const &palette = theme.palette;
     auto wstate = WidgetState{
         .interaction   = ButtonState::Normal,
@@ -497,7 +497,7 @@ Size IconGrid::size_hint() const { return {200, 200}; }
 
 IconGrid::LayoutInfo IconGrid::compute_layout() const {
     auto const &theme = Theme::current();
-    auto const &style = theme.icon_grid;
+    auto const &style = theme.style.iconGrid;
     auto sample_size = theme.measure_icon_grid_item("W", display_icon_size());
 
     auto item_w = sample_size.width;
@@ -516,7 +516,7 @@ IconGrid::LayoutInfo IconGrid::compute_layout() const {
 
 std::optional<size_t> IconGrid::item_at(Point p) const {
     auto const &theme = Theme::current();
-    auto const &style = theme.icon_grid;
+    auto const &style = theme.style.iconGrid;
     auto layout = compute_layout();
 
     auto x = p.x - style.padding.left;
@@ -558,7 +558,7 @@ auto IconGrid::widget_at(Point p) -> Widget * {
 
 void IconGrid::clamp_scroll() {
     auto const &theme = Theme::current();
-    auto const &style = theme.icon_grid;
+    auto const &style = theme.style.iconGrid;
     auto layout = compute_layout();
     auto total_h = style.padding.top + style.padding.bottom +
                    static_cast<float>(layout.rows) * layout.item_height +
@@ -569,7 +569,7 @@ void IconGrid::clamp_scroll() {
 
 void IconGrid::scroll_to(size_t index) {
     auto const &theme = Theme::current();
-    auto const &style = theme.icon_grid;
+    auto const &style = theme.style.iconGrid;
     auto layout = compute_layout();
     auto row = index / layout.columns;
     auto item_y =

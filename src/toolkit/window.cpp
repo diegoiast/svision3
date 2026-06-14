@@ -116,7 +116,7 @@ struct Window::Impl {
 Window::Window(std::string_view title, Size size, WindowOptions options)
     : title_(title), size_(size), options_(options), impl_(std::make_unique<Impl>()) {
     if (options_.csd) {
-        auto const &m = Theme::current().palette.window_decoration;
+        auto const &m = Theme::current().style.window_decoration;
         size_.width += m.left + m.right;
         size_.height += m.top + m.bottom;
     }
@@ -569,9 +569,10 @@ void Window::handle_paint(Painter &painter) {
     auto repaint_start = std::chrono::steady_clock::now();
     painter.fill_rect({0, 0, size_.width, size_.height}, bg);
 
-    if (options_.csd && pal.border_width > 0) {
-        painter.draw_rect(Rect{0, 0, size_.width, size_.height}.inset(pal.border_width / 2.0f),
-                          pal.border, pal.border_width);
+    if (options_.csd && Theme::current().style.border_width > 0) {
+        painter.draw_rect(
+            Rect{0, 0, size_.width, size_.height}.inset(Theme::current().style.border_width / 2.0f),
+            pal.border, Theme::current().style.border_width);
     }
 
     if (root_) {
@@ -610,9 +611,10 @@ void Window::handle_paint(Painter &painter) {
         auto const &theme = Theme::current();
         auto const &pal = theme.palette;
         auto r = impl_->rich_tooltip_view->rect();
-        painter.fill_rounded_rect(r, pal.tooltip, pal.corner_radius);
+        painter.fill_rounded_rect(r, pal.tooltip, theme.style.corner_radius);
         impl_->rich_tooltip_view->draw(painter);
-        painter.draw_rounded_rect(r, pal.border, pal.corner_radius, pal.border_width);
+        painter.draw_rounded_rect(r, pal.border, theme.style.corner_radius,
+                                  theme.style.border_width);
     }
 
     if (tooltip_visible_ && tooltip_widget_) {
@@ -676,7 +678,7 @@ void Window::handle_mouse(MouseEvent const &event) {
     }
 
     if (options_.csd) {
-        auto const &m = Theme::current().palette.window_decoration;
+        auto const &m = Theme::current().Theme::current().style.window_decoration;
         auto const &r = event.position;
         float corner_area = 25.0f;
         float edge_area = 5.0f;
@@ -1030,7 +1032,7 @@ void Window::handle_activate(bool active) {
 
 void Window::relayout() {
     if (root_) {
-        auto bw = options_.csd ? Theme::current().palette.border_width : 0.0f;
+        auto bw = options_.csd ? Theme::current().Theme::current().style.border_width : 0.0f;
         root_->set_rect({bw, bw, size_.width - 2 * bw, size_.height - 2 * bw});
     }
     request_redraw();
@@ -1043,7 +1045,7 @@ Window &Window::resize_to_fit() {
     // First pass: layout at the current width so height-dependent widgets
     // (e.g. RichLabel/HtmlView) render at their actual allocated width
     // before we query their size_hint for the final height.
-    auto bw = options_.csd ? Theme::current().palette.border_width : 0.0f;
+    auto bw = options_.csd ? Theme::current().Theme::current().style.border_width : 0.0f;
     root_->set_rect({bw, bw, size_.width - 2 * bw, size_.height - 2 * bw});
     auto hint = root_->size_hint();
     auto changed = false;
@@ -1082,7 +1084,7 @@ void Window::update_tooltip(Widget *under, Point mouse_pos) {
     tooltip_widget_ = under;
 
     if (under && !under->tooltip().empty()) {
-        auto delay = Theme::current().tooltip.delay_sec;
+        auto delay = Theme::current().style.tooltip.delay_sec;
 
         tooltip_mouse_pos_ = mouse_pos;
         tooltip_text_ = under->tooltip();

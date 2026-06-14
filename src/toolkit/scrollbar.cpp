@@ -14,7 +14,7 @@ namespace toolkit {
 Scrollbar::Scrollbar(Orientation o) : orientation_(o) { state.focusable = true; }
 
 auto Scrollbar::size_hint() const -> Size {
-    auto const &style = Theme::current().scrollbar;
+    auto const &style = Theme::current().style.scrollbar;
     if (orientation_ == Orientation::Horizontal) {
         return {100, style.thickness};
     } else {
@@ -102,7 +102,7 @@ void Scrollbar::start_auto_repeat(float direction) {
 }
 
 auto Scrollbar::button_size() const -> float {
-    auto const &style = Theme::current().scrollbar;
+    auto const &style = Theme::current().style.scrollbar;
     if (!style.show_buttons) {
         return 0.0f;
     }
@@ -112,7 +112,7 @@ auto Scrollbar::button_size() const -> float {
 }
 
 auto Scrollbar::left_button_rect() const -> Rect {
-    auto const &style = Theme::current().scrollbar;
+    auto const &style = Theme::current().style.scrollbar;
     auto bs = button_size();
     float thickness = orientation_ == Orientation::Horizontal ? rect_.height : rect_.width;
     thickness = std::min(thickness, style.thickness);
@@ -127,7 +127,7 @@ auto Scrollbar::left_button_rect() const -> Rect {
 }
 
 auto Scrollbar::right_button_rect() const -> Rect {
-    auto const &style = Theme::current().scrollbar;
+    auto const &style = Theme::current().style.scrollbar;
     auto bs = button_size();
     float thickness = orientation_ == Orientation::Horizontal ? rect_.height : rect_.width;
     thickness = std::min(thickness, style.thickness);
@@ -142,7 +142,7 @@ auto Scrollbar::right_button_rect() const -> Rect {
 }
 
 auto Scrollbar::track_rect() const -> Rect {
-    auto const &style = Theme::current().scrollbar;
+    auto const &style = Theme::current().style.scrollbar;
     auto bs = button_size();
     float thickness = orientation_ == Orientation::Horizontal ? rect_.height : rect_.width;
     thickness = std::min(thickness, style.thickness);
@@ -161,7 +161,7 @@ auto Scrollbar::track_rect() const -> Rect {
 }
 
 auto Scrollbar::thumb_rect() const -> Rect {
-    auto const &style = Theme::current().scrollbar;
+    auto const &style = Theme::current().style.scrollbar;
     auto bs = button_size();
     auto nv = normalized_value();
     float thickness = orientation_ == Orientation::Horizontal ? rect_.height : rect_.width;

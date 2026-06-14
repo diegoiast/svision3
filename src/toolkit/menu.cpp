@@ -80,7 +80,7 @@ void Menu::show(Window *win, Point position) {
     }
     auto const &theme = Theme::current();
     auto const &palette = theme.palette;
-    auto const &style = Theme::current().menu;
+    auto const &style = Theme::current().style.menu;
     auto max_name_w = 0.0f;
     auto max_shortcut_w = 0.0f;
 
@@ -196,7 +196,7 @@ void Menu::paint(Painter &painter) {
         theme.draw_menu_item(painter, item_rect, text, icon_data, shortcut, i == hovered_, enabled,
                              false, false);
         if (item.type == MenuItem::Type::Submenu) {
-            auto const &style = Theme::current().combobox;
+            auto const &style = Theme::current().style.combo;
             auto fm = painter.font_metrics(palette.fonts.size);
             auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
             auto arrow_x = bounds_.width - 15.0f;

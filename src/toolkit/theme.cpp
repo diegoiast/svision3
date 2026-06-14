@@ -140,12 +140,12 @@ void Theme::draw_focus_ring_for_widget(Painter &painter, Widget const *widget) c
         w = w->parent();
     }
 
-    auto margin = focus_ring_margin;
+    auto margin = style.ringFocus.margin;
     auto r = Rect{global_x - margin, global_y - margin, widget->rect().width + margin * 2,
                   widget->rect().height + margin * 2};
-    auto corner_radius = palette.corner_radius + focus_ring_corner_radius;
+    auto corner_radius = style.corner_radius + style.ringFocus.corner_radius;
 
-    painter.set_line_style(focus_ring_line_style);
+    painter.set_line_style(style.ringFocus.line_style);
     draw_focus_ring(painter, r, corner_radius);
     painter.set_line_style(Painter::LineStyle::Solid);
 }

@@ -56,22 +56,22 @@ class MacOSTitleBar : public WindowTitleBar {
         layout->add_widget(std::unique_ptr<ImageWidget>(icon_widget));
     }
 };
-
 MacOSTheme::MacOSTheme(ColorScheme scheme, std::optional<Palette> p)
     : BaseTheme(scheme, std::move(p)) {
     if (!p) {
         palette = this->default_palette(scheme);
     }
     name = "macOS";
-    focus_ring_margin = 2.0f;
-    focus_ring_corner_radius = 4.0f;
+    style.ringFocus.margin = 2.0f;
+    style.ringFocus.corner_radius = 4.0f;
+    style.window_decoration = {38, 0, 0, 0};
+    style.border_width = 0.5f;
+    style.tabWidget.tab_radius = 4.0f;
 }
 
 Palette MacOSTheme::default_palette(ColorScheme scheme) const {
     Palette p = BaseTheme::default_palette(scheme);
-    p.window_decoration = {38, 0, 0, 0};
     auto macBlue = Color::from_argb(0xFF0A84FF);
-    p.border_width = 0.5f;
 
     switch (scheme) {
     case ColorScheme::Light:
@@ -97,7 +97,6 @@ Palette MacOSTheme::default_palette(ColorScheme scheme) const {
         p.error = Color::from_argb(0xFFFF3B30);
         p.tab_select_background = p.base;
         p.tab_background = p.window;
-        p.tab_radius = 4.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_argb(0xFF1E1E1E);
@@ -121,7 +120,6 @@ Palette MacOSTheme::default_palette(ColorScheme scheme) const {
         p.error = Color::from_argb(0xFFFF453A);
         p.tab_select_background = p.base;
         p.tab_background = p.window;
-        p.tab_radius = 4.0f;
         break;
     }
     return p;

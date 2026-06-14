@@ -28,13 +28,9 @@ class Win95TitleBar : public WindowTitleBar {
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Start).set_shrinkable(true).set_elide(true);
 
-        /*        auto m g= title_label->get_margins();
-                m.left = 4.0f;
-                title_label->set_margins(m);
-        */
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
 
-        auto const &decoration = Theme::current().palette.window_decoration;
+        auto const &decoration = Theme::current().style.window_decoration;
         auto btn_size = Size{decoration.top - 4.0f, decoration.top - 4.0f};
 
         auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
@@ -85,9 +81,16 @@ Win95Theme::Win95Theme(ColorScheme scheme, std::optional<Palette> p)
         palette = this->default_palette(scheme);
     }
     name = "Windows 95";
-    focus_ring_margin = 0.0f;
-    focus_ring_corner_radius = 0.0f;
-    focus_ring_line_style = Painter::LineStyle::Dotted;
+    style.ringFocus.margin = 0.0f;
+    style.ringFocus.corner_radius = 0.0f;
+    style.ringFocus.line_style = Painter::LineStyle::Dotted;
+
+    style.beveled = true;
+    style.border_width = 2.0f;
+    style.progressBar.height = 20;
+    style.inline_scrollbars = false;
+    style.window_decoration = {26, 0, 0, 0};
+    style.tabWidget.tab_radius = 0.0f;
 }
 
 std::unique_ptr<Widget> Win95Theme::create_title_bar(Window *window) const {
@@ -144,11 +147,6 @@ void Win95Theme::draw_window_button(Painter &painter, Rect const &rect, Decorati
 Palette Win95Theme::default_palette(ColorScheme scheme) const {
     Palette p = BaseTheme::default_palette(scheme);
     Color windows95_color = Color::from_argb(0xFF000080);
-    p.beveled = true;
-    p.border_width = 2.0f;
-    p.progress_bar_height = 20;
-    p.inline_scrollbars = false;
-    p.window_decoration = {26, 0, 0, 0};
 
     switch (scheme) {
     case ColorScheme::Light:
@@ -176,7 +174,6 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
         p.error = Color::from_argb(0xFF800000);
         p.tab_select_background = p.window;
         p.tab_background = p.window;
-        p.tab_radius = 0.0f;
         break;
     case ColorScheme::Dark:
         p.window = Color::from_argb(0xFF000000);
@@ -201,7 +198,6 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
         p.error = Color::from_argb(0xFF800000);
         p.tab_select_background = p.window;
         p.tab_background = p.window;
-        p.tab_radius = 0.0f;
         break;
     }
     return p;
@@ -265,10 +261,10 @@ void Win95Theme::draw_focus_ring(Painter &painter, Rect const &rect, float corne
 void Win95Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_view text,
                                 int depth, bool has_children, bool expanded, bool selected,
                                 bool hovered, bool alternate) const {
-    auto const &style = tree_view;
-    auto const &cb_style = checkbox;
+    auto const &tree_style = this->style.treeView;
+    auto const &cb_style = this->style.toggle;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto x_offset = style.item_padding_h + depth * style.indent;
+    auto x_offset = tree_style.item_padding_h + depth * tree_style.indent;
 
     if (has_children) {
         auto icon_x = x_offset;
@@ -286,7 +282,7 @@ void Win95Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_
                           palette.fonts.size);
     }
 
-    x_offset += style.indent + 4.0f;
+    x_offset += tree_style.indent + 4.0f;
 
     auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
     auto text_col = selected ? palette.highlighted_text : palette.text;
@@ -301,7 +297,7 @@ void Win95Theme::draw_progress_bar(Painter &painter, Rect const &rect, float pro
 
     auto bg = enabled ? palette.window : palette.window.darken(0.1f);
     auto fill_c = enabled ? palette.accent : palette.accent.darken(0.2f);
-    auto inner = rect.inset(palette.border_width);
+    auto inner = rect.inset(Theme::current().style.border_width);
     auto chunk_count = static_cast<int>(inner.width / (chunk_width + chunk_gap));
     auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
 

@@ -47,10 +47,10 @@ class ToolbarSeparator : public Widget {
   public:
     void paint(Painter &painter) override {
         auto const &theme = Theme::current();
-        auto const &style = theme.button;
+        auto const &style = theme.style;
         auto const &palette = theme.palette;
 
-        if (palette.beveled) {
+        if (style.beveled) {
             auto x = rect_.width / 2.0f;
             painter.draw_line({x - 1.0f, 4.0f}, {x - 1.0f, rect_.height - 4.0f}, palette.shadow,
                               1.0f);

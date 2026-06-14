@@ -201,7 +201,7 @@ void TreeView::on_scroll(float /*x*/, float /*y*/) {
 
 float TreeView::row_height() const {
     auto const &theme = Theme::current();
-    auto const &style = Theme::current().tree_view;
+    auto const &style = Theme::current().style.treeView;
     auto const &palette = theme.palette;
     auto fm = font_metrics(palette.fonts.size);
     return fm.height + style.item_padding * 2;
@@ -247,7 +247,7 @@ void TreeView::paint(Painter &painter) {
     }
 
     auto const &theme = Theme::current();
-    auto const &style = theme.tree_view;
+    auto const &style = theme.style.treeView;
     auto const &palette = theme.palette;
     auto rh = row_height();
     auto n = static_cast<int>(flat_nodes_.size());
@@ -387,7 +387,7 @@ bool TreeView::handle_mouse(MouseEvent const &event) {
             auto const &flat = flat_nodes_[idx];
             auto *node_ptr = flat.node_ptr;
             auto has_children = node_ptr && !node_ptr->children.empty();
-            auto indent = Theme::current().tree_view.indent;
+            auto indent = Theme::current().style.treeView.indent;
             auto click_x = p.x;
             auto expected_x = flat.depth * indent;
 

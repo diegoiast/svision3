@@ -37,7 +37,7 @@ class Win11TitleBar : public WindowTitleBar {
         layout->add_widget(std::unique_ptr<ImageWidget>(icon_widget));
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
 
-        auto const &decoration = Theme::current().palette.window_decoration;
+        auto const &decoration = Theme::current().Theme::current().style.window_decoration;
         auto btn_size = Size{44, decoration.top};
 
         auto *button_layout = new HBoxLayout();
@@ -89,13 +89,16 @@ Win11Theme::Win11Theme(ColorScheme scheme, std::optional<Palette> p)
         palette = this->default_palette(scheme);
     }
     name = "Windows 11";
-    focus_ring_margin = 3.0f;
-    focus_ring_corner_radius = 4.0f;
-    palette.corner_radius = 9.0f;
+    style.ringFocus.margin = 3.0f;
+    style.ringFocus.corner_radius = 4.0f;
+    style.corner_radius = 9.0f;
 
-    button.padding = {5, 20, 5, 20};
-    tab_widget.indicator_weight = {};
-    radio.accent_fill = true;
+    style.button.padding = {5, 20, 5, 20};
+    style.tabWidget.indicator_weight = {};
+    style.toggle.accent_fill = true;
+    style.tabWidget.tab_radius = 4.0f;
+    style.chrome_lines = false;
+    style.window_decoration = {32, 0, 0, 0};
 }
 
 std::unique_ptr<Widget> Win11Theme::create_title_bar(Window *window) const {
@@ -107,10 +110,6 @@ std::unique_ptr<Widget> Win11Theme::create_title_bar(Window *window) const {
 Palette Win11Theme::default_palette(ColorScheme scheme) const {
     Palette p = BaseTheme::default_palette(scheme);
     auto windows_blue = Color::from_rgb(0x0078D4);
-    p.tab_radius = 4.0f;
-    p.corner_radius = 4.0f;
-    p.chrome_lines = false;
-    p.window_decoration = {32, 0, 0, 0};
 
     switch (scheme) {
     case ColorScheme::Light:
@@ -167,14 +166,15 @@ Palette Win11Theme::default_palette(ColorScheme scheme) const {
 void Win11Theme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
                                    bool hovered, bool active, bool show_mnemonics,
                                    int mnemonic_index) const {
-    auto const &style = menubar;
-    auto padding = style.padding;
+    auto const &mbar_style = this->style.menuBar;
+    auto padding = mbar_style.padding;
     auto fm = painter.font_metrics(palette.fonts.size);
+    // ...
 
     if (hovered || active) {
         Color bg = palette.highlight;
         auto hover_rect = rect.inset(2.0f);
-        painter.fill_rounded_rect(hover_rect, bg, palette.corner_radius);
+        painter.fill_rounded_rect(hover_rect, bg, Theme::current().style.corner_radius);
     }
 
     auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
@@ -188,11 +188,11 @@ void Win11Theme::draw_menubar_item(Painter &painter, Rect const &rect, std::stri
 void Win11Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_view text,
                                 int depth, bool has_children, bool expanded, bool selected,
                                 bool hovered, bool alternate) const {
-    auto const &style = tree_view;
+    auto const &tree_style = this->style.treeView;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto indent = style.indent;
+    auto indent = tree_style.indent;
 
-    auto x_offset = style.item_padding_h + depth * indent;
+    auto x_offset = tree_style.item_padding_h + depth * indent;
 
     if (has_children) {
         auto arrow_x = x_offset + 4;

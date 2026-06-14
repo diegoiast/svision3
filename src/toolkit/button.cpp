@@ -37,7 +37,7 @@ void Button::from_json(nlohmann::json const &j) {
 
 Button::Button(std::string text) {
     auto pos = text.find('&');
-    auto const &style = Theme::current().button;
+    auto const &style = Theme::current().style.button;
 
     state.focusable = true;
     if (pos != std::string::npos && pos + 1 < text.size()) {
@@ -388,7 +388,7 @@ bool Button::handle_mouse(MouseEvent const &event) {
 Size Button::size_hint() const {
     auto sh = Theme::current().measure_button(display_text_, icon_);
     if (menu_) {
-        sh.width += Theme::current().button.menu_indicator_width + 8.0f;
+        sh.width += Theme::current().style.button.menu_indicator_width + 8.0f;
     }
     return sh;
 }

@@ -111,8 +111,8 @@ void ToastWidget::paint(Painter &painter) {
     Rect r = {0, 0, rect_.width, rect_.height};
 
     auto bg = background_override_.value_or(palette.tooltip);
-    painter.fill_rounded_rect(r, bg, palette.corner_radius);
-    painter.draw_rounded_rect(r, palette.border, palette.corner_radius, 1);
+    painter.fill_rounded_rect(r, bg, Theme::current().style.corner_radius);
+    painter.draw_rounded_rect(r, palette.border, Theme::current().style.corner_radius, 1);
 
     // Progress Bar
     auto progress_width = r.width - 20;

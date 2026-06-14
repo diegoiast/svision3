@@ -29,31 +29,29 @@ TEST_CASE("ThemeFactory::crete with all styles and schemes", "[theme]") {
         }
     }
 }
-
 TEST_CASE("Theme::default_palette returns valid palette", "[theme]") {
     auto t = ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light);
     auto p = t->default_palette(ColorScheme::Light);
     REQUIRE(p.fonts.size > 0);
-    REQUIRE(p.corner_radius >= 0);
-    REQUIRE(p.border_width >= 0);
+    REQUIRE(t->style.corner_radius >= 0);
+    REQUIRE(t->style.border_width >= 0);
     REQUIRE(p.text.a == 1.0f);
 }
 
 TEST_CASE("Win95 palette has beveled flag", "[theme]") {
     auto t = ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light);
-    auto p = t->default_palette(ColorScheme::Light);
-    REQUIRE(p.beveled == true);
+    REQUIRE(t->style.beveled == true);
 }
 
 TEST_CASE("Non-Win95 palettes are not beveled", "[theme]") {
     for (auto s : {ThemeStyle::MacOS, ThemeStyle::Material, ThemeStyle::Win11, ThemeStyle::Plasma6,
                    ThemeStyle::GNOME}) {
         auto t = ThemeFactory::create(s, ColorScheme::Light);
-        auto p = t->default_palette(ColorScheme::Light);
-        REQUIRE(p.beveled == false);
+        if (s != ThemeStyle::Win95) {
+            REQUIRE(t->style.beveled == false);
+        }
     }
 }
-
 TEST_CASE("Theme::set_current / current round-trip", "[theme]") {
     auto t = ThemeFactory::create(ThemeStyle::Material, ColorScheme::Dark);
     Theme::set_current(std::move(t));
@@ -74,20 +72,27 @@ TEST_CASE("Light theme has darker text than background", "[theme]") {
     REQUIRE(text_luma < bg_luma);
 }
 
-
 TEST_CASE("ProgressBar style has Win95 chunked", "[theme]") {
     auto t = ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light);
-    REQUIRE(t->palette.progress_bar_height == 20.0f);
+    REQUIRE(t->style.progressBar.height == 20.0f);
 }
 
 TEST_CASE("Theme has correct inline_scrollbars defaults", "[theme]") {
     // Regular scrollbars for Win95 and GNOME
-    REQUIRE(ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light)->palette.inline_scrollbars == false);
-    REQUIRE(ThemeFactory::create(ThemeStyle::GNOME, ColorScheme::Light)->palette.inline_scrollbars == false);
+    REQUIRE(ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light)->style.inline_scrollbars ==
+            false);
+    REQUIRE(ThemeFactory::create(ThemeStyle::GNOME, ColorScheme::Light)->style.inline_scrollbars ==
+            false);
 
     // Inline scrollbars for others
-    REQUIRE(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light)->palette.inline_scrollbars == true);
-    REQUIRE(ThemeFactory::create(ThemeStyle::Material, ColorScheme::Light)->palette.inline_scrollbars == true);
-    REQUIRE(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light)->palette.inline_scrollbars == true);
-    REQUIRE(ThemeFactory::create(ThemeStyle::Plasma6, ColorScheme::Light)->palette.inline_scrollbars == true);
+    REQUIRE(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light)->style.inline_scrollbars ==
+            true);
+    REQUIRE(
+        ThemeFactory::create(ThemeStyle::Material, ColorScheme::Light)->style.inline_scrollbars ==
+        true);
+    REQUIRE(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light)->style.inline_scrollbars ==
+            true);
+    REQUIRE(
+        ThemeFactory::create(ThemeStyle::Plasma6, ColorScheme::Light)->style.inline_scrollbars ==
+        true);
 }

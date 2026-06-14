@@ -81,7 +81,6 @@ class BaseTheme : public Theme {
     std::unique_ptr<Widget> create_title_bar(Window *window) const override;
 
   protected:
-    void init_compatibility();
     void draw_toolbar(Painter &painter, Rect const &rect, WidgetState const &state) const override;
     void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text, int cursor_pos,
                       int selection_start, int selection_end, WidgetState const &state,

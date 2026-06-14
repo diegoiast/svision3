@@ -101,10 +101,10 @@ void ScrollableWidget::update_scrollbars(Size content_size) {
 
 void ScrollableWidget::layout_scrollbars() {
     auto const &palette = Theme::current().palette;
-    auto bw = palette.border_width;
+    auto bw = Theme::current().style.border_width;
     float sw = 16.0f;
 
-    if (palette.inline_scrollbars) {
+    if (Theme::current().style.inline_scrollbars) {
         vscroll_->set_visible(false);
         hscroll_->set_visible(false);
         return;
@@ -158,7 +158,7 @@ void ScrollableWidget::clamp_scroll() {
 
 Rect ScrollableWidget::viewport_rect() const {
     auto const &palette = Theme::current().palette;
-    auto bw = palette.border_width;
+    auto bw = Theme::current().style.border_width;
     auto r = Rect{bw, bw, rect_.width - bw * 2, rect_.height - bw * 2};
     if (vscroll_ && vscroll_->is_visible()) {
         r.width -= vscroll_->rect().width;
@@ -171,7 +171,7 @@ Rect ScrollableWidget::viewport_rect() const {
 
 void ScrollableWidget::draw_scrollbars(Painter &painter) {
     auto const &palette = Theme::current().palette;
-    if (!palette.inline_scrollbars) {
+    if (!Theme::current().style.inline_scrollbars) {
         if (vscroll_ && vscroll_->is_visible()) {
             vscroll_->draw(painter);
         }
@@ -225,8 +225,8 @@ bool ScrollableWidget::handle_scrollbar_mouse(MouseEvent const &event) {
     return false;
 }
 
-bool ScrollableWidget::needs_vscroll() const { return content_size_.height > rect_.height - Theme::current().palette.border_width * 2; }
-bool ScrollableWidget::needs_hscroll() const { return content_size_.width > rect_.width - Theme::current().palette.border_width * 2; }
+bool ScrollableWidget::needs_vscroll() const { return content_size_.height > rect_.height - Theme::current().Theme::current().style.border_width * 2; }
+bool ScrollableWidget::needs_hscroll() const { return content_size_.width > rect_.width - Theme::current().Theme::current().style.border_width * 2; }
 
 Rect ScrollableWidget::vthumb_rect() const {
     if (!needs_vscroll()) return {};

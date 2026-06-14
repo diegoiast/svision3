@@ -3,9 +3,9 @@
 
 #include "toolkit/theme_plasma.hpp"
 #include "toolkit/button.hpp"
+#include "toolkit/image_widget.hpp"
 #include "toolkit/label.hpp"
 #include "toolkit/layout.hpp"
-#include "toolkit/image_widget.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
@@ -85,17 +85,24 @@ Plasma6Theme::Plasma6Theme(ColorScheme scheme, std::optional<Palette> p)
         palette = this->default_palette(scheme);
     }
     name = "Plasma 6";
-    button.padding = {8, 16, 8, 16};
-    slider.handle_size = 20.0f;
-    slider.groove_thickness = 6.0f;
-    focus_ring_margin = 2.0f;
-    focus_ring_corner_radius = 4.0f;
-    tab_widget.indicator_weight = -2.0f;
+    style.button.padding = {8, 16, 8, 16};
+    style.slider.handle_size = 20.0f;
+    style.slider.groove_thickness = 6.0f;
+    style.ringFocus.margin = 2.0f;
+    style.ringFocus.corner_radius = 4.0f;
+    style.tabWidget.indicator_weight = -2.0f;
 
-    scrollbar.show_buttons = false;
-    scrollbar.thickness = 34.0f;
-    scrollbar.show_frame = false;
-    scrollbar.padding = {0, 4, 0, 4};
+    style.scrollbar.show_buttons = false;
+    style.scrollbar.thickness = 34.0f;
+    style.scrollbar.show_frame = false;
+    style.scrollbar.padding = {0, 4, 0, 4};
+
+    style.inline_scrollbars = false;
+    style.corner_radius = 6.0f;
+    style.tabWidget.tab_radius = 5.0f;
+    style.window_decoration = {32, 0, 0, 0};
+    style.bottom_shadow = true;
+    style.chrome_lines = false;
 }
 
 std::unique_ptr<Widget> Plasma6Theme::create_title_bar(Window *window) const {
@@ -103,18 +110,13 @@ std::unique_ptr<Widget> Plasma6Theme::create_title_bar(Window *window) const {
     p->initializeTitleBar();
     return p;
 }
-
 Palette Plasma6Theme::default_palette(ColorScheme scheme) const {
     Palette p = BaseTheme::default_palette(scheme);
     Color plasma6_color = Color::from_rgb(0x3daee9);
-    p.inline_scrollbars = false;
-    p.corner_radius = 6.0f;
-    p.tab_radius = 5.0f;
-    p.window_decoration = {32, 0, 0, 0};
-    p.bottom_shadow = true;
-    p.chrome_lines = !true;
 
     switch (scheme) {
+        // ...
+
     case ColorScheme::Light:
         p.window_inactive = Color::from_rgb(0xeff0f1);
         p.window = Color::from_rgb(0xe3e5e7);
@@ -169,11 +171,11 @@ Palette Plasma6Theme::default_palette(ColorScheme scheme) const {
 void Plasma6Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_view text,
                                   int depth, bool has_children, bool expanded, bool selected,
                                   bool hovered, bool alternate) const {
-    auto const &style = tree_view;
+    auto const &tree_style = this->style.treeView;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto indent = style.indent;
+    auto indent = tree_style.indent;
 
-    auto x_offset = style.item_padding_h + depth * indent;
+    auto x_offset = tree_style.item_padding_h + depth * indent;
 
     if (has_children) {
         auto center_x = x_offset + indent / 2;

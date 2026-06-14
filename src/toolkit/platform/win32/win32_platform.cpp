@@ -1227,7 +1227,7 @@ void Win32PlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial
 void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
 
     float scale = get_window_scale(hwnd);
-    auto const &style = Theme::current().tooltip;
+    auto const &style = Theme::current().style.tooltip;
     auto &palette = Theme::current().palette;
     float pad = style.padding, font_sz = palette.fonts.size;
     auto text_sz = rasterizer_.measure(text, font_sz);
@@ -1276,7 +1276,7 @@ void Win32PlatformWindow::show_tooltip_window(std::string const &text, Point pos
     backend_->render_to_buffer(app_, piw, pih, scale, bits, [&](Painter &p) {
         auto fm = p.font_metrics(font_sz);
         Rect r{0, 0, w, h};
-        p.fill_rounded_rect(r, palette.tooltip, palette.corner_radius);
+        p.fill_rounded_rect(r, palette.tooltip, Theme::current().style.corner_radius);
         // p.draw_rounded_rect(r, style.border, style.corner_radius, style.border_width);
         // p.draw_text(text, {pad, pad + fm.ascent}, style.text, font_sz);
         p.draw_text(text, {pad, pad + fm.ascent}, palette.text, palette.fonts.size);

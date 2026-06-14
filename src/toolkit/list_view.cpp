@@ -131,7 +131,7 @@ void ListView::update_scroll_state() {
 }
 
 float ListView::item_height() const {
-    auto const &style = Theme::current().list_view;
+    auto const &style = Theme::current().style.listView;
     auto const &palette = Theme::current().palette;
     auto fm = font_metrics(palette.fonts.size);
     return fm.height + style.item_padding * 2;
@@ -149,7 +149,7 @@ std::optional<size_t> ListView::item_at_y(float y) const {
         return std::nullopt;
     }
     auto const &palette = Theme::current().palette;
-    auto bw = palette.border_width;
+    auto bw = Theme::current().style.border_width;
 
     auto local_y = y - bw + scroll_y_;
     if (local_y < 0) {
@@ -177,11 +177,11 @@ void ListView::paint(Painter &painter) {
         return;
     }
 
-    auto const &style = theme.list_view;
+    auto const &style = theme.style.listView;
     auto const &palette = theme.palette;
     auto ih = item_height();
     auto n = model_->row_count();
-    auto bw = palette.border_width;
+    auto bw = Theme::current().style.border_width;
 
     auto vr = viewport_rect();
     auto first_visible = static_cast<size_t>(scroll_y_ / ih);
@@ -331,7 +331,7 @@ bool ListView::handle_key(KeyEvent const &event) {
         return true;
     }
     case Key::PageDown: {
-        auto bw = Theme::current().palette.border_width;
+        auto bw = Theme::current().Theme::current().style.border_width;
         auto page = std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
         auto next = cursor_ ? std::min(*cursor_ + page, n - 1) : size_t{0};
         if (multi_select_ && event.shift) {
@@ -348,7 +348,7 @@ bool ListView::handle_key(KeyEvent const &event) {
         return true;
     }
     case Key::PageUp: {
-        auto bw = Theme::current().palette.border_width;
+        auto bw = Theme::current().Theme::current().style.border_width;
         auto page = std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
         auto next = (cursor_ && *cursor_ >= page) ? *cursor_ - page : size_t{0};
         if (multi_select_ && event.shift) {

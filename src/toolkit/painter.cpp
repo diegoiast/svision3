@@ -11,19 +11,20 @@ namespace toolkit {
 
 void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const Palette &palette,
                                 bool sunken, bool bottom_shadow) {
-    if (palette.beveled) {
-        if (palette.corner_radius > 0.0f) {
-            fill_rounded_rect(rect, bg, palette.corner_radius);
+    auto &style = Theme::current().style;
+    if (style.beveled) {
+        if (style.corner_radius > 0.0f) {
+            fill_rounded_rect(rect, bg, style.corner_radius);
         } else {
             fill_rect(rect, bg);
         }
 
-        if (palette.border_width <= 0) {
+        if (style.border_width <= 0) {
             return;
         }
 
         // FIXME: should we move this to the theme instead?
-        if (palette.border_width >= 2.0f) {
+        if (style.border_width >= 2.0f) {
             // 2-pixel bevel (Windows 95 style)
             auto c_tl_outer = sunken ? palette.shadow : palette.light;
             auto c_tl_inner = sunken ? palette.dark_shadow : palette.window;
@@ -59,14 +60,15 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
                       {rect.x + rect.width - 1, rect.y + rect.height - 1}, bottom_right, 1.0f);
         }
     } else {
-        auto bw = palette.border_width;
+        auto &style = Theme::current().style;
+        auto bw = style.border_width;
         auto frame_rect = rect;
         if (bottom_shadow) {
             frame_rect.height = std::max(0.0f, frame_rect.height - 1.0f);
         }
 
-        if (palette.corner_radius > 0.0f) {
-            fill_rounded_rect(frame_rect, bg, palette.corner_radius);
+        if (style.corner_radius > 0.0f) {
+            fill_rounded_rect(frame_rect, bg, style.corner_radius);
         } else {
             fill_rect(frame_rect, bg);
         }
@@ -75,9 +77,9 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
             auto inset = bw / 2.0f;
             auto border_rect = frame_rect.inset(inset);
 
-            if (palette.corner_radius > 0.0f) {
+            if (style.corner_radius > 0.0f) {
                 draw_rounded_rect(border_rect, border,
-                                  std::max(0.0f, palette.corner_radius - inset), bw);
+                                  std::max(0.0f, style.corner_radius - inset), bw);
             } else {
                 draw_rect(border_rect, border, bw);
             }
@@ -85,7 +87,7 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
 
         // Draw the bottom line, with corners, a pixel down, used by Plasma and GNome
         if (bw > 0 && bottom_shadow) {
-            auto r = palette.corner_radius;
+            auto r = style.corner_radius;
             // The frame was 1px smaller, so we draw shadow at full size and clip to bottom part
             push_clip({rect.x, rect.y + rect.height - r - 1.0f, rect.width, r + 1.0f});
             draw_rounded_rect(rect.inset(bw / 2.0f), palette.dark_shadow, r, bw);

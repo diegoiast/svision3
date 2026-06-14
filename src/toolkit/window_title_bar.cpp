@@ -138,7 +138,7 @@ auto WindowTitleBar::create_btn(DecorationButton type) -> Button * {
 }
 
 Size WindowTitleBar::size_hint() const {
-    auto const &m = Theme::current().palette.window_decoration;
+    auto const &m = Theme::current().Theme::current().style.window_decoration;
     return {100.0f, m.top};
 }
 

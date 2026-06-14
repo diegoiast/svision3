@@ -31,7 +31,6 @@ void Combobox::from_json(nlohmann::json const &j) {
     }
 }
 
-
 Combobox &Combobox::set_items(std::vector<std::string> items) {
     items_ = std::move(items);
     if (selected_index_ >= static_cast<int>(items_.size())) {
@@ -58,7 +57,7 @@ auto Combobox::selected_text() const -> std::string {
 
 auto Combobox::dropdown_item_height() const -> float {
     auto const &theme = Theme::current();
-    auto const &style = Theme::current().combobox;
+    auto const &style = Theme::current().style.combo;
     auto fm = font_metrics(theme.palette.fonts.size);
     return fm.height + style.item_padding * 2.0f;
 }
@@ -154,14 +153,16 @@ void Combobox::paint(Painter &painter) {
 }
 
 void Combobox::paint_dropdown(Painter &painter) {
-    // auto const &style = Theme::current().combobox;
+    auto &theme = Theme::current();
+    auto const &palette = theme.palette;
+    auto &style = theme.style;
+
     auto db = dropdown_bounds();
     auto local_db = Rect{0, 0, db.width, db.height};
     auto item_h = dropdown_item_height();
     auto total = static_cast<int>(items_.size());
     auto scrollable = drop_max_visible_ < total;
 
-    auto const &palette = Theme::current().palette;
     painter.fill_rect(local_db, palette.base);
     painter.push_clip(local_db);
 
@@ -173,7 +174,7 @@ void Combobox::paint_dropdown(Painter &painter) {
             continue;
         }
 
-        Theme::current().draw_combobox_item(painter, item_rect, items_[i], i == hovered_index_);
+        theme.draw_combobox_item(painter, item_rect, items_[i], i == hovered_index_);
     }
 
     if (scrollable) {
@@ -181,17 +182,17 @@ void Combobox::paint_dropdown(Painter &painter) {
         auto bar_h = std::max(12.0f, db.height * (db.height / content_h));
         auto bar_y = (drop_scroll_ / content_h) * db.height;
         auto sb = Rect{db.width - 5.0f, bar_y, 3.0f, bar_h};
-        // painter.fill_rounded_rect(sb, palette.text, 1.5f);
+        // FIXME: not using colors from theme
         painter.fill_rounded_rect(sb, Color::from_argb(0x00ff00), 1.5f);
     }
 
     painter.pop_clip();
 
-    if (palette.corner_radius > 0) {
-        painter.draw_rounded_rect(local_db, palette.border, palette.corner_radius,
-                                  palette.border_width);
+    if (style.corner_radius > 0) {
+        painter.draw_rounded_rect(local_db, palette.border, style.corner_radius,
+                                  style.border_width);
     } else {
-        painter.draw_rect(local_db, palette.border, palette.border_width);
+        painter.draw_rect(local_db, palette.border, style.border_width);
     }
 }
 
@@ -337,7 +338,7 @@ bool Combobox::handle_key(KeyEvent const &event) {
 
 auto Combobox::size_hint() const -> Size {
     auto const &theme = Theme::current();
-    auto const &style = theme.combobox;
+    auto const &style = theme.style.combo;
     auto const &palette = theme.palette;
     auto fm = font_metrics(palette.fonts.size);
     auto max_w = 0.0f;

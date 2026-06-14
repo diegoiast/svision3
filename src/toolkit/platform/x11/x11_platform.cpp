@@ -1531,7 +1531,7 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point pos) 
     auto *d = app_->impl_.get();
     auto *w = impl_.get();
     auto scale = d->scale;
-    auto const &style = Theme::current().tooltip;
+    auto const &style = Theme::current().style.tooltip;
     auto const &theme = Theme::current();
     // FIXME padding for tooltips is hardcodede in X11
     auto pad = 5.0f;
@@ -1582,9 +1582,9 @@ void X11PlatformWindow::show_tooltip_window(std::string const &text, Point pos) 
     w->backend->render_to_buffer(app_, piw, pih, scale, pixels.data(), [&](Painter &p) {
         auto fm = p.font_metrics(fs);
         Rect r{0, 0, tw, th};
-        p.fill_rounded_rect(r, theme.palette.tooltip, theme.palette.corner_radius);
-        p.draw_rounded_rect(r, theme.palette.border, theme.palette.corner_radius,
-                            theme.palette.border_width);
+        p.fill_rounded_rect(r, theme.palette.tooltip, theme.Theme::current().style.corner_radius);
+        p.draw_rounded_rect(r, theme.palette.border, theme.Theme::current().style.corner_radius,
+                            theme.Theme::current().style.border_width);
         p.draw_text(text, {pad, pad + fm.ascent}, theme.palette.text, fs);
     });
 

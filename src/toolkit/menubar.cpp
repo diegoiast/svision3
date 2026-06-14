@@ -316,7 +316,7 @@ void MenuBar::toggle_menu(int index) {
 
 Size MenuBar::size_hint() const {
     auto const &theme = Theme::current();
-    auto const &style = theme.menubar;
+    auto const &style = theme.style.menuBar;
     auto const &palette = theme.palette;
 
     auto fm = font_metrics(palette.fonts.size);

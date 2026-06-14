@@ -9,9 +9,7 @@
 
 namespace toolkit {
 
-Slider::Slider(Orientation orientation) : orientation_(orientation) {
-    Widget::set_focusable(true);
-}
+Slider::Slider(Orientation orientation) : orientation_(orientation) { Widget::set_focusable(true); }
 
 Slider &Slider::set_value(float v) {
     v = std::clamp(v, min_, max_);
@@ -39,7 +37,7 @@ Slider &Slider::set_minimum(float m) {
 
 Slider &Slider::set_maximum(float m) {
     if (max_ == m) {
-        *this;
+        return *this;
     }
     max_ = m;
     set_value(value_);
@@ -60,7 +58,7 @@ Slider &Slider::set_range(float min, float max) {
 }
 
 float Slider::value_to_pos(float v) const {
-    auto const &style = Theme::current().slider;
+    auto const &style = Theme::current().style.slider;
     auto h_size = style.handle_size;
     auto horizontal = orientation_ == Orientation::Horizontal;
     auto length = horizontal ? rect_.width : rect_.height;
@@ -82,7 +80,7 @@ float Slider::value_to_pos(float v) const {
 }
 
 float Slider::pos_to_value(float p) const {
-    auto const &style = Theme::current().slider;
+    auto const &style = Theme::current().style.slider;
     auto h_size = style.handle_size;
     auto horizontal = orientation_ == Orientation::Horizontal;
     auto length = horizontal ? rect_.width : rect_.height;
@@ -188,7 +186,7 @@ bool Slider::handle_key(KeyEvent const &event) {
 }
 
 Size Slider::size_hint() const {
-    auto const &style = Theme::current().slider;
+    auto const &style = Theme::current().style.slider;
     auto s = style.handle_size + 4.0f;
     if (orientation_ == Orientation::Horizontal) {
         return {100.0f, s};

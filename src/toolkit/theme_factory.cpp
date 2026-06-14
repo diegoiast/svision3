@@ -65,31 +65,31 @@ class GnomeTitleBar : public WindowTitleBar {
         layout->paint(painter);
     }
 };
-
 MaterialTheme::MaterialTheme(ColorScheme scheme, std::optional<Palette> p)
     : BaseTheme(scheme, std::move(p)) {
     if (!p) {
         palette = this->default_palette(scheme);
     }
     name = "Material";
-    menu.padding = {4, 4, 4, 4};
-    menubar.padding = {4, 12, 4, 12};
-    slider.handle_size = 18.0f;
-    slider.groove_thickness = 4.0f;
-    focus_ring_margin = 3.0f;
-    focus_ring_corner_radius = 3.0f;
-    tab_widget.indicator_weight = 2.0f;
+    style.menu.padding = {4, 4, 4, 4};
+    style.menuBar.padding = {4, 12, 4, 12};
+    style.slider.handle_size = 18.0f;
+    style.slider.groove_thickness = 4.0f;
+    style.ringFocus.margin = 3.0f;
+    style.ringFocus.corner_radius = 3.0f;
+    style.tabWidget.indicator_weight = 2.0f;
+    style.corner_radius = 10.0f;
+    style.tabWidget.tab_radius = 4.0f;
+    style.window_decoration = {32, 0, 0, 0};
 }
 
 Palette MaterialTheme::default_palette(ColorScheme scheme) const {
     auto material_purple = Color::from_rgb(0x6750A4);
     Palette p = BaseTheme::default_palette(scheme);
-    p.corner_radius = 10.0f;
-    p.tab_radius = 0.0f;
-    p.window_decoration = {32, 0, 0, 0};
-    p.tab_radius = 4.0f;
 
     switch (scheme) {
+        // ...
+
     case ColorScheme::Light:
         p.window = Color::from_rgb(0xFFFBFE);
         p.base = Color::from_rgb(0xFFFFFF);
@@ -139,7 +139,6 @@ Palette MaterialTheme::default_palette(ColorScheme scheme) const {
     }
     return p;
 }
-
 GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p)
     : BaseTheme(scheme, std::move(p)) {
     if (!p) {
@@ -147,36 +146,33 @@ GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p)
     }
     name = "GNOME";
 
-    button.padding = {10, 16, 10, 16};
+    style.beveled = true;
+    style.chrome_lines = false;
+    style.corner_radius = 10.0f;
+    style.inline_scrollbars = false;
+    style.tabWidget.tab_radius = 10.0f;
+    style.tabWidget.tab_padding = 4.0f;
+    style.tabWidget.tab_fully_rounded = true;
+    style.window_decoration = {36, 0, 0, 0};
+    style.bottom_shadow = true;
 
-    slider.handle_size = 22.0f;
-    slider.groove_thickness = 6.0f;
-
-    focus_ring_margin = 2.0f;
-    focus_ring_corner_radius = 2.0f;
-
-    scrollbar.show_buttons = false;
-    scrollbar.thickness = 6.0f;
-    scrollbar.show_frame = false;
-    scrollbar.padding = {0, 0, 0, 0};
-
-    tab_widget.indicator_weight = 0.0f;
-    tab_widget.tab_padding_v = 12.0f;
+    style.button.padding = {10, 16, 10, 16};
+    style.slider.handle_size = 22.0f;
+    style.slider.groove_thickness = 6.0f;
+    style.ringFocus.margin = 2.0f;
+    style.ringFocus.corner_radius = 2.0f;
+    style.scrollbar.show_buttons = false;
+    style.scrollbar.thickness = 6.0f;
+    style.scrollbar.show_frame = false;
+    style.scrollbar.padding = {0, 0, 0, 0};
+    style.tabWidget.indicator_weight = 0.0f;
+    style.tabWidget.tab_padding_v = 12.0f;
+    style.bottom_shadow = true;
 }
 
 Palette GnomeTheme::default_palette(ColorScheme scheme) const {
     auto adwaita_color = Color::from_argb(0xFF3465A4);
     Palette p = BaseTheme::default_palette(scheme);
-    p.beveled = true;
-    p.chrome_lines = false;
-    p.corner_radius = 10.0f;
-    p.inline_scrollbars = false;
-
-    p.bottom_shadow = true;
-    p.tab_radius = 10.0f;
-    p.tab_padding = 4.0f;
-    p.tab_fully_rounded = true;
-    p.window_decoration = {36, 0, 0, 0};
 
     switch (scheme) {
     case ColorScheme::Light:
@@ -227,18 +223,15 @@ Palette GnomeTheme::default_palette(ColorScheme scheme) const {
         p.error = Color::from_argb(0xFFC62828);
         p.tab_select_background = p.base;
         p.tab_background = p.window;
-        p.bottom_shadow = true;
         break;
     }
-
-    // p.accent = Color::from_rgb(0xFF0000);
-    // p.highlight = Color::from_rgb(0xFFFF00);
     return p;
 }
 
 void GnomeTheme::draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
                                     WidgetState const &state) const {
-    Color bg = palette.base;
+    auto &style = this->style;
+    auto bg = palette.base;
     if (state.interaction == ButtonState::Hovered) {
         bg = palette.tab_select_background;
     }

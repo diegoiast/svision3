@@ -152,7 +152,7 @@ TEST_CASE("ListView scrollbar visibility based on theme", "[listview]") {
         Theme::set_current(std::move(t));
         lv.on_theme_changed();
 
-        REQUIRE(Theme::current().palette.inline_scrollbars == true);
+        REQUIRE(Theme::current().style.inline_scrollbars == true);
         // We can't easily check vscroll_ private member here without making it public or using a friend,
         // but we can check if it's found at a point where it should be if it were visible.
         // Actually, we added find_focusable_at and widget_at overrides.
@@ -167,7 +167,7 @@ TEST_CASE("ListView scrollbar visibility based on theme", "[listview]") {
         Theme::set_current(std::move(t));
         lv.on_theme_changed();
 
-        REQUIRE(Theme::current().palette.inline_scrollbars == false);
+        REQUIRE(Theme::current().style.inline_scrollbars == false);
         
         // At (90, 50), it should hit the scrollbar widget.
         // ListView is 100 wide. bw=1. sw=16. Scrollbar is at [100-1-16, 99] = [83, 99].

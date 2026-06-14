@@ -33,7 +33,7 @@ void ContextMenu::show(Window *win, Point position) {
         return;
     }
 
-    auto const &style = Theme::current().combobox;
+    auto const &style = Theme::current().style.combo;
     auto const &theme = Theme::current();
     auto const &palette = theme.palette;
     auto max_name_w = 0.0f;

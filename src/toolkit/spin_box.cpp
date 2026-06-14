@@ -151,7 +151,7 @@ void SpinBox::step_down() {
 CursorShape SpinBox::cursor() const { return CursorShape::IBeam; }
 
 Size SpinBox::size_hint() const {
-    auto const &style = Theme::current().line_input;
+    auto const &style = Theme::current().style.lineInput;
     auto const &palette = Theme::current().palette;
 
     auto h = palette.fonts.size + style.padding.top + style.padding.bottom + 8.0f;

@@ -1444,7 +1444,7 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
     tooltip_data->text = text;
 
     auto const &theme = Theme::current();
-    auto const &style = Theme::current().tooltip;
+    auto const &style = Theme::current().style.tooltip;
     auto fs = theme.palette.fonts.size;
     auto *r = app_->rasterizer();
     auto tsz = r ? r->measure(text, fs) : Size{};
@@ -1595,8 +1595,8 @@ void WaylandPlatformWindow::paint_tooltip() {
     backend->render_to_buffer(app_, pw, ph, scale, data, [&](Painter &p) {
         auto fm = p.font_metrics(fs);
         Rect r{0, 0, tw, th};
-        p.fill_rounded_rect(r, palette.tooltip, palette.corner_radius);
-        p.draw_rounded_rect(r, palette.border, palette.corner_radius, palette.border_width);
+        p.fill_rounded_rect(r, palette.tooltip, Theme::current().style.corner_radius);
+        p.draw_rounded_rect(r, palette.border, Theme::current().style.corner_radius, Theme::current().style.border_width);
         p.draw_text(tooltip_data->text, {padding, padding + fm.ascent}, palette.text, fs);
     });
 
