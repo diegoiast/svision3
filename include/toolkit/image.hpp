@@ -44,7 +44,7 @@ class ImageLoaderInterface {
      * @param size Size of the image data in bytes.
      * @return A shared pointer to the loaded image data, or nullptr if loading failed.
      */
-    virtual auto load(const uint8_t *data, size_t size) -> Icon = 0;
+    virtual auto load_from_memory(const uint8_t *data, size_t size) -> Icon = 0;
 
     /**
      * @brief Get the list of supported file extensions (e.g., ".png", ".jpg").
@@ -52,13 +52,20 @@ class ImageLoaderInterface {
     virtual auto supported_extensions() const -> std::vector<std::string> = 0;
 };
 
+class SVGLoaderInterface : public ImageLoaderInterface {
+  public:
+    virtual auto load_svg(std::string_view path, int width, int height) -> Icon = 0;
+    virtual auto load_svg_from_memory(const uint8_t *data, size_t size, int width, int height)
+        -> Icon = 0;
+};
+
 class IconProvider {
   public:
     virtual ~IconProvider() = default;
 
     // For names, use xdg_icons.hpp, XDG::IconContexts, XDG::IconActions or similar
-    virtual auto load(std::string_view icon_name, int size,
-                      std::string_view context = XDG::IconContexts::actions) -> Icon = 0;
+    virtual auto load(std::string_view icon_name, int size, std::string_view context = "")
+        -> Icon = 0;
 };
 
 std::shared_ptr<ImageData> parse_xpm(std::string_view xpm_data);

@@ -140,7 +140,7 @@ std::vector<DirItem> scan_directory(std::string const &path_str, FileDialogWidge
             auto is_dir = entry.is_directory();
             auto icon_name =
                 is_dir ? XDG::IconMimeTypes::inodeDirectory : XDG::IconMimeTypes::textXGeneric;
-            auto icon_cat = is_dir ? XDG::IconContexts::places : XDG::IconContexts::mimeTypes;
+            auto icon_cat = "";
 
             std::uintmax_t sz = is_dir ? 0 : entry.file_size();
             items.push_back(
@@ -304,7 +304,7 @@ void FileDialogWidget::setup_ui() {
 
     auto home_btn = std::make_unique<Button>("");
     home_btn->set_tooltip("Go to Home");
-    home_btn->set_icon(app.load_icon(XDG::IconActions::goHome, 16, XDG::IconContexts::actions));
+    home_btn->set_icon(app.load_icon(XDG::IconActions::goHome, 16));
     home_btn->on_click = [this]() {
         auto home = std::getenv("HOME");
         if (!home) {
@@ -318,14 +318,14 @@ void FileDialogWidget::setup_ui() {
 
     auto up_btn = std::make_unique<Button>("");
     up_btn->set_tooltip("Up One Level");
-    up_btn->set_icon(app.load_icon(XDG::IconActions::goUp, 16, XDG::IconContexts::actions));
+    up_btn->set_icon(app.load_icon(XDG::IconActions::goUp, 16));
     up_button_ = up_btn.get();
     up_button_->on_click = [this]() { navigate_up(); };
     toolbar_->add_widget(std::move(up_btn));
 
     auto new_btn = std::make_unique<Button>("");
     new_btn->set_tooltip("Create New Folder");
-    new_btn->set_icon(app.load_icon(XDG::IconActions::folderNew, 16, XDG::IconContexts::actions));
+    new_btn->set_icon(app.load_icon(XDG::IconActions::folderNew, 16));
     new_button_ = new_btn.get();
     new_button_->on_click = [this]() {
         if (on_new) {
@@ -339,18 +339,15 @@ void FileDialogWidget::setup_ui() {
 
     auto &list_btn = view_group->add_button("");
     list_btn.set_tooltip("List View");
-    list_btn.set_icon(
-        app.load_icon(XDG::IconActions::viewListIconsSymbolic, 16, XDG::IconContexts::actions));
+    list_btn.set_icon(app.load_icon(XDG::IconActions::viewListIconsSymbolic, 16));
 
     auto &icon_btn = view_group->add_button("");
     icon_btn.set_tooltip("Icon View");
-    icon_btn.set_icon(
-        app.load_icon(XDG::IconActions::viewListCompactSymbolic, 16, XDG::IconContexts::actions));
+    icon_btn.set_icon(app.load_icon(XDG::IconActions::viewListCompactSymbolic, 16));
 
     auto &details_btn = view_group->add_button("");
     details_btn.set_tooltip("Details View");
-    details_btn.set_icon(
-        app.load_icon(XDG::IconActions::viewListDetailsSymbolic, 16, XDG::IconContexts::actions));
+    details_btn.set_icon(app.load_icon(XDG::IconActions::viewListDetailsSymbolic, 16));
 
     view_group->on_change = [this](int index) {
         switch (index) {
@@ -383,8 +380,7 @@ void FileDialogWidget::setup_ui() {
 
     auto show_hidden_btn = std::make_unique<Button>("");
     show_hidden_btn->set_tooltip("Toggle Show Hidden Files");
-    show_hidden_btn->set_icon(
-        app.load_icon(XDG::IconActions::viewFilter, 16, XDG::IconContexts::actions));
+    show_hidden_btn->set_icon(app.load_icon(XDG::IconActions::viewFilter, 16));
     show_hidden_btn->on_click = [this] { set_show_hidden(!show_hidden()); };
     toolbar_->add_widget(std::move(show_hidden_btn));
 

@@ -32,8 +32,18 @@ MacOSPlatformApplicationBase::MacOSPlatformApplicationBase()
 
 MacOSPlatformApplicationBase::~MacOSPlatformApplicationBase() = default;
 
-std::unique_ptr<ImageLoaderInterface> MacOSPlatformApplicationBase::create_image_loader() {
-    return std::make_unique<StbImageLoader>();
+std::shared_ptr<ImageLoaderInterface> MacOSPlatformApplicationBase::get_image_loader() {
+    if (!image_loader_) {
+        image_loader_ = std::make_shared<StbImageLoader>();
+    }
+    return image_loader_;
+}
+
+std::shared_ptr<SVGLoaderInterface> MacOSPlatformApplicationBase::get_svg_loader() {
+    if (!svg_loader_) {
+        svg_loader_ = std::make_shared<LunasvgImageLoader>();
+    }
+    return svg_loader_;
 }
 
 int MacOSPlatformApplicationBase::run() {

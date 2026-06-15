@@ -1,8 +1,30 @@
 #include "toolkit/xdg_image_loader.hpp"
 #include "toolkit/stb_image_loader.hpp"
+#include "toolkit/lunasvg_image_loader.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace toolkit;
+
+TEST_CASE("LunasvgImageLoader::load returns image data", "[image]") {
+    LunasvgImageLoader loader;
+
+    auto img = loader.load("themes/Faenza/actions/scalable/add-files-to-archive.svg");
+    REQUIRE(img);
+    REQUIRE(img->width > 0);
+    REQUIRE(img->height > 0);
+    REQUIRE(img->channels == 4);
+    REQUIRE(!img->pixels.empty());
+}
+
+TEST_CASE("XdgImageLoader loads SVG icon", "[image]") {
+    XdgImageLoader loader("Faenza");
+
+    // add-files-to-archive is in actions/scalable
+    auto img = loader.load("add-files-to-archive", 32, "actions");
+    REQUIRE(img);
+    REQUIRE(img->width == 32);
+    REQUIRE(img->height == 32);
+}
 
 TEST_CASE("StbImageLoader::load returns image data", "[image]") {
     StbImageLoader loader;

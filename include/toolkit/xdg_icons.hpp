@@ -86,24 +86,24 @@ inline constexpr const char *mailReplySender = "mail-reply-sender";
 inline constexpr const char *mailSend = "mail-send";
 
 // Are not strictly in the docs, but in actual themes
-inline constexpr const char *documentExport = "document-export.png";
-inline constexpr const char *documentImport = "document-import.png";
-inline constexpr const char *documentNew = "document-new.png";
-inline constexpr const char *documentOpen = "document-open.png";
-inline constexpr const char *documentRecent = "document-open-recent.png";
-inline constexpr const char *documentPageSetup = "document-page-setup.png";
-inline constexpr const char *documentPrint = "document-print.png";
-inline constexpr const char *documentPrintPreview = "document-print-preview.png";
-inline constexpr const char *documentProperties = "document-properties.png";
-inline constexpr const char *documentRevert = "document-revert.png";
-inline constexpr const char *documentSave = "document-save.png";
-inline constexpr const char *documentSaveAs = "document-save-as.png";
-inline constexpr const char *documentSend = "document-send.png";
+inline constexpr const char *documentExport = "document-export";
+inline constexpr const char *documentImport = "document-import";
+inline constexpr const char *documentNew = "document-new";
+inline constexpr const char *documentOpen = "document-open";
+inline constexpr const char *documentRecent = "document-open-recent";
+inline constexpr const char *documentPageSetup = "document-page-setup";
+inline constexpr const char *documentPrint = "document-print";
+inline constexpr const char *documentPrintPreview = "document-print-preview";
+inline constexpr const char *documentProperties = "document-properties";
+inline constexpr const char *documentRevert = "document-revert";
+inline constexpr const char *documentSave = "document-save";
+inline constexpr const char *documentSaveAs = "document-save-as";
+inline constexpr const char *documentSend = "document-send";
 
 inline constexpr const char *dialogApply = "dialog-apply";
-inline constexpr const char *dialogNo = "dialog-no.png";
-inline constexpr const char *dialogOk = "dialog-ok.png";
-inline constexpr const char *dialogYes = "dialog-yes.png";
+inline constexpr const char *dialogNo = "dialog-no";
+inline constexpr const char *dialogOk = "dialog-ok";
+inline constexpr const char *dialogYes = "dialog-yes";
 } // namespace IconActions
 
 namespace IconApplications {

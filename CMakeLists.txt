@@ -9,6 +9,7 @@ find_package(spdlog REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
 find_package(stb CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(lunasvg REQUIRED)
 
 if(UNIX AND NOT APPLE)
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" ON)
@@ -43,6 +44,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/xdg_image_loader.cpp
     src/toolkit/image_widget.cpp
     src/toolkit/stb_image_loader.cpp
+    src/toolkit/lunasvg_image_loader.cpp
     src/toolkit/toolbar.cpp
     src/toolkit/button.cpp
     src/toolkit/button_group.cpp
@@ -269,7 +271,7 @@ endif()
 add_library(toolkit STATIC ${TOOLKIT_SOURCES})
 target_include_directories(toolkit PUBLIC include PRIVATE src)
 target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
-target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus stb::stb litehtml md4c::md4c-html nlohmann_json::nlohmann_json)
+target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus stb::stb litehtml md4c::md4c-html nlohmann_json::nlohmann_json lunasvg::lunasvg)
 
 if(TOOLKIT_WITH_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)

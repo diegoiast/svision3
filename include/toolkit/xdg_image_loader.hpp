@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -34,8 +35,7 @@ class XdgImageLoader : public IconProvider {
     explicit XdgImageLoader();
     explicit XdgImageLoader(std::string_view theme_name);
 
-    auto load(std::string_view icon_name, int size,
-              std::string_view context = XDG::IconContexts::actions) -> Icon override;
+    auto load(std::string_view icon_name, int size, std::string_view context = "") -> Icon override;
     auto set_theme(std::string_view theme_name) -> void;
     auto theme_name() const -> std::string_view;
 
@@ -47,7 +47,6 @@ class XdgImageLoader : public IconProvider {
 
     std::string current_theme;
     std::unique_ptr<IconTheme> theme;
-    std::unique_ptr<ImageLoaderInterface> loader;
     std::vector<std::filesystem::path> xdg_dirs;
 };
 

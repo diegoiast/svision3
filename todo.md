@@ -129,7 +129,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 33. [x] Image widget.
 34. [x] Markdown tooltip.
 35. [x] Undo/redo system (text area + LineInput).
-36. [ ] Client side decorations with theme.
+36. [ ] Client side decorations with theme. 
 37. [ ] Proper filter API for listview and table view.
 38. [ ] MainWindow with docking widgets on the sides.
 39. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
@@ -163,10 +163,10 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 8. [x] Win95 progress bar: taller, chunked blocks.
 9. [x] Native theme/font support.
 10. [ ] Tint support.
-11. [ ] Scrollbar theming (overlay vs classic per theme).
+11. [x] Scrollbar theming (overlay vs classic per theme).
 12. [x] XDG Icon theme support (PNG).
-13. [ ] SVG XDG icon theme support.
-14. [ ] Simplify and minimize the theme structs.
+13. [x] SVG XDG icon theme support.
+14. [x] Simplify and minimize the theme structs.
 15. [ ] Theme should be in application, then window then widget, in all but app - optional.
 16. [ ] Load theme from config file (which theme?).
 17. [x] Themes should not be an enum, but virtual classes.

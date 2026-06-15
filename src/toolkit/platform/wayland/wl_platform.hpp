@@ -45,12 +45,14 @@ namespace toolkit {
 class WaylandPlatformWindow;
 
 class WaylandPlatformApplication : public PlatformApplication {
+    std::shared_ptr<ImageLoaderInterface> image_loader_; 
+    std::shared_ptr<SVGLoaderInterface> svg_loader_;
   public:
     WaylandPlatformApplication();
     ~WaylandPlatformApplication() override;
     std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
                                                   WindowOptions options) override;
-    std::unique_ptr<ImageLoaderInterface> create_image_loader() override;
+    std::shared_ptr<ImageLoaderInterface> get_image_loader() override; std::shared_ptr<SVGLoaderInterface> get_svg_loader() override;
     int run() override;
     void run_until(std::function<bool()> should_exit) override;
     void quit() override;

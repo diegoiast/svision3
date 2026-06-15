@@ -11,7 +11,7 @@ using namespace toolkit;
 
 TEST_CASE("New Image API", "[image]") {
     auto app = create_platform_application();
-    auto loader = app->create_image_loader();
+    auto loader = app->get_image_loader();
 
     SECTION("Supported extensions") {
         auto ext = loader->supported_extensions();
@@ -39,7 +39,7 @@ TEST_CASE("New Image API", "[image]") {
         std::vector<uint8_t> data((std::istreambuf_iterator<char>(file)),
                                   std::istreambuf_iterator<char>());
 
-        auto img = loader->load(data.data(), data.size());
+        auto img = loader->load_from_memory(data.data(), data.size());
         REQUIRE(img != nullptr);
         CHECK(img->width == 16);
         CHECK(img->height == 16);

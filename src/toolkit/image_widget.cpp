@@ -34,13 +34,13 @@ void ImageWidget::from_json(nlohmann::json const &j) {
 }
 
 void ImageWidget::load(std::string_view path) {
-    auto loader = detail::current_platform()->create_image_loader();
+    auto loader = detail::current_platform()->get_image_loader();
     set_image(loader->load(path));
 }
 
 void ImageWidget::load(const uint8_t *data, size_t size) {
-    auto loader = detail::current_platform()->create_image_loader();
-    set_image(loader->load(data, size));
+    auto loader = detail::current_platform()->get_image_loader();
+    set_image(loader->load_from_memory(data, size));
 }
 
 void ImageWidget::set_image(std::shared_ptr<ImageData> image) {

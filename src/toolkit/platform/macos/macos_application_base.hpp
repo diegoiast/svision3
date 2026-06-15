@@ -5,10 +5,14 @@
 namespace toolkit {
 
 class MacOSPlatformApplicationBase : public PlatformApplication {
+    std::shared_ptr<ImageLoaderInterface> image_loader_;
+    std::shared_ptr<SVGLoaderInterface> svg_loader_;
+
   public:
     MacOSPlatformApplicationBase();
     ~MacOSPlatformApplicationBase() override;
-    std::unique_ptr<ImageLoaderInterface> create_image_loader() override;
+    std::shared_ptr<ImageLoaderInterface> get_image_loader() override;
+    std::shared_ptr<SVGLoaderInterface> get_svg_loader() override;
     int run() override;
     void quit() override;
     void post_to_main_thread(std::function<void()> fn) override;

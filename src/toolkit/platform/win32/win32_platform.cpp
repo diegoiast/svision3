@@ -618,8 +618,18 @@ std::unique_ptr<PlatformWindow> Win32PlatformApplication::create_window(std::str
                                                                         WindowOptions options) {
     return std::make_unique<Win32PlatformWindow>(this, title, size, owner, options);
 }
-std::unique_ptr<ImageLoaderInterface> Win32PlatformApplication::create_image_loader() {
-    return std::make_unique<StbImageLoader>();
+std::shared_ptr<ImageLoaderInterface> Win32PlatformApplication::get_image_loader() {
+    if (!image_loader_) {
+        image_loader_ = std::make_shared<StbImageLoader>();
+    }
+    return image_loader_;
+}
+
+std::shared_ptr<SVGLoaderInterface> Win32PlatformApplication::get_svg_loader() {
+    if (!svg_loader_) {
+        svg_loader_ = std::make_shared<LunasvgImageLoader>();
+    }
+    return svg_loader_;
 }
 
 int Win32PlatformApplication::run() {

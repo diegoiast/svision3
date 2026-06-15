@@ -72,7 +72,8 @@ class PlatformApplication {
     virtual ~PlatformApplication() = default;
     virtual std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size,
                                                           Window *owner, WindowOptions options) = 0;
-    virtual std::unique_ptr<ImageLoaderInterface> create_image_loader() = 0;
+    virtual std::shared_ptr<ImageLoaderInterface> get_image_loader() = 0;
+    virtual std::shared_ptr<SVGLoaderInterface> get_svg_loader() = 0;
     virtual int run() = 0;
     virtual void run_until(std::function<bool()> should_exit) = 0;
     virtual void quit() = 0;

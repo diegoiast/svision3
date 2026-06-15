@@ -7,6 +7,7 @@
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/painters/gl_painter.hpp"
 #include "toolkit/stb_image_loader.hpp"
+#include "toolkit/lunasvg_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
@@ -692,8 +693,18 @@ std::unique_ptr<PlatformWindow> X11PlatformApplication::create_window(std::strin
     return std::make_unique<X11PlatformWindow>(this, title, size, owner, options);
 }
 
-std::unique_ptr<ImageLoaderInterface> X11PlatformApplication::create_image_loader() {
-    return std::make_unique<StbImageLoader>();
+std::shared_ptr<ImageLoaderInterface> X11PlatformApplication::get_image_loader() {
+    if (!image_loader_) {
+        image_loader_ = std::make_shared<StbImageLoader>();
+    }
+    return image_loader_;
+}
+
+std::shared_ptr<SVGLoaderInterface> X11PlatformApplication::get_svg_loader() {
+    if (!svg_loader_) {
+        svg_loader_ = std::make_shared<LunasvgImageLoader>();
+    }
+    return svg_loader_;
 }
 
 // Runs one iteration of the event loop. Returns false when the loop should stop.

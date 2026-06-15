@@ -256,6 +256,8 @@ Icon Application::load_icon(std::string_view icon_name, int size, std::string_vi
         impl_->icon_cache[key] = icon;
     } else {
         spdlog::error("Failed loading {} size {}", icon_name, size);
+        // Negative cache: store an empty image so we don't try to load it again
+        impl_->icon_cache[key] = std::make_shared<ImageData>();
     }
 
     return icon;

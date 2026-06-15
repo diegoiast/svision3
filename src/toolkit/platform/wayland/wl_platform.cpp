@@ -2,6 +2,7 @@
 #include "../linux_utils.hpp"
 #include "toolkit/application.hpp"
 #include "toolkit/stb_image_loader.hpp"
+#include "toolkit/lunasvg_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <cstring>
@@ -1013,8 +1014,18 @@ std::unique_ptr<PlatformWindow> WaylandPlatformApplication::create_window(std::s
     return std::make_unique<WaylandPlatformWindow>(this, title, size, owner, options);
 }
 
-std::unique_ptr<ImageLoaderInterface> WaylandPlatformApplication::create_image_loader() {
-    return std::make_unique<StbImageLoader>();
+std::shared_ptr<ImageLoaderInterface> WaylandPlatformApplication::get_image_loader() {
+    if (!image_loader_) {
+        image_loader_ = std::make_shared<StbImageLoader>();
+    }
+    return image_loader_;
+}
+
+std::shared_ptr<SVGLoaderInterface> WaylandPlatformApplication::get_svg_loader() {
+    if (!svg_loader_) {
+        svg_loader_ = std::make_shared<LunasvgImageLoader>();
+    }
+    return svg_loader_;
 }
 
 // Runs one iteration of the Wayland event loop. Returns false when the loop should stop.

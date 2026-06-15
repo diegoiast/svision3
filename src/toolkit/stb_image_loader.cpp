@@ -29,9 +29,10 @@ auto StbImageLoader::load(std::string_view path) -> Icon {
     return img;
 }
 
-auto StbImageLoader::load(const uint8_t *data, size_t size) -> Icon {
+auto StbImageLoader::load_from_memory(const uint8_t *data, size_t size) -> Icon {
     int w = 0, h = 0, c = 0;
-    auto *stb_data = stbi_load_from_memory(data, static_cast<int>(size), &w, &h, &c, STBI_rgb_alpha);
+    auto *stb_data =
+        stbi_load_from_memory(data, static_cast<int>(size), &w, &h, &c, STBI_rgb_alpha);
 
     if (!stb_data) {
         spdlog::error("stb: failed loading image from memory");

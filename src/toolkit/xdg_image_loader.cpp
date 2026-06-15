@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/xdg_image_loader.hpp"
-#include "toolkit/stb_image_loader.hpp"
+#include "toolkit/platform.hpp"
 #include <algorithm>
 #include <fstream>
 #include <spdlog/fmt/fmt.h>
@@ -11,7 +11,7 @@
 
 namespace toolkit {
 
-XdgImageLoader::XdgImageLoader() : loader(std::make_unique<StbImageLoader>()) {
+XdgImageLoader::XdgImageLoader() {
     auto xdg_str = std::getenv("XDG_DATA_DIRS");
     if (xdg_str) {
         std::string_view sv(xdg_str);
@@ -173,8 +173,8 @@ auto XdgImageLoader::parse_index_theme(std::string_view path) -> std::optional<I
     return t;
 }
 
-auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size,
-                                    std::string_view context) -> std::optional<std::string> {
+auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::string_view context)
+    -> std::optional<std::string> {
     if (!theme) {
         return std::nullopt;
     }
@@ -219,15 +219,27 @@ auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size,
                 }
             }
 
-            if (score < best_score) {
+            if (score < best_score ||
+                (score == best_score && dir.type != "scalable" && !best_path.empty())) {
                 auto base = std::filesystem::path("themes") / t.name / dir.path;
-                auto icon_path = base / (std::string(icon_name) + ext);
-                if (std::filesystem::exists(icon_path)) {
-                    best_score = score;
-                    best_path = icon_path.string();
-                    if (score == 0) {
+                static const std::vector<std::string> extensions = {".svg", ".png"};
+
+                std::string current_path;
+                for (const auto &ext : extensions) {
+                    auto icon_path = base / (std::string(icon_name) + ext);
+                    if (std::filesystem::exists(icon_path)) {
+                        current_path = icon_path.string();
                         break;
                     }
+                }
+
+                if (!current_path.empty()) {
+                    best_score = score;
+                    best_path = current_path;
+                }
+
+                if (best_score == 0 && dir.type != "scalable" && !best_path.empty()) {
+                    break;
                 }
             }
         }
@@ -257,7 +269,15 @@ auto XdgImageLoader::load(std::string_view icon_name, int size, std::string_view
     if (!path_opt) {
         return nullptr;
     }
-    return loader->load(*path_opt);
+
+    std::string path = *path_opt;
+    // SVG is XML-based. Use the SVG loader for all SVG files.
+    if (path.ends_with(".svg")) {
+        return detail::current_platform()->get_svg_loader()->load_svg(path, size, size);
+    }
+    // Fallback to raster loader (STB) for everything else (PNG, etc.)
+    auto loader = detail::current_platform()->get_image_loader();
+    return loader->load(path);
 }
 
 } // namespace toolkit
