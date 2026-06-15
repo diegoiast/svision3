@@ -198,7 +198,7 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         }
 
         cairo_restore(cr);
-        } else {
+    } else {
         // Fallback for non-Cairo painters: rasterize and draw as image
         float scale = p.scale_factor();
         auto rt = rasterize(text, font_size, scale, color, font, bold, italic);
@@ -206,10 +206,8 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             return;
         }
 
-        Point snapped_pos = {
-            std::floor(position.x * scale + 0.5f) / scale,
-            std::floor(position.y * scale + 0.5f) / scale
-        };
+        Point snapped_pos = {std::floor(position.x * scale + 0.5f) / scale,
+                             std::floor(position.y * scale + 0.5f) / scale};
 
         p.push_translation(snapped_pos);
         if (orientation == Painter::TextOrientation::VerticalCCW) {
@@ -226,8 +224,8 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             p.pop_rotation();
         }
         p.pop_translation();
-        }
-        }
+    }
+}
 
 static void rgba_to_cairo_argb32(uint8_t *dst, std::vector<uint8_t> const &src) {
     auto size = src.size() / 4;

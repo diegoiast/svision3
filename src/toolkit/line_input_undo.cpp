@@ -7,23 +7,17 @@
 namespace toolkit {
 
 class TextCommand : public UndoCommand {
-public:
+  public:
     TextCommand(std::string *text, std::string old_val, std::string new_val, size_t pos)
         : text_(text), old_val_(std::move(old_val)), new_val_(std::move(new_val)), pos_(pos) {}
 
-    void undo() override {
-        text_->replace(pos_, new_val_.size(), old_val_);
-    }
+    void undo() override { text_->replace(pos_, new_val_.size(), old_val_); }
 
-    void redo() override {
-        text_->replace(pos_, old_val_.size(), new_val_);
-    }
+    void redo() override { text_->replace(pos_, old_val_.size(), new_val_); }
 
     int id() const override { return 1; }
 
-    std::string text() const override {
-        return old_val_.empty() ? "Typing" : "Deletion";
-    }
+    std::string text() const override { return old_val_.empty() ? "Typing" : "Deletion"; }
 
     bool merge_with(const UndoCommand *other) override {
         auto const *o = static_cast<const TextCommand *>(other);
@@ -34,7 +28,7 @@ public:
         return false;
     }
 
-private:
+  private:
     std::string *text_;
     std::string old_val_;
     std::string new_val_;

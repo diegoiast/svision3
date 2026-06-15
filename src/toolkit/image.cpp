@@ -103,4 +103,4 @@ std::shared_ptr<ImageData> parse_xpm(std::string_view xpm_data) {
     return img;
 }
 
-}
+} // namespace toolkit

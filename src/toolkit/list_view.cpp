@@ -126,9 +126,7 @@ void ListView::set_rect(Rect const &r) {
     update_scroll_state();
 }
 
-void ListView::update_scroll_state() {
-    update_scrollbars({0, total_content_height()});
-}
+void ListView::update_scroll_state() { update_scrollbars({0, total_content_height()}); }
 
 float ListView::item_height() const {
     auto const &style = Theme::current().style.listView;
@@ -165,9 +163,9 @@ std::optional<size_t> ListView::item_at_y(float y) const {
 void ListView::paint(Painter &painter) {
     auto const &theme = Theme::current();
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = ButtonState::Normal,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
     theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
@@ -332,7 +330,8 @@ bool ListView::handle_key(KeyEvent const &event) {
     }
     case Key::PageDown: {
         auto bw = Theme::current().Theme::current().style.border_width;
-        auto page = std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
+        auto page =
+            std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
         auto next = cursor_ ? std::min(*cursor_ + page, n - 1) : size_t{0};
         if (multi_select_ && event.shift) {
             if (!anchor_) {
@@ -349,7 +348,8 @@ bool ListView::handle_key(KeyEvent const &event) {
     }
     case Key::PageUp: {
         auto bw = Theme::current().Theme::current().style.border_width;
-        auto page = std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
+        auto page =
+            std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
         auto next = (cursor_ && *cursor_ >= page) ? *cursor_ - page : size_t{0};
         if (multi_select_ && event.shift) {
             if (!anchor_) {

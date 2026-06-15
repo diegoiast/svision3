@@ -1,9 +1,9 @@
 #include "toolkit/xdg_icons.hpp"
-#include "toolkit/xdg_image_loader.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/xdg_image_loader.hpp"
+#include <algorithm>
 #include <fstream>
 #include <sstream>
-#include <algorithm>
 
 namespace toolkit {
 namespace xdg {
@@ -29,9 +29,7 @@ IconLoader::IconLoader() : loader(detail::current_platform()->create_image_loade
     }
 }
 
-IconLoader::IconLoader(std::string_view theme_name) : IconLoader() {
-    set_theme(theme_name);
-}
+IconLoader::IconLoader(std::string_view theme_name) : IconLoader() { set_theme(theme_name); }
 
 auto IconLoader::set_theme(std::string_view theme_name) -> void {
     current_theme = theme_name;

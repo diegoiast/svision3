@@ -35,7 +35,6 @@ class Win32TextRasterizer : public TextRasterizer {
 
 class GDIPainter : public Painter {
   public:
-
     // FIXME: can we remove one of these constructors?
     explicit GDIPainter(void *hdc, float scale, TextRasterizer *rasterizer);
     GDIPainter(Gdiplus::Graphics *g, float scale, TextRasterizer *rasterizer); // Internal use

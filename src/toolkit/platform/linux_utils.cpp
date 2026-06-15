@@ -70,8 +70,7 @@ static SystemFonts detect_kde_fonts() {
                     auto next_comma = val.find(',', comma + 1);
                     if (next_comma != std::string::npos) {
                         try {
-                            result.size =
-                                std::stof(val.substr(comma + 1, next_comma - comma - 1));
+                            result.size = std::stof(val.substr(comma + 1, next_comma - comma - 1));
                         } catch (...) {
                         }
                     }

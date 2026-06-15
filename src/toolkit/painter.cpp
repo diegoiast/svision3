@@ -78,8 +78,8 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
             auto border_rect = frame_rect.inset(inset);
 
             if (style.corner_radius > 0.0f) {
-                draw_rounded_rect(border_rect, border,
-                                  std::max(0.0f, style.corner_radius - inset), bw);
+                draw_rounded_rect(border_rect, border, std::max(0.0f, style.corner_radius - inset),
+                                  bw);
             } else {
                 draw_rect(border_rect, border, bw);
             }

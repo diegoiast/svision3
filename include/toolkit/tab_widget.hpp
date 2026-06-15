@@ -31,12 +31,15 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     TabWidget &set_min_tab_width(float width);
     float min_tab_width() const { return min_tab_width_; }
 
-    TabWidget &set_tabs_movable(bool movable) { tabs_movable_ = movable; return *this; }
+    TabWidget &set_tabs_movable(bool movable) {
+        tabs_movable_ = movable;
+        return *this;
+    }
     bool tabs_movable() const { return tabs_movable_; }
 
     TabWidget &set_orientation(TabOrientation o);
     TabOrientation orientation() const { return orientation_; }
-    
+
     TabWidget &set_leading_widget(std::unique_ptr<Widget> widget);
     TabWidget &set_trailing_widget(std::unique_ptr<Widget> widget);
 

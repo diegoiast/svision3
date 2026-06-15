@@ -34,18 +34,22 @@ ScrollableWidget::ScrollableWidget() {
 
 void ScrollableWidget::set_window(Window *w) {
     Widget::set_window(w);
-    if (vscroll_)
+    if (vscroll_) {
         vscroll_->set_window(w);
-    if (hscroll_)
+    }
+    if (hscroll_) {
         hscroll_->set_window(w);
+    }
 }
 
 void ScrollableWidget::on_theme_changed() {
     Widget::on_theme_changed();
-    if (vscroll_)
+    if (vscroll_) {
         vscroll_->on_theme_changed();
-    if (hscroll_)
+    }
+    if (hscroll_) {
         hscroll_->on_theme_changed();
+    }
     layout_scrollbars();
     clamp_scroll();
 }
@@ -77,10 +81,12 @@ Widget *ScrollableWidget::widget_at(Point p) {
 }
 
 void ScrollableWidget::for_each_child(std::function<void(Widget *)> const &callback) {
-    if (vscroll_)
+    if (vscroll_) {
         callback(vscroll_.get());
-    if (hscroll_)
+    }
+    if (hscroll_) {
         callback(hscroll_.get());
+    }
 }
 
 void ScrollableWidget::scroll_to(float x, float y) {
@@ -225,11 +231,19 @@ bool ScrollableWidget::handle_scrollbar_mouse(MouseEvent const &event) {
     return false;
 }
 
-bool ScrollableWidget::needs_vscroll() const { return content_size_.height > rect_.height - Theme::current().Theme::current().style.border_width * 2; }
-bool ScrollableWidget::needs_hscroll() const { return content_size_.width > rect_.width - Theme::current().Theme::current().style.border_width * 2; }
+bool ScrollableWidget::needs_vscroll() const {
+    return content_size_.height >
+           rect_.height - Theme::current().Theme::current().style.border_width * 2;
+}
+bool ScrollableWidget::needs_hscroll() const {
+    return content_size_.width >
+           rect_.width - Theme::current().Theme::current().style.border_width * 2;
+}
 
 Rect ScrollableWidget::vthumb_rect() const {
-    if (!needs_vscroll()) return {};
+    if (!needs_vscroll()) {
+        return {};
+    }
     auto vr = viewport_rect();
     float ch = content_size_.height;
     float vh = vr.height;
@@ -241,7 +255,9 @@ Rect ScrollableWidget::vthumb_rect() const {
 }
 
 Rect ScrollableWidget::hthumb_rect() const {
-    if (!needs_hscroll()) return {};
+    if (!needs_hscroll()) {
+        return {};
+    }
     auto vr = viewport_rect();
     float cw = content_size_.width;
     float vw = vr.width;

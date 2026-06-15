@@ -108,8 +108,8 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
     switch (event.type) {
     case MouseEvent::Type::Move:
         if (h.contains(event.position)) {
-            auto desired =
-                orientation_ == Orientation::Horizontal ? CursorShape::ResizeEW : CursorShape::ResizeNS;
+            auto desired = orientation_ == Orientation::Horizontal ? CursorShape::ResizeEW
+                                                                   : CursorShape::ResizeNS;
             if (cursor_ != desired) {
                 cursor_ = desired;
                 if (window_) {

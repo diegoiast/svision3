@@ -196,9 +196,9 @@ void IconGrid::paint(Painter &painter) {
     auto const &style = theme.style.iconGrid;
     auto const &palette = theme.palette;
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = ButtonState::Normal,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window() ? window()->is_active() : true,
     };
     theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
@@ -483,12 +483,13 @@ void IconGrid::set_rect(Rect const &rect) {
     if (rect_ == rect) {
         return;
     }
-    
+
     // Attempt to keep the same top-left item visible
     auto layout = compute_layout();
     auto col = 0;
-    auto row = static_cast<size_t>(std::floor(scroll_y_ / (layout.item_height + layout.item_height))); // Simplified
-    
+    auto row = static_cast<size_t>(
+        std::floor(scroll_y_ / (layout.item_height + layout.item_height))); // Simplified
+
     ScrollableWidget::set_rect(rect);
     clamp_scroll();
 }
@@ -563,7 +564,7 @@ void IconGrid::clamp_scroll() {
     auto total_h = style.padding.top + style.padding.bottom +
                    static_cast<float>(layout.rows) * layout.item_height +
                    static_cast<float>(layout.rows > 0 ? layout.rows - 1 : 0) * style.spacing;
-    
+
     update_scrollbars({0.0f, total_h});
 }
 
@@ -581,7 +582,6 @@ void IconGrid::scroll_to(size_t index) {
     } else if (item_y + layout.item_height > scroll_y() + vr.height) {
         ScrollableWidget::scroll_to(scroll_x(), item_y + layout.item_height - vr.height);
     }
-
 }
 
 } // namespace toolkit

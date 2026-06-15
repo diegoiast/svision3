@@ -6,8 +6,8 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
-#include <nlohmann/json.hpp>
 #include <cctype>
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
 

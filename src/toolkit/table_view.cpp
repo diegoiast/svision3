@@ -366,9 +366,9 @@ void TableView::scroll_to_row(size_t row) {
 void TableView::paint(Painter &painter) {
     auto const &theme = Theme::current();
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = ButtonState::Normal,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
     theme.draw_table_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
@@ -396,8 +396,11 @@ void TableView::paint(Painter &painter) {
 
         painter.push_clip(header_rect);
         if (Theme::current().style.corner_radius > 0) {
-            auto cr = std::max(0.0f, Theme::current().style.corner_radius - Theme::current().style.border_width);
-            painter.fill_rounded_rect({header_rect.x, header_rect.y, header_rect.width, header_rect.height + cr}, header_bg, cr);
+            auto cr = std::max(0.0f, Theme::current().style.corner_radius -
+                                         Theme::current().style.border_width);
+            painter.fill_rounded_rect(
+                {header_rect.x, header_rect.y, header_rect.width, header_rect.height + cr},
+                header_bg, cr);
         } else {
             painter.fill_rect(header_rect, header_bg);
         }
@@ -412,11 +415,14 @@ void TableView::paint(Painter &painter) {
                 auto text = model_->header_text(c);
 
                 if (static_cast<int>(c) == sort_column_ && sort_order_ != SortOrder::None) {
-                    text += (sort_order_ == SortOrder::Ascending) ? " \xe2\x96\xb2" : " \xe2\x96\xbc";
+                    text +=
+                        (sort_order_ == SortOrder::Ascending) ? " \xe2\x96\xb2" : " \xe2\x96\xbc";
                 }
 
-                painter.push_clip({std::max(hx, vr.x), vr.y, std::min(cw, vr.x + vr.width - std::max(hx, vr.x)), hh});
-                painter.draw_text(text, {hx + style.item_padding_h, text_y}, palette.text, palette.fonts.size);
+                painter.push_clip({std::max(hx, vr.x), vr.y,
+                                   std::min(cw, vr.x + vr.width - std::max(hx, vr.x)), hh});
+                painter.draw_text(text, {hx + style.item_padding_h, text_y}, palette.text,
+                                  palette.fonts.size);
                 painter.pop_clip();
             }
             if (sep_x > vr.x && sep_x < vr.x + vr.width) {
@@ -431,7 +437,9 @@ void TableView::paint(Painter &painter) {
 
     auto body_clip = Rect{vr.x, vr.y + hh, vr.width, vr.height - hh};
     auto first_visible = static_cast<size_t>(std::max(0.0f, scroll_y_) / rh);
-    auto last_visible = nrows > 0 ? std::min(nrows - 1, static_cast<size_t>((scroll_y_ + body_clip.height) / rh)) : size_t{0};
+    auto last_visible =
+        nrows > 0 ? std::min(nrows - 1, static_cast<size_t>((scroll_y_ + body_clip.height) / rh))
+                  : size_t{0};
 
     painter.push_clip(body_clip);
     painter.fill_rect(body_clip, palette.base);
@@ -447,13 +455,16 @@ void TableView::paint(Painter &painter) {
             auto cw = column_widths_[c];
             if (cx + cw > vr.x && cx < vr.x + vr.width) {
                 auto cell_rect = Rect{cx, ry, cw, rh};
-                painter.push_clip({std::max(cx, vr.x), ry, std::min(cw, vr.x + vr.width - std::max(cx, vr.x)), rh});
+                painter.push_clip({std::max(cx, vr.x), ry,
+                                   std::min(cw, vr.x + vr.width - std::max(cx, vr.x)), rh});
 
                 if (c == 0) {
                     auto icon = model_->icon_at(mr, 0, 16);
-                    theme.draw_list_item(painter, cell_rect, model_->cell_text(mr, c), icon, selected, hovered, alt_row);
+                    theme.draw_list_item(painter, cell_rect, model_->cell_text(mr, c), icon,
+                                         selected, hovered, alt_row);
                 } else {
-                    theme.draw_list_item(painter, cell_rect, model_->cell_text(mr, c), nullptr, selected, hovered, alt_row);
+                    theme.draw_list_item(painter, cell_rect, model_->cell_text(mr, c), nullptr,
+                                         selected, hovered, alt_row);
                 }
                 painter.pop_clip();
             }
@@ -565,7 +576,8 @@ bool TableView::handle_mouse(MouseEvent const &event) {
             auto col = column_at_x(local_x);
             if (col >= 0) {
                 if (sort_column_ == col) {
-                    sort_order_ = sort_order_ == SortOrder::Ascending ? SortOrder::Descending : SortOrder::Ascending;
+                    sort_order_ = sort_order_ == SortOrder::Ascending ? SortOrder::Descending
+                                                                      : SortOrder::Ascending;
                 } else {
                     sort_column_ = col;
                     sort_order_ = SortOrder::Ascending;

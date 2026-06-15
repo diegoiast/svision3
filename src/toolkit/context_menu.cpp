@@ -17,8 +17,8 @@ ContextMenu::ContextMenu(std::vector<MenuItem> items) : items_(std::move(items))
     };
 }
 
-static auto menu_total_height(std::vector<MenuItem> const &items, float item_h,
-                              float sep_h) -> float {
+static auto menu_total_height(std::vector<MenuItem> const &items, float item_h, float sep_h)
+    -> float {
     auto h = 0.0f;
 
     for (auto const &item : items) {
@@ -46,15 +46,14 @@ void ContextMenu::show(Window *win, Point position) {
             continue;
         }
         auto name_w = detail::current_platform()
-                     ->measure_text(item.command->name(), palette.fonts.size)
-                     .width;
+                          ->measure_text(item.command->name(), palette.fonts.size)
+                          .width;
         max_name_w = std::max(max_name_w, name_w);
 
         auto shortcut = item.command->printable_shortcut();
         if (!shortcut.empty()) {
-            auto shortcut_w = detail::current_platform()
-                     ->measure_text(shortcut, palette.fonts.size)
-                     .width;
+            auto shortcut_w =
+                detail::current_platform()->measure_text(shortcut, palette.fonts.size).width;
             max_shortcut_w = std::max(max_shortcut_w, shortcut_w);
         }
     }
@@ -136,8 +135,8 @@ void ContextMenu::paint(Painter &painter) {
         auto icon_data = item.command->icon_image();
         auto shortcut = item.command->printable_shortcut();
 
-        Theme::current().draw_menu_item(painter, item_rect, item.command->name(), icon_data, shortcut,
-                                        i == hovered_, enabled, false, false);
+        Theme::current().draw_menu_item(painter, item_rect, item.command->name(), icon_data,
+                                        shortcut, i == hovered_, enabled, false, false);
 
         y += item_height_;
     }

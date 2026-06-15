@@ -255,9 +255,9 @@ void TreeView::paint(Painter &painter) {
     auto item_padding_h = style.item_padding_h;
 
     auto wstate = WidgetState{
-        .interaction   = ButtonState::Normal,
-        .focused       = is_focused(),
-        .enabled       = is_enabled(),
+        .interaction = ButtonState::Normal,
+        .focused = is_focused(),
+        .enabled = is_enabled(),
         .window_active = window() ? window()->is_active() : true,
     };
     theme.draw_tree_background(painter, {0, 0, rect().width, rect().height}, wstate);
@@ -305,8 +305,8 @@ void TreeView::paint(Painter &painter) {
                     }
                 }
                 if (should_draw_line) {
-                    painter.draw_line({connector_x, vr.y + iy}, {connector_x, vr.y + iy + rh}, palette.border,
-                                      1.0f);
+                    painter.draw_line({connector_x, vr.y + iy}, {connector_x, vr.y + iy + rh},
+                                      palette.border, 1.0f);
                 }
             }
 
@@ -321,7 +321,8 @@ void TreeView::paint(Painter &painter) {
             }
             if (has_next_sibling) {
                 auto connector_x = vr.x + item_padding_h + flat.depth * indent + indent / 2;
-                painter.draw_line({connector_x, vr.y + iy}, {connector_x, vr.y + iy + rh}, palette.border, 1.0f);
+                painter.draw_line({connector_x, vr.y + iy}, {connector_x, vr.y + iy + rh},
+                                  palette.border, 1.0f);
             }
 
             auto handle_x = vr.x + item_padding_h + flat.depth * indent + indent / 2;
@@ -331,7 +332,8 @@ void TreeView::paint(Painter &painter) {
         } else {
             if (i < n - 1 && flat_nodes_[i + 1].depth == 0) {
                 auto connector_x = vr.x + item_padding_h + indent / 2;
-                painter.draw_line({connector_x, vr.y + iy}, {connector_x, vr.y + iy + rh}, palette.border, 1.0f);
+                painter.draw_line({connector_x, vr.y + iy}, {connector_x, vr.y + iy + rh},
+                                  palette.border, 1.0f);
             }
 
             auto handle_x = vr.x + item_padding_h + indent / 2;
@@ -382,49 +384,48 @@ bool TreeView::handle_mouse(MouseEvent const &event) {
     case MouseEvent::Type::Move:
         hovered_ = idx;
         return true;
-    case MouseEvent::Type::Press:
-        {
-            auto const &flat = flat_nodes_[idx];
-            auto *node_ptr = flat.node_ptr;
-            auto has_children = node_ptr && !node_ptr->children.empty();
-            auto indent = Theme::current().style.treeView.indent;
-            auto click_x = p.x;
-            auto expected_x = flat.depth * indent;
+    case MouseEvent::Type::Press: {
+        auto const &flat = flat_nodes_[idx];
+        auto *node_ptr = flat.node_ptr;
+        auto has_children = node_ptr && !node_ptr->children.empty();
+        auto indent = Theme::current().style.treeView.indent;
+        auto click_x = p.x;
+        auto expected_x = flat.depth * indent;
 
-            if (has_children && click_x >= expected_x && click_x < expected_x + indent) {
-                toggle(idx);
-                return true;
-            }
-
-            if (event.click_count == 2 && has_children) {
-                toggle(idx);
-                return true;
-            }
-
-            auto toggle_mod = event.super || event.ctrl;
-
-            if (multi_select_ && event.shift && anchor_ >= 0) {
-                cursor_ = idx;
-                select_range_from_anchor();
-                notify_selection();
-            } else if (multi_select_ && toggle_mod) {
-                if (is_selected(idx)) {
-                    selection_.erase(idx);
-                } else {
-                    selection_.insert(idx);
-                }
-                anchor_ = idx;
-                cursor_ = idx;
-                notify_selection();
-            } else {
-                selection_.clear();
-                selection_.insert(idx);
-                anchor_ = idx;
-                cursor_ = idx;
-                notify_selection();
-            }
+        if (has_children && click_x >= expected_x && click_x < expected_x + indent) {
+            toggle(idx);
             return true;
         }
+
+        if (event.click_count == 2 && has_children) {
+            toggle(idx);
+            return true;
+        }
+
+        auto toggle_mod = event.super || event.ctrl;
+
+        if (multi_select_ && event.shift && anchor_ >= 0) {
+            cursor_ = idx;
+            select_range_from_anchor();
+            notify_selection();
+        } else if (multi_select_ && toggle_mod) {
+            if (is_selected(idx)) {
+                selection_.erase(idx);
+            } else {
+                selection_.insert(idx);
+            }
+            anchor_ = idx;
+            cursor_ = idx;
+            notify_selection();
+        } else {
+            selection_.clear();
+            selection_.insert(idx);
+            anchor_ = idx;
+            cursor_ = idx;
+            notify_selection();
+        }
+        return true;
+    }
     default:
         break;
     }

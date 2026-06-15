@@ -10,8 +10,8 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <windows.h>
 #include <GL/gl.h>
+#include <windows.h>
 #else
 #include <GL/gl.h>
 #endif
@@ -41,33 +41,35 @@ namespace toolkit {
 namespace {
 
 struct FboFuncs {
-    using GenFB   = void (*)(GLsizei, GLuint *);
-    using DelFB   = void (*)(GLsizei, const GLuint *);
-    using BindFB  = void (*)(GLenum, GLuint);
-    using GenRB   = void (*)(GLsizei, GLuint *);
-    using DelRB   = void (*)(GLsizei, const GLuint *);
-    using BindRB  = void (*)(GLenum, GLuint);
+    using GenFB = void (*)(GLsizei, GLuint *);
+    using DelFB = void (*)(GLsizei, const GLuint *);
+    using BindFB = void (*)(GLenum, GLuint);
+    using GenRB = void (*)(GLsizei, GLuint *);
+    using DelRB = void (*)(GLsizei, const GLuint *);
+    using BindRB = void (*)(GLenum, GLuint);
     using RBStore = void (*)(GLenum, GLenum, GLsizei, GLsizei);
-    using FBRB    = void (*)(GLenum, GLenum, GLenum, GLuint);
+    using FBRB = void (*)(GLenum, GLenum, GLenum, GLuint);
     using CheckFB = GLenum (*)(GLenum);
 
-    GenFB   genFramebuffers         = nullptr;
-    DelFB   deleteFramebuffers      = nullptr;
-    BindFB  bindFramebuffer         = nullptr;
-    GenRB   genRenderbuffers        = nullptr;
-    DelRB   deleteRenderbuffers     = nullptr;
-    BindRB  bindRenderbuffer        = nullptr;
-    RBStore renderbufferStorage     = nullptr;
-    FBRB    framebufferRenderbuffer = nullptr;
-    CheckFB checkFramebufferStatus  = nullptr;
-    bool    ok                      = false;
+    GenFB genFramebuffers = nullptr;
+    DelFB deleteFramebuffers = nullptr;
+    BindFB bindFramebuffer = nullptr;
+    GenRB genRenderbuffers = nullptr;
+    DelRB deleteRenderbuffers = nullptr;
+    BindRB bindRenderbuffer = nullptr;
+    RBStore renderbufferStorage = nullptr;
+    FBRB framebufferRenderbuffer = nullptr;
+    CheckFB checkFramebufferStatus = nullptr;
+    bool ok = false;
 
     static void *load(const char *name) {
 #ifdef _WIN32
         void *p = reinterpret_cast<void *>(wglGetProcAddress(name));
         if (!p) {
             HMODULE lib = GetModuleHandleW(L"opengl32.dll");
-            if (lib) p = reinterpret_cast<void *>(GetProcAddress(lib, name));
+            if (lib) {
+                p = reinterpret_cast<void *>(GetProcAddress(lib, name));
+            }
         }
         return p;
 #else
@@ -76,17 +78,18 @@ struct FboFuncs {
     }
 
     void init() {
-        if (ok)
+        if (ok) {
             return;
-        genFramebuffers         = reinterpret_cast<GenFB>(load("glGenFramebuffers"));
-        deleteFramebuffers      = reinterpret_cast<DelFB>(load("glDeleteFramebuffers"));
-        bindFramebuffer         = reinterpret_cast<BindFB>(load("glBindFramebuffer"));
-        genRenderbuffers        = reinterpret_cast<GenRB>(load("glGenRenderbuffers"));
-        deleteRenderbuffers     = reinterpret_cast<DelRB>(load("glDeleteRenderbuffers"));
-        bindRenderbuffer        = reinterpret_cast<BindRB>(load("glBindRenderbuffer"));
-        renderbufferStorage     = reinterpret_cast<RBStore>(load("glRenderbufferStorage"));
+        }
+        genFramebuffers = reinterpret_cast<GenFB>(load("glGenFramebuffers"));
+        deleteFramebuffers = reinterpret_cast<DelFB>(load("glDeleteFramebuffers"));
+        bindFramebuffer = reinterpret_cast<BindFB>(load("glBindFramebuffer"));
+        genRenderbuffers = reinterpret_cast<GenRB>(load("glGenRenderbuffers"));
+        deleteRenderbuffers = reinterpret_cast<DelRB>(load("glDeleteRenderbuffers"));
+        bindRenderbuffer = reinterpret_cast<BindRB>(load("glBindRenderbuffer"));
+        renderbufferStorage = reinterpret_cast<RBStore>(load("glRenderbufferStorage"));
         framebufferRenderbuffer = reinterpret_cast<FBRB>(load("glFramebufferRenderbuffer"));
-        checkFramebufferStatus  = reinterpret_cast<CheckFB>(load("glCheckFramebufferStatus"));
+        checkFramebufferStatus = reinterpret_cast<CheckFB>(load("glCheckFramebufferStatus"));
         ok = genFramebuffers && deleteFramebuffers && bindFramebuffer && genRenderbuffers &&
              deleteRenderbuffers && bindRenderbuffer && renderbufferStorage &&
              framebufferRenderbuffer && checkFramebufferStatus;
