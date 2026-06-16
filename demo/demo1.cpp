@@ -107,6 +107,9 @@ static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
     window->request_redraw("theme apply");
 }
 
+static constexpr auto LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
+                   "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+
 int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
 
@@ -1080,6 +1083,27 @@ int main(int argc, char *argv[]) {
     ok_btn->on_click = [] { spdlog::info("Button clicked!"); };
     ok_btn->set_tooltip("Log a message to the console");
     button_bar->add_widget(std::move(ok_btn));
+
+    auto toast_btn = std::make_unique<toolkit::Button>("Toast");
+    toast_btn->on_click = [window] {
+        static const std::optional<toolkit::Color> colors[] = {
+            toolkit::Color::rgb(1.0f, 0.85f, 0.85f),
+            toolkit::Color::rgb(0.85f, 1.0f, 0.85f),
+            toolkit::Color::rgb(0.85f, 0.85f, 1.0f),
+            toolkit::Color::rgb(1.0f, 1.0f, 0.85f),
+            toolkit::Color::rgb(1.0f, 0.85f, 1.0f),
+            std::nullopt,
+        };
+        static int count = 0;
+        auto title = fmt::format("Toast #{}", count++);
+        auto builder = toolkit::ToastBuilder().title(title).timeout(7).text(LOREM_IPSUM);
+        auto bg = colors[count % 6];
+        if (bg) {
+            builder.background(*bg);
+        }
+        window->show_toast(builder);
+    };
+    button_bar->add_widget(std::move(toast_btn));
 
     auto disabled_btn = std::make_unique<toolkit::Button>("Disabled");
     disabled_btn->set_enabled(false);
