@@ -426,8 +426,12 @@ void Window::add_widget(std::unique_ptr<Widget> widget) {
 }
 
 void Window::relayout_toasts() {
-    auto toast_x = 10.0f;
-    auto toast_y = size_.height - 10.0f;
+    auto const &s = Theme::current().style;
+    auto shadow = (options_.csd && !is_maximized_) ? s.shadow.size : 0.0f;
+    auto bw = options_.csd ? s.border_width : 0.0f;
+    auto inset = bw + shadow;
+    auto toast_x = 10.0f + inset;
+    auto toast_y = size_.height - 10.0f - inset;
 
     for (auto &widget : widgets_) {
         if (auto toast = dynamic_cast<ToastWidget *>(widget.get())) {
@@ -564,25 +568,63 @@ void Window::handle_paint(Painter &painter) {
     impl_->stats.total_draws++;
     impl_->draws_since_last_log++;
 
+    auto const &style = Theme::current().style;
     auto const &pal = Theme::current().palette;
     auto bg = is_active_ ? pal.window : pal.window_inactive.value_or(pal.window);
     auto repaint_start = std::chrono::steady_clock::now();
-    painter.fill_rect({0, 0, size_.width, size_.height}, bg);
+    auto content_rect = Rect{0, 0, size_.width, size_.height};
 
-    if (options_.csd && Theme::current().style.border_width > 0) {
-        painter.draw_rect(
-            Rect{0, 0, size_.width, size_.height}.inset(Theme::current().style.border_width / 2.0f),
-            pal.border, Theme::current().style.border_width);
+    if (options_.csd && !is_maximized_) {
+        auto shadow_size = style.shadow.size;
+        content_rect = content_rect.inset(shadow_size);
+
+        // Draw shadow with a softer quintic falloff, using silver color
+        for (auto i = 0; i < shadow_size; ++i) {
+            auto t = static_cast<float>(i) / shadow_size;
+            auto alpha = style.shadow.opacity * std::pow(1.0f - t, 5.0f);
+            auto shadow_color = Color{0.25f, 0.25f, 0.25f, alpha};
+            painter.draw_rounded_rect(content_rect.inset(-i - 0.5f), shadow_color,
+                                      style.corner_radius + i, 1.0f);
+        }
+    }
+
+    if (style.corner_radius > 0 && !is_maximized_) {
+        painter.fill_rounded_rect(content_rect, bg, style.corner_radius);
+    } else {
+        painter.fill_rect(content_rect, bg);
+    }
+
+    if (options_.csd && style.border_width > 0) {
+        if (style.corner_radius > 0 && !is_maximized_) {
+            painter.draw_rounded_rect(content_rect.inset(style.border_width / 2.0f), pal.border,
+                                      style.corner_radius - style.border_width / 2.0f,
+                                      style.border_width);
+        } else {
+            painter.draw_rect(content_rect.inset(style.border_width / 2.0f), pal.border,
+                              style.border_width);
+        }
     }
 
     if (root_) {
-        root_->draw(painter);
+        if (options_.csd && style.corner_radius > 0 && !is_maximized_) {
+            painter.push_clip(content_rect, style.corner_radius);
+            root_->draw(painter);
+            painter.pop_clip();
+        } else {
+            root_->draw(painter);
+        }
     }
     for (auto &widget : widgets_) {
         widget->draw(painter);
     }
     if (root_) {
-        draw_on_top_recursive(painter, root_.get());
+        if (options_.csd && style.corner_radius > 0 && !is_maximized_) {
+            painter.push_clip(content_rect, style.corner_radius);
+            draw_on_top_recursive(painter, root_.get());
+            painter.pop_clip();
+        } else {
+            draw_on_top_recursive(painter, root_.get());
+        }
     }
 
     if (focused_widget_ && focused_widget_->is_focused() && focused_widget_->is_focusable()) {
@@ -678,37 +720,48 @@ void Window::handle_mouse(MouseEvent const &event) {
     }
 
     if (options_.csd) {
-        auto const &m = Theme::current().Theme::current().style.window_decoration;
+        auto const &s = Theme::current().style;
         auto const &r = event.position;
-        float corner_area = 25.0f;
-        float edge_area = 5.0f;
-        WindowEdge edge = WindowEdge::None;
+        auto shadow = is_maximized_ ? 0.0f : s.shadow.size;
+        // FIXME: move to style?
+        auto corner_area = 25.0f;
+        auto edge_area = 5.0f;
+        auto edge = WindowEdge::None;
 
-        // Bottom corners: 25px threshold
-        if (r.y > size_.height - corner_area) {
-            if (r.x < corner_area) {
-                edge = WindowEdge::BottomLeft;
-            } else if (r.x > size_.width - corner_area) {
-                edge = WindowEdge::BottomRight;
-            }
-        }
+        // Check if mouse is within the "real" window area (excluding shadows)
+        if (r.x >= shadow && r.x <= size_.width - shadow && r.y >= shadow &&
+            r.y <= size_.height - shadow) {
 
-        // Everything else: 5px threshold
-        if (edge == WindowEdge::None) {
-            if (r.y < edge_area) {
-                if (r.x < edge_area) {
-                    edge = WindowEdge::TopLeft;
-                } else if (r.x > size_.width - edge_area) {
-                    edge = WindowEdge::TopRight;
-                } else {
-                    edge = WindowEdge::Top;
+            auto rx = r.x - shadow;
+            auto ry = r.y - shadow;
+            auto rw = size_.width - 2 * shadow;
+            auto rh = size_.height - 2 * shadow;
+
+            // Bottom corners
+            if (ry > rh - corner_area) {
+                if (rx < corner_area) {
+                    edge = WindowEdge::BottomLeft;
+                } else if (rx > rw - corner_area) {
+                    edge = WindowEdge::BottomRight;
                 }
-            } else if (r.y > size_.height - edge_area) {
-                edge = WindowEdge::Bottom;
-            } else if (r.x < edge_area) {
-                edge = WindowEdge::Left;
-            } else if (r.x > size_.width - edge_area) {
-                edge = WindowEdge::Right;
+            }
+
+            if (edge == WindowEdge::None) {
+                if (ry < edge_area) {
+                    if (rx < edge_area) {
+                        edge = WindowEdge::TopLeft;
+                    } else if (rx > rw - edge_area) {
+                        edge = WindowEdge::TopRight;
+                    } else {
+                        edge = WindowEdge::Top;
+                    }
+                } else if (ry > rh - edge_area) {
+                    edge = WindowEdge::Bottom;
+                } else if (rx < edge_area) {
+                    edge = WindowEdge::Left;
+                } else if (rx > rw - edge_area) {
+                    edge = WindowEdge::Right;
+                }
             }
         }
 
@@ -872,8 +925,8 @@ void Window::handle_mouse(MouseEvent const &event) {
             under = root_->widget_at(p);
         }
 
-        // Only update hovered_widget_ if not dragging, or if under is the captured widget
         if (!captured_widget_ || under == captured_widget_) {
+            // Only update hovered_widget_ if not dragging, or if under is the captured widget
             if (under != hovered_widget_) {
                 if (hovered_widget_) {
                     auto leave_ev = event;
@@ -983,20 +1036,15 @@ bool Window::dispatch_key_event_recursive(Widget *w, KeyEvent const &event) {
     if (!w->is_visible()) {
         return false;
     }
-
-    // Try children first (depth first)
-    bool handled = false;
+    auto handled = false;
     w->for_each_child([&](Widget *child) {
         if (!handled && dispatch_key_event_recursive(child, event)) {
             handled = true;
         }
     });
-
     if (handled) {
         return true;
     }
-
-    // Try the widget itself
     return w->handle_key_impl(event);
 }
 
@@ -1032,8 +1080,11 @@ void Window::handle_activate(bool active) {
 
 void Window::relayout() {
     if (root_) {
-        auto bw = options_.csd ? Theme::current().Theme::current().style.border_width : 0.0f;
-        root_->set_rect({bw, bw, size_.width - 2 * bw, size_.height - 2 * bw});
+        auto const &s = Theme::current().style;
+        auto bw = options_.csd ? s.border_width : 0.0f;
+        auto shadow = (options_.csd && !is_maximized_) ? s.shadow.size : 0.0f;
+        auto inset = bw + shadow;
+        root_->set_rect({inset, inset, size_.width - 2 * inset, size_.height - 2 * inset});
     }
     request_redraw();
 }
@@ -1045,16 +1096,19 @@ Window &Window::resize_to_fit() {
     // First pass: layout at the current width so height-dependent widgets
     // (e.g. RichLabel/HtmlView) render at their actual allocated width
     // before we query their size_hint for the final height.
-    auto bw = options_.csd ? Theme::current().Theme::current().style.border_width : 0.0f;
-    root_->set_rect({bw, bw, size_.width - 2 * bw, size_.height - 2 * bw});
+    auto const &s = Theme::current().style;
+    auto bw = options_.csd ? s.border_width : 0.0f;
+    auto shadow = (options_.csd && !is_maximized_) ? s.shadow.size : 0.0f;
+    auto inset = bw + shadow;
+    root_->set_rect({inset, inset, size_.width - 2 * inset, size_.height - 2 * inset});
     auto hint = root_->size_hint();
     auto changed = false;
-    if (hint.width > size_.width) {
-        size_.width = hint.width;
+    if (hint.width + 2 * inset > size_.width) {
+        size_.width = hint.width + 2 * inset;
         changed = true;
     }
-    if (hint.height > size_.height) {
-        size_.height = hint.height;
+    if (hint.height + 2 * inset > size_.height) {
+        size_.height = hint.height + 2 * inset;
         changed = true;
     }
     if (changed) {
@@ -1164,12 +1218,8 @@ void Window::draw_debug_frames_recursive(Painter &painter, Widget *widget) {
     } else {
         painter.set_line_style(Painter::LineStyle::Dashed);
     }
-
-    // ALWAYS draw at 'r' because the painter is currently at the parent's origin
     painter.draw_rect(r, {1.0f, 0.0f, 0.0f, 1.0f}, 1.0f);
     painter.set_line_style(Painter::LineStyle::Solid);
-
-    // Recurse into children
     painter.push_translation({r.x, r.y});
     widget->for_each_child([&](Widget *child) { draw_debug_frames_recursive(painter, child); });
     painter.pop_translation();

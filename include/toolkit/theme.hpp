@@ -104,6 +104,11 @@ struct Style {
     } layout;
 
     struct {
+        unsigned long size = 48;
+        float opacity = 0.6f;
+    } shadow;
+
+    struct {
         float height = 5.0f;
     } progressBar;
 

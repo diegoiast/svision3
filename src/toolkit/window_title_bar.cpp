@@ -47,7 +47,12 @@ bool TitleBarIcon::handle_mouse(MouseEvent const &event) {
         return false;
     }
     if (event.type == MouseEvent::Type::Press) {
+        auto shadow = (window_->options().csd && !window_->is_maximized())
+                          ? Theme::current().style.shadow.size
+                          : 0.0f;
         auto menu_pos = map_to_window({0, rect_.height});
+        menu_pos.x += shadow;
+        menu_pos.y += shadow;
         window_->platform_window()->show_system_menu(menu_pos);
         return true;
     }
@@ -174,6 +179,8 @@ void WindowTitleBar::set_rect(Rect const &rect) {
 void WindowTitleBar::set_icon(Icon const &icon) {
     if (icon_widget) {
         icon_widget->set_image(icon);
+    } else {
+        spdlog::warn("WindowTitleBar::set_icon called but icon_widget is null!");
     }
 }
 

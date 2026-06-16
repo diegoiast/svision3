@@ -55,11 +55,9 @@ class GnomeTitleBar : public WindowTitleBar {
         auto const &pal = Theme::current().palette;
         auto active = window_->is_active();
         auto bg = active ? pal.window : pal.window_inactive.value_or(pal.window);
-        // Needed to override this method, because default uses another color
         auto fg = active ? pal.text : pal.text_disabled;
 
         painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
-
         title_label->set_text(std::string(window_->title()));
         title_label->set_color(fg);
         layout->paint(painter);
@@ -88,8 +86,6 @@ Palette MaterialTheme::default_palette(ColorScheme scheme) const {
     Palette p = BaseTheme::default_palette(scheme);
 
     switch (scheme) {
-        // ...
-
     case ColorScheme::Light:
         p.window = Color::from_rgb(0xFFFBFE);
         p.base = Color::from_rgb(0xFFFFFF);
@@ -168,6 +164,8 @@ GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p)
     style.tabWidget.indicator_weight = 0.0f;
     style.tabWidget.tab_padding_v = 12.0f;
     style.bottom_shadow = true;
+    style.shadow.opacity = 0.2f;
+    style.shadow.size = 32;
 }
 
 Palette GnomeTheme::default_palette(ColorScheme scheme) const {

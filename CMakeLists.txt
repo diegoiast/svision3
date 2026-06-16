@@ -134,6 +134,7 @@ elseif(UNIX)
     find_package(X11 QUIET)
     if(X11_FOUND)
         set(TOOLKIT_HAS_X11 ON)
+        pkg_check_modules(XEXT REQUIRED xext)
         list(APPEND TOOLKIT_SOURCES
             src/toolkit/platform/x11/x11_platform.cpp
         )
@@ -293,8 +294,8 @@ elseif(WIN32)
 elseif(UNIX)
     target_link_libraries(toolkit PUBLIC OpenGL::GL)
     if(TOOLKIT_HAS_X11)
-        target_link_libraries(toolkit PUBLIC X11::X11)
-        target_include_directories(toolkit PRIVATE src/toolkit/platform/x11)
+        target_link_libraries(toolkit PUBLIC X11::X11 ${XEXT_LIBRARIES})
+        target_include_directories(toolkit PRIVATE src/toolkit/platform/x11 ${XEXT_INCLUDE_DIRS})
         target_compile_definitions(toolkit PRIVATE TOOLKIT_HAS_X11)
     endif()
 

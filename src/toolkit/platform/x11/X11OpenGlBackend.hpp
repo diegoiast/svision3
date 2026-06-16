@@ -48,10 +48,10 @@ class X11OpenGlBackend : public RenderingBackend {
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-        glClearColor(1, 1, 1, 1);
+        glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
         GLPainter painter(static_cast<float>(lh), scale, &rasterizer_);
         owner->handle_paint(painter);

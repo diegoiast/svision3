@@ -93,6 +93,11 @@ class WaylandCairoBackend : public RenderingBackend {
                 cairo_image_surface_create_for_data(static_cast<unsigned char *>(window->shm_data),
                                                     CAIRO_FORMAT_ARGB32, pw, ph, stride);
             cairo_t *cr = cairo_create(cs);
+            cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+            cairo_set_source_rgba(cr, 0, 0, 0, 0);
+            cairo_paint(cr);
+            cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+
             cairo_font_options_t *fo = cairo_font_options_create();
             cairo_font_options_set_antialias(fo, CAIRO_ANTIALIAS_GRAY);
             cairo_font_options_set_hint_style(fo, CAIRO_HINT_STYLE_SLIGHT);

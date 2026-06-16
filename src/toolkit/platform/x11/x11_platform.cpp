@@ -4,10 +4,10 @@
 #include "x11_platform.hpp"
 #include "../linux_utils.hpp"
 #include "toolkit/application.hpp"
+#include "toolkit/lunasvg_image_loader.hpp"
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/painters/gl_painter.hpp"
 #include "toolkit/stb_image_loader.hpp"
-#include "toolkit/lunasvg_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
@@ -516,6 +516,14 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
                 maximized = has_horz && has_vert;
             }
             win->handle_maximized(maximized);
+
+            auto shadow_size =
+                (win->options().csd && !maximized) ? Theme::current().style.shadow.size : 0UL;
+            auto gtk_frame_extents = XInternAtom(app->display, "_GTK_FRAME_EXTENTS", False);
+            unsigned long extents[4] = {shadow_size, shadow_size, shadow_size, shadow_size};
+            XChangeProperty(app->display, xwin, gtk_frame_extents, XA_CARDINAL, 32, PropModeReplace,
+                            reinterpret_cast<unsigned char *>(extents), 4);
+            win->relayout();
         }
         break;
     }
@@ -896,9 +904,21 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     Colormap colormap = d->colormap;
     GLXContext glx_context = nullptr;
 
+    if (options.csd && d->argb_visual) {
+        visual = d->argb_visual;
+        depth = d->argb_depth;
+        colormap = d->argb_colormap;
+    }
+
     if (d->opengl_requested) {
-        GLint att[] = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, 0};
-        XVisualInfo *vi = glXChooseVisual(d->display, d->screen, att);
+        std::vector<GLint> att = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER};
+        if (options.csd) {
+            att.push_back(GLX_ALPHA_SIZE);
+            att.push_back(8);
+        }
+        att.push_back(0);
+
+        XVisualInfo *vi = glXChooseVisual(d->display, d->screen, att.data());
         if (vi) {
             visual = vi->visual;
             depth = vi->depth;
@@ -918,24 +938,31 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
     swa.background_pixmap = 0L; // None
     swa.bit_gravity = StaticGravity;
     swa.backing_store = WhenMapped;
+    swa.border_pixel = 0;
 
     // Use theme background color for initial window background to avoid black blink
-    Color const &bg = Theme::current().palette.window;
-    swa.background_pixel = (static_cast<unsigned long>(bg.r * 255) << 16) |
-                           (static_cast<unsigned long>(bg.g * 255) << 8) |
-                           (static_cast<unsigned long>(bg.b * 255));
+    // For 32-bit visuals, we prefer starting transparent
+    if (depth == 32) {
+        swa.background_pixel = 0;
+    } else {
+        Color const &bg = Theme::current().palette.window;
+        swa.background_pixel = (static_cast<unsigned long>(bg.r * 255) << 16) |
+                               (static_cast<unsigned long>(bg.g * 255) << 8) |
+                               (static_cast<unsigned long>(bg.b * 255));
+    }
 
     float scale = d->scale;
-    w->xwindow = XCreateWindow(
-        d->display, d->root, 0, 0, static_cast<unsigned>(size.width * scale),
-        static_cast<unsigned>(size.height * scale), 0, depth, InputOutput, visual,
-        CWEventMask | CWColormap | CWBackPixmap | CWBitGravity | CWBackingStore | CWBackPixel,
-        &swa);
+    w->xwindow =
+        XCreateWindow(d->display, d->root, 0, 0, static_cast<unsigned>(size.width * scale),
+                      static_cast<unsigned>(size.height * scale), 0, depth, InputOutput, visual,
+                      CWEventMask | CWColormap | CWBackPixmap | CWBitGravity | CWBackingStore |
+                          CWBackPixel | CWBorderPixel,
+                      &swa);
 
     if (glx_context) {
         w->backend = std::make_unique<X11OpenGlBackend>(w->xwindow, glx_context);
     } else {
-        w->backend = std::make_unique<X11CairoBackend>(w->xwindow);
+        w->backend = std::make_unique<X11CairoBackend>(w->xwindow, visual);
     }
     std::string t(title);
     XStoreName(d->display, w->xwindow, t.c_str());
@@ -1008,7 +1035,8 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
         // Tell the WM that our "client side decorations" are part of the window
         // This helps the WM draw shadows correctly around the surface
         Atom gtk_frame_extents = XInternAtom(d->display, "_GTK_FRAME_EXTENTS", False);
-        unsigned long extents[4] = {0, 0, 0, 0}; // left, right, top, bottom
+        auto s = Theme::current().style.shadow.size;
+        unsigned long extents[4] = {s, s, s, s}; // left, right, top, bottom
         XChangeProperty(d->display, w->xwindow, gtk_frame_extents, XA_CARDINAL, 32, PropModeReplace,
                         reinterpret_cast<unsigned char *>(extents), 4);
     }
@@ -1487,28 +1515,28 @@ void X11PlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/
     auto *d = app_->impl_.get();
     int direction = 0;
     switch (edge) {
-    case WindowEdge::Top:
+    case WindowEdge::TopLeft:
         direction = 0;
         break;
-    case WindowEdge::Bottom:
+    case WindowEdge::Top:
         direction = 1;
         break;
-    case WindowEdge::Left:
+    case WindowEdge::TopRight:
         direction = 2;
         break;
     case WindowEdge::Right:
         direction = 3;
         break;
-    case WindowEdge::TopLeft:
+    case WindowEdge::BottomRight:
         direction = 4;
         break;
-    case WindowEdge::TopRight:
+    case WindowEdge::Bottom:
         direction = 5;
         break;
     case WindowEdge::BottomLeft:
         direction = 6;
         break;
-    case WindowEdge::BottomRight:
+    case WindowEdge::Left:
         direction = 7;
         break;
     default:
@@ -1529,9 +1557,9 @@ void X11PlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/
     event.xclient.format = 32;
     event.xclient.data.l[0] = root_x;
     event.xclient.data.l[1] = root_y;
-    event.xclient.data.l[2] = direction + 9; // _NET_WM_MOVERESIZE_SIZE_TOPLEFT etc.
-    event.xclient.data.l[3] = 0;             // button (0 = unspecified)
-    event.xclient.data.l[4] = 1;             // source (1 = application)
+    event.xclient.data.l[2] = direction;
+    event.xclient.data.l[3] = 0; // button (0 = unspecified)
+    event.xclient.data.l[4] = 1; // source (1 = application)
     XUngrabPointer(d->display, CurrentTime);
     XSendEvent(d->display, d->root, False, SubstructureRedirectMask | SubstructureNotifyMask,
                &event);

@@ -1,8 +1,8 @@
 #include "wl_platform.hpp"
 #include "../linux_utils.hpp"
 #include "toolkit/application.hpp"
-#include "toolkit/stb_image_loader.hpp"
 #include "toolkit/lunasvg_image_loader.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <cstring>
@@ -1173,10 +1173,12 @@ WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
                 switch (mode) {
                 case ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE:
                     spdlog::info("Wayland compositor supports server-side decorations");
+                    win->owner_->set_csd_mode(false);
                     break;
 
                 case ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:
                     spdlog::info("Wayland compositor using client-side decorations");
+                    win->owner_->set_csd_mode(true);
                     break;
 
                 default:
@@ -1548,7 +1550,6 @@ void WaylandPlatformWindow::hide_tooltip_window() {
 
     tooltip_data.reset();
 }
-
 void WaylandPlatformWindow::do_paint() {
     needs_redraw = false;
     int lw = static_cast<int>(owner_->size().width);
@@ -1557,11 +1558,39 @@ void WaylandPlatformWindow::do_paint() {
         return;
     }
 
-    if (frame_cb) {
-        wl_callback_destroy(frame_cb);
+    if (owner_->options().csd && !owner_->is_maximized()) {
+        auto const &s = Theme::current().style;
+        auto shadow = s.shadow.size;
+        auto corner = static_cast<int>(s.corner_radius);
+        auto opaque = wl_compositor_create_region(app_->compositor);
+
+        wl_region_add(opaque, shadow + corner, shadow, lw - 2 * shadow - 2 * corner,
+                      lh - 2 * shadow);
+        wl_region_add(opaque, shadow, shadow + corner, lw - 2 * shadow,
+                      lh - 2 * shadow - 2 * corner);
+        wl_surface_set_opaque_region(surface, opaque);
+        wl_region_destroy(opaque);
+
+        auto input = wl_compositor_create_region(app_->compositor);
+        wl_region_add(input, shadow, shadow, lw - 2 * shadow, lh - 2 * shadow);
+        wl_surface_set_input_region(surface, input);
+        wl_region_destroy(input);
+    } else {
+        auto opaque = wl_compositor_create_region(app_->compositor);
+        wl_region_add(opaque, 0, 0, lw, lh);
+        wl_surface_set_opaque_region(surface, opaque);
+        wl_region_destroy(opaque);
+
+        auto input = wl_compositor_create_region(app_->compositor);
+        wl_region_add(input, 0, 0, lw, lh);
+        wl_surface_set_input_region(surface, input);
+        wl_region_destroy(input);
     }
+
     frame_cb = wl_surface_frame(surface);
-    wl_callback_add_listener(frame_cb, &frame_listener, this);
+    if (frame_cb) {
+        wl_callback_add_listener(frame_cb, &frame_listener, this);
+    }
 
     if (backend) {
         backend->paint(owner_, this, app_, lw, lh);
@@ -1607,7 +1636,8 @@ void WaylandPlatformWindow::paint_tooltip() {
         auto fm = p.font_metrics(fs);
         Rect r{0, 0, tw, th};
         p.fill_rounded_rect(r, palette.tooltip, Theme::current().style.corner_radius);
-        p.draw_rounded_rect(r, palette.border, Theme::current().style.corner_radius, Theme::current().style.border_width);
+        p.draw_rounded_rect(r, palette.border, Theme::current().style.corner_radius,
+                            Theme::current().style.border_width);
         p.draw_text(tooltip_data->text, {padding, padding + fm.ascent}, palette.text, fs);
     });
 

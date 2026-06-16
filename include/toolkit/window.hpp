@@ -84,6 +84,7 @@ class Window {
 
     void set_options(WindowOptions options) { options_ = options; }
     WindowOptions options() const { return options_; }
+    void set_csd_mode(bool csd) { options_.csd = csd; }
 
     void start_system_move(uint32_t serial);
     void start_system_resize(WindowEdge edge, uint32_t serial);
