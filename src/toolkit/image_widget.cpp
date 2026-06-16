@@ -6,6 +6,7 @@
 #include "toolkit/application.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/theme.hpp"
 #include <algorithm>
 #include <nlohmann/json.hpp>
 
@@ -45,6 +46,7 @@ void ImageWidget::load(const uint8_t *data, size_t size) {
 
 void ImageWidget::set_image(std::shared_ptr<ImageData> image) {
     image_ = image;
+    update_scrollbars({content_w(), content_h()});
     if (window_) {
         window_->request_redraw("ImageWidget::set_image");
     }
@@ -152,6 +154,19 @@ bool ImageWidget::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Press /*&& event.button == 1*/) {
+        if (handle_scrollbar_mouse(event)) {
+            return true;
+        }
+        // Don't start panning if press is on scrollbar gutter
+        auto const &s = Theme::current().style;
+        auto bw = s.border_width;
+        auto sw = s.scrollbar.thickness;
+        auto needs_v = content_size_.height > rect_.height - bw * 2;
+        auto needs_h = content_size_.width > rect_.width - bw * 2;
+        if ((needs_v && event.position.x >= rect_.width - bw - sw) ||
+            (needs_h && event.position.y >= rect_.height - bw - sw)) {
+            return true;
+        }
         spdlog::info("Started dragging");
         if (window_) {
             window_->set_focused_widget(this);
@@ -162,6 +177,9 @@ bool ImageWidget::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Release) {
+        if (handle_scrollbar_mouse(event)) {
+            return true;
+        }
         dragging_ = false;
         return true;
     }
@@ -175,6 +193,11 @@ bool ImageWidget::handle_mouse(MouseEvent const &event) {
                 window_->request_redraw("ImageWidget::handle_mouse");
             }
         }
+        return true;
+    }
+
+    // Forward Drag to scrollbar handler (inline scrollbar thumb drag)
+    if (handle_scrollbar_mouse(event)) {
         return true;
     }
 

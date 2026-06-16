@@ -48,6 +48,12 @@ class ScrollableWidget : public Widget {
     void clamp_scroll();
     void layout_scrollbars();
 
+    // Inline scrollbar drag tracking
+    bool inline_dragging_v_ = false;
+    bool inline_dragging_h_ = false;
+    float inline_drag_start_ = 0;
+    float inline_drag_value_ = 0;
+
     static constexpr float kThumbWidth = 6.0f;
     static constexpr float kThumbMinLen = 20.0f;
     static constexpr float kScrollStep = 40.0f;

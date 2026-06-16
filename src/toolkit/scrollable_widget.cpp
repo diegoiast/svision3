@@ -205,6 +205,114 @@ bool ScrollableWidget::handle_scrollbar_mouse(MouseEvent const &event) {
         return Widget::dispatch_mouse_event(hscroll_.get(), event);
     }
 
+    // Inline (overlay) scrollbar handling
+    if (Theme::current().style.inline_scrollbars) {
+        auto const &s = Theme::current().style;
+        auto bw = s.border_width;
+        auto sw = s.scrollbar.thickness;
+
+        if (needs_vscroll()) {
+            auto thumb = vthumb_rect();
+            auto on_gutter = event.position.x >= rect_.width - bw - sw &&
+                             event.position.y >= viewport_rect().y &&
+                             event.position.y < viewport_rect().y + viewport_rect().height;
+
+            if (on_gutter &&
+                (event.type == MouseEvent::Type::Press || event.type == MouseEvent::Type::Drag ||
+                 event.type == MouseEvent::Type::Release)) {
+                if (event.type == MouseEvent::Type::Press) {
+                    if (thumb.contains(event.position)) {
+                        inline_dragging_v_ = true;
+                        inline_drag_start_ = event.position.y;
+                        inline_drag_value_ = scroll_y_;
+                        return true;
+                    }
+                    // Track click - page up/down
+                    if (event.position.y < thumb.y) {
+                        scroll_y_ -= viewport_rect().height;
+                    } else {
+                        scroll_y_ += viewport_rect().height;
+                    }
+                    clamp_scroll();
+                    on_scroll(scroll_x_, scroll_y_);
+                    if (window()) {
+                        window()->request_redraw("inline vscroll track");
+                    }
+                    return true;
+                }
+                if (event.type == MouseEvent::Type::Drag && inline_dragging_v_) {
+                    auto vr = viewport_rect();
+                    float ch = content_size_.height;
+                    float vh = vr.height;
+                    float ratio = vh / ch;
+                    float track_h = vh - std::max(kThumbMinLen, vh * ratio);
+                    float delta = (event.position.y - inline_drag_start_) / std::max(1.0f, track_h);
+                    scroll_y_ = inline_drag_value_ + delta * (ch - vh);
+                    clamp_scroll();
+                    on_scroll(scroll_x_, scroll_y_);
+                    if (window()) {
+                        window()->request_redraw("inline vscroll drag");
+                    }
+                    return true;
+                }
+                if (event.type == MouseEvent::Type::Release && inline_dragging_v_) {
+                    inline_dragging_v_ = false;
+                    return true;
+                }
+            }
+        }
+
+        if (needs_hscroll()) {
+            auto thumb = hthumb_rect();
+            auto on_gutter = event.position.y >= rect_.height - bw - sw &&
+                             event.position.x >= viewport_rect().x &&
+                             event.position.x < viewport_rect().x + viewport_rect().width;
+
+            if (on_gutter &&
+                (event.type == MouseEvent::Type::Press || event.type == MouseEvent::Type::Drag ||
+                 event.type == MouseEvent::Type::Release)) {
+                if (event.type == MouseEvent::Type::Press) {
+                    if (thumb.contains(event.position)) {
+                        inline_dragging_h_ = true;
+                        inline_drag_start_ = event.position.x;
+                        inline_drag_value_ = scroll_x_;
+                        return true;
+                    }
+                    if (event.position.x < thumb.x) {
+                        scroll_x_ -= viewport_rect().width;
+                    } else {
+                        scroll_x_ += viewport_rect().width;
+                    }
+                    clamp_scroll();
+                    on_scroll(scroll_x_, scroll_y_);
+                    if (window()) {
+                        window()->request_redraw("inline hscroll track");
+                    }
+                    return true;
+                }
+                if (event.type == MouseEvent::Type::Drag && inline_dragging_h_) {
+                    auto vr = viewport_rect();
+                    float cw = content_size_.width;
+                    float vw = vr.width;
+                    float ratio = vw / cw;
+                    float track_w = vw - std::max(kThumbMinLen, vw * ratio);
+                    float delta = (event.position.x - inline_drag_start_) / std::max(1.0f, track_w);
+                    scroll_x_ = inline_drag_value_ + delta * (cw - vw);
+                    clamp_scroll();
+                    on_scroll(scroll_x_, scroll_y_);
+                    if (window()) {
+                        window()->request_redraw("inline hscroll drag");
+                    }
+                    return true;
+                }
+                if (event.type == MouseEvent::Type::Release && inline_dragging_h_) {
+                    inline_dragging_h_ = false;
+                    return true;
+                }
+            }
+        }
+    }
+
     if (event.type == MouseEvent::Type::Scroll) {
         if (!hit_test(event.position)) {
             return false;
