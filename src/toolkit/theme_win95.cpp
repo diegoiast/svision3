@@ -104,16 +104,15 @@ void Win95Theme::draw_window_button(Painter &painter, Rect const &rect, Decorati
                                     WidgetState const &state) const {
     auto pressed = state.interaction == ButtonState::ClickedInside;
     auto bg = palette.window;
-    painter.draw_filled_frame(rect, bg, palette.border, palette, pressed);
-
     auto center = Point{rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f};
+    auto symbol_c = palette.text;
+    auto s = 4.0f;
+
+    painter.draw_filled_frame(rect, bg, palette.border, palette, pressed);
     if (pressed) {
         center.x += 1.0f;
         center.y += 1.0f;
     }
-
-    auto symbol_c = palette.text;
-    auto s = 4.0f;
 
     switch (button) {
     case DecorationButton::Close:
@@ -152,47 +151,48 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
     switch (scheme) {
     case ColorScheme::Light:
         p.window = Color::from_argb(0xFFC0C0C0);
-        p.base = Color::from_argb(0xFFFFFFFF);
         p.base = p.window;
-        p.alternate = Color::from_argb(0xFFC0C0C0);
+        p.alternate = p.window;
         p.text = Color::from_argb(0xFF000000);
-        p.text_disabled = Color::from_argb(0xFF808080);
-        p.placeholder = Color::from_argb(0xFF808080);
+        p.text_disabled = Color::from_argb(0xFFACA899);
+        p.placeholder = Color::from_argb(0xFFACA899);
         p.highlight = windows95_color;
         p.highlighted_text = Color::from_argb(0xFFFFFFFF);
-        p.border = Color::from_argb(0xFF808080);
+        p.border = Color::from_argb(0xFFACA899);
         p.accent = windows95_color;
         p.link = windows95_color;
         p.light = Color::from_argb(0xFFFFFFFF);
-        p.shadow = Color::from_argb(0xFF808080);
-        p.dark_shadow = Color::from_argb(0xFF000000);
-        p.background_pressed = Color::from_argb(0xFFB0B0B0);
-        p.background_hovered = Color::from_argb(0xFFFFFFFF);
-        p.background_hovered = p.window;
+        p.shadow = Color::from_argb(0xFFACA899);
+        p.dark_shadow = Color::from_argb(0xFF716F64);
+        p.dark_shadow = Color::from_argb(0xff9922);
+
+        p.background_pressed = Color::from_argb(0xFFA0A0A0);
+        p.background_hovered = std::nullopt;
         p.tooltip = Color::from_argb(0xFFFFFFE1);
         p.success = Color::from_argb(0xFF008000);
         p.warning = Color::from_argb(0xFFFF8000);
         p.error = Color::from_argb(0xFF800000);
         p.tab_select_background = p.window;
         p.tab_background = p.window;
+        // p.list_hover = Color::from_argb(0xFFD4E8FF);
         break;
     case ColorScheme::Dark:
-        p.window = Color::from_argb(0xFF000000);
-        p.base = Color::from_argb(0xFF202020);
-        p.alternate = Color::from_argb(0xFF303030);
+        p.window = Color::from_argb(0xFF1C1B1F);
+        p.base = Color::from_argb(0xFF2A2A2E);
+        p.alternate = Color::from_argb(0xFF3A3A3E);
         p.text = Color::from_argb(0xFFFFFFFF);
         p.text_disabled = Color::from_argb(0xFF808080);
         p.placeholder = Color::from_argb(0xFF808080);
-        p.highlight = windows95_color;
+        p.highlight = Color::from_argb(0xFF000080);
         p.highlighted_text = Color::from_argb(0xFFFFFFFF);
         p.border = Color::from_argb(0xFF404040);
-        p.accent = windows95_color;
-        p.link = windows95_color;
-        p.light = Color::from_argb(0xFF404040);
-        p.shadow = Color::from_argb(0xFF202020);
-        p.dark_shadow = Color::from_argb(0xFF000000);
-        p.background_pressed = windows95_color;
-        p.background_hovered = Color::from_argb(0xFF303030);
+        p.accent = Color::from_argb(0xFF000080);
+        p.link = Color::from_argb(0xFF000080);
+        p.light = Color::from_argb(0xFF505050);
+        p.shadow = Color::from_argb(0xFF303030);
+        p.dark_shadow = Color::from_argb(0xFF101010);
+        p.background_pressed = Color::from_argb(0xFF404040);
+        p.background_hovered = std::nullopt;
         p.tooltip = Color::from_argb(0xFFFFFFE1);
         p.success = Color::from_argb(0xFF008000);
         p.warning = Color::from_argb(0xFFFF8000);
@@ -295,14 +295,13 @@ void Win95Theme::draw_progress_bar(Painter &painter, Rect const &rect, float pro
     auto const chunk_width = 8.0f;
     auto const chunk_gap = 2.0f;
     auto enabled = state.enabled;
-
     auto bg = enabled ? palette.window : palette.window.darken(0.1f);
     auto fill_c = enabled ? palette.accent : palette.accent.darken(0.2f);
     auto inner = rect.inset(Theme::current().style.border_width);
     auto chunk_count = static_cast<int>(inner.width / (chunk_width + chunk_gap));
     auto fill_w = inner.width * std::clamp(progress, 0.0f, 1.0f);
 
-    for (int i = 0; i < chunk_count; ++i) {
+    for (auto i = 0; i < chunk_count; ++i) {
         auto cx = inner.x + i * (chunk_width + chunk_gap);
         if (cx + chunk_width > inner.x + fill_w) {
             break;
@@ -313,6 +312,99 @@ void Win95Theme::draw_progress_bar(Painter &painter, Rect const &rect, float pro
 
 void Win95Theme::draw_tab_content_background(Painter &painter, Rect const &rect) const {
     painter.fill_rect(rect, palette.window);
+}
+
+void Win95Theme::draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
+                                Icon const &icon, bool selected, bool hovered,
+                                bool alternate) const {
+    BaseTheme::draw_list_item(painter, rect, text, icon, selected, false, alternate);
+}
+
+void Win95Theme::draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
+                          WidgetState const &state, TabOrientation orientation, bool has_close,
+                          bool hovered_close) const {
+    auto tab_rect = rect;
+    if (!active) {
+        switch (orientation) {
+        case TabOrientation::North:
+            tab_rect.y += 4.0f;
+            tab_rect.height -= 4.0f;
+            break;
+        case TabOrientation::South:
+            tab_rect.height -= 4.0f;
+            break;
+        case TabOrientation::West:
+        case TabOrientation::WestVertical:
+            tab_rect.x += 4.0f;
+            tab_rect.width -= 4.0f;
+            break;
+        case TabOrientation::East:
+        case TabOrientation::EastVertical:
+            tab_rect.width -= 4.0f;
+            break;
+        }
+    }
+
+    auto bg = active ? palette.tab_select_background : palette.tab_background;
+    painter.fill_rect(tab_rect, bg);
+
+    BaseTheme::draw_tab(painter, tab_rect, text, active, state, orientation, has_close,
+                        hovered_close);
+
+    auto x = tab_rect.x, y = tab_rect.y, w = tab_rect.width, h = tab_rect.height;
+    auto tl_outer = palette.light;
+    auto tl_inner = Color::lerp(palette.light, palette.window, 0.3f);
+    auto br_inner = palette.shadow;
+    auto br_outer = palette.dark_shadow;
+    auto draw_top = true;
+    auto draw_bottom = true;
+    auto draw_left = true;
+    auto draw_right = true;
+
+    if (active) {
+        switch (orientation) {
+        case TabOrientation::North:
+            draw_bottom = false;
+            break;
+        case TabOrientation::South:
+            draw_top = false;
+            break;
+        case TabOrientation::West:
+        case TabOrientation::WestVertical:
+            draw_right = false;
+            break;
+        case TabOrientation::East:
+        case TabOrientation::EastVertical:
+            draw_left = false;
+            break;
+        }
+    }
+
+    auto tx1 = draw_left ? x : x + 1;
+    auto tx2 = draw_right ? x + w - 1 : x + w - 2;
+    auto bx1 = draw_left ? x : x + 1;
+    auto bx2 = draw_right ? x + w - 1 : x + w - 2;
+    auto ly1 = draw_top ? y : y + 1;
+    auto ly2 = draw_bottom ? y + h - 1 : y + h - 2;
+    auto ry1 = draw_top ? y : y + 1;
+    auto ry2 = draw_bottom ? y + h - 1 : y + h - 2;
+
+    if (draw_top) {
+        painter.draw_line({tx1, y}, {tx2, y}, tl_outer, 1.0f);
+        painter.draw_line({tx1 + 1, y + 1}, {tx2 - 1, y + 1}, tl_inner, 1.0f);
+    }
+    if (draw_left) {
+        painter.draw_line({x, ly1}, {x, ly2}, tl_outer, 1.0f);
+        painter.draw_line({x + 1, ly1 + 1}, {x + 1, ly2 - 1}, tl_inner, 1.0f);
+    }
+    if (draw_bottom) {
+        painter.draw_line({bx1, y + h - 1}, {bx2, y + h - 1}, br_outer, 1.0f);
+        painter.draw_line({bx1 + 1, y + h - 2}, {bx2 - 1, y + h - 2}, br_inner, 1.0f);
+    }
+    if (draw_right) {
+        painter.draw_line({x + w - 1, ry1}, {x + w - 1, ry2}, br_outer, 1.0f);
+        painter.draw_line({x + w - 2, ry1 + 1}, {x + w - 2, ry2 - 1}, br_inner, 1.0f);
+    }
 }
 
 } // namespace toolkit
