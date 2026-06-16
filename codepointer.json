@@ -69,7 +69,7 @@
             "runDirectory": "${source_directory}"
         }
     ],
-    "hideFilter": ".git;.vscode;.vs;cbuild;dist;out;build",
+    "hideFilter": ".git;.vscode;.vs;cbuild;dist;out;build;themes",
     "tasks": [
         {
             "commands": {
