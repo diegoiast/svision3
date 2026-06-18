@@ -31,14 +31,14 @@ class MacOSOpenGLPlatformWindow : public PlatformWindow {
                     bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
-    void set_icon(Image const &icon) override;
-    Image get_icon() override;
+    void set_icon(Icon const &icon) override;
+    Icon get_icon() override;
     void show_system_menu(Point) override {}
     void start_system_move(uint32_t serial) override;
     void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
-    bool save_to_png(std::string const &path) override;
+    Icon capture() override;
     float scale_factor() const override;
 
     struct Impl;

@@ -699,35 +699,12 @@ void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     impl_->graphics->SetInterpolationMode(old_i);
 }
 
-static int GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
-    UINT num = 0;
-    UINT size = 0;
-    Gdiplus::GetImageEncodersSize(&num, &size);
-    if (size == 0) {
-        return -1;
-    }
-    Gdiplus::ImageCodecInfo *pImageCodecInfo = (Gdiplus::ImageCodecInfo *)(malloc(size));
-    if (pImageCodecInfo == nullptr) {
-        return -1;
-    }
-    Gdiplus::GetImageEncoders(num, size, pImageCodecInfo);
-    for (UINT j = 0; j < num; ++j) {
-        if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0) {
-            *pClsid = pImageCodecInfo[j].Clsid;
-            free(pImageCodecInfo);
-            return j;
-        }
-    }
-    free(pImageCodecInfo);
-    return -1;
-}
-
-bool GDIPainter::save_to_png(Window *window, std::string const &path) {
+Icon GDIPainter::capture(Window *window) {
     float scale = window->scale_factor();
     int lw = static_cast<int>(window->size().width);
     int lh = static_cast<int>(window->size().height);
     if (lw <= 0 || lh <= 0) {
-        return false;
+        return nullptr;
     }
     int pw = static_cast<int>(std::ceil(lw * scale));
     int ph = static_cast<int>(std::ceil(lh * scale));
@@ -740,12 +717,29 @@ bool GDIPainter::save_to_png(Window *window, std::string const &path) {
     GDIPainter painter(&g, scale, &rasterizer);
     window->handle_paint(painter);
 
-    CLSID pngClsid;
-    if (GetEncoderClsid(L"image/png", &pngClsid) == -1) {
-        return false;
+    auto result = std::make_shared<ImageData>();
+    result->width = pw;
+    result->height = ph;
+    result->channels = 4;
+    result->pixels.resize(pw * ph * 4);
+
+    Gdiplus::BitmapData data;
+    Gdiplus::Rect rect(0, 0, pw, ph);
+    if (bitmap.LockBits(&rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &data) ==
+        Gdiplus::Ok) {
+        uint8_t *src = static_cast<uint8_t *>(data.Scan0);
+        for (int i = 0; i < pw * ph; ++i) {
+            // GDI+ PixelFormat32bppARGB is BGRA
+            // ImageData is RGBA
+            result->pixels[i * 4 + 0] = src[i * 4 + 2]; // R
+            result->pixels[i * 4 + 1] = src[i * 4 + 1]; // G
+            result->pixels[i * 4 + 2] = src[i * 4 + 0]; // B
+            result->pixels[i * 4 + 3] = src[i * 4 + 3]; // A
+        }
+        bitmap.UnlockBits(&data);
+        return result;
     }
-    auto wpath = to_wide(path);
-    return bitmap.Save(wpath.c_str(), &pngClsid, nullptr) == Gdiplus::Ok;
+    return nullptr;
 }
 
 } // namespace toolkit

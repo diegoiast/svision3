@@ -26,7 +26,7 @@ class DummyPlatformWindow : public PlatformWindow {
     void set_modal_for(PlatformWindow *) override {}
     void grab_pointer() override {}
     void ungrab_pointer() override {}
-    bool save_to_png(std::string const &) override { return true; }
+    Icon capture() override { return nullptr; }
     float scale_factor() const override { return 1.0f; }
     std::string_view painter_name() const override { return "none"; }
     void set_icon(Icon const &) override {}

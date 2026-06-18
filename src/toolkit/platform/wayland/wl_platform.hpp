@@ -164,7 +164,7 @@ class WaylandPlatformWindow : public PlatformWindow {
     void set_modal_for(PlatformWindow *parent) override;
     void grab_pointer() override {}
     void ungrab_pointer() override {}
-    bool save_to_png(std::string const &path) override;
+    Icon capture() override;
     float scale_factor() const override;
     std::string_view painter_name() const override { return backend->name(); };
     void set_title(std::string_view t) override;

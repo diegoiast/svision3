@@ -50,6 +50,14 @@ class ImageLoaderInterface {
      * @brief Get the list of supported file extensions (e.g., ".png", ".jpg").
      */
     virtual auto supported_extensions() const -> std::vector<std::string> = 0;
+
+    /**
+     * @brief Save an image to a file path.
+     * @param image The image data to save.
+     * @param path The path to the output file.
+     * @return true if saving succeeded, false otherwise.
+     */
+    virtual auto save(ImageData const &image, std::string_view path) -> bool = 0;
 };
 
 class SVGLoaderInterface : public ImageLoaderInterface {

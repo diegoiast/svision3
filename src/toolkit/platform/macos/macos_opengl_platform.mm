@@ -618,16 +618,18 @@ void MacOSOpenGLPlatformWindow::hide_tooltip_window() {
     if (impl_->tooltip_window) [impl_->tooltip_window orderOut:nil];
 }
 
-bool MacOSOpenGLPlatformWindow::save_to_png(std::string const &path) {
-    int w = static_cast<int>(owner_->size().width);
-    int h = static_cast<int>(owner_->size().height);
-    if (w <= 0 || h <= 0) return false;
+Icon MacOSOpenGLPlatformWindow::capture() {
+    float scale = scale_factor();
+    int lw = static_cast<int>(owner_->size().width);
+    int lh = static_cast<int>(owner_->size().height);
+    if (lw <= 0 || lh <= 0) return nullptr;
+    int pw = static_cast<int>(std::ceil(lw * scale));
+    int ph = static_cast<int>(std::ceil(lh * scale));
 
     // Create standalone offscreen CGL context
-    CGLPixelFormatAttribute pfa[] = {
-        kCGLPFAColorSize, (CGLPixelFormatAttribute)32,
-        kCGLPFAAlphaSize, (CGLPixelFormatAttribute)8,
-        (CGLPixelFormatAttribute)0};
+    CGLPixelFormatAttribute pfa[] = {kCGLPFAColorSize, (CGLPixelFormatAttribute)32,
+                                     kCGLPFAAlphaSize, (CGLPixelFormatAttribute)8,
+                                     (CGLPixelFormatAttribute)0};
     CGLPixelFormatObj pf;
     GLint npix;
     CGLChoosePixelFormat(pfa, &pf, &npix);
@@ -642,14 +644,14 @@ bool MacOSOpenGLPlatformWindow::save_to_png(std::string const &path) {
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
     glGenRenderbuffersEXT(1, &rbo);
     glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, rbo);
-    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_RGBA8, w, h);
-    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-                                 GL_RENDERBUFFER_EXT, rbo);
+    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_RGBA8, pw, ph);
+    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER_EXT,
+                                 rbo);
 
-    glViewport(0, 0, w, h);
+    glViewport(0, 0, pw, ph);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, w, h, 0, -1, 1);
+    glOrtho(0, lw, lh, 0, -1, 1);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glClearColor(1, 1, 1, 1);
@@ -657,13 +659,19 @@ bool MacOSOpenGLPlatformWindow::save_to_png(std::string const &path) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    GLPainter painter(static_cast<float>(h), 1.0f, &impl_->rasterizer);
+    GLPainter painter(static_cast<float>(lh), scale, &impl_->rasterizer);
     owner_->handle_paint(painter);
     glFinish();
 
     // Read pixels (GL reads bottom-up, flip later)
-    std::vector<uint8_t> pixels(w * h * 4);
-    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    auto result = std::make_shared<ImageData>();
+    result->width = pw;
+    result->height = ph;
+    result->channels = 4;
+    result->pixels.resize(pw * ph * 4);
+
+    std::vector<uint8_t> temp_pixels(pw * ph * 4);
+    glReadPixels(0, 0, pw, ph, GL_RGBA, GL_UNSIGNED_BYTE, temp_pixels.data());
 
     // Cleanup GL
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
@@ -672,32 +680,12 @@ bool MacOSOpenGLPlatformWindow::save_to_png(std::string const &path) {
     CGLSetCurrentContext(nullptr);
     CGLDestroyContext(cgl);
 
-    // Flip vertically
-    std::vector<uint8_t> flipped(w * h * 4);
-    for (int y = 0; y < h; y++)
-        memcpy(&flipped[y * w * 4], &pixels[(h - 1 - y) * w * 4], w * 4);
-
-    // Save via ImageIO
-    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
-    CGContextRef cgCtx = CGBitmapContextCreate(
-        flipped.data(), w, h, 8, w * 4, cs,
-        kCGImageAlphaPremultipliedLast | static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Big));
-    CGColorSpaceRelease(cs);
-    CGImageRef image = CGBitmapContextCreateImage(cgCtx);
-    CGContextRelease(cgCtx);
-
-    NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
-    NSURL *url = [NSURL fileURLWithPath:nsPath];
-    CGImageDestinationRef dest = CGImageDestinationCreateWithURL(
-        (__bridge CFURLRef)url, CFSTR("public.png"), 1, nullptr);
-    bool ok = false;
-    if (dest) {
-        CGImageDestinationAddImage(dest, image, nullptr);
-        ok = CGImageDestinationFinalize(dest);
-        CFRelease(dest);
+    // Flip vertically into result
+    for (int y = 0; y < ph; y++) {
+        memcpy(&result->pixels[y * pw * 4], &temp_pixels[(ph - 1 - y) * pw * 4], pw * 4);
     }
-    CGImageRelease(image);
-    return ok;
+
+    return result;
 }
 
 float MacOSOpenGLPlatformWindow::scale_factor() const {

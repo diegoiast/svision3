@@ -62,7 +62,7 @@ class GDIPainter : public Painter {
     void draw_image(ImageData const &image, Point position) override;
     void draw_image_scaled(ImageData const &image, Rect const &dest) override;
 
-    static bool save_to_png(Window *window, std::string const &path);
+    static Icon capture(Window *window);
 
     std::string_view name() const override { return "GDI+"; }
 

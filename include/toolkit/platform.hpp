@@ -57,9 +57,11 @@ class PlatformWindow {
     virtual void grab_pointer() = 0;
     virtual void ungrab_pointer() = 0;
 
-    // FIXME: remove this function, and return a pure image, saving should be done by the
-    //        application using proper APIs
-    virtual bool save_to_png(std::string const &path) = 0;
+    /**
+     * @brief Capture the window content to an image.
+     * @return A shared pointer to the captured image data.
+     */
+    virtual Icon capture() = 0;
     virtual float scale_factor() const = 0;
 
     virtual std::string_view painter_name() const = 0;

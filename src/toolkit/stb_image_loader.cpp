@@ -4,6 +4,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
 #include "toolkit/stb_image_loader.hpp"
 #include <algorithm>
 #include <spdlog/spdlog.h>
@@ -51,6 +54,36 @@ auto StbImageLoader::load_from_memory(const uint8_t *data, size_t size) -> Icon 
 
 auto StbImageLoader::supported_extensions() const -> std::vector<std::string> {
     return {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tga", ".hdr"};
+}
+
+auto StbImageLoader::save(ImageData const &image, std::string_view path) -> bool {
+    if (image.pixels.empty() || image.width <= 0 || image.height <= 0) {
+        return false;
+    }
+
+    std::string s_path(path);
+    std::string ext;
+    auto pos = s_path.find_last_of('.');
+    if (pos != std::string::npos) {
+        ext = s_path.substr(pos);
+        std::transform(ext.begin(), ext.end(), ext.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+    }
+
+    if (ext == ".jpg" || ext == ".jpeg") {
+        return stbi_write_jpg(s_path.c_str(), image.width, image.height, image.channels,
+                              image.pixels.data(), 90) != 0;
+    } else if (ext == ".bmp") {
+        return stbi_write_bmp(s_path.c_str(), image.width, image.height, image.channels,
+                              image.pixels.data()) != 0;
+    } else if (ext == ".tga") {
+        return stbi_write_tga(s_path.c_str(), image.width, image.height, image.channels,
+                              image.pixels.data()) != 0;
+    }
+
+    // Default to PNG
+    return stbi_write_png(s_path.c_str(), image.width, image.height, image.channels,
+                          image.pixels.data(), image.width * image.channels) != 0;
 }
 
 } // namespace toolkit

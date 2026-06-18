@@ -566,10 +566,10 @@ void MacOSNativePlatformWindow::set_icon(Image const &icon) {
                   colorSpaceName:NSDeviceRGBColorSpace
                      bytesPerRow:icon->width * 4
                     bitsPerPixel:32];
-    
+
     unsigned char *bitmapData = [rep bitmapData];
     std::memcpy(bitmapData, icon->pixels.data(), icon->pixels.size());
-    
+
     NSImage *image = [[NSImage alloc] initWithSize:NSMakeSize(icon->width, icon->height)];
     [image addRepresentation:rep];
     [impl_->ns_window setRepresentedImage:image];
@@ -669,35 +669,36 @@ void MacOSNativePlatformWindow::hide_tooltip_window() {
     if (impl_->tooltip_window) [impl_->tooltip_window orderOut:nil];
 }
 
-bool MacOSNativePlatformWindow::save_to_png(std::string const &path) {
-    int w = static_cast<int>(owner_->size().width);
-    int h = static_cast<int>(owner_->size().height);
-    if (w <= 0 || h <= 0) return false;
+Icon MacOSNativePlatformWindow::capture() {
+    float scale = scale_factor();
+    int lw = static_cast<int>(owner_->size().width);
+    int lh = static_cast<int>(owner_->size().height);
+    if (lw <= 0 || lh <= 0) return nullptr;
+    int pw = static_cast<int>(std::ceil(lw * scale));
+    int ph = static_cast<int>(std::ceil(lh * scale));
+
     CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+    auto result = std::make_shared<ImageData>();
+    result->width = pw;
+    result->height = ph;
+    result->channels = 4;
+    result->pixels.resize(pw * ph * 4);
+
     CGContextRef ctx = CGBitmapContextCreate(
-        nullptr, w, h, 8, w * 4, cs,
-        kCGImageAlphaPremultipliedFirst | static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Little));
+        result->pixels.data(), pw, ph, 8, pw * 4, cs,
+        kCGImageAlphaPremultipliedLast | static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Big));
     CGColorSpaceRelease(cs);
-    if (!ctx) return false;
-    CGContextTranslateCTM(ctx, 0, h);
+    if (!ctx) return nullptr;
+
+    CGContextScaleCTM(ctx, scale, scale);
+    CGContextTranslateCTM(ctx, 0, lh);
     CGContextScaleCTM(ctx, 1.0, -1.0);
+
     CoreGraphicsPainter painter(ctx, &s_mac_rasterizer);
     owner_->handle_paint(painter);
-    CGImageRef image = CGBitmapContextCreateImage(ctx);
     CGContextRelease(ctx);
-    if (!image) return false;
-    NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
-    NSURL *url = [NSURL fileURLWithPath:nsPath];
-    CGImageDestinationRef dest = CGImageDestinationCreateWithURL(
-        (__bridge CFURLRef)url, CFSTR("public.png"), 1, nullptr);
-    bool ok = false;
-    if (dest) {
-        CGImageDestinationAddImage(dest, image, nullptr);
-        ok = CGImageDestinationFinalize(dest);
-        CFRelease(dest);
-    }
-    CGImageRelease(image);
-    return ok;
+
+    return result;
 }
 
 float MacOSNativePlatformWindow::scale_factor() const {

@@ -66,7 +66,7 @@ class X11PlatformWindow : public PlatformWindow {
     void set_modal_for(PlatformWindow *parent) override;
     void grab_pointer() override;
     void ungrab_pointer() override;
-    bool save_to_png(std::string const &path) override;
+    Icon capture() override;
     float scale_factor() const override;
     std::string_view painter_name() const override;
 

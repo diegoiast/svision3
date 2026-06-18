@@ -1333,9 +1333,7 @@ void Win32PlatformWindow::grab_pointer() { SetCapture(hwnd); }
 
 void Win32PlatformWindow::ungrab_pointer() { ReleaseCapture(); }
 
-bool Win32PlatformWindow::save_to_png(std::string const &path) {
-    return GDIPainter::save_to_png(owner_, path);
-}
+Icon Win32PlatformWindow::capture() { return GDIPainter::capture(owner_); }
 
 float Win32PlatformWindow::scale_factor() const { return get_window_scale(hwnd); }
 

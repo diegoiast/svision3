@@ -56,7 +56,7 @@ Size cairo_measure_text(std::string_view text, float font_size,
                         FontFamily font = FontFamily::System);
 Painter::FontMetrics cairo_measure_font_metrics(float font_size,
                                                 FontFamily font = FontFamily::System);
-bool cairo_save_to_png(Window *window, std::string const &path);
+Icon cairo_capture(Window *window);
 
 class CairoTextRasterizer : public TextRasterizer {
   public:

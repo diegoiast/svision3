@@ -78,4 +78,8 @@ auto LunasvgImageLoader::supported_extensions() const -> std::vector<std::string
     return {".svg"};
 }
 
+auto LunasvgImageLoader::save(ImageData const &image, std::string_view path) -> bool {
+    return false;
+}
+
 } // namespace toolkit

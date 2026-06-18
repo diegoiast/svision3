@@ -1658,9 +1658,7 @@ void X11PlatformWindow::hide_tooltip_window() {
     }
 }
 
-bool X11PlatformWindow::save_to_png(std::string const &path) {
-    return cairo_save_to_png(owner_, path);
-}
+Icon X11PlatformWindow::capture() { return cairo_capture(owner_); }
 
 float X11PlatformWindow::scale_factor() const { return app_->impl_->scale; }
 

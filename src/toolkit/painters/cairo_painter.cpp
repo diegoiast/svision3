@@ -287,12 +287,12 @@ void CairoPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     cairo_surface_destroy(surface);
 }
 
-bool cairo_save_to_png(Window *window, std::string const &path) {
+Icon cairo_capture(Window *window) {
     float scale = window->scale_factor();
     int lw = static_cast<int>(window->size().width);
     int lh = static_cast<int>(window->size().height);
     if (lw <= 0 || lh <= 0) {
-        return false;
+        return nullptr;
     }
     int pw = static_cast<int>(std::ceil(lw * scale));
     int ph = static_cast<int>(std::ceil(lh * scale));
@@ -302,10 +302,25 @@ bool cairo_save_to_png(Window *window, std::string const &path) {
     CairoPainter painter(cr);
     window->handle_paint(painter);
     cairo_surface_flush(surf);
-    auto status = cairo_surface_write_to_png(surf, path.c_str());
+
+    unsigned char *data = cairo_image_surface_get_data(surf);
+    auto result = std::make_shared<ImageData>();
+    result->width = pw;
+    result->height = ph;
+    result->channels = 4;
+    result->pixels.resize(pw * ph * 4);
+
+    for (int i = 0; i < pw * ph * 4; i += 4) {
+        // Cairo ARGB32 is BGRA in memory on little-endian
+        result->pixels[i + 0] = data[i + 2]; // R
+        result->pixels[i + 1] = data[i + 1]; // G
+        result->pixels[i + 2] = data[i + 0]; // B
+        result->pixels[i + 3] = data[i + 3]; // A
+    }
+
     cairo_destroy(cr);
     cairo_surface_destroy(surf);
-    return status == CAIRO_STATUS_SUCCESS;
+    return result;
 }
 
 RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_size, float scale,

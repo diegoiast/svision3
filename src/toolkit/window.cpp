@@ -209,7 +209,19 @@ bool Window::is_statistics_logging_enabled() const { return impl_->logging_enabl
 
 auto Window::save_to_png(std::string const &path) -> bool {
     if (impl_->platform) {
-        return impl_->platform->save_to_png(path);
+        auto icon = impl_->platform->capture();
+        if (!icon) {
+            return false;
+        }
+        auto app = detail::current_platform();
+        if (!app) {
+            return false;
+        }
+        auto loader = app->get_image_loader();
+        if (!loader) {
+            return false;
+        }
+        return loader->save(*icon, path);
     }
     return false;
 }

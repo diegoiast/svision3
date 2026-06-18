@@ -1656,9 +1656,7 @@ void WaylandPlatformWindow::paint_tooltip() {
     wl_buffer_destroy(buf);
 }
 
-bool WaylandPlatformWindow::save_to_png(std::string const &path) {
-    return cairo_save_to_png(owner_, path);
-}
+Icon WaylandPlatformWindow::capture() { return cairo_capture(owner_); }
 
 float WaylandPlatformWindow::scale_factor() const { return static_cast<float>(app_->output_scale); }
 
