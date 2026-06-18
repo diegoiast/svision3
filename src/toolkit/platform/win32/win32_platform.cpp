@@ -1,7 +1,7 @@
 #include "win32_platform.hpp"
 #include "Win32OpenGlRenderingBackend.hpp"
 #include "toolkit/painters/win32_painter.hpp"
-#include "toolkit/stb_image_loader.hpp"
+#include "win32_image_loader.hpp"
 #include "toolkit/lunasvg_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
@@ -622,7 +622,7 @@ std::unique_ptr<PlatformWindow> Win32PlatformApplication::create_window(std::str
 }
 std::shared_ptr<ImageLoaderInterface> Win32PlatformApplication::get_image_loader() {
     if (!image_loader_) {
-        image_loader_ = std::make_shared<StbImageLoader>();
+        image_loader_ = std::make_shared<Win32ImageLoader>();
     }
     return image_loader_;
 }

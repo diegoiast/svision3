@@ -38,7 +38,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 26. [x] Clipboard (copy/paste, all platforms).
 27. [ ] Drag and drop.
 28. [ ] Font selection / custom fonts.
-29. [ ] Image loading - using platform APIs.
+29. [x] Image loading - using platform APIs.
 30. [ ] Animation framework (transitions, easing).
 31. [x] Undo/redo framework.
 33. [ ] Declarative UI support. - WIP.
@@ -348,7 +348,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 1. [ ] Mouse wheel support.
 1. [ ] Add support for "clicks".
-1. [ [ Add support for custom labels,
+1. [ ] Add support for custom labels,
 
 ## Label Features [3/6]
 

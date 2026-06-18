@@ -121,6 +121,7 @@ if(APPLE)
 elseif(WIN32)
     list(APPEND TOOLKIT_SOURCES
         src/toolkit/platform/win32/win32_platform.cpp
+        src/toolkit/platform/win32/win32_image_loader.cpp
         src/toolkit/painters/win32_painter.cpp
     )
 elseif(UNIX)
@@ -321,7 +322,7 @@ if(APPLE)
     target_include_directories(toolkit PRIVATE
         src/toolkit/platform/macos)
 elseif(WIN32)
-    target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32 gdiplus opengl32)
+    target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32 gdiplus opengl32 shlwapi)
     target_include_directories(toolkit PRIVATE src/toolkit/platform/win32)
 elseif(UNIX)
     target_link_libraries(toolkit PUBLIC OpenGL::GL)
