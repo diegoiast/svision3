@@ -1606,21 +1606,20 @@ void WaylandPlatformWindow::do_paint() {
     }
 }
 
-// FIXME: this function draws using cairo - need to use RenderingBackend for indirection
 void WaylandPlatformWindow::paint_tooltip() {
     if (!tooltip_data || !tooltip_data->surface) {
         return;
     }
 
-    int pw = tooltip_data->width;
-    int ph = tooltip_data->height;
+    auto pw = tooltip_data->width;
+    auto ph = tooltip_data->height;
     if (pw <= 0 || ph <= 0) {
         return;
     }
 
-    int stride = pw * 4;
-    size_t total = static_cast<size_t>(stride) * static_cast<size_t>(ph);
-    int fd = create_shm_file(total);
+    auto stride = pw * 4;
+    auto total = static_cast<size_t>(stride) * static_cast<size_t>(ph);
+    auto fd = create_shm_file(total);
     if (fd < 0) {
         return;
     }
@@ -1636,7 +1635,6 @@ void WaylandPlatformWindow::paint_tooltip() {
     auto tw = static_cast<float>(pw) / scale;
     auto th = static_cast<float>(ph) / scale;
     auto padding = 5.0f;
-
     backend->render_to_buffer(app_, pw, ph, scale, data, [&](Painter &p) {
         auto fm = p.font_metrics(fs);
         Rect r{0, 0, tw, th};
@@ -1649,13 +1647,10 @@ void WaylandPlatformWindow::paint_tooltip() {
     wl_shm_pool *pool = wl_shm_create_pool(app_->shm, fd, static_cast<int32_t>(total));
     wl_buffer *buf = wl_shm_pool_create_buffer(pool, 0, pw, ph, stride, WL_SHM_FORMAT_ARGB8888);
     wl_shm_pool_destroy(pool);
-
     wl_surface_attach(tooltip_data->surface, buf, 0, 0);
     wl_surface_damage(tooltip_data->surface, 0, 0, pw, ph);
     wl_surface_commit(tooltip_data->surface);
-
     wl_display_roundtrip(app_->display);
-
     munmap(data, total);
     ::close(fd);
     wl_buffer_destroy(buf);

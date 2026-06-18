@@ -53,7 +53,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 41. [ ] Implement font caching for measurements.
 42. [ ] Resource / asset management.
 43. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
-44. [ ] Set window icon.
+44. [x] Set window icon.
 45. [ ] Rounded frame clip. When drawing a frame, cliping with a radius would be
         nice. However, I am unsure how to clean the clipping at the end of function call.
 46. [x] Toast support
@@ -82,7 +82,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [x] Window menu popup (system menu on windows terms)
 1. [x] Add support for Window icon at platform level
 1. [?] Use window icon in CSD (WIP, need iconset(
-1. [ ] Shadow: "needsShadow" - implement in CSD on wayland.
+1. [x] Shadow: "needsShadow" - implement in CSD on wayland.
 1. [ ] Plasma: "show on all desktops"
 1. [ ] macOS: verify against actual apps.
 1. [x] Windows 11: implement
@@ -129,7 +129,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 33. [x] Image widget.
 34. [x] Markdown tooltip.
 35. [x] Undo/redo system (text area + LineInput).
-36. [ ] Client side decorations with theme. 
+36. [ ] Client side decorations with theme.
 37. [ ] Proper filter API for listview and table view.
 38. [ ] MainWindow with docking widgets on the sides.
 39. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
@@ -277,7 +277,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ## Image Widget
 
-1. [ ] Scrollbar drag is not working, instead it acts as dragging inside the main widget
+1. [x] Scrollbar drag is not working, instead it acts as dragging inside the main widget
 2. [ ] We got round cornders on the left side only
 
 ## LineInput Features [14/15]
