@@ -2,6 +2,7 @@
 #include "Win32OpenGlRenderingBackend.hpp"
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/stb_image_loader.hpp"
+#include "toolkit/lunasvg_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
@@ -25,6 +26,7 @@
 #include <objidl.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
+#include <memory>
 
 namespace toolkit {
 
