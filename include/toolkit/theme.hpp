@@ -104,7 +104,11 @@ struct Style {
     } layout;
 
     struct {
+#ifdef _WIN32
+        unsigned long size = 0;
+#else
         unsigned long size = 48;
+#endif
         float opacity = 0.6f;
     } shadow;
 

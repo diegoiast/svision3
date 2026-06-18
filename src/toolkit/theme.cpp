@@ -43,6 +43,11 @@ static std::unique_ptr<Theme> &mutable_current_ptr() {
     static std::unique_ptr<Theme> instance;
     if (!instance) {
         instance = ThemeFactory::create(ThemeStyle::System);
+#ifdef _WIN32
+        if (instance) {
+            instance->style.shadow.size = 0;
+        }
+#endif
     }
     return instance;
 }
@@ -93,6 +98,11 @@ ThemeStyle Theme::detect_system_style() {
 }
 
 void Theme::set_current(std::unique_ptr<Theme> theme) {
+#ifdef _WIN32
+    if (theme) {
+        theme->style.shadow.size = 0;
+    }
+#endif
     mutable_current_ptr() = std::move(theme);
     notify_theme_changed();
 }
