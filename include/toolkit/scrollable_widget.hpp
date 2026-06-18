@@ -16,6 +16,7 @@ class ScrollableWidget : public Widget {
 
     void set_window(Window *w) override;
     void on_theme_changed() override;
+    bool handle_mouse(MouseEvent const &event) override;
     Widget *find_focusable_at(Point p) override;
     Widget *widget_at(Point p) override;
     void for_each_child(std::function<void(Widget *)> const &callback) override;

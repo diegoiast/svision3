@@ -234,6 +234,9 @@ bool Scrollbar::handle_mouse(MouseEvent const &event) {
             dragging_ = true;
             drag_start_mouse_ = horizontal ? event.position.x : event.position.y;
             drag_start_value_ = value_;
+            if (window_) {
+                window_->grab_pointer();
+            }
             return true;
         }
         // Click on track
@@ -249,18 +252,20 @@ bool Scrollbar::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Release) {
+        if (dragging_ && window_) {
+            window_->ungrab_pointer();
+        }
         pressed_left_ = false;
         pressed_right_ = false;
         dragging_ = false;
+        hovered_left_ = false;
+        hovered_right_ = false;
+        hovered_thumb_ = false;
         stop_auto_repeat();
         return true;
     }
 
-    if (event.type == MouseEvent::Type::Move || event.type == MouseEvent::Type::Drag) {
-        hovered_left_ = hit_left_button(event.position);
-        hovered_right_ = hit_right_button(event.position);
-        hovered_thumb_ = hit_thumb(event.position);
-
+    if (event.type == MouseEvent::Type::Drag) {
         if (dragging_) {
             auto bs = button_size();
             auto track_len = (horizontal ? rect_.width : rect_.height) - 2 * bs;
@@ -277,11 +282,23 @@ bool Scrollbar::handle_mouse(MouseEvent const &event) {
         return true;
     }
 
+    if (event.type == MouseEvent::Type::Move) {
+        if (dragging_) {
+            dragging_ = false;
+            stop_auto_repeat();
+        }
+        hovered_left_ = hit_left_button(event.position);
+        hovered_right_ = hit_right_button(event.position);
+        hovered_thumb_ = hit_thumb(event.position);
+        return true;
+    }
+
     if (event.type == MouseEvent::Type::Leave) {
         hovered_left_ = false;
         hovered_right_ = false;
-        hovered_thumb_ = false;
-        dragging_ = false;
+        if (!dragging_) {
+            hovered_thumb_ = false;
+        }
         stop_auto_repeat();
         return true;
     }

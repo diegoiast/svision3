@@ -21,6 +21,8 @@ nlohmann::json ImageWidget::to_json() const {
     auto j = Widget::to_json();
     j["checkboard"] = show_checkerboard_;
     j["zoom"] = zoom_;
+    j["scroll_x"] = scroll_x();
+    j["scroll_y"] = scroll_y();
     return j;
 }
 
@@ -31,6 +33,9 @@ void ImageWidget::from_json(nlohmann::json const &j) {
     }
     if (j.contains("zoom")) {
         zoom_ = j["zoom"];
+    }
+    if (j.contains("scroll_x") && j.contains("scroll_y")) {
+        scroll_to(j["scroll_x"], j["scroll_y"]);
     }
 }
 
@@ -143,6 +148,14 @@ void ImageWidget::paint(Painter &painter) {
 }
 
 bool ImageWidget::handle_mouse(MouseEvent const &event) {
+    if (event.type == MouseEvent::Type::Release) {
+        dragging_ = false;
+    }
+
+    if (handle_scrollbar_mouse(event)) {
+        return true;
+    }
+
     if (event.type == MouseEvent::Type::Scroll) {
         auto factor = 1.1f;
         if (event.scroll_dy > 0) {
@@ -153,34 +166,13 @@ bool ImageWidget::handle_mouse(MouseEvent const &event) {
         return true;
     }
 
-    if (event.type == MouseEvent::Type::Press /*&& event.button == 1*/) {
-        if (handle_scrollbar_mouse(event)) {
-            return true;
-        }
-        // Don't start panning if press is on scrollbar gutter
-        auto const &s = Theme::current().style;
-        auto bw = s.border_width;
-        auto sw = s.scrollbar.thickness;
-        auto needs_v = content_size_.height > rect_.height - bw * 2;
-        auto needs_h = content_size_.width > rect_.width - bw * 2;
-        if ((needs_v && event.position.x >= rect_.width - bw - sw) ||
-            (needs_h && event.position.y >= rect_.height - bw - sw)) {
-            return true;
-        }
+    if (event.type == MouseEvent::Type::Press) {
         spdlog::info("Started dragging");
         if (window_) {
             window_->set_focused_widget(this);
         }
         dragging_ = true;
         last_mouse_pos_ = event.position;
-        return true;
-    }
-
-    if (event.type == MouseEvent::Type::Release) {
-        if (handle_scrollbar_mouse(event)) {
-            return true;
-        }
-        dragging_ = false;
         return true;
     }
 
@@ -193,11 +185,6 @@ bool ImageWidget::handle_mouse(MouseEvent const &event) {
                 window_->request_redraw("ImageWidget::handle_mouse");
             }
         }
-        return true;
-    }
-
-    // Forward Drag to scrollbar handler (inline scrollbar thumb drag)
-    if (handle_scrollbar_mouse(event)) {
         return true;
     }
 

@@ -24,6 +24,8 @@ class DummyPlatformWindow : public PlatformWindow {
     void start_system_move(uint32_t) override {}
     void start_system_resize(WindowEdge, uint32_t) override {}
     void set_modal_for(PlatformWindow *) override {}
+    void grab_pointer() override {}
+    void ungrab_pointer() override {}
     bool save_to_png(std::string const &) override { return true; }
     float scale_factor() const override { return 1.0f; }
     std::string_view painter_name() const override { return "none"; }

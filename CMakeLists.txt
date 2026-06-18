@@ -157,6 +157,8 @@ elseif(UNIX)
         set(XDG_DIALOG_XML ${WAYLAND_PROTOCOLS_DIR}/staging/xdg-dialog/xdg-dialog-v1.xml)
         set(CURSOR_SHAPE_XML ${WAYLAND_PROTOCOLS_DIR}/staging/cursor-shape/cursor-shape-v1.xml)
         set(TABLET_XML ${WAYLAND_PROTOCOLS_DIR}/unstable/tablet/tablet-unstable-v2.xml)
+        set(POINTER_CONSTRAINTS_XML ${WAYLAND_PROTOCOLS_DIR}/unstable/pointer-constraints/pointer-constraints-unstable-v1.xml)
+        set(RELATIVE_POINTER_XML ${WAYLAND_PROTOCOLS_DIR}/unstable/relative-pointer/relative-pointer-unstable-v1.xml)
         set(WL_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/wayland-gen)
         file(MAKE_DIRECTORY ${WL_GEN_DIR})
 
@@ -246,6 +248,32 @@ elseif(UNIX)
             DEPENDS ${TABLET_XML}
         )
 
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/pointer-constraints-unstable-v1-client-protocol.h
+            COMMAND ${WAYLAND_SCANNER} client-header
+                    ${POINTER_CONSTRAINTS_XML} ${WL_GEN_DIR}/pointer-constraints-unstable-v1-client-protocol.h
+            DEPENDS ${POINTER_CONSTRAINTS_XML}
+        )
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/pointer-constraints-unstable-v1-protocol.c
+            COMMAND ${WAYLAND_SCANNER} private-code
+                    ${POINTER_CONSTRAINTS_XML} ${WL_GEN_DIR}/pointer-constraints-unstable-v1-protocol.c
+            DEPENDS ${POINTER_CONSTRAINTS_XML}
+        )
+
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/relative-pointer-unstable-v1-client-protocol.h
+            COMMAND ${WAYLAND_SCANNER} client-header
+                    ${RELATIVE_POINTER_XML} ${WL_GEN_DIR}/relative-pointer-unstable-v1-client-protocol.h
+            DEPENDS ${RELATIVE_POINTER_XML}
+        )
+        add_custom_command(
+            OUTPUT ${WL_GEN_DIR}/relative-pointer-unstable-v1-protocol.c
+            COMMAND ${WAYLAND_SCANNER} private-code
+                    ${RELATIVE_POINTER_XML} ${WL_GEN_DIR}/relative-pointer-unstable-v1-protocol.c
+            DEPENDS ${RELATIVE_POINTER_XML}
+        )
+
         list(APPEND TOOLKIT_SOURCES
             src/toolkit/platform/wayland/wl_platform.cpp
             ${WL_GEN_DIR}/xdg-shell-protocol.c
@@ -261,6 +289,10 @@ elseif(UNIX)
             ${WL_GEN_DIR}/cursor-shape-v1-protocol.c
             ${WL_GEN_DIR}/cursor-shape-v1-client-protocol.h
             ${WL_GEN_DIR}/tablet-unstable-v2-protocol.c
+            ${WL_GEN_DIR}/pointer-constraints-unstable-v1-client-protocol.h
+            ${WL_GEN_DIR}/pointer-constraints-unstable-v1-protocol.c
+            ${WL_GEN_DIR}/relative-pointer-unstable-v1-client-protocol.h
+            ${WL_GEN_DIR}/relative-pointer-unstable-v1-protocol.c
         )
     endif()
 

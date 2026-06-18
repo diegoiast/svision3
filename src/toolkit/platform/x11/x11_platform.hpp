@@ -64,6 +64,8 @@ class X11PlatformWindow : public PlatformWindow {
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
     void set_modal_for(PlatformWindow *parent) override;
+    void grab_pointer() override;
+    void ungrab_pointer() override;
     bool save_to_png(std::string const &path) override;
     float scale_factor() const override;
     std::string_view painter_name() const override;

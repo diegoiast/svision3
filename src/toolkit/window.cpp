@@ -223,6 +223,18 @@ auto Window::scale_factor() const -> float {
 
 auto Window::platform_window() const -> PlatformWindow * { return impl_->platform.get(); }
 
+void Window::grab_pointer() {
+    if (impl_->platform) {
+        impl_->platform->grab_pointer();
+    }
+}
+
+void Window::ungrab_pointer() {
+    if (impl_->platform) {
+        impl_->platform->ungrab_pointer();
+    }
+}
+
 auto Window::painter_name() const -> std::string_view { return impl_->platform->painter_name(); }
 
 void Window::show() {
@@ -875,6 +887,7 @@ void Window::handle_mouse(MouseEvent const &event) {
         }
 
         if (event.type == MouseEvent::Type::Release) {
+            platform_window()->ungrab_pointer();
             captured_widget_ = nullptr;
         }
 

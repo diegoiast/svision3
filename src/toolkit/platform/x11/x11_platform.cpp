@@ -1169,6 +1169,18 @@ void X11PlatformWindow::set_modal_for(PlatformWindow *parent) {
     app_->impl_->modal_xwindow = impl_->xwindow;
 }
 
+void X11PlatformWindow::grab_pointer() {
+    auto *d = app_->impl_.get();
+    XGrabPointer(d->display, impl_->xwindow, True,
+                 ButtonReleaseMask | ButtonMotionMask | PointerMotionMask, GrabModeAsync,
+                 GrabModeAsync, 0L, 0L, CurrentTime);
+}
+
+void X11PlatformWindow::ungrab_pointer() {
+    auto *d = app_->impl_.get();
+    XUngrabPointer(d->display, CurrentTime);
+}
+
 void X11PlatformWindow::close() { cleanup_resources(); }
 
 void X11PlatformWindow::minimize() {

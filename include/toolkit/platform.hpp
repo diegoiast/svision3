@@ -54,6 +54,8 @@ class PlatformWindow {
     virtual void start_system_move(uint32_t serial) = 0;
     virtual void start_system_resize(WindowEdge edge, uint32_t serial) = 0;
     virtual void set_modal_for(PlatformWindow *parent) = 0;
+    virtual void grab_pointer() = 0;
+    virtual void ungrab_pointer() = 0;
 
     // FIXME: remove this function, and return a pure image, saving should be done by the
     //        application using proper APIs

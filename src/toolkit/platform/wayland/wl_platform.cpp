@@ -9,6 +9,7 @@
 
 #include "cursor-shape-v1-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
+#include "pointer-constraints-unstable-v1-client-protocol.h"
 #include "toolkit/painters/cairo_painter.hpp"
 #include "viewporter-client-protocol.h"
 #include "xdg-decoration-client-protocol.h"
@@ -389,6 +390,9 @@ static void registry_global(void *data, wl_registry *reg, uint32_t name, const c
     } else if (strcmp(iface, "wp_cursor_shape_manager_v1") == 0) {
         app->cursor_shape_manager = static_cast<wp_cursor_shape_manager_v1 *>(
             wl_registry_bind(reg, name, &wp_cursor_shape_manager_v1_interface, 1));
+    } else if (strcmp(iface, "zwp_pointer_constraints_v1") == 0) {
+        app->pointer_constraints = static_cast<zwp_pointer_constraints_v1 *>(
+            wl_registry_bind(reg, name, &zwp_pointer_constraints_v1_interface, 1));
     }
 }
 
@@ -432,6 +436,7 @@ static void pointer_enter(void *data, wl_pointer *, uint32_t serial, wl_surface 
 static void pointer_leave(void *data, wl_pointer *, uint32_t, wl_surface *) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
     app->pointer_focus = nullptr;
+    app->pressed_button = -1;
 }
 
 static void pointer_motion(void *data, wl_pointer *, uint32_t, wl_fixed_t sx, wl_fixed_t sy) {

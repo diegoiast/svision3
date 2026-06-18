@@ -39,20 +39,23 @@ struct xdg_wm_dialog_v1;
 struct xdg_dialog_v1;
 struct wp_cursor_shape_manager_v1;
 struct wp_cursor_shape_device_v1;
+struct zwp_pointer_constraints_v1;
 
 namespace toolkit {
 
 class WaylandPlatformWindow;
 
 class WaylandPlatformApplication : public PlatformApplication {
-    std::shared_ptr<ImageLoaderInterface> image_loader_; 
+    std::shared_ptr<ImageLoaderInterface> image_loader_;
     std::shared_ptr<SVGLoaderInterface> svg_loader_;
+
   public:
     WaylandPlatformApplication();
     ~WaylandPlatformApplication() override;
     std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
                                                   WindowOptions options) override;
-    std::shared_ptr<ImageLoaderInterface> get_image_loader() override; std::shared_ptr<SVGLoaderInterface> get_svg_loader() override;
+    std::shared_ptr<ImageLoaderInterface> get_image_loader() override;
+    std::shared_ptr<SVGLoaderInterface> get_svg_loader() override;
     int run() override;
     void run_until(std::function<bool()> should_exit) override;
     void quit() override;
@@ -77,6 +80,7 @@ class WaylandPlatformApplication : public PlatformApplication {
     xdg_wm_dialog_v1 *wm_dialog = nullptr;
     wp_cursor_shape_manager_v1 *cursor_shape_manager = nullptr;
     wp_cursor_shape_device_v1 *cursor_shape_device = nullptr;
+    zwp_pointer_constraints_v1 *pointer_constraints = nullptr;
     wl_cursor_theme *cursor_theme = nullptr;
     wl_surface *cursor_surface = nullptr;
     wl_data_device_manager *data_device_manager = nullptr;
@@ -158,6 +162,8 @@ class WaylandPlatformWindow : public PlatformWindow {
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;
     void set_modal_for(PlatformWindow *parent) override;
+    void grab_pointer() override {}
+    void ungrab_pointer() override {}
     bool save_to_png(std::string const &path) override;
     float scale_factor() const override;
     std::string_view painter_name() const override { return backend->name(); };

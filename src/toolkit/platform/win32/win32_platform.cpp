@@ -1004,24 +1004,29 @@ void Win32PlatformWindow::set_icon(Icon const &icon) {
     hicon = CreateIconIndirect(&ii);
 
     if (hicon) {
-        spdlog::info("Win32PlatformWindow::set_icon created HICON={:p} ({}x{})", (void*)hicon, width, height);
+        spdlog::info("Win32PlatformWindow::set_icon created HICON={:p} ({}x{})", (void *)hicon,
+                     width, height);
         SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hicon);
         SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hicon);
     } else {
-        spdlog::error("Win32PlatformWindow::set_icon CreateIconIndirect failed, error={}", GetLastError());
+        spdlog::error("Win32PlatformWindow::set_icon CreateIconIndirect failed, error={}",
+                      GetLastError());
     }
 
     DeleteObject(hBitmap);
     DeleteObject(hMonoBitmap);
 }
 
-
 // Helper to convert HICON to ImageData
 static std::shared_ptr<ImageData> hicon_to_image(HICON hicon) {
-    if (!hicon) return nullptr;
+    if (!hicon) {
+        return nullptr;
+    }
 
     ICONINFO ii;
-    if (!GetIconInfo(hicon, &ii)) return nullptr;
+    if (!GetIconInfo(hicon, &ii)) {
+        return nullptr;
+    }
 
     int width = 0;
     int height = 0;
@@ -1082,7 +1087,9 @@ static std::shared_ptr<ImageData> hicon_to_image(HICON hicon) {
     }
 
     DeleteObject(ii.hbmMask);
-    if (ii.hbmColor) DeleteObject(ii.hbmColor);
+    if (ii.hbmColor) {
+        DeleteObject(ii.hbmColor);
+    }
     return img;
 }
 
@@ -1111,7 +1118,6 @@ static char *icon[] = {
 "                "
 };)";
 
-
 Icon Win32PlatformWindow::get_icon() {
     if (icon_) {
         return icon_;
@@ -1122,12 +1128,13 @@ Icon Win32PlatformWindow::get_icon() {
     }
     if (hicon_small) {
         icon_ = hicon_to_image(hicon_small);
-        if (icon_) return icon_;
+        if (icon_) {
+            return icon_;
+        }
     }
     icon_ = parse_xpm(default_windows_icon_xpm);
     return icon_;
 }
-
 
 void Win32PlatformWindow::show_system_menu(Point p) {
     HMENU hMenu = GetSystemMenu(hwnd, FALSE);
@@ -1140,7 +1147,8 @@ void Win32PlatformWindow::show_system_menu(Point p) {
     bool maximized = (wp.showCmd == SW_SHOWMAXIMIZED);
     bool minimized = (wp.showCmd == SW_SHOWMINIMIZED);
 
-    EnableMenuItem(hMenu, SC_RESTORE, MF_BYCOMMAND | (maximized || minimized ? MF_ENABLED : MF_GRAYED));
+    EnableMenuItem(hMenu, SC_RESTORE,
+                   MF_BYCOMMAND | (maximized || minimized ? MF_ENABLED : MF_GRAYED));
     EnableMenuItem(hMenu, SC_MOVE, MF_BYCOMMAND | (maximized ? MF_GRAYED : MF_ENABLED));
     EnableMenuItem(hMenu, SC_SIZE, MF_BYCOMMAND | (maximized ? MF_GRAYED : MF_ENABLED));
     EnableMenuItem(hMenu, SC_MINIMIZE, MF_BYCOMMAND | (minimized ? MF_GRAYED : MF_ENABLED));
@@ -1318,6 +1326,10 @@ void Win32PlatformWindow::set_modal_for(PlatformWindow *parent) {
     SetWindowLongPtrW(hwnd, GWLP_HWNDPARENT, reinterpret_cast<LONG_PTR>(p->hwnd));
     EnableWindow(p->hwnd, FALSE);
 }
+
+void Win32PlatformWindow::grab_pointer() { SetCapture(hwnd); }
+
+void Win32PlatformWindow::ungrab_pointer() { ReleaseCapture(); }
 
 bool Win32PlatformWindow::save_to_png(std::string const &path) {
     return GDIPainter::save_to_png(owner_, path);

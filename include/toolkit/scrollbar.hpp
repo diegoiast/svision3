@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "toolkit/button_state.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
 
@@ -35,6 +34,7 @@ class Scrollbar : public Widget, public Fluent<Scrollbar> {
         return *this;
     }
 
+    bool is_dragging() const { return dragging_; }
     std::function<void(float)> on_change;
 
   private:

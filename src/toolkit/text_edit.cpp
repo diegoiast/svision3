@@ -559,6 +559,10 @@ void TextEdit::paint(Painter &painter) {
 // ── Mouse ───────────────────────────────────────────────────────────────────
 
 bool TextEdit::handle_mouse(MouseEvent const &event) {
+    if (event.type == MouseEvent::Type::Release) {
+        dragging_ = false;
+    }
+
     if (handle_scrollbar_mouse(event)) {
         return true;
     }
