@@ -74,7 +74,9 @@ class CairoTextRasterizer : public TextRasterizer {
                                          FontFamily font = FontFamily::System) override;
 
   private:
+#ifdef TOOLKIT_HAS_TEXT_SHAPER
     TextShaper shaper_;
+#endif
 };
 
 } // namespace toolkit

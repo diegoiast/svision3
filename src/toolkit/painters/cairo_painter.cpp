@@ -450,12 +450,13 @@ Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFa
     auto surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     auto cr = cairo_create(surf);
     cairo_font_extents_t fe;
+    float advance = 0.0f;
 
 #ifdef TOOLKIT_HAS_TEXT_SHAPER
     auto shaped = shaper_.shape(cr, text, font_size, font, false, false);
     cairo_font_extents(cr, &fe);
     cairo_destroy(cr);
-    auto advance = static_cast<float>(shaped.total_advance);
+    advance = static_cast<float>(shaped.total_advance);
 #else
     cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
