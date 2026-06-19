@@ -1,6 +1,7 @@
 from conan import ConanFile
 from conan.tools.cmake import cmake_layout
 
+
 class ToolkitRecipe(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeDeps", "CMakeToolchain"
@@ -14,6 +15,8 @@ class ToolkitRecipe(ConanFile):
         self.requires("md4c/0.5.2")
         self.requires("nlohmann_json/3.11.3")
         self.requires("lunasvg/3.5.0")
+        self.requires("harfbuzz/12.3.0")
+        self.requires("fribidi/1.0.13")
 
     def layout(self):
         cmake_layout(self, build_folder="build")

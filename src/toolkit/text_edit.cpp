@@ -717,11 +717,25 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         return true;
     }
 
-    case Key::Left:
+    case Key::Left: {
+        auto rtl_dir = false;
+        if (!lines_[cursor_.line].empty()) {
+            auto const &p = Theme::current().palette;
+            auto pos = text_cursor_positions(lines_[cursor_.line], p.fonts.size, kFont);
+            rtl_dir = pos.size() > 1 && pos[0] > pos[lines_[cursor_.line].size()];
+        }
         if (event.alt) {
             move_word_left(event.shift);
         } else if (!event.shift && has_selection()) {
-            move_cursor(sel_start(), false);
+            move_cursor(rtl_dir ? sel_end() : sel_start(), false);
+        } else if (rtl_dir) {
+            if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
+                move_cursor({cursor_.line, static_cast<int>(Utf8Iterator::next(lines_[cursor_.line],
+                                                                               cursor_.col))},
+                            event.shift);
+            } else if (cursor_.line + 1 < nlines) {
+                move_cursor({cursor_.line + 1, 0}, event.shift);
+            }
         } else if (cursor_.col > 0) {
             move_cursor({cursor_.line,
                          static_cast<int>(Utf8Iterator::prev(lines_[cursor_.line], cursor_.col))},
@@ -731,12 +745,28 @@ bool TextEdit::handle_key(KeyEvent const &event) {
                         event.shift);
         }
         return true;
+    }
 
-    case Key::Right:
+    case Key::Right: {
+        auto rtl_dir = false;
+        if (!lines_[cursor_.line].empty()) {
+            auto const &p = Theme::current().palette;
+            auto pos = text_cursor_positions(lines_[cursor_.line], p.fonts.size, kFont);
+            rtl_dir = pos.size() > 1 && pos[0] > pos[lines_[cursor_.line].size()];
+        }
         if (event.alt) {
             move_word_right(event.shift);
         } else if (!event.shift && has_selection()) {
-            move_cursor(sel_end(), false);
+            move_cursor(rtl_dir ? sel_start() : sel_end(), false);
+        } else if (rtl_dir) {
+            if (cursor_.col > 0) {
+                move_cursor({cursor_.line, static_cast<int>(Utf8Iterator::prev(lines_[cursor_.line],
+                                                                               cursor_.col))},
+                            event.shift);
+            } else if (cursor_.line > 0) {
+                move_cursor({cursor_.line - 1, static_cast<int>(lines_[cursor_.line - 1].size())},
+                            event.shift);
+            }
         } else if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
             move_cursor({cursor_.line,
                          static_cast<int>(Utf8Iterator::next(lines_[cursor_.line], cursor_.col))},
@@ -745,6 +775,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
             move_cursor({cursor_.line + 1, 0}, event.shift);
         }
         return true;
+    }
 
     case Key::Up:
         if (cursor_.line > 0) {

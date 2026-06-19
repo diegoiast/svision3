@@ -101,6 +101,13 @@ class PlatformApplication {
         }
         return {};
     }
+    std::vector<double> cursor_positions(std::string_view text, float font_size,
+                                         FontFamily font = FontFamily::System) const {
+        if (rasterizer_) {
+            return rasterizer_->cursor_positions(text, font_size, font);
+        }
+        return {};
+    }
 
     virtual std::string_view name() const = 0;
     virtual float scale_factor() const = 0;

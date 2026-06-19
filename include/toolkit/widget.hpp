@@ -139,6 +139,8 @@ class Widget {
     Size measure_text(std::string_view text, float font_size,
                       FontFamily font = FontFamily::System) const;
     Painter::FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) const;
+    std::vector<double> text_cursor_positions(std::string_view text, float font_size,
+                                              FontFamily font = FontFamily::System) const;
 
     void set_parent(Widget *p) { parent_ = p; }
     Widget *parent() const { return parent_; }

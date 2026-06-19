@@ -8,6 +8,7 @@
 #include "toolkit/text_rasterizer.hpp"
 
 #ifdef TOOLKIT_HAS_CAIRO
+#include "toolkit/painters/cairo_text_shaper.hpp"
 struct _cairo;
 using cairo_t = _cairo;
 
@@ -69,6 +70,11 @@ class CairoTextRasterizer : public TextRasterizer {
     void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
                    float font_size, FontFamily font, Painter::TextOrientation orientation,
                    bool bold, bool italic) override;
+    std::vector<double> cursor_positions(std::string_view text, float font_size,
+                                         FontFamily font = FontFamily::System) override;
+
+  private:
+    TextShaper shaper_;
 };
 
 } // namespace toolkit

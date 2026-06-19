@@ -171,6 +171,14 @@ Painter::FontMetrics Widget::font_metrics(float font_size, FontFamily font) cons
     return {};
 }
 
+std::vector<double> Widget::text_cursor_positions(std::string_view text, float font_size,
+                                                  FontFamily font) const {
+    if (auto *p = detail::current_platform()) {
+        return p->cursor_positions(text, font_size, font);
+    }
+    return {};
+}
+
 nlohmann::json Widget::to_json() const {
     nlohmann::json j;
     j["type"] = class_name();

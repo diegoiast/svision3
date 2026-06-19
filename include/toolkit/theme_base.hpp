@@ -27,8 +27,8 @@ class BaseTheme : public Theme {
     void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
                          std::string_view placeholder, int cursor_pos, int selection_start,
                          int selection_end, WidgetState const &state, bool password_mode,
-                         float scroll_offset, std::optional<Color> background,
-                         bool cursor_visible) const override;
+                         float scroll_offset, std::optional<Color> background, bool cursor_visible,
+                         float right_inset = -1) const override;
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
                            bool active, bool show_mnemonics, int mnemonic_index) const override;
     void draw_menubar_background(Painter &painter, Rect const &rect,

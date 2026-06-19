@@ -184,7 +184,6 @@ Application::~Application() {
     detail::set_current_platform(nullptr);
     detail::set_current_application(nullptr);
 #ifdef TOOLKIT_HAS_CAIRO
-    cairo_debug_reset_static_data();
     FcFini();
 #endif
 }

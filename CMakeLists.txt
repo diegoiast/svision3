@@ -13,8 +13,10 @@ find_package(lunasvg REQUIRED)
 
 if(UNIX AND NOT APPLE)
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" ON)
+    option(TOOLKIT_WITH_TEXT_SHAPER "Build with FriBiDi+HarfBuzz text shaping" ON)
 else()
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" OFF)
+    option(TOOLKIT_WITH_TEXT_SHAPER "Build with FriBiDi+HarfBuzz text shaping" OFF)
 endif()
 
 find_package(litehtml REQUIRED)
@@ -30,6 +32,13 @@ if(TOOLKIT_WITH_CAIRO)
         add_library(fontconfig::fontconfig ALIAS PkgConfig::FONTCONFIG)
     endif()
     add_definitions(-DTOOLKIT_HAS_CAIRO)
+
+    if(TOOLKIT_WITH_TEXT_SHAPER)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(HARFBUZZ REQUIRED IMPORTED_TARGET harfbuzz)
+        pkg_check_modules(FRIBIDI REQUIRED IMPORTED_TARGET fribidi)
+        add_definitions(-DTOOLKIT_HAS_TEXT_SHAPER)
+    endif()
 endif()
 
 if(APPLE)
@@ -104,6 +113,9 @@ set(TOOLKIT_SOURCES
 
 if(TOOLKIT_WITH_CAIRO)
     list(APPEND TOOLKIT_SOURCES src/toolkit/painters/cairo_painter.cpp)
+    if(TOOLKIT_WITH_TEXT_SHAPER)
+        list(APPEND TOOLKIT_SOURCES src/toolkit/painters/cairo_text_shaper.cpp)
+    endif()
 endif()
 
 if(APPLE)
@@ -311,6 +323,9 @@ if(TOOLKIT_WITH_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)
     if(TARGET fontconfig::fontconfig)
         target_link_libraries(toolkit PUBLIC fontconfig::fontconfig)
+    endif()
+    if(TOOLKIT_WITH_TEXT_SHAPER)
+        target_link_libraries(toolkit PUBLIC PkgConfig::HARFBUZZ PkgConfig::FRIBIDI)
     endif()
 endif()
 
@@ -522,6 +537,7 @@ add_executable(tests
     tests/test_tab_widget.cpp
     tests/test_table_view.cpp
     tests/test_text_edit.cpp
+    tests/test_text_shaper.cpp
     tests/test_toast.cpp
     tests/test_status_bar.cpp
     tests/test_theme.cpp
@@ -531,4 +547,5 @@ add_executable(tests
     tests/test_xdg_image_loader.cpp
     tests/repro_tab_orientation.cpp
 )
+target_include_directories(tests PRIVATE src)
 target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)

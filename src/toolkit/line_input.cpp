@@ -332,31 +332,44 @@ size_t LineInput::pos_from_x(float x) const {
     auto const &style = Theme::current().style.lineInput;
     auto const &palette = Theme::current().palette;
     auto click_x = x - style.padding.left + scroll_offset_;
-    size_t current_pos = 0;
+
+    if (password_mode_) {
+        // Password mode: uniform character spacing, use simple linear positions
+        auto char_w = measure_text("8", palette.fonts.size).width;
+        size_t utf8_len = 0;
+        auto codepoints = 0;
+        while (utf8_len < text_.size()) {
+            utf8_len = Utf8Iterator::next(text_, utf8_len);
+            codepoints++;
+        }
+        auto char_idx = static_cast<size_t>(click_x / char_w);
+        if (char_idx >= static_cast<size_t>(codepoints)) {
+            return text_.size();
+        }
+        return Utf8Iterator::find_char(text_, char_idx);
+    }
 
     if (click_x <= 0) {
         return 0;
     }
 
-    while (current_pos < text_.size()) {
-        size_t next_pos = Utf8Iterator::next(text_, current_pos);
-        std::string before =
-            password_mode_ ? get_masked_text(text_, next_pos) : text_.substr(0, next_pos);
-        auto sz = measure_text(before, palette.fonts.size);
-        if (sz.width > click_x) {
-            // Check if we are closer to the previous or next character
-            std::string before_prev =
-                password_mode_ ? get_masked_text(text_, current_pos) : text_.substr(0, current_pos);
-            auto prev_sz = measure_text(before_prev, palette.fonts.size);
-            if (click_x - prev_sz.width < sz.width - click_x) {
-                return current_pos;
-            } else {
-                return next_pos;
+    auto positions = text_cursor_positions(text_, palette.fonts.size);
+    auto best = 0;
+    auto best_dist = std::abs(positions[0] - static_cast<double>(click_x));
+
+    auto cp_start = 0;
+    while (cp_start < text_.size()) {
+        size_t cp_end = Utf8Iterator::next(text_, cp_start);
+        if (cp_end < positions.size()) {
+            auto dist = std::abs(positions[cp_end] - static_cast<double>(click_x));
+            if (dist < best_dist) {
+                best_dist = dist;
+                best = cp_end;
             }
         }
-        current_pos = next_pos;
+        cp_start = cp_end;
     }
-    return current_pos;
+    return best;
 }
 
 bool LineInput::is_valid() const {
@@ -381,6 +394,31 @@ void LineInput::paint(Painter &painter) {
     ensure_cursor_visible(painter);
 
     auto d_text = password_mode_ ? get_masked_text(text_) : text_;
+    auto d_cursor_pos = static_cast<int>(cursor_pos_);
+    auto d_sel_start = sel_start_pos;
+    auto d_sel_end = sel_end_pos;
+
+    if (password_mode_) {
+        // Convert byte offsets from original text to masked text,
+        // where each codepoint occupies exactly 1 byte ("8" per char).
+        auto to_masked = [this](size_t byte_pos) {
+            int codepoints = 0;
+            size_t i = 0;
+            while (i < text_.size() && i < byte_pos) {
+                i = Utf8Iterator::next(text_, i);
+                codepoints++;
+            }
+            return codepoints;
+        };
+        d_cursor_pos = to_masked(cursor_pos_);
+        if (sel_start_pos >= 0) {
+            d_sel_start = to_masked(static_cast<size_t>(sel_start_pos));
+        }
+        if (sel_end_pos >= 0) {
+            d_sel_end = to_masked(static_cast<size_t>(sel_end_pos));
+        }
+    }
+
     auto cursor_visible = true;
     if (is_focused()) {
         auto elapsed = std::chrono::steady_clock::now() - cursor_blink_time_;
@@ -394,9 +432,9 @@ void LineInput::paint(Painter &painter) {
         .enabled = !read_only_,
         .window_active = window_ ? window_->is_active() : true,
     };
-    theme.draw_line_input(painter, rect, d_text, placeholder_, static_cast<int>(cursor_pos_),
-                          sel_start_pos, sel_end_pos, wstate, password_mode_, scroll_offset_, bg,
-                          cursor_visible);
+    theme.draw_line_input(painter, rect, d_text, placeholder_, d_cursor_pos, d_sel_start, d_sel_end,
+                          wstate, password_mode_, scroll_offset_, bg, cursor_visible,
+                          content_right_inset());
 
     paint_buttons(painter);
 }
@@ -583,10 +621,16 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
 void LineInput::ensure_cursor_visible(Painter &painter) {
     auto const &palette = Theme::current().palette;
     auto content_w = content_available_width();
-    auto before_str =
-        password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
-    auto cursor_x =
-        before_str.empty() ? 0.0f : painter.measure_text(before_str, palette.fonts.size).width;
+    auto cursor_x = 0.0f;
+
+    if (password_mode_) {
+        auto before_str = get_masked_text(text_, cursor_pos_);
+        cursor_x =
+            before_str.empty() ? 0.0f : painter.measure_text(before_str, palette.fonts.size).width;
+    } else {
+        auto positions = painter.text_cursor_positions(text_, palette.fonts.size);
+        cursor_x = static_cast<float>(positions[cursor_pos_]);
+    }
 
     if (cursor_x - scroll_offset_ > content_w) {
         scroll_offset_ = cursor_x - content_w;
@@ -678,11 +722,21 @@ bool LineInput::handle_key(KeyEvent const &event) {
             window()->request_redraw("input state");
         }
         return true;
-    case Key::Left:
+    case Key::Left: {
+        auto rtl_dir = false;
+        if (!password_mode_ && !text_.empty()) {
+            auto const &p = Theme::current().palette;
+            auto pos = text_cursor_positions(text_, p.fonts.size);
+            rtl_dir = pos.size() > 1 && pos[0] > pos[text_.size()];
+        }
         if (event.alt) {
             move_word_left(event.shift);
         } else if (!event.shift && has_selection()) {
-            move_cursor(sel_start(), false);
+            move_cursor(rtl_dir ? sel_end() : sel_start(), false);
+        } else if (rtl_dir) {
+            if (cursor_pos_ < text_.size()) {
+                move_cursor(Utf8Iterator::next(text_, cursor_pos_), event.shift);
+            }
         } else if (cursor_pos_ > 0) {
             move_cursor(Utf8Iterator::prev(text_, cursor_pos_), event.shift);
         }
@@ -690,11 +744,22 @@ bool LineInput::handle_key(KeyEvent const &event) {
             window()->request_redraw("input state");
         }
         return true;
-    case Key::Right:
+    }
+    case Key::Right: {
+        auto rtl_dir = false;
+        if (!password_mode_ && !text_.empty()) {
+            auto const &p = Theme::current().palette;
+            auto pos = text_cursor_positions(text_, p.fonts.size);
+            rtl_dir = pos.size() > 1 && pos[0] > pos[text_.size()];
+        }
         if (event.alt) {
             move_word_right(event.shift);
         } else if (!event.shift && has_selection()) {
-            move_cursor(sel_end(), false);
+            move_cursor(rtl_dir ? sel_start() : sel_end(), false);
+        } else if (rtl_dir) {
+            if (cursor_pos_ > 0) {
+                move_cursor(Utf8Iterator::prev(text_, cursor_pos_), event.shift);
+            }
         } else if (cursor_pos_ < text_.size()) {
             move_cursor(Utf8Iterator::next(text_, cursor_pos_), event.shift);
         }
@@ -702,6 +767,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
             window()->request_redraw("input state");
         }
         return true;
+    }
     case Key::Home:
         move_cursor(0, event.shift);
         if (window()) {

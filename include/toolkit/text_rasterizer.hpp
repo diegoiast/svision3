@@ -36,6 +36,15 @@ class TextRasterizer {
                          FontFamily font = FontFamily::System) = 0;
     virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) = 0;
 
+    // Visual X positions for each logical codepoint boundary (BiDi-aware)
+    virtual std::vector<double> cursor_positions(std::string_view text, float font_size,
+                                                 FontFamily font = FontFamily::System) {
+        // Fallback: simple linear positions (LTR only)
+        std::vector<double> pos(text.size() + 1, 0.0);
+        // Naive LTR fallback - subclasses with BiDi override this
+        return pos;
+    }
+
     virtual void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
                            float font_size, FontFamily font, Painter::TextOrientation orientation,
                            bool bold, bool italic) = 0;

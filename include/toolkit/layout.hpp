@@ -10,6 +10,29 @@
 
 namespace toolkit {
 
+class Layout {
+  public:
+    struct Item {
+        std::unique_ptr<Widget> widget;
+        int stretch;
+        Alignment h_align;
+    };
+
+    void virtual add_widget(std::unique_ptr<Widget> widget, int stretch = 0,
+                            Alignment h_align = Alignment::Fill) = 0;
+
+    void set_margins(Margins const &m) { margins_ = m; }
+    void set_spacing(float s) { spacing_ = s; }
+    void clear_items() { items_.clear(); }
+    std::vector<Item> const &items() const { return items_; }
+    virtual std::unique_ptr<Widget> release_item(int index) = 0;
+
+  private:
+    std::vector<Item> items_;
+    Margins margins_;
+    float spacing_ = 8.0f;
+};
+
 class VBoxLayout : public Widget, public Fluent<VBoxLayout> {
     DECLARE_WIDGET(VBoxLayout)
   public:

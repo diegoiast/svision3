@@ -139,4 +139,12 @@ Painter::FontMetrics Painter::font_metrics(float font_size, FontFamily family) {
     return {};
 }
 
+std::vector<double> Painter::text_cursor_positions(std::string_view text, float font_size,
+                                                   FontFamily family) {
+    if (rasterizer_) {
+        return rasterizer_->cursor_positions(text, font_size, family);
+    }
+    return {};
+}
+
 } // namespace toolkit

@@ -270,7 +270,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                                 std::string_view placeholder, int cursor_pos, int selection_start,
                                 int selection_end, WidgetState const &state, bool password_mode,
                                 float scroll_offset, std::optional<Color> background,
-                                bool cursor_visible) const {
+                                bool cursor_visible, float right_inset) const {
     auto &style = this->style.lineInput;
     auto focused = state.focused;
     auto enabled = state.enabled;
@@ -278,8 +278,20 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     auto fm = painter.font_metrics(palette.fonts.size);
     auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
     auto content_x = style.padding.left;
-    auto content_w = rect.width - style.padding.left - style.padding.right;
+    auto ri = (right_inset >= 0) ? right_inset : style.padding.right;
+    auto content_w = rect.width - content_x - ri;
     auto tx = rect.x + content_x - scroll_offset;
+
+    // RTL: right-align text within the content area
+    auto is_rtl = false;
+    if (!text.empty() && !password_mode) {
+        auto rtl_positions = painter.text_cursor_positions(text, palette.fonts.size);
+        is_rtl = rtl_positions.size() > 1 && rtl_positions[0] > rtl_positions[text.size()];
+        if (is_rtl) {
+            double span = rtl_positions[0] - rtl_positions[text.size()];
+            tx = static_cast<float>(rect.x + content_x + content_w - span);
+        }
+    }
 
     painter.draw_filled_frame(rect, palette.base, border, palette, true);
 
@@ -288,13 +300,13 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
 
     auto text_c = enabled ? palette.text : palette.text_disabled;
     if (selection_start >= 0 && selection_end > selection_start) {
-        auto before_s = text.substr(0, selection_start);
-        auto before_e = text.substr(0, selection_end);
-        auto sx = tx + painter.measure_text(before_s, palette.fonts.size).width;
-        auto ex = tx + painter.measure_text(before_e, palette.fonts.size).width;
+        auto positions = painter.text_cursor_positions(text, palette.fonts.size);
+        auto sx = tx + positions[selection_start];
+        auto ex = tx + positions[selection_end];
         auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
-        painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
+        painter.fill_rect(
+            {static_cast<float>(sx), hy, static_cast<float>(ex - sx), fm.height + 2.0f}, sel_bg);
     }
 
     if (text.empty() && !focused) {
@@ -320,11 +332,8 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     }
 
     if (focused && cursor_pos >= 0 && cursor_visible) {
-        auto before = text.substr(0, cursor_pos);
-        auto cx = tx;
-        if (!before.empty()) {
-            cx += painter.measure_text(before, palette.fonts.size).width;
-        }
+        auto positions = painter.text_cursor_positions(text, palette.fonts.size);
+        auto cx = tx + static_cast<float>(positions[cursor_pos]);
         auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto cy_bot = cy_top + fm.height + 2.0f;
         painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);
@@ -942,28 +951,37 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
     auto content_w = field_rect.width - style.padding.left - style.padding.right;
     auto fm = painter.font_metrics(palette.fonts.size);
     auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+
+    // RTL: right-align text within the content area
+    auto is_rtl = false;
+    if (!text.empty()) {
+        auto rtl_positions = painter.text_cursor_positions(text, palette.fonts.size);
+        is_rtl = rtl_positions.size() > 1 && rtl_positions[0] > rtl_positions[text.size()];
+        if (is_rtl) {
+            double span = rtl_positions[0] - rtl_positions[text.size()];
+            content_x = static_cast<float>(field_rect.x + style.padding.left + content_w - span);
+        }
+    }
+
     auto clip_rect = Rect{content_x, rect.y, content_w, rect.height};
     painter.push_clip(clip_rect);
 
     if (selection_start >= 0 && selection_end > selection_start) {
-        auto before_s = text.substr(0, selection_start);
-        auto before_e = text.substr(0, selection_end);
-        auto sx = content_x + painter.measure_text(before_s, palette.fonts.size).width;
-        auto ex = content_x + painter.measure_text(before_e, palette.fonts.size).width;
+        auto positions = painter.text_cursor_positions(text, palette.fonts.size);
+        auto sx = content_x + positions[selection_start];
+        auto ex = content_x + positions[selection_end];
         auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
-        painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
+        painter.fill_rect(
+            {static_cast<float>(sx), hy, static_cast<float>(ex - sx), fm.height + 2.0f}, sel_bg);
     }
 
     auto text_c = enabled ? palette.text : palette.text_disabled;
     painter.draw_text(text, {content_x, baseline_y}, text_c, palette.fonts.size);
 
     if (focused && cursor_pos >= 0 && cursor_visible) {
-        auto before = text.substr(0, cursor_pos);
-        auto cx = content_x;
-        if (!before.empty()) {
-            cx += painter.measure_text(before, palette.fonts.size).width;
-        }
+        auto positions = painter.text_cursor_positions(text, palette.fonts.size);
+        auto cx = content_x + static_cast<float>(positions[cursor_pos]);
         auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto cy_bot = cy_top + fm.height + 2.0f;
         painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);

@@ -1,11 +1,15 @@
 #ifdef TOOLKIT_HAS_CAIRO
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
+
+#ifdef TOOLKIT_HAS_TEXT_SHAPER
+#include "toolkit/painters/cairo_text_shaper.hpp"
+#endif
 
 #include <algorithm>
 #include <cairo.h>
-#include <cmath>
 #include <spdlog/spdlog.h>
 #include <string>
 
@@ -139,12 +143,15 @@ void CairoPainter::draw_circle(Point center, float radius, Color const &color, f
 }
 
 // Detect a monospace font by checking that 'i' and 'm' have equal advances.
-// Reuses the caller's cairo_t (save/restore keeps it clean) — no extra surface.
-static std::string find_monospace_font(cairo_t *cr) {
+// Uses an isolated temporary cairo context so font probing has zero side‑effect
+// on any caller context.
+static std::string find_monospace_font() {
+    auto *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+    auto *cr = cairo_create(surf);
+
     static const char *candidates[] = {
         "DejaVu Sans Mono", "Liberation Mono", "Courier New", "Noto Mono", "Hack",
         "Ubuntu Mono",      "Courier",         nullptr};
-    cairo_save(cr);
     cairo_set_font_size(cr, 12.0);
     std::string found;
     for (auto **name = candidates; *name; ++name) {
@@ -157,15 +164,18 @@ static std::string find_monospace_font(cairo_t *cr) {
             break;
         }
     }
-    cairo_restore(cr);
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(surf);
     return found.empty() ? "monospace" : found;
 }
 
-static std::string cairo_font_face(FontFamily f, cairo_t *cr) {
+static std::string cairo_font_face(FontFamily f, cairo_t * /*cr*/) {
     if (f == FontFamily::Monospace) {
-        return find_monospace_font(cr);
+        return find_monospace_font();
     }
-    return Theme::current().palette.fonts.system;
+    auto const &name = Theme::current().palette.fonts.system;
+    return name;
 }
 
 void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point position,
@@ -175,10 +185,6 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         auto cr = cp->cairo();
         cairo_new_path(cr);
         cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
-        cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(),
-                               italic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL,
-                               bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
-        cairo_set_font_size(cr, std::round(font_size));
 
         cairo_save(cr);
         cairo_move_to(cr, position.x, position.y);
@@ -188,12 +194,40 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             cairo_rotate(cr, M_PI / 2.0);
         }
 
+#ifdef TOOLKIT_HAS_TEXT_SHAPER
+        if (orientation != Painter::TextOrientation::Horizontal) {
+            std::string s{text};
+            cairo_show_text(cr, s.c_str());
+        } else {
+            auto shaped = shaper_.shape(cr, text, font_size, font, bold, italic);
+            if (!shaped.runs.empty()) {
+                for (auto &run : shaped.runs) {
+                    if (!run.glyphs.empty()) {
+                        for (auto &g : run.glyphs) {
+                            g.x += position.x;
+                            g.y += position.y;
+                        }
+                        cairo_show_glyphs(cr, run.glyphs.data(),
+                                          static_cast<int>(run.glyphs.size()));
+                    }
+                }
+            } else {
+                std::string s{text};
+                cairo_show_text(cr, s.c_str());
+            }
+        }
+#else
+        cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(),
+                               italic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL,
+                               bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
+        cairo_set_font_size(cr, std::round(font_size));
         std::string s{text};
         cairo_show_text(cr, s.c_str());
+#endif
 
         auto status = cairo_status(cr);
         if (status != CAIRO_STATUS_SUCCESS) {
-            spdlog::error("CairoPainter: draw_text error for '{}': {}", s,
+            spdlog::error("CairoPainter: draw_text error for '{}': {}", text,
                           cairo_status_to_string(status));
         }
 
@@ -412,35 +446,85 @@ Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFa
     if (text.empty()) {
         return {0, 0};
     }
-    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
-    cairo_t *cr = cairo_create(surf);
+
+    auto surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+    auto cr = cairo_create(surf);
+    cairo_font_extents_t fe;
+
+#ifdef TOOLKIT_HAS_TEXT_SHAPER
+    auto shaped = shaper_.shape(cr, text, font_size, font, false, false);
+    cairo_font_extents(cr, &fe);
+    cairo_destroy(cr);
+    auto advance = static_cast<float>(shaped.total_advance);
+#else
     cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, std::round(font_size));
     cairo_text_extents_t te;
-    cairo_font_extents_t fe;
     std::string s{text};
     cairo_text_extents(cr, s.c_str(), &te);
     cairo_font_extents(cr, &fe);
+    advance = static_cast<float>(te.x_advance);
     cairo_destroy(cr);
+#endif
     cairo_surface_destroy(surf);
-    // Use x_advance: width is the ink bounding box (0 for spaces),
-    // x_advance is the pen advance including trailing whitespace.
-    return {static_cast<float>(te.x_advance), static_cast<float>(fe.height)};
+    return {advance, static_cast<float>(fe.height)};
 }
 
 Painter::FontMetrics CairoTextRasterizer::metrics(float font_size, FontFamily font) {
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *cr = cairo_create(surf);
+    cairo_font_extents_t fe;
+
     cairo_select_font_face(cr, cairo_font_face(font, cr).c_str(), CAIRO_FONT_SLANT_NORMAL,
                            CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, std::round(font_size));
-    cairo_font_extents_t fe;
     cairo_font_extents(cr, &fe);
     cairo_destroy(cr);
     cairo_surface_destroy(surf);
     return {static_cast<float>(fe.ascent), static_cast<float>(fe.descent),
             static_cast<float>(fe.height)};
+}
+
+std::vector<double> CairoTextRasterizer::cursor_positions(std::string_view text, float font_size,
+                                                          FontFamily font) {
+    if (text.empty()) {
+        return {0.0};
+    }
+
+#ifdef TOOLKIT_HAS_TEXT_SHAPER
+    // Expand ShapedText's codepoint-indexed positions to byte-offset-indexed
+    auto expand = [](std::string_view txt, std::vector<double> const &cp_pos) {
+        std::vector<double> result(txt.size() + 1, 0.0);
+        auto cp_idx = 0;
+        auto byte_pos = 0;
+        while (byte_pos < txt.size()) {
+            result[byte_pos] = cp_pos[cp_idx];
+            auto next = Utf8Iterator::next(txt, byte_pos);
+            for (auto j = byte_pos + 1; j < next; j++) {
+                result[j] = cp_pos[cp_idx];
+            }
+            byte_pos = next;
+            cp_idx++;
+        }
+        result[txt.size()] = cp_pos[cp_pos.size() - 1];
+        return result;
+    };
+
+    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+    cairo_t *cr = cairo_create(surf);
+    auto shaped = shaper_.shape(cr, text, font_size, font, false, false);
+    cairo_destroy(cr);
+    cairo_surface_destroy(surf);
+
+    if (!shaped.cursor_positions.empty()) {
+        return expand(text, shaped.cursor_positions);
+    }
+#endif
+
+    // Fallback: naive LTR
+    std::vector<double> pos(text.size() + 1, 0.0);
+    return pos;
 }
 
 } // namespace toolkit

@@ -48,7 +48,7 @@ class DummyPlatformApplication : public PlatformApplication {
     void clipboard_set_text(std::string const &text) override {}
     std::string_view name() const override { return "dummy"; }
     float scale_factor() const override { return 1.0f; }
-    SystemFonts system_fonts() const override { return {"sans", "mono", 14.0f}; }
+    SystemFonts system_fonts() const override { return {"sans-serif", "monospace", 14.0f}; }
 
   private:
     std::shared_ptr<ImageLoaderInterface> image_loader_;

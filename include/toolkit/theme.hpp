@@ -227,7 +227,7 @@ class Theme {
                                  int selection_end, WidgetState const &state,
                                  bool password_mode = false, float scroll_offset = 0.0f,
                                  std::optional<Color> background = std::nullopt,
-                                 bool cursor_visible = true) const = 0;
+                                 bool cursor_visible = true, float right_inset = -1) const = 0;
     virtual void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
                                    bool hovered, bool active, bool show_mnemonics,
                                    int mnemonic_index) const = 0;
