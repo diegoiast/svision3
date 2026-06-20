@@ -101,6 +101,11 @@ class WaylandPlatformApplication : public PlatformApplication {
 
     bool mod_shift = false, mod_ctrl = false;
     bool mod_alt = false, mod_super = false;
+    // Per-side modifier tracking (updated from xkb keysym on press/release)
+    bool mod_lshift = false, mod_rshift = false;
+    bool mod_lctrl = false, mod_rctrl = false;
+    bool mod_lalt = false, mod_ralt = false;
+    bool mod_lsuper = false, mod_rsuper = false;
 
     uint32_t last_click_time = 0, last_click_button = 0;
     float last_click_x = 0, last_click_y = 0;

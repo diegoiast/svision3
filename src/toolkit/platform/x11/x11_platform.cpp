@@ -67,6 +67,15 @@ struct X11PlatformApplication::Impl {
         Time last_press_time = 0;
         int last_press_x = 0, last_press_y = 0;
         int click_count = 0;
+        // Per-side modifier tracking (X modifier masks do not distinguish sides)
+        bool lshift_held = false;
+        bool rshift_held = false;
+        bool lctrl_held = false;
+        bool rctrl_held = false;
+        bool lalt_held = false;
+        bool ralt_held = false;
+        bool lsuper_held = false;
+        bool rsuper_held = false;
     };
     std::unordered_map<::Window, WindowData> window_map;
 
@@ -417,6 +426,32 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
             len = XLookupString(&key, buf, sizeof(buf) - 1, &keysym, nullptr);
         }
 
+        // Update per-side tracker when the key itself is a modifier
+        if (keysym == XK_Shift_L) {
+            data.lshift_held = true;
+        }
+        if (keysym == XK_Shift_R) {
+            data.rshift_held = true;
+        }
+        if (keysym == XK_Control_L) {
+            data.lctrl_held = true;
+        }
+        if (keysym == XK_Control_R) {
+            data.rctrl_held = true;
+        }
+        if (keysym == XK_Alt_L) {
+            data.lalt_held = true;
+        }
+        if (keysym == XK_Alt_R) {
+            data.ralt_held = true;
+        }
+        if (keysym == XK_Super_L) {
+            data.lsuper_held = true;
+        }
+        if (keysym == XK_Super_R) {
+            data.rsuper_held = true;
+        }
+
         // Set modifier flags based on current state (st)
         ke.shift = (st & ShiftMask) != 0;
         ke.ctrl = (st & ControlMask) != 0;
@@ -436,6 +471,16 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
         if (keysym == XK_Super_L || keysym == XK_Super_R) {
             ke.super = true;
         }
+
+        // Per-side flags
+        ke.lshift = data.lshift_held;
+        ke.rshift = data.rshift_held;
+        ke.lctrl = data.lctrl_held;
+        ke.rctrl = data.rctrl_held;
+        ke.lalt = data.lalt_held;
+        ke.ralt = data.ralt_held;
+        ke.lsuper = data.lsuper_held;
+        ke.rsuper = data.rsuper_held;
 
         if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
             ke.text.assign(buf, len);
@@ -463,6 +508,32 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
             len = XLookupString(&key, buf, sizeof(buf) - 1, &keysym, nullptr);
         }
 
+        // Update per-side tracker when a modifier key is released
+        if (keysym == XK_Shift_L) {
+            data.lshift_held = false;
+        }
+        if (keysym == XK_Shift_R) {
+            data.rshift_held = false;
+        }
+        if (keysym == XK_Control_L) {
+            data.lctrl_held = false;
+        }
+        if (keysym == XK_Control_R) {
+            data.rctrl_held = false;
+        }
+        if (keysym == XK_Alt_L) {
+            data.lalt_held = false;
+        }
+        if (keysym == XK_Alt_R) {
+            data.ralt_held = false;
+        }
+        if (keysym == XK_Super_L) {
+            data.lsuper_held = false;
+        }
+        if (keysym == XK_Super_R) {
+            data.rsuper_held = false;
+        }
+
         ke.shift = (st & ShiftMask) != 0;
         ke.ctrl = (st & ControlMask) != 0;
         ke.alt = (st & Mod1Mask) != 0;
@@ -480,6 +551,16 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
         if (keysym == XK_Super_L || keysym == XK_Super_R) {
             ke.super = false;
         }
+
+        // Per-side flags
+        ke.lshift = data.lshift_held;
+        ke.rshift = data.rshift_held;
+        ke.lctrl = data.lctrl_held;
+        ke.rctrl = data.rctrl_held;
+        ke.lalt = data.lalt_held;
+        ke.ralt = data.ralt_held;
+        ke.lsuper = data.lsuper_held;
+        ke.rsuper = data.rsuper_held;
 
         if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
             ke.text.assign(buf, len);

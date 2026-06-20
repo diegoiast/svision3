@@ -622,6 +622,16 @@ static void process_key(WaylandPlatformApplication *app, uint32_t key) {
     ke.super = app->mod_super;
     ke.key = xkb_to_key(sym);
 
+    // Per-side flags
+    ke.lshift = app->mod_lshift;
+    ke.rshift = app->mod_rshift;
+    ke.lctrl = app->mod_lctrl;
+    ke.rctrl = app->mod_rctrl;
+    ke.lalt = app->mod_lalt;
+    ke.ralt = app->mod_ralt;
+    ke.lsuper = app->mod_lsuper;
+    ke.rsuper = app->mod_rsuper;
+
     if (ke.ctrl || ke.alt) {
         xkb_keysym_t base = xkb_state_key_get_one_sym(app->xkb_st, keycode);
         char buf[8] = {};
@@ -660,6 +670,69 @@ static void keyboard_key(void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t
     ke.alt = app->mod_alt;
     ke.super = app->mod_super;
     ke.key = xkb_to_key(sym);
+
+    // Update per-side tracker when a modifier key is pressed/released
+    if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        if (sym == XKB_KEY_Shift_L) {
+            app->mod_lshift = true;
+        }
+        if (sym == XKB_KEY_Shift_R) {
+            app->mod_rshift = true;
+        }
+        if (sym == XKB_KEY_Control_L) {
+            app->mod_lctrl = true;
+        }
+        if (sym == XKB_KEY_Control_R) {
+            app->mod_rctrl = true;
+        }
+        if (sym == XKB_KEY_Alt_L) {
+            app->mod_lalt = true;
+        }
+        if (sym == XKB_KEY_Alt_R) {
+            app->mod_ralt = true;
+        }
+        if (sym == XKB_KEY_Super_L) {
+            app->mod_lsuper = true;
+        }
+        if (sym == XKB_KEY_Super_R) {
+            app->mod_rsuper = true;
+        }
+    } else {
+        if (sym == XKB_KEY_Shift_L) {
+            app->mod_lshift = false;
+        }
+        if (sym == XKB_KEY_Shift_R) {
+            app->mod_rshift = false;
+        }
+        if (sym == XKB_KEY_Control_L) {
+            app->mod_lctrl = false;
+        }
+        if (sym == XKB_KEY_Control_R) {
+            app->mod_rctrl = false;
+        }
+        if (sym == XKB_KEY_Alt_L) {
+            app->mod_lalt = false;
+        }
+        if (sym == XKB_KEY_Alt_R) {
+            app->mod_ralt = false;
+        }
+        if (sym == XKB_KEY_Super_L) {
+            app->mod_lsuper = false;
+        }
+        if (sym == XKB_KEY_Super_R) {
+            app->mod_rsuper = false;
+        }
+    }
+
+    // Per-side flags
+    ke.lshift = app->mod_lshift;
+    ke.rshift = app->mod_rshift;
+    ke.lctrl = app->mod_lctrl;
+    ke.rctrl = app->mod_rctrl;
+    ke.lalt = app->mod_lalt;
+    ke.ralt = app->mod_ralt;
+    ke.lsuper = app->mod_lsuper;
+    ke.rsuper = app->mod_rsuper;
 
     // Get text. For Wayland, xkb_state_key_get_utf8 is usually the source.
     char buf[8] = {};
@@ -716,6 +789,14 @@ static void keyboard_key(void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t
                         repeat_ke.ctrl = app->mod_ctrl;
                         repeat_ke.alt = app->mod_alt;
                         repeat_ke.super = app->mod_super;
+                        repeat_ke.lshift = app->mod_lshift;
+                        repeat_ke.rshift = app->mod_rshift;
+                        repeat_ke.lctrl = app->mod_lctrl;
+                        repeat_ke.rctrl = app->mod_rctrl;
+                        repeat_ke.lalt = app->mod_lalt;
+                        repeat_ke.ralt = app->mod_ralt;
+                        repeat_ke.lsuper = app->mod_lsuper;
+                        repeat_ke.rsuper = app->mod_rsuper;
 
                         char repeat_buf[8] = {};
                         int repeat_len = xkb_state_key_get_utf8(app->xkb_st, key + 8, repeat_buf,

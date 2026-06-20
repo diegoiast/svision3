@@ -1,10 +1,10 @@
 #include "win32_platform.hpp"
 #include "Win32OpenGlRenderingBackend.hpp"
-#include "toolkit/painters/win32_painter.hpp"
-#include "win32_image_loader.hpp"
 #include "toolkit/lunasvg_image_loader.hpp"
+#include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include "win32_image_loader.hpp"
 
 // clang-format off
 #ifndef NOMINMAX
@@ -23,10 +23,10 @@
 #include <GL/gl.h>
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <objidl.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
-#include <memory>
 
 namespace toolkit {
 
@@ -447,11 +447,28 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN: {
-        bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
-        bool alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
-        bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
-        bool super = (GetKeyState(VK_LWIN) & 0x8000) != 0 || (GetKeyState(VK_RWIN) & 0x8000) != 0;
+        bool lshift = (GetKeyState(VK_LSHIFT) & 0x8000) != 0;
+        bool rshift = (GetKeyState(VK_RSHIFT) & 0x8000) != 0;
+        bool lctrl = (GetKeyState(VK_LCONTROL) & 0x8000) != 0;
+        bool rctrl = (GetKeyState(VK_RCONTROL) & 0x8000) != 0;
+        bool lalt = (GetKeyState(VK_LMENU) & 0x8000) != 0;
+        bool ralt = (GetKeyState(VK_RMENU) & 0x8000) != 0;
+        bool lsuper = (GetKeyState(VK_LWIN) & 0x8000) != 0;
+        bool rsuper = (GetKeyState(VK_RWIN) & 0x8000) != 0;
+        bool shift = lshift || rshift;
+        bool ctrl = lctrl || rctrl;
+        bool alt = lalt || ralt;
+        bool super = lsuper || rsuper;
         Key key = vk_to_key(wp);
+        // Skip modifier-only key repeats (bit 30 = previous key state).
+        // Holding Ctrl/Shift/Alt/Win produces repeated WM_KEYDOWN that would
+        // re-trigger shortcuts like Ctrl+Shift, even though the state didn't change.
+        bool is_modifier = wp == VK_CONTROL || wp == VK_LCONTROL || wp == VK_RCONTROL ||
+                           wp == VK_SHIFT || wp == VK_LSHIFT || wp == VK_RSHIFT || wp == VK_MENU ||
+                           wp == VK_LMENU || wp == VK_RMENU || wp == VK_LWIN || wp == VK_RWIN;
+        if (is_modifier && (lp & 0x40000000)) {
+            break;
+        }
         if (key != Key::NoKey || ctrl || alt || super) {
             KeyEvent ke;
             ke.type = KeyEvent::Type::Press;
@@ -460,6 +477,14 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             ke.ctrl = ctrl;
             ke.alt = alt;
             ke.super = super;
+            ke.lshift = lshift;
+            ke.rshift = rshift;
+            ke.lctrl = lctrl;
+            ke.rctrl = rctrl;
+            ke.lalt = lalt;
+            ke.ralt = ralt;
+            ke.lsuper = lsuper;
+            ke.rsuper = rsuper;
             if ((ctrl || alt) && key == Key::NoKey) {
                 char ch = vk_to_base_char(wp);
                 if (ch) {
@@ -473,7 +498,16 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     case WM_CHAR: {
         wchar_t wc = static_cast<wchar_t>(wp);
+        auto has_ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+        auto has_alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
         if (wc < 32) {
+            break;
+        }
+        // Ctrl (without Alt) combos are handled via WM_KEYDOWN with modifiers set.
+        // WM_CHAR does not carry modifier state, so inserting the character
+        // would double-fire shortcuts like Ctrl+Shift+L → direction change + "L".
+        // AltGr (Ctrl+Alt) should still produce text input via WM_CHAR.
+        if (has_ctrl && !has_alt) {
             break;
         }
         char utf8[8] = {};

@@ -290,6 +290,12 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
 @property (nonatomic, assign) toolkit::Window *owner;
 @end
 
+// Per-side modifier tracking (updated from flagsChanged:)
+static bool mac_lshift = false, mac_rshift = false;
+static bool mac_lctrl  = false, mac_rctrl  = false;
+static bool mac_lalt   = false, mac_ralt   = false;
+static bool mac_lsuper = false, mac_rsuper = false;
+
 @implementation TKNView
 
 - (BOOL)isFlipped { return YES; }
@@ -407,6 +413,19 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
 - (void)insertTab:(id)sender { [self sendTabKey:NO]; }
 - (void)insertBacktab:(id)sender { [self sendTabKey:YES]; }
 
+- (void)flagsChanged:(NSEvent *)event {
+    switch ([event keyCode]) {
+    case 56: mac_lshift = !mac_lshift; break;
+    case 60: mac_rshift = !mac_rshift; break;
+    case 59: mac_lctrl  = !mac_lctrl;  break;
+    case 62: mac_rctrl  = !mac_rctrl;  break;
+    case 58: mac_lalt   = !mac_lalt;   break;
+    case 61: mac_ralt   = !mac_ralt;   break;
+    case 55: mac_lsuper = !mac_lsuper; break;
+    case 54: mac_rsuper = !mac_rsuper; break;
+    }
+}
+
 - (void)keyDown:(NSEvent *)event {
     if (!self.owner) return;
     if ([event keyCode] == 48) { [self interpretKeyEvents:@[event]]; return; }
@@ -417,6 +436,14 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
     ke.ctrl = (mods & NSEventModifierFlagControl) != 0;
     ke.alt = (mods & NSEventModifierFlagOption) != 0;
     ke.super = (mods & NSEventModifierFlagCommand) != 0;
+    ke.lshift = mac_lshift;
+    ke.rshift = mac_rshift;
+    ke.lctrl  = mac_lctrl;
+    ke.rctrl  = mac_rctrl;
+    ke.lalt   = mac_lalt;
+    ke.ralt   = mac_ralt;
+    ke.lsuper = mac_lsuper;
+    ke.rsuper = mac_rsuper;
     switch ([event keyCode]) {
     case 51:  ke.key = toolkit::Key::Backspace; break;
     case 117: ke.key = toolkit::Key::Delete;    break;

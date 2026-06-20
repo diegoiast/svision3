@@ -79,10 +79,22 @@ struct KeyEvent {
     Type type = Type::Press;
     Key key = Key::NoKey;
     std::string text;
+
+    // Combined convenience flags — true if either side is pressed
     bool shift = false;
     bool ctrl = false;
     bool alt = false;
     bool super = false;
+
+    // Per-side modifier tracking (individual platforms may fill these)
+    bool lshift = false;
+    bool rshift = false;
+    bool lctrl = false;
+    bool rctrl = false;
+    bool lalt = false;
+    bool ralt = false;
+    bool lsuper = false;
+    bool rsuper = false;
 };
 
 } // namespace toolkit
