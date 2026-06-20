@@ -23,6 +23,7 @@ class HtmlView : public Widget {
 
     void set_html(std::string const &html, std::string const &base_url = "");
     void set_markdown(std::string const &markdown);
+    float content_width() const;
     void set_css(std::string light_css, std::string dark_css = {});
     void set_content_margin(int px) { content_margin_ = px; }
     void set_content_max_width(int px) { content_max_width_ = px; }
