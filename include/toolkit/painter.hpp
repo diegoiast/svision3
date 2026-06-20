@@ -26,6 +26,8 @@ class Painter {
 
     enum class LineStyle { Solid, Dashed, Dotted };
 
+    enum class TextDirection { Auto, LTR, RTL };
+
     enum class TextOrientation {
         Horizontal,
         VerticalCCW, // 90 degrees counter-clockwise (bottom to top)
@@ -82,11 +84,17 @@ class Painter {
     void set_text_direction_rtl(bool rtl = true) { rtl_text_ = rtl; }
     bool text_direction_rtl() const { return rtl_text_; }
 
+    // Override text direction for cursor positions and rendering (Auto = detect from content).
+    // Used by LineInput for Ctrl+Shift direction switching.
+    void set_text_direction(TextDirection dir) { text_direction_ = dir; }
+    TextDirection text_direction() const { return text_direction_; }
+
     static float snap_to_pixel(float val, float scale);
 
   protected:
     TextRasterizer *rasterizer_ = nullptr;
     bool rtl_text_ = false;
+    TextDirection text_direction_ = TextDirection::Auto;
 };
 
 // Used for testing

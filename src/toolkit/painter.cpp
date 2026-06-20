@@ -143,7 +143,21 @@ Painter::FontMetrics Painter::font_metrics(float font_size, FontFamily family) {
 std::vector<double> Painter::text_cursor_positions(std::string_view text, float font_size,
                                                    FontFamily family) {
     if (rasterizer_) {
-        return rasterizer_->cursor_positions(text, font_size, family);
+        auto pos = rasterizer_->cursor_positions(text, font_size, family);
+        if (pos.size() > 1) {
+            if (text_direction_ == TextDirection::LTR && pos[0] > pos[1]) {
+                // RTL was auto-detected; force LTR by negating
+                for (auto &p : pos) {
+                    p = -p;
+                }
+            } else if (text_direction_ == TextDirection::RTL && pos[0] < pos[1]) {
+                // LTR was auto-detected; force RTL by negating
+                for (auto &p : pos) {
+                    p = -p;
+                }
+            }
+        }
+        return pos;
     }
     return {};
 }

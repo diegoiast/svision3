@@ -291,11 +291,13 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
         if (rtl_positions.size() > 1) {
             is_rtl = rtl_positions[0] > rtl_positions[1];
         }
-        if (is_rtl) {
-            // RTL paragraph: GDI+ renders with the RIGHT edge at the drawing position,
-            // extending leftward. Position the right edge at the content area's right edge.
-            tx = static_cast<float>(rect.x + content_x + content_w);
-        }
+    } else if (text.empty() && painter.text_direction() == Painter::TextDirection::RTL) {
+        is_rtl = true;
+    }
+    if (is_rtl) {
+        // RTL paragraph: GDI+ renders with the RIGHT edge at the drawing position,
+        // extending leftward. Position the right edge at the content area's right edge.
+        tx = static_cast<float>(rect.x + content_x + content_w);
     }
 
     painter.draw_filled_frame(rect, palette.base, border, palette, true);

@@ -81,6 +81,36 @@ LineInput::LineInput(std::string placeholder)
     redo_cmd->set_shortcut("Std+Y");
     add_command(redo_cmd);
 
+    dir_auto_cmd = Command::create(
+        "Auto",
+        [this] {
+            text_direction_ = TextDirection::Auto;
+            if (window()) { window()->request_redraw("text direction"); }
+        },
+        true);
+    dir_auto_cmd->set_shortcut("Ctrl+Shift+D");
+    add_command(dir_auto_cmd);
+
+    dir_ltr_cmd = Command::create(
+        "LTR",
+        [this] {
+            text_direction_ = TextDirection::LTR;
+            if (window()) { window()->request_redraw("text direction"); }
+        },
+        true);
+    dir_ltr_cmd->set_shortcut("Ctrl+Shift+L");
+    add_command(dir_ltr_cmd);
+
+    dir_rtl_cmd = Command::create(
+        "RTL",
+        [this] {
+            text_direction_ = TextDirection::RTL;
+            if (window()) { window()->request_redraw("text direction"); }
+        },
+        true);
+    dir_rtl_cmd->set_shortcut("Ctrl+Shift+R");
+    add_command(dir_rtl_cmd);
+
     sync_commands();
 }
 
@@ -91,6 +121,11 @@ nlohmann::json LineInput::to_json() const {
     j["read_only"] = read_only_;
     j["is_password"] = password_mode_;
     j["cursor"] = cursor_pos_;
+    if (text_direction_ == TextDirection::LTR) {
+        j["text_direction"] = "ltr";
+    } else if (text_direction_ == TextDirection::RTL) {
+        j["text_direction"] = "rtl";
+    }
     return j;
 }
 
@@ -110,6 +145,16 @@ void LineInput::from_json(nlohmann::json const &j) {
     }
     if (j.contains("cursor")) {
         cursor_pos_ = j["cursor"];
+    }
+    if (j.contains("text_direction")) {
+        auto const &d = j["text_direction"];
+        if (d == "ltr") {
+            text_direction_ = TextDirection::LTR;
+        } else if (d == "rtl") {
+            text_direction_ = TextDirection::RTL;
+        } else {
+            text_direction_ = TextDirection::Auto;
+        }
     }
 }
 
@@ -233,7 +278,7 @@ void LineInput::select_all() {
 }
 
 void LineInput::sync_commands() {
-    bool has_sel = has_selection();
+    auto has_sel = has_selection();
     select_all_cmd->set_enabled(!text_.empty());
     cut_cmd->set_enabled(has_sel && !password_mode_ && !read_only_);
     copy_cmd->set_enabled(has_sel && !password_mode_);
@@ -252,6 +297,10 @@ void LineInput::sync_commands() {
     } else {
         redo_cmd->set_tooltip("Redo");
     }
+
+    dir_auto_cmd->set_enabled(text_direction_ != TextDirection::Auto);
+    dir_ltr_cmd->set_enabled(text_direction_ != TextDirection::LTR);
+    dir_rtl_cmd->set_enabled(text_direction_ != TextDirection::RTL);
 }
 
 void LineInput::undo() {
@@ -319,8 +368,8 @@ bool LineInput::hit_peek_btn(Point pos) const {
     }
     auto sz = peek_btn_size();
     auto const &style = Theme::current().style.lineInput;
-    float bx = rect_.width - style.padding.right - sz;
-    bool clear_visible = !text_.empty() && !read_only_;
+    auto bx = rect_.width - style.padding.right - sz;
+    auto clear_visible = !text_.empty() && !read_only_;
     if (clear_visible) {
         bx -= clear_btn_size() + 4.0f;
     }
@@ -356,8 +405,20 @@ size_t LineInput::pos_from_x(float x) const {
     auto positions = text_cursor_positions(text_, palette.fonts.size);
     auto best = 0;
     auto best_dist = std::abs(positions[0] - static_cast<double>(click_x));
-
     auto cp_start = 0;
+
+    if (positions.size() > 1) {
+        if (text_direction_ == TextDirection::LTR && positions[0] > positions[1]) {
+            for (auto &p : positions) {
+                p = -p;
+            }
+        } else if (text_direction_ == TextDirection::RTL && positions[0] < positions[1]) {
+            for (auto &p : positions) {
+                p = -p;
+            }
+        }
+    }
+
     while (cp_start < text_.size()) {
         size_t cp_end = Utf8Iterator::next(text_, cp_start);
         if (cp_end < positions.size()) {
@@ -391,6 +452,7 @@ void LineInput::paint(Painter &painter) {
         bg = theme.palette.error;
     }
 
+    painter.set_text_direction(text_direction_);
     ensure_cursor_visible(painter);
 
     auto d_text = password_mode_ ? get_masked_text(text_) : text_;
@@ -723,11 +785,11 @@ bool LineInput::handle_key(KeyEvent const &event) {
         }
         return true;
     case Key::Left: {
-        auto rtl_dir = false;
-        if (!password_mode_ && !text_.empty()) {
+        auto rtl_dir = text_direction_ == TextDirection::RTL;
+        if (text_direction_ == TextDirection::Auto && !password_mode_ && !text_.empty()) {
             auto const &p = Theme::current().palette;
             auto pos = text_cursor_positions(text_, p.fonts.size);
-            rtl_dir = pos.size() > 1 && pos[0] > pos[text_.size()];
+            rtl_dir = pos.size() > 1 && pos[0] > pos[1];
         }
         if (event.alt) {
             move_word_left(event.shift);
@@ -746,11 +808,11 @@ bool LineInput::handle_key(KeyEvent const &event) {
         return true;
     }
     case Key::Right: {
-        auto rtl_dir = false;
-        if (!password_mode_ && !text_.empty()) {
+        auto rtl_dir = text_direction_ == TextDirection::RTL;
+        if (text_direction_ == TextDirection::Auto && !password_mode_ && !text_.empty()) {
             auto const &p = Theme::current().palette;
             auto pos = text_cursor_positions(text_, p.fonts.size);
-            rtl_dir = pos.size() > 1 && pos[0] > pos[text_.size()];
+            rtl_dir = pos.size() > 1 && pos[0] > pos[1];
         }
         if (event.alt) {
             move_word_right(event.shift);
@@ -790,6 +852,25 @@ bool LineInput::handle_key(KeyEvent const &event) {
         return true;
     default:
         break;
+    }
+
+    if (event.ctrl && !event.alt) {
+        if (event.key == Key::NoKey && event.text.empty()) {
+            if (event.lshift && !event.rshift) {
+                text_direction_ = TextDirection::LTR;
+                if (window()) {
+                    window()->request_redraw("text direction");
+                }
+                return true;
+            }
+            if (event.rshift && !event.lshift) {
+                text_direction_ = TextDirection::RTL;
+                if (window()) {
+                    window()->request_redraw("text direction");
+                }
+                return true;
+            }
+        }
     }
 
     if (!event.text.empty() && !event.ctrl && !event.alt && !event.super) {
@@ -927,6 +1008,13 @@ void LineInput::show_context_menu(Point pos) {
         Command::create("Delete", [this] { delete_selection(); }, !read_only_ && has_sel);
     delete_cmd->set_shortcut("Delete");
     items.push_back(MenuItem::action(delete_cmd));
+    items.push_back(MenuItem::sep());
+
+    auto dir_menu = std::make_shared<Menu>("Text Direction");
+    dir_menu->add_action(dir_auto_cmd);
+    dir_menu->add_action(dir_ltr_cmd);
+    dir_menu->add_action(dir_rtl_cmd);
+    items.push_back(MenuItem::submenu_item("Text Direction", dir_menu));
 
     context_menu_ = std::make_unique<ContextMenu>(std::move(items));
     context_menu_->show(window(), map_to_window(pos));

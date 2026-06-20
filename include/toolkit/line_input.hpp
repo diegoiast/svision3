@@ -15,7 +15,10 @@ namespace toolkit {
 
 class LineInput : public Widget, public Fluent<LineInput> {
     DECLARE_WIDGET(LineInput)
+
   public:
+    using TextDirection = Painter::TextDirection;
+
     explicit LineInput(std::string placeholder = "");
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;
@@ -42,6 +45,12 @@ class LineInput : public Widget, public Fluent<LineInput> {
     LineInput &set_read_only(bool enable);
     bool is_read_only() const { return read_only_; }
 
+    LineInput &set_text_direction(TextDirection dir) {
+        text_direction_ = dir;
+        return *this;
+    }
+    TextDirection text_direction() const { return text_direction_; }
+
     enum class ValidationMode { None, Block, Notify };
     LineInput &
     set_validator(std::function<bool(std::string const &, LineInput const &widget)> validator) {
@@ -61,6 +70,9 @@ class LineInput : public Widget, public Fluent<LineInput> {
     Command::Ptr paste_cmd;
     Command::Ptr undo_cmd;
     Command::Ptr redo_cmd;
+    Command::Ptr dir_auto_cmd;
+    Command::Ptr dir_ltr_cmd;
+    Command::Ptr dir_rtl_cmd;
 
     std::function<void(std::string const &, LineInput &widget)> on_change;
     std::function<void(std::string const &, LineInput &widget)> on_submit;
@@ -113,6 +125,7 @@ class LineInput : public Widget, public Fluent<LineInput> {
     int blink_timer_id_ = 0;
     std::unique_ptr<ContextMenu> context_menu_;
     UndoStack undo_stack_;
+    TextDirection text_direction_ = TextDirection::Auto;
 };
 
 } // namespace toolkit
