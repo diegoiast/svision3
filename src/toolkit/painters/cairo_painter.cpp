@@ -207,6 +207,7 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
                             g.x += position.x;
                             g.y += position.y;
                         }
+                        TextShaper::select_font_on_cr(cr, run.font_name, font_size, bold, italic);
                         cairo_show_glyphs(cr, run.glyphs.data(),
                                           static_cast<int>(run.glyphs.size()));
                     }

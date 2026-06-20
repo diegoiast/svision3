@@ -101,24 +101,18 @@ static auto generic_category_allows(std::string_view preferred_generic,
     return true;
 }
 
-static auto resolve_font_for_codepoints(std::string_view preferred_family,
-                                        std::vector<uint32_t> const &codepoints) -> std::string {
+auto TextShaper::get_font_set(std::string_view preferred_family) -> FcFontSet * {
     fc_ensure_init();
 
-    if (codepoints.empty()) {
-        return std::string(preferred_family);
+    if (fc_sort_cache_.fs && fc_sort_cache_.preferred_family == preferred_family) {
+        return fc_sort_cache_.fs;
     }
 
-    // Build a charset from the requested codepoints (used for coverage
-    // filtering, NOT passed to FcFontSort so that sort order is purely
-    // based on family match quality).
-    FcCharSet *cs = FcCharSetCreate();
-    for (auto cp : codepoints) {
-        FcCharSetAddChar(cs, cp);
+    if (fc_sort_cache_.fs) {
+        FcFontSetDestroy(fc_sort_cache_.fs);
+        fc_sort_cache_.fs = nullptr;
     }
 
-    // Sort fonts by family match — no charset constraint, so generic
-    // families like "sans-serif" correctly prefer sans-serif fonts.
     FcPattern *pat = FcPatternCreate();
     FcPatternAddString(pat, FC_FAMILY, reinterpret_cast<FcChar8 const *>(preferred_family.data()));
     FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
@@ -126,49 +120,60 @@ static auto resolve_font_for_codepoints(std::string_view preferred_family,
     FcDefaultSubstitute(pat);
 
     FcResult result;
-    FcFontSet *fs = FcFontSort(nullptr, pat, FcTrue, nullptr, &result);
+    fc_sort_cache_.fs = FcFontSort(nullptr, pat, FcTrue, nullptr, &result);
     FcPatternDestroy(pat);
+    fc_sort_cache_.preferred_family = std::string(preferred_family);
+
+    return fc_sort_cache_.fs;
+}
+
+auto TextShaper::resolve_font_for_codepoints(std::string_view preferred_family,
+                                              FcFontSet *fs,
+                                              std::vector<uint32_t> const &codepoints)
+    -> std::string {
+    if (codepoints.empty() || !fs) {
+        return std::string(preferred_family);
+    }
+
+    FcCharSet *cs = FcCharSetCreate();
+    for (auto cp : codepoints) {
+        FcCharSetAddChar(cs, cp);
+    }
 
     std::string family(preferred_family);
-    if (fs) {
-        // Single pass: track the best category-matched font AND the best
-        // any-category font that cover the codepoints.  Prefer category match,
-        // fall back to any covering font.
-        std::string best_category;
-        std::string best_any;
-        FcCharSet *cover = FcCharSetCopy(cs);
+    std::string best_category;
+    std::string best_any;
+    FcCharSet *cover = FcCharSetCopy(cs);
 
-        for (int i = 0; i < fs->nfont; i++) {
-            FcCharSet *fcs = nullptr;
-            if (FcPatternGetCharSet(fs->fonts[i], FC_CHARSET, 0, &fcs) != FcResultMatch || !fcs) {
-                continue;
-            }
-            if (!FcCharSetIsSubset(cover, fcs)) {
-                continue;
-            }
-            FcChar8 *fam = nullptr;
-            if (FcPatternGetString(fs->fonts[i], FC_FAMILY, 0, &fam) != FcResultMatch) {
-                continue;
-            }
-            auto name = reinterpret_cast<char *>(fam);
-            if (generic_category_allows(preferred_family, name)) {
-                best_category = name;
-                break;
-            }
-            if (best_any.empty()) {
-                best_any = name;
-            }
+    for (int i = 0; i < fs->nfont; i++) {
+        FcCharSet *fcs = nullptr;
+        if (FcPatternGetCharSet(fs->fonts[i], FC_CHARSET, 0, &fcs) != FcResultMatch || !fcs) {
+            continue;
         }
-
-        if (!best_category.empty()) {
-            family = best_category;
-        } else if (!best_any.empty()) {
-            family = best_any;
+        if (!FcCharSetIsSubset(cover, fcs)) {
+            continue;
         }
-
-        FcCharSetDestroy(cover);
-        FcFontSetDestroy(fs);
+        FcChar8 *fam = nullptr;
+        if (FcPatternGetString(fs->fonts[i], FC_FAMILY, 0, &fam) != FcResultMatch) {
+            continue;
+        }
+        auto name = reinterpret_cast<char *>(fam);
+        if (generic_category_allows(preferred_family, name)) {
+            best_category = name;
+            break;
+        }
+        if (best_any.empty()) {
+            best_any = name;
+        }
     }
+
+    if (!best_category.empty()) {
+        family = best_category;
+    } else if (!best_any.empty()) {
+        family = best_any;
+    }
+
+    FcCharSetDestroy(cover);
     FcCharSetDestroy(cs);
     return family;
 }
@@ -203,7 +208,7 @@ static auto probe_monospace_font() -> std::string {
     return found.empty() ? "monospace" : found;
 }
 
-static auto cairo_font_face_name(FontFamily f, cairo_t * /*cr*/) -> std::string {
+auto TextShaper::cairo_font_face_name(FontFamily f, cairo_t * /*cr*/) -> std::string {
     if (f == FontFamily::Monospace) {
         return probe_monospace_font();
     }
@@ -272,59 +277,32 @@ void TextShaper::select_font_on_cr(cairo_t *cr, std::string_view family, float f
     cairo_set_font_size(cr, std::round(font_size));
 }
 
-auto TextShaper::ensure_font(cairo_t *cr, float font_size, FontFamily font, bool bold, bool italic,
-                             std::vector<uint32_t> const &codepoints) -> CachedFont {
-    release_font();
-
-    if (cached_size_ != font_size || cached_family_ != font || cached_bold_ != bold ||
-        cached_italic_ != italic) {
-        auto preferred = cairo_font_face_name(font, cr);
-        cached_resolved_family_ = resolve_font_for_codepoints(preferred, codepoints);
-        cached_size_ = font_size;
-        cached_family_ = font;
-        cached_bold_ = bold;
-        cached_italic_ = italic;
+auto TextShaper::create_hb_font(cairo_t *cr, float font_size) -> hb_font_t * {
+    auto *scaled = cairo_get_scaled_font(cr);
+    if (!scaled) {
+        return nullptr;
     }
-
-    select_font_on_cr(cr, cached_resolved_family_, font_size, bold, italic);
-
-    if (!temp_surf_) {
-        temp_surf_ = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
-        temp_cr_ = cairo_create(temp_surf_);
+    auto *ft_face = cairo_ft_scaled_font_lock_face(scaled);
+    if (!ft_face) {
+        return nullptr;
     }
-    select_font_on_cr(temp_cr_, cached_resolved_family_, font_size, bold, italic);
-
-    auto *temp_scaled = cairo_get_scaled_font(temp_cr_);
-    auto *ft_face = cairo_ft_scaled_font_lock_face(temp_scaled);
     auto *hb_face = hb_ft_face_create_referenced(ft_face);
-    cairo_ft_scaled_font_unlock_face(temp_scaled);
+    cairo_ft_scaled_font_unlock_face(scaled);
     auto *hb = hb_font_create(hb_face);
     hb_ot_font_set_funcs(hb);
     hb_face_destroy(hb_face);
     hb_font_set_scale(hb, static_cast<int>(std::round(font_size) * 64),
                       static_cast<int>(std::round(font_size) * 64));
-
-    auto *scaled = cairo_get_scaled_font(cr);
-    cairo_scaled_font_reference(scaled);
-
-    cached_font_ = {scaled, hb};
-
-    return cached_font_;
-}
-
-void TextShaper::release_font() {
-    if (cached_font_.hb_font) {
-        hb_font_destroy(cached_font_.hb_font);
-        cached_font_.hb_font = nullptr;
-    }
-    if (cached_font_.scaled_font) {
-        cairo_scaled_font_destroy(cached_font_.scaled_font);
-        cached_font_.scaled_font = nullptr;
-    }
+    return hb;
 }
 
 TextShaper::~TextShaper() {
-    release_font();
+    if (fc_sort_cache_.fs) {
+        FcFontSetDestroy(fc_sort_cache_.fs);
+    }
+    if (run_font_.hb_font) {
+        hb_font_destroy(run_font_.hb_font);
+    }
     if (temp_cr_) {
         cairo_destroy(temp_cr_);
     }
@@ -346,11 +324,6 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
     auto utf32 = utf8_to_utf32(text);
     auto len = static_cast<FriBidiStrIndex>(utf32.size());
 
-    auto [scaled_font, hb_font] = ensure_font(cr, font_size, font, bold, italic, utf32);
-    if (!hb_font || !scaled_font) {
-        return {};
-    }
-
     // Bidi analysis
     std::vector<FriBidiCharType> bidi_types(len);
     fribidi_get_bidi_types(utf32.data(), len, bidi_types.data());
@@ -363,7 +336,7 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
         return {};
     }
 
-    // Build logical runs
+    // Build logical runs by embedding level
     std::vector<BidiRun> logical_runs;
     {
         int i = 0;
@@ -377,7 +350,43 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
         }
     }
 
-    auto visual_runs = reorder_runs(std::move(logical_runs));
+    // Split each BiDi run by Unicode script so that mixed-script runs
+    // (e.g. Hebrew + Arabic in one RTL run) get separate font resolution.
+    auto *hb_ufuncs = hb_unicode_funcs_get_default();
+
+    std::vector<BidiRun> script_runs;
+    for (auto &run : logical_runs) {
+        int i = run.logical_start;
+        while (i < run.logical_end) {
+            auto script = hb_unicode_script(hb_ufuncs, utf32[i]);
+            auto start = i;
+            i++;
+            while (i < run.logical_end) {
+                auto ns = hb_unicode_script(hb_ufuncs, utf32[i]);
+                if (ns == script) {
+                    i++;
+                } else if (ns == HB_SCRIPT_INHERITED || script == HB_SCRIPT_INHERITED) {
+                    i++;
+                } else if (script == HB_SCRIPT_COMMON) {
+                    script = ns;
+                    i++;
+                } else if (ns == HB_SCRIPT_COMMON) {
+                    break;
+                } else {
+                    break;
+                }
+            }
+            script_runs.push_back({start, i, run.level});
+        }
+    }
+
+    auto visual_runs = reorder_runs(std::move(script_runs));
+
+    // Ensure temporary cairo context for HarfBuzz font creation
+    if (!temp_surf_) {
+        temp_surf_ = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+        temp_cr_ = cairo_create(temp_surf_);
+    }
 
     // Clear any previous cached data before re-shaping
     cached_shaped_ = {};
@@ -395,12 +404,45 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
                                         utf32.begin() +
                                             static_cast<ptrdiff_t>(run_start + run_size));
 
+        // Resolve a font that covers this run's codepoints.
+        // get_font_set caches the expensive FcFontSort result per preferred
+        // family; resolve_font_for_codepoints then does a cheap per-run
+        // coverage walk over the sorted set.
+        auto preferred = cairo_font_face_name(font, cr);
+        auto *fs = get_font_set(preferred);
+        auto resolved = resolve_font_for_codepoints(preferred, fs, run_utf32);
+
+        // Select the per-run font on the target context for rendering
+        select_font_on_cr(cr, resolved, font_size, bold, italic);
+
+        // Reuse cached hb_font when the same (family, size, bold, italic) is
+        // requested again — avoids expensive FT_Face / hb_font creation.
+        if (!run_font_.hb_font || run_font_.resolved_family != resolved ||
+            run_font_.font_size != font_size || run_font_.bold != bold ||
+            run_font_.italic != italic) {
+            if (run_font_.hb_font) {
+                hb_font_destroy(run_font_.hb_font);
+                run_font_.hb_font = nullptr;
+            }
+            select_font_on_cr(temp_cr_, resolved, font_size, bold, italic);
+            run_font_.hb_font = create_hb_font(temp_cr_, font_size);
+            run_font_.resolved_family = resolved;
+            run_font_.font_size = font_size;
+            run_font_.bold = bold;
+            run_font_.italic = italic;
+        }
+
+        auto *hb_run = run_font_.hb_font;
+        if (!hb_run) {
+            continue;
+        }
+
         auto *buf = hb_buffer_create();
         hb_buffer_add_utf32(buf, run_utf32.data(), static_cast<int>(run_utf32.size()), 0,
                             static_cast<int>(run_utf32.size()));
         hb_buffer_set_direction(buf, run.is_rtl() ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
         hb_buffer_guess_segment_properties(buf);
-        hb_shape(hb_font, buf, nullptr, 0);
+        hb_shape(hb_run, buf, nullptr, 0);
 
         unsigned glyph_count;
         auto *info = hb_buffer_get_glyph_infos(buf, &glyph_count);
@@ -412,6 +454,7 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
         }
 
         GlyphRun gr;
+        gr.font_name = resolved;
         gr.glyphs.resize(glyph_count);
         double run_advance = 0;
 
