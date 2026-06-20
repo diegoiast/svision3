@@ -384,6 +384,21 @@ void Menu::open_submenu(int index) {
         y += (items_[i].is_separator()) ? separator_height_ : item_height_;
     }
     auto pos = Point{bounds_.x + bounds_.width, bounds_.y + y};
+
+    // Close parent when child submenu is dismissed (action selected or Escape)
+    auto closing = std::make_shared<bool>(false);
+    auto old_callback = item.submenu->on_close_callback;
+    item.submenu->on_close_callback = [this, closing, old_callback] {
+        if (*closing) {
+            return;
+        }
+        *closing = true;
+        if (old_callback) {
+            old_callback();
+        }
+        close();
+    };
+
     item.submenu->show(window_, pos);
     item.submenu->select_first();
 }
