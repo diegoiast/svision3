@@ -81,33 +81,26 @@ LineInput::LineInput(std::string placeholder)
     redo_cmd->set_shortcut("Std+Y");
     add_command(redo_cmd);
 
+    auto set_direction = [this](TextDirection dir) {
+        text_direction_ = dir;
+        sync_commands();
+        if (window()) {
+            window()->request_redraw("text direction");
+        }
+    };
+
     dir_auto_cmd = Command::create(
-        "Auto",
-        [this] {
-            text_direction_ = TextDirection::Auto;
-            if (window()) { window()->request_redraw("text direction"); }
-        },
-        true);
+        "Auto", [this, set_direction] { set_direction(TextDirection::Auto); }, true);
     dir_auto_cmd->set_shortcut("Ctrl+Shift+D");
     add_command(dir_auto_cmd);
 
-    dir_ltr_cmd = Command::create(
-        "LTR",
-        [this] {
-            text_direction_ = TextDirection::LTR;
-            if (window()) { window()->request_redraw("text direction"); }
-        },
-        true);
+    dir_ltr_cmd =
+        Command::create("LTR", [this, set_direction] { set_direction(TextDirection::LTR); }, true);
     dir_ltr_cmd->set_shortcut("Ctrl+Shift+L");
     add_command(dir_ltr_cmd);
 
-    dir_rtl_cmd = Command::create(
-        "RTL",
-        [this] {
-            text_direction_ = TextDirection::RTL;
-            if (window()) { window()->request_redraw("text direction"); }
-        },
-        true);
+    dir_rtl_cmd =
+        Command::create("RTL", [this, set_direction] { set_direction(TextDirection::RTL); }, true);
     dir_rtl_cmd->set_shortcut("Ctrl+Shift+R");
     add_command(dir_rtl_cmd);
 
@@ -301,6 +294,10 @@ void LineInput::sync_commands() {
     dir_auto_cmd->set_enabled(text_direction_ != TextDirection::Auto);
     dir_ltr_cmd->set_enabled(text_direction_ != TextDirection::LTR);
     dir_rtl_cmd->set_enabled(text_direction_ != TextDirection::RTL);
+
+    cached_pw_cursor_pos_ = to_masked_offset(text_, cursor_pos_);
+    cached_pw_sel_start_ = has_selection() ? to_masked_offset(text_, sel_start()) : -1;
+    cached_pw_sel_end_ = has_selection() ? to_masked_offset(text_, sel_end()) : -1;
 }
 
 void LineInput::undo() {
@@ -398,26 +395,28 @@ size_t LineInput::pos_from_x(float x) const {
         return Utf8Iterator::find_char(text_, char_idx);
     }
 
+    auto positions = text_cursor_positions(text_, palette.fonts.size);
+
+    if (positions.size() > 1) {
+        bool const is_rtl = text_direction_ == TextDirection::RTL ||
+                            (text_direction_ == TextDirection::Auto && positions[0] > positions[1]);
+        if (is_rtl) {
+            // RTL: positions are right-relative (0 at right edge, negative leftward).
+            // Negate so they increase left-to-right. Flip click_x to right-relative too.
+            for (auto &p : positions) {
+                p = -p;
+            }
+            click_x = content_available_width() + scroll_offset_ - click_x;
+        }
+    }
+
     if (click_x <= 0) {
         return 0;
     }
 
-    auto positions = text_cursor_positions(text_, palette.fonts.size);
     auto best = 0;
     auto best_dist = std::abs(positions[0] - static_cast<double>(click_x));
     auto cp_start = 0;
-
-    if (positions.size() > 1) {
-        if (text_direction_ == TextDirection::LTR && positions[0] > positions[1]) {
-            for (auto &p : positions) {
-                p = -p;
-            }
-        } else if (text_direction_ == TextDirection::RTL && positions[0] < positions[1]) {
-            for (auto &p : positions) {
-                p = -p;
-            }
-        }
-    }
 
     while (cp_start < text_.size()) {
         size_t cp_end = Utf8Iterator::next(text_, cp_start);
@@ -456,30 +455,9 @@ void LineInput::paint(Painter &painter) {
     ensure_cursor_visible(painter);
 
     auto d_text = password_mode_ ? get_masked_text(text_) : text_;
-    auto d_cursor_pos = static_cast<int>(cursor_pos_);
-    auto d_sel_start = sel_start_pos;
-    auto d_sel_end = sel_end_pos;
-
-    if (password_mode_) {
-        // Convert byte offsets from original text to masked text,
-        // where each codepoint occupies exactly 1 byte ("8" per char).
-        auto to_masked = [this](size_t byte_pos) {
-            int codepoints = 0;
-            size_t i = 0;
-            while (i < text_.size() && i < byte_pos) {
-                i = Utf8Iterator::next(text_, i);
-                codepoints++;
-            }
-            return codepoints;
-        };
-        d_cursor_pos = to_masked(cursor_pos_);
-        if (sel_start_pos >= 0) {
-            d_sel_start = to_masked(static_cast<size_t>(sel_start_pos));
-        }
-        if (sel_end_pos >= 0) {
-            d_sel_end = to_masked(static_cast<size_t>(sel_end_pos));
-        }
-    }
+    auto d_cursor_pos = password_mode_ ? cached_pw_cursor_pos_ : static_cast<int>(cursor_pos_);
+    auto d_sel_start = password_mode_ ? cached_pw_sel_start_ : sel_start_pos;
+    auto d_sel_end = password_mode_ ? cached_pw_sel_end_ : sel_end_pos;
 
     auto cursor_visible = true;
     if (is_focused()) {
@@ -684,6 +662,7 @@ void LineInput::ensure_cursor_visible(Painter &painter) {
     auto const &palette = Theme::current().palette;
     auto content_w = content_available_width();
     auto cursor_x = 0.0f;
+    auto is_rtl = false;
 
     if (password_mode_) {
         auto before_str = get_masked_text(text_, cursor_pos_);
@@ -692,12 +671,28 @@ void LineInput::ensure_cursor_visible(Painter &painter) {
     } else {
         auto positions = painter.text_cursor_positions(text_, palette.fonts.size);
         cursor_x = static_cast<float>(positions[cursor_pos_]);
+        if (positions.size() > 1) {
+            is_rtl = text_direction_ == TextDirection::RTL ||
+                     (text_direction_ == TextDirection::Auto && positions[0] > positions[1]);
+        }
     }
 
-    if (cursor_x - scroll_offset_ > content_w) {
-        scroll_offset_ = cursor_x - content_w;
-    } else if (cursor_x - scroll_offset_ < 0) {
-        scroll_offset_ = cursor_x;
+    if (is_rtl) {
+        // RTL: negate so cursor_x is distance from right edge (positive).
+        cursor_x = -cursor_x;
+        if (cursor_x > content_w + scroll_offset_) {
+            // leftmost cursor past left edge → show more left content
+            scroll_offset_ = cursor_x - content_w;
+        } else if (cursor_x < scroll_offset_) {
+            // cursor nearer right edge than the current scroll → reduce scroll
+            scroll_offset_ = cursor_x;
+        }
+    } else {
+        if (cursor_x - scroll_offset_ > content_w) {
+            scroll_offset_ = cursor_x - content_w;
+        } else if (cursor_x - scroll_offset_ < 0) {
+            scroll_offset_ = cursor_x;
+        }
     }
 
     if (scroll_offset_ < 0) {
@@ -858,6 +853,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         if (event.key == Key::NoKey && event.text.empty()) {
             if (event.lshift && !event.rshift) {
                 text_direction_ = TextDirection::LTR;
+                sync_commands();
                 if (window()) {
                     window()->request_redraw("text direction");
                 }
@@ -865,6 +861,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
             }
             if (event.rshift && !event.lshift) {
                 text_direction_ = TextDirection::RTL;
+                sync_commands();
                 if (window()) {
                     window()->request_redraw("text direction");
                 }
@@ -934,6 +931,16 @@ void LineInput::on_blur() {
         window_->stop_timer(blink_timer_id_);
         blink_timer_id_ = 0;
     }
+}
+
+auto LineInput::to_masked_offset(std::string_view text, size_t byte_pos) -> int {
+    int codepoints = 0;
+    size_t i = 0;
+    while (i < text.size() && i < byte_pos) {
+        i = Utf8Iterator::next(text, i);
+        codepoints++;
+    }
+    return codepoints;
 }
 
 void LineInput::cut() {

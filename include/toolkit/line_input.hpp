@@ -98,6 +98,7 @@ class LineInput : public Widget, public Fluent<LineInput> {
     float content_right_inset() const;
     float content_available_width() const;
     void show_context_menu(Point pos);
+    static auto to_masked_offset(std::string_view text, size_t byte_pos) -> int;
     void cut();
     void copy();
     void paste();
@@ -126,6 +127,11 @@ class LineInput : public Widget, public Fluent<LineInput> {
     std::unique_ptr<ContextMenu> context_menu_;
     UndoStack undo_stack_;
     TextDirection text_direction_ = TextDirection::Auto;
+
+    // Cached password-mode offsets, recomputed in sync_commands()
+    int cached_pw_cursor_pos_ = 0;
+    int cached_pw_sel_start_ = -1;
+    int cached_pw_sel_end_ = -1;
 };
 
 } // namespace toolkit

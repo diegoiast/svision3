@@ -308,15 +308,91 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     auto text_c = enabled ? palette.text : palette.text_disabled;
     if (selection_start >= 0 && selection_end > selection_start) {
         auto positions = painter.text_cursor_positions(text, palette.fonts.size);
-        auto sx = tx + positions[selection_start];
-        auto ex = tx + positions[selection_end];
-        if (sx > ex) {
-            std::swap(sx, ex);
-        }
         auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
-        painter.fill_rect(
-            {static_cast<float>(sx), hy, static_cast<float>(ex - sx), fm.height + 2.0f}, sel_bg);
+
+        if (is_rtl) {
+            // Decode a UTF-8 codepoint at a byte position
+            auto codepoint_at = [](std::string_view s, size_t pos) -> uint32_t {
+                if (pos >= s.size()) {
+                    return 0;
+                }
+                auto c = static_cast<uint8_t>(s[pos]);
+                if ((c & 0x80) == 0) {
+                    return c;
+                }
+                if ((c & 0xE0) == 0xC0 && pos + 1 < s.size()) {
+                    return ((c & 0x1F) << 6) |
+                           (static_cast<uint8_t>(s[pos + 1]) & 0x3F);
+                }
+                if ((c & 0xF0) == 0xE0 && pos + 2 < s.size()) {
+                    return ((c & 0x0F) << 12) |
+                           ((static_cast<uint8_t>(s[pos + 1]) & 0x3F) << 6) |
+                           (static_cast<uint8_t>(s[pos + 2]) & 0x3F);
+                }
+                if ((c & 0xF8) == 0xF0 && pos + 3 < s.size()) {
+                    return ((c & 0x07) << 18) |
+                           ((static_cast<uint8_t>(s[pos + 1]) & 0x3F) << 12) |
+                           ((static_cast<uint8_t>(s[pos + 2]) & 0x3F) << 6) |
+                           (static_cast<uint8_t>(s[pos + 3]) & 0x3F);
+                }
+                return 0;
+            };
+
+            auto is_rev = [](uint32_t cp) -> bool {
+                return (cp >= '0' && cp <= '9') ||
+                       (cp >= 'A' && cp <= 'Z') ||
+                       (cp >= 'a' && cp <= 'z') ||
+                       (cp >= 0x00C0 && cp <= 0x024F);
+            };
+
+            for (auto i = static_cast<size_t>(selection_start);
+                 i < static_cast<size_t>(selection_end);) {
+                auto n = Utf8Iterator::next(text, i);
+                float cx1, cx2;
+
+                if (is_rev(codepoint_at(text, i))) {
+                    // Find the contiguous EN/LTR run containing this character
+                    auto rs = i;
+                    while (rs > 0) {
+                        auto p = Utf8Iterator::prev(text, rs);
+                        if (!is_rev(codepoint_at(text, p))) {
+                            break;
+                        }
+                        rs = p;
+                    }
+                    auto re = n;
+                    while (re < text.size()) {
+                        auto rn = Utf8Iterator::next(text, re);
+                        if (!is_rev(codepoint_at(text, re))) {
+                            break;
+                        }
+                        re = rn;
+                    }
+                    // Mirrored visual span within the reversed run
+                    cx1 = tx + static_cast<float>(positions[rs + re - i]);
+                    cx2 = tx + static_cast<float>(positions[rs + re - n]);
+                } else {
+                    cx1 = tx + static_cast<float>(positions[i]);
+                    cx2 = tx + static_cast<float>(positions[n]);
+                }
+
+                if (cx1 > cx2) {
+                    std::swap(cx1, cx2);
+                }
+                painter.fill_rect(
+                    {cx1, hy, cx2 - cx1, fm.height + 2.0f}, sel_bg);
+                i = n;
+            }
+        } else {
+            auto sx = tx + positions[selection_start];
+            auto ex = tx + positions[selection_end];
+            if (sx > ex) {
+                std::swap(sx, ex);
+            }
+            painter.fill_rect(
+                {static_cast<float>(sx), hy, static_cast<float>(ex - sx), fm.height + 2.0f}, sel_bg);
+        }
     }
 
     if (text.empty() && !focused) {
