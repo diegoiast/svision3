@@ -3,6 +3,7 @@
 
 #include "toolkit/label.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
 #include <nlohmann/json.hpp>
 
@@ -47,9 +48,8 @@ void Label::paint(Painter &painter) {
         float sw = painter.measure_text(suffix, fs).width;
         if (sw < rect_.width) {
             while (!display_text.empty() && text_w + sw > rect_.width) {
-                // Simplified: remove one byte at a time.
-                // In a production app we should use Utf8Iterator to remove a full codepoint.
-                display_text.pop_back();
+                auto new_end = Utf8Iterator::prev(display_text, display_text.size());
+                display_text.resize(new_end);
                 text_w = painter.measure_text(display_text, fs).width;
             }
             display_text += suffix;
