@@ -24,12 +24,14 @@ class ContextMenu {
     bool handle_key(KeyEvent const &event);
     void close();
     int item_at(Point p) const;
+    void open_submenu(int index);
 
     std::vector<MenuItem> items_;
     Window *window_ = nullptr;
     Rect bounds_;
     int hovered_ = -1;
     int pressed_item_ = -1;
+    int open_submenu_index_ = -1;
     float item_height_ = 0;
     float separator_height_ = 7.0f;
     ButtonStateHandler state_handler_;

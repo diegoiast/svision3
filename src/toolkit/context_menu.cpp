@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/context_menu.hpp"
+#include "toolkit/menu.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
@@ -117,7 +118,10 @@ int ContextMenu::item_at(Point p) const {
 }
 
 void ContextMenu::paint(Painter &painter) {
-    Theme::current().draw_menu_background(painter, {0, 0, bounds_.width, bounds_.height});
+    auto const &theme = Theme::current();
+    auto const &palette = theme.palette;
+
+    theme.draw_menu_background(painter, {0, 0, bounds_.width, bounds_.height});
 
     auto y = 2.0f;
 
@@ -125,7 +129,7 @@ void ContextMenu::paint(Painter &painter) {
         auto const &item = items_[i];
 
         if (item.type == MenuItem::Type::Separator) {
-            Theme::current().draw_menu_separator(painter, {0, y, bounds_.width, separator_height_});
+            theme.draw_menu_separator(painter, {0, y, bounds_.width, separator_height_});
             y += separator_height_;
             continue;
         }
@@ -135,8 +139,16 @@ void ContextMenu::paint(Painter &painter) {
         auto icon_data = item.command->icon_image();
         auto shortcut = item.command->printable_shortcut();
 
-        Theme::current().draw_menu_item(painter, item_rect, item.command->name(), icon_data,
-                                        shortcut, i == hovered_, enabled, false, false);
+        theme.draw_menu_item(painter, item_rect, item.command->name(), icon_data,
+                             shortcut, i == hovered_, enabled, false, false);
+
+        if (item.type == MenuItem::Type::Submenu) {
+            auto const &style = Theme::current().style.combo;
+            auto fm = painter.font_metrics(palette.fonts.size);
+            auto baseline = y + (item_height_ - fm.height) / 2.0f + fm.ascent;
+            auto arrow_x = bounds_.width - 15.0f;
+            painter.draw_text(">", {arrow_x, baseline}, palette.text, palette.fonts.size);
+        }
 
         y += item_height_;
     }
@@ -156,6 +168,24 @@ bool ContextMenu::handle_mouse(MouseEvent const &event) {
             state_handler_.on_mouse_leave();
         }
 
+        if (inside && hovered_ != -1 && previously_hovered != hovered_) {
+            if (open_submenu_index_ != -1 && hovered_ != open_submenu_index_) {
+                if (window_) {
+                    while (window_->num_popups() > 0) {
+                        window_->close_popup();
+                        if (open_submenu_index_ == -1) {
+                            break;
+                        }
+                        break;
+                    }
+                }
+                open_submenu_index_ = -1;
+            }
+            if (items_[hovered_].is_submenu()) {
+                open_submenu(hovered_);
+            }
+        }
+
         return inside;
     }
 
@@ -168,6 +198,13 @@ bool ContextMenu::handle_mouse(MouseEvent const &event) {
     if (event.type == MouseEvent::Type::Press) {
         auto idx = item_at(event.position);
         if (idx >= 0 && items_[idx].command->is_enabled()) {
+            if (items_[idx].is_submenu()) {
+                if (open_submenu_index_ == idx) {
+                    return true;
+                }
+                open_submenu(idx);
+                return true;
+            }
             state_handler_.on_mouse_click(event);
             pressed_item_ = idx;
             return true;
@@ -179,7 +216,7 @@ bool ContextMenu::handle_mouse(MouseEvent const &event) {
     if (event.type == MouseEvent::Type::Release) {
         auto idx = item_at(event.position);
         if (state_handler_.button_state == ButtonState::ClickedInside && idx == pressed_item_) {
-            if (idx >= 0 && items_[idx].command->is_enabled()) {
+            if (idx >= 0 && items_[idx].is_action() && items_[idx].command->is_enabled()) {
                 auto cmd = items_[idx].command;
                 close();
                 cmd->execute();
@@ -217,19 +254,61 @@ bool ContextMenu::handle_key(KeyEvent const &event) {
     case Key::Up:
         hovered_ = next_enabled(hovered_, -1);
         return true;
+    case Key::Right:
+        if (hovered_ != -1 && items_[hovered_].is_submenu()) {
+            open_submenu(hovered_);
+        }
+        return true;
     case Key::Enter:
-        if (hovered_ >= 0 && items_[hovered_].command->is_enabled()) {
+        if (hovered_ >= 0 && items_[hovered_].is_submenu()) {
+            open_submenu(hovered_);
+            return true;
+        }
+        if (hovered_ >= 0 && items_[hovered_].is_action() &&
+            items_[hovered_].command->is_enabled()) {
             auto cmd = items_[hovered_].command;
             close();
             cmd->execute();
         }
         return true;
     case Key::Escape:
+        if (open_submenu_index_ != -1) {
+            if (window_) {
+                window_->close_popup();
+            }
+            open_submenu_index_ = -1;
+            return true;
+        }
         close();
         return true;
     default:
         return false;
     }
+}
+
+void ContextMenu::open_submenu(int index) {
+    if (index < 0 || index >= items_.size() || !items_[index].is_submenu()) {
+        return;
+    }
+
+    open_submenu_index_ = index;
+    auto const &item = items_[index];
+    auto y = 2.0f;
+
+    for (auto i = 0; i < index; ++i) {
+        y += (items_[i].is_separator()) ? separator_height_ : item_height_;
+    }
+
+    item.submenu->set_parent_menu(nullptr);
+    auto pos = Point{bounds_.x + bounds_.width, bounds_.y + y};
+    item.submenu->on_close_callback = [this] {
+        if (open_submenu_index_ != -1) {
+            open_submenu_index_ = -1;
+            close();
+        }
+    };
+    item.submenu->show(window_, pos);
+    item.submenu->select_first();
 }
 
 } // namespace toolkit
