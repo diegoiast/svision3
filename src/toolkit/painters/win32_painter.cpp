@@ -18,6 +18,7 @@
 
 #include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
 
 #include <cmath>
@@ -511,6 +512,88 @@ void GDIPainter::draw_circle(Point center, float radius, Color const &c, float l
     impl_->graphics->DrawEllipse(&pen, cx - radius, cy - radius, radius * 2, radius * 2);
 }
 
+std::vector<double> Win32TextRasterizer::cursor_positions(std::string_view text, float font_size,
+                                                         FontFamily font) {
+    if (text.empty()) {
+        return {0.0};
+    }
+
+    auto wtext = to_wide(text);
+    if (wtext.empty()) {
+        return std::vector<double>(text.size() + 1, 0.0);
+    }
+
+    HFONT hfont = impl_->create_font(font_size, 1.0f, font);
+    HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
+
+    auto wlen = static_cast<int>(wtext.size());
+    std::vector<double> gdi_pos(wlen + 1, 0.0);
+
+    for (auto i = 1; i <= wlen; i++) {
+        SIZE sz;
+        GetTextExtentPoint32W(impl_->hdc, wtext.c_str(), i, &sz);
+        gdi_pos[i] = static_cast<double>(sz.cx);
+    }
+
+    SelectObject(impl_->hdc, old_font);
+    DeleteObject(hfont);
+
+    // Detect RTL text by checking for Hebrew/Arabic codepoints
+    auto has_rtl = false;
+    for (auto  i = 0; i < wlen && !has_rtl;) {
+        uint32_t cp;
+        if (wtext[i] >= 0xD800 && wtext[i] <= 0xDBFF && i + 1 < wlen) {
+            cp = 0x10000 + (wtext[i] - 0xD800) * 0x400 + (wtext[i + 1] - 0xDC00);
+            i += 2;
+        } else {
+            cp = wtext[i];
+            i++;
+        }
+        if ((cp >= 0x0590 && cp <= 0x08FF) || (cp >= 0xFB1D && cp <= 0xFDFF) ||
+            (cp >= 0xFE70 && cp <= 0xFEFF) || (cp >= 0x10E60 && cp <= 0x10E7F)) {
+            has_rtl = true;
+        }
+    }
+
+    std::vector<double> wpos(wlen + 1, 0.0);
+    if (has_rtl) {
+        // Positions extend negative (leftward) from the drawing origin at 0,
+        // matching GDI+ StringFormatFlagsDirectionRightToLeft rendering where
+        // the right edge of text is at the drawing point.
+        for (int i = 0; i <= wlen; i++) {
+            wpos[i] = -gdi_pos[i];
+        }
+    } else {
+        wpos.swap(gdi_pos);
+    }
+
+    // Map UTF-16 positions to UTF-8 byte offsets
+    std::vector<double> result(text.size() + 1, 0.0);
+    auto utf8_pos = size_t{0};
+    auto wide_pos = size_t{0};
+
+    while (utf8_pos < text.size() && wide_pos < wtext.size()) {
+        result[utf8_pos] = wpos[wide_pos];
+
+        auto next_pos = Utf8Iterator::next(text, utf8_pos);
+
+        for (auto j = utf8_pos + 1; j < next_pos; j++) {
+            result[j] = wpos[std::min(wide_pos + 1, static_cast<size_t>(wtext.size()))];
+        }
+
+        utf8_pos = next_pos;
+
+        if (wide_pos < wtext.size() && wtext[wide_pos] >= 0xD800 && wtext[wide_pos] <= 0xDBFF) {
+            wide_pos += 2;
+        } else {
+            wide_pos++;
+        }
+    }
+    result[text.size()] = wpos[wide_pos];
+
+    return result;
+}
+
 void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos, Color const &c,
                                     float font_size, FontFamily family,
                                     Painter::TextOrientation orientation, bool bold, bool italic) {
@@ -546,8 +629,13 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         Gdiplus::Font font(&ff, font_size, gdi_style, Gdiplus::UnitPixel);
         Gdiplus::SolidBrush brush(to_gdiplus_color(c));
 
-        // GenericTypographic removes GDI+'s default internal margins.
+        // Set paragraph direction via the painter's RTL flag (used by LineInput/Spinbox
+        // for RTL text; HtmlView/RichLabel handle BiDi via litehtml and must not set this).
         Gdiplus::StringFormat format(Gdiplus::StringFormat::GenericTypographic());
+        if (p.text_direction_rtl()) {
+            format.SetFormatFlags(format.GetFormatFlags() |
+                                  Gdiplus::StringFormatFlagsDirectionRightToLeft);
+        }
         format.SetFormatFlags(format.GetFormatFlags() | Gdiplus::StringFormatFlagsNoFitBlackBox |
                               Gdiplus::StringFormatFlagsMeasureTrailingSpaces);
 

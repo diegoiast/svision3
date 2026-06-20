@@ -123,6 +123,7 @@ void Painter::draw_text(std::string_view text, Point position, Color const &colo
         rasterizer_->draw_text(*this, text, position, color, font_size, font, orientation, bold,
                                italic);
     }
+    rtl_text_ = false;
 }
 
 Size Painter::measure_text(std::string_view text, float font_size, FontFamily family) {

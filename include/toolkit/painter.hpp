@@ -76,10 +76,17 @@ class Painter {
     // FIXME: draw_focus_ring - this should be removed and use the version from the theme
     void draw_focus_ring(Rect const &rect, float corner_radius);
 
+    // Call before draw_text to indicate RTL paragraph direction.
+    // On Windows (GDI+) this sets StringFormatFlagsDirectionRightToLeft on the text format.
+    // The flag is automatically reset after each draw_text call.
+    void set_text_direction_rtl(bool rtl = true) { rtl_text_ = rtl; }
+    bool text_direction_rtl() const { return rtl_text_; }
+
     static float snap_to_pixel(float val, float scale);
 
   protected:
     TextRasterizer *rasterizer_ = nullptr;
+    bool rtl_text_ = false;
 };
 
 // Used for testing

@@ -286,10 +286,15 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     auto is_rtl = false;
     if (!text.empty() && !password_mode) {
         auto rtl_positions = painter.text_cursor_positions(text, palette.fonts.size);
-        is_rtl = rtl_positions.size() > 1 && rtl_positions[0] > rtl_positions[text.size()];
+        // positions[0] > positions[1] means the first character's leading edge is to
+        // the right of the next character's → RTL.
+        if (rtl_positions.size() > 1) {
+            is_rtl = rtl_positions[0] > rtl_positions[1];
+        }
         if (is_rtl) {
-            double span = rtl_positions[0] - rtl_positions[text.size()];
-            tx = static_cast<float>(rect.x + content_x + content_w - span);
+            // RTL paragraph: GDI+ renders with the RIGHT edge at the drawing position,
+            // extending leftward. Position the right edge at the content area's right edge.
+            tx = static_cast<float>(rect.x + content_x + content_w);
         }
     }
 
@@ -303,6 +308,9 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
         auto positions = painter.text_cursor_positions(text, palette.fonts.size);
         auto sx = tx + positions[selection_start];
         auto ex = tx + positions[selection_end];
+        if (sx > ex) {
+            std::swap(sx, ex);
+        }
         auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
         painter.fill_rect(
@@ -327,6 +335,9 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                 i = Utf8Iterator::next(text, i);
             }
         } else {
+            if (is_rtl) {
+                painter.set_text_direction_rtl(true);
+            }
             painter.draw_text(text, {tx, baseline_y}, text_c, palette.fonts.size);
         }
     }
@@ -958,8 +969,7 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
         auto rtl_positions = painter.text_cursor_positions(text, palette.fonts.size);
         is_rtl = rtl_positions.size() > 1 && rtl_positions[0] > rtl_positions[text.size()];
         if (is_rtl) {
-            double span = rtl_positions[0] - rtl_positions[text.size()];
-            content_x = static_cast<float>(field_rect.x + style.padding.left + content_w - span);
+            content_x = static_cast<float>(field_rect.x + style.padding.left + content_w);
         }
     }
 
@@ -970,6 +980,9 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
         auto positions = painter.text_cursor_positions(text, palette.fonts.size);
         auto sx = content_x + positions[selection_start];
         auto ex = content_x + positions[selection_end];
+        if (sx > ex) {
+            std::swap(sx, ex);
+        }
         auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
         painter.fill_rect(
@@ -977,6 +990,9 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
     }
 
     auto text_c = enabled ? palette.text : palette.text_disabled;
+    if (is_rtl) {
+        painter.set_text_direction_rtl(true);
+    }
     painter.draw_text(text, {content_x, baseline_y}, text_c, palette.fonts.size);
 
     if (focused && cursor_pos >= 0 && cursor_visible) {
