@@ -18,11 +18,11 @@
 #include "toolkit/xdg_icons.hpp"
 #include "toolkit/xdg_image_loader.hpp"
 
-auto LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
-                   "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
-auto LOREM_IPSUM_MD =
-    "**Lorem** _ipsum_ dolor sit amet, [consectetur](https://example.com) adipiscing elit, "
-    "sed do eiusmod `tempor incididunt ut labore` et dolore magna ***aliqua***.";
+auto LOREM_IPSUM = "Hello שלום مرحبا  世界 — code 你好 नमस्ते "
+                   "☆ ✓ ∑ ∞ ★ français Русский 日本語";
+
+auto LOREM_IPSUM_MD = "**Hello** _שלום_ [مرحبا](https://example.com) 世界 — `code` **你好** _नमस्ते_ "
+                      "☆ ✓ ∑ ∞ ★ français Русский 日本語";
 
 static constexpr auto PREVIEW_DEFAULT_HTML = R"(<!DOCTYPE html>
 <html>
