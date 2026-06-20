@@ -510,6 +510,13 @@ bool HtmlView::handle_mouse(MouseEvent const &event) {
     return false;
 }
 
+float HtmlView::content_width() const {
+    if (document_) {
+        return static_cast<float>(document_->content_width());
+    }
+    return 0;
+}
+
 Size HtmlView::size_hint() const {
     if (document_) {
         auto bw = draw_frame_ ? Theme::current().style.frame_inset() : 0.0f;

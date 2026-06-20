@@ -1181,9 +1181,9 @@ void Window::show_rich_tooltip() {
     view->set_content_max_width(static_cast<int>(cap_w));
     view->set_rect({0, 0, cap_w, 1000});
     view->set_markdown(tooltip_text_);
-    auto hint = view->size_hint();
-    auto w = std::min(hint.width, cap_w);
-    auto h = hint.height;
+    auto cw = view->content_width();
+    auto w = cw > 0 ? std::min(cw, cap_w) : cap_w;
+    auto h = view->size_hint().height;
     auto x = tooltip_mouse_pos_.x;
     auto y = tooltip_mouse_pos_.y - h - 8;
     if (y < 0) {
