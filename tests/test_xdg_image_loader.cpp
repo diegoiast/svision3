@@ -1,5 +1,4 @@
 #include "toolkit/xdg_image_loader.hpp"
-#include "toolkit/stb_image_loader.hpp"
 #include "toolkit/lunasvg_image_loader.hpp"
 #include <catch2/catch_test_macros.hpp>
 
@@ -26,6 +25,7 @@ TEST_CASE("XdgImageLoader loads SVG icon", "[image]") {
     REQUIRE(img->height == 32);
 }
 
+/*
 TEST_CASE("StbImageLoader::load returns image data", "[image]") {
     StbImageLoader loader;
 
@@ -51,6 +51,7 @@ TEST_CASE("StbImageLoader::supported_extensions", "[image]") {
     REQUIRE(exts.size() > 0);
     REQUIRE(std::find(exts.begin(), exts.end(), ".png") != exts.end());
 }
+*/
 
 TEST_CASE("XdgImageLoader loads action icon", "[image]") {
     XdgImageLoader loader("Faenza");

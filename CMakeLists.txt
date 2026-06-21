@@ -7,7 +7,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(spdlog REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
-find_package(stb CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(lunasvg REQUIRED)
 
@@ -41,6 +40,8 @@ if(TOOLKIT_WITH_CAIRO)
 endif()
 
 if(APPLE)
+elseif(UNIX AND NOT APPLE)
+    find_package(stb CONFIG REQUIRED)
 elseif(WIN32)
     add_definitions(-DUNICODE -D_UNICODE)
     find_package(OpenGL REQUIRED)
@@ -51,7 +52,6 @@ set(TOOLKIT_SOURCES
     src/toolkit/command.cpp
     src/toolkit/xdg_image_loader.cpp
     src/toolkit/image_widget.cpp
-    src/toolkit/stb_image_loader.cpp
     src/toolkit/lunasvg_image_loader.cpp
     src/toolkit/toolbar.cpp
     src/toolkit/button.cpp
@@ -104,7 +104,6 @@ set(TOOLKIT_SOURCES
     src/toolkit/scroll_area.cpp
     src/toolkit/scrollbar.cpp
     src/toolkit/scrollable_widget.cpp
-
     src/toolkit/toast_widget.cpp
     src/toolkit/status_bar.cpp
     src/toolkit/window_title_bar.cpp
@@ -140,6 +139,7 @@ elseif(UNIX)
     find_package(OpenGL REQUIRED)
     list(APPEND TOOLKIT_SOURCES
         src/toolkit/platform/linux_utils.cpp
+        src/toolkit/stb_image_loader.cpp
     )
 
     # --- X11 (optional) ---
@@ -315,8 +315,7 @@ endif()
 
 add_library(toolkit STATIC ${TOOLKIT_SOURCES})
 target_include_directories(toolkit PUBLIC include PRIVATE src)
-target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
-target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus stb::stb litehtml md4c::md4c-html nlohmann_json::nlohmann_json lunasvg::lunasvg)
+target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus litehtml md4c::md4c-html nlohmann_json::nlohmann_json lunasvg::lunasvg)
 
 if(TOOLKIT_WITH_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)
@@ -339,7 +338,8 @@ elseif(WIN32)
     target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32 gdiplus opengl32 shlwapi)
     target_include_directories(toolkit PRIVATE src/toolkit/platform/win32)
 elseif(UNIX)
-    target_link_libraries(toolkit PUBLIC OpenGL::GL)
+    target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
+    target_link_libraries(toolkit PUBLIC OpenGL::GL stb::stb)
     if(TOOLKIT_HAS_X11)
         target_link_libraries(toolkit PUBLIC X11::X11 ${XEXT_LIBRARIES})
         target_include_directories(toolkit PRIVATE src/toolkit/platform/x11 ${XEXT_INCLUDE_DIRS})
