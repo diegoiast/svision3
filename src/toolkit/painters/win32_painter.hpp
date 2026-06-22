@@ -29,7 +29,8 @@ class Win32TextRasterizer : public TextRasterizer {
                    bool bold, bool italic) override;
 
     std::vector<double> cursor_positions(std::string_view text, float font_size,
-                                         FontFamily font = FontFamily::System) override;
+                                         FontFamily font = FontFamily::System,
+                                         Painter::TextDirection direction = Painter::TextDirection::Auto) override;
 
   private:
     struct Impl;

@@ -51,6 +51,16 @@ class LineInput : public Widget, public Fluent<LineInput> {
     }
     TextDirection text_direction() const { return text_direction_; }
 
+    LineInput &set_font_family(FontFamily f) {
+        font_family_ = f;
+        return *this;
+    }
+    FontFamily font_family() const { return font_family_; }
+
+    size_t cursor_position() const { return cursor_pos_; }
+    size_t cursor_codepoint() const { return static_cast<size_t>(to_masked_offset(text_, cursor_pos_)); }
+    float cursor_physical_x(Painter &painter) const;
+
     enum class ValidationMode { None, Block, Notify };
     LineInput &
     set_validator(std::function<bool(std::string const &, LineInput const &widget)> validator) {
@@ -127,6 +137,7 @@ class LineInput : public Widget, public Fluent<LineInput> {
     std::unique_ptr<ContextMenu> context_menu_;
     UndoStack undo_stack_;
     TextDirection text_direction_ = TextDirection::Auto;
+    FontFamily font_family_ = FontFamily::System;
 
     // Cached password-mode offsets, recomputed in sync_commands()
     int cached_pw_cursor_pos_ = 0;

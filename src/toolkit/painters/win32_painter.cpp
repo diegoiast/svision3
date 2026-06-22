@@ -23,6 +23,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <cwctype>
 #include <optional>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -513,7 +514,8 @@ void GDIPainter::draw_circle(Point center, float radius, Color const &c, float l
 }
 
 std::vector<double> Win32TextRasterizer::cursor_positions(std::string_view text, float font_size,
-                                                         FontFamily font) {
+                                                          FontFamily font,
+                                                          Painter::TextDirection direction) {
     if (text.empty()) {
         return {0.0};
     }
@@ -527,45 +529,75 @@ std::vector<double> Win32TextRasterizer::cursor_positions(std::string_view text,
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
     auto wlen = static_cast<int>(wtext.size());
-    std::vector<double> gdi_pos(wlen + 1, 0.0);
+    std::vector<double> wpos(wlen + 1, 0.0);
 
+    // Compute cumulative extents for all prefixes via GDI
+    std::vector<double> gdi_pos(wlen + 1, 0.0);
     for (auto i = 1; i <= wlen; i++) {
-        SIZE sz;
+        SIZE sz{};
         GetTextExtentPoint32W(impl_->hdc, wtext.c_str(), i, &sz);
         gdi_pos[i] = static_cast<double>(sz.cx);
     }
 
-    SelectObject(impl_->hdc, old_font);
-    DeleteObject(hfont);
-
-    // Detect RTL text by checking for Hebrew/Arabic codepoints
-    auto has_rtl = false;
-    for (auto  i = 0; i < wlen && !has_rtl;) {
-        uint32_t cp;
-        if (wtext[i] >= 0xD800 && wtext[i] <= 0xDBFF && i + 1 < wlen) {
-            cp = 0x10000 + (wtext[i] - 0xD800) * 0x400 + (wtext[i + 1] - 0xDC00);
-            i += 2;
-        } else {
-            cp = wtext[i];
-            i++;
-        }
-        if ((cp >= 0x0590 && cp <= 0x08FF) || (cp >= 0xFB1D && cp <= 0xFDFF) ||
-            (cp >= 0xFE70 && cp <= 0xFEFF) || (cp >= 0x10E60 && cp <= 0x10E7F)) {
-            has_rtl = true;
-        }
-    }
-
-    std::vector<double> wpos(wlen + 1, 0.0);
-    if (has_rtl) {
-        // Positions extend negative (leftward) from the drawing origin at 0,
-        // matching GDI+ StringFormatFlagsDirectionRightToLeft rendering where
-        // the right edge of text is at the drawing point.
-        for (int i = 0; i <= wlen; i++) {
+    if (direction == Painter::TextDirection::LTR) {
+        wpos.swap(gdi_pos);
+    } else if (direction == Painter::TextDirection::RTL) {
+        for (auto i = 0; i <= wlen; i++) {
             wpos[i] = -gdi_pos[i];
         }
     } else {
-        wpos.swap(gdi_pos);
+        // Auto: use BiDi heuristic based on content
+        auto is_rtl_char = [](wchar_t ch) -> bool {
+            return is_rtl_codepoint(static_cast<uint32_t>(ch));
+        };
+
+        // Determine paragraph direction from the first strong character.
+        // Weak/neutral characters (digits, spaces, punctuation) at the start
+        // do not set the direction — they follow the paragraph's resolved direction.
+        auto has_rtl = false;
+        auto para_is_rtl = false;
+
+        for (auto i = 0; i < wlen; i++) {
+            if (is_rtl_char(wtext[i])) {
+                has_rtl = true;
+                break;
+            }
+        }
+
+        for (auto i = 0; i < wlen; i++) {
+            auto ch = wtext[i];
+            if (is_rtl_char(ch)) {
+                para_is_rtl = true;
+                break;
+            }
+            if (!std::iswdigit(ch) && !std::iswspace(ch) && !std::iswpunct(ch)) {
+                // Strong LTR character found before any RTL → LTR paragraph
+                break;
+            }
+        }
+
+        if (has_rtl && para_is_rtl) {
+            // Leading RTL: all positions are negative (left of right edge).
+            // Pure RTL positions for all characters (including LTR suffix),
+            // so cursor always advances monotonically leftward as text grows.
+            for (auto i = 0; i <= wlen; i++) {
+                wpos[i] = -gdi_pos[i];
+            }
+        } else if (has_rtl) {
+            for (auto i = 1; i <= wlen; i++) {
+                if (is_rtl_char(wtext[i - 1])) {
+                    wpos[i] = wpos[i - 1];
+                } else {
+                    wpos[i] = gdi_pos[i];
+                }
+            }
+        } else {
+            wpos.swap(gdi_pos);
+        }
     }
+
+    SelectObject(impl_->hdc, old_font);
+    DeleteObject(hfont);
 
     // Map UTF-16 positions to UTF-8 byte offsets
     std::vector<double> result(text.size() + 1, 0.0);

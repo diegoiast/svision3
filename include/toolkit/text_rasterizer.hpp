@@ -5,6 +5,7 @@
 
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
+#include "toolkit/utf8.hpp"
 #include <cstdint>
 #include <string_view>
 #include <vector>
@@ -36,9 +37,11 @@ class TextRasterizer {
                          FontFamily font = FontFamily::System) = 0;
     virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) = 0;
 
-    // Visual X positions for each logical codepoint boundary (BiDi-aware)
+    // Visual X positions for each logical codepoint boundary (BiDi-aware).
+    // direction can force a specific layout; Auto uses content-based detection.
     virtual std::vector<double> cursor_positions(std::string_view text, float font_size,
-                                                 FontFamily font = FontFamily::System) {
+                                                  FontFamily font = FontFamily::System,
+                                                  Painter::TextDirection direction = Painter::TextDirection::Auto) {
         // Fallback: simple linear positions (LTR only)
         std::vector<double> pos(text.size() + 1, 0.0);
         // Naive LTR fallback - subclasses with BiDi override this
@@ -63,16 +66,44 @@ class DummyRasterizer : public TextRasterizer {
         return r;
     };
 
+    static auto codepoint_count(std::string_view text) -> size_t {
+        auto count = 0;
+        auto i = 0;
+        while (i < text.size()) {
+            i = Utf8Iterator::next(text, i);
+            count++;
+        }
+        return count;
+    }
+
     virtual Size measure(std::string_view text, float font_size,
                          FontFamily font = FontFamily::System) {
-        auto x = 8.0f;
         auto y = 16.0f;
-        return {x * text.size(), y};
+        return {8.0f * codepoint_count(text), y};
     };
 
     virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) {
         return {0, 0, 0};
     };
+
+    std::vector<double> cursor_positions(std::string_view text, float font_size,
+                                           FontFamily font = FontFamily::System,
+                                           Painter::TextDirection = Painter::TextDirection::Auto) override {
+        std::vector<double> pos(text.size() + 1, 0.0);
+        auto x = 8.0f;
+        size_t byte_pos = 0;
+        int cp_idx = 0;
+        while (byte_pos < text.size()) {
+            auto next = Utf8Iterator::next(text, byte_pos);
+            for (auto b = byte_pos; b < next; b++) {
+                pos[b] = cp_idx * x;
+            }
+            pos[next] = (cp_idx + 1) * x;
+            cp_idx++;
+            byte_pos = next;
+        }
+        return pos;
+    }
 
     virtual void draw_text(Painter &, std::string_view, Point, Color const &, float, FontFamily,
                            Painter::TextOrientation, bool, bool) {}

@@ -381,7 +381,7 @@ size_t LineInput::pos_from_x(float x) const {
 
     if (password_mode_) {
         // Password mode: uniform character spacing, use simple linear positions
-        auto char_w = measure_text("8", palette.fonts.size).width;
+        auto char_w = measure_text("8", palette.fonts.size, font_family_).width;
         size_t utf8_len = 0;
         auto codepoints = 0;
         while (utf8_len < text_.size()) {
@@ -395,7 +395,7 @@ size_t LineInput::pos_from_x(float x) const {
         return Utf8Iterator::find_char(text_, char_idx);
     }
 
-    auto positions = text_cursor_positions(text_, palette.fonts.size);
+    auto positions = text_cursor_positions(text_, palette.fonts.size, font_family_);
 
     if (positions.size() > 1) {
         bool const is_rtl = text_direction_ == TextDirection::RTL ||
@@ -474,7 +474,7 @@ void LineInput::paint(Painter &painter) {
     };
     theme.draw_line_input(painter, rect, d_text, placeholder_, d_cursor_pos, d_sel_start, d_sel_end,
                           wstate, password_mode_, scroll_offset_, bg, cursor_visible,
-                          content_right_inset());
+                          content_right_inset(), font_family_);
 
     paint_buttons(painter);
 }
@@ -658,41 +658,60 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
     return false;
 }
 
+auto LineInput::cursor_physical_x(Painter &painter) const -> float {
+    auto const &style = Theme::current().style.lineInput;
+    auto const &palette = Theme::current().palette;
+
+    auto cx = 0.0f;
+
+    if (password_mode_) {
+        auto before_str = get_masked_text(text_, cursor_pos_);
+        if (!before_str.empty()) {
+            cx = painter.measure_text(before_str, palette.fonts.size, font_family_).width;
+        }
+    } else {
+        painter.set_text_direction(text_direction_);
+        auto positions = painter.text_cursor_positions(text_, palette.fonts.size, font_family_);
+        auto is_rtl = text_direction_ == TextDirection::RTL;
+        if (!is_rtl && positions.size() > 1) {
+            is_rtl = text_direction_ == TextDirection::Auto && positions[0] > positions[1];
+        }
+        if (is_rtl) {
+            cx = content_available_width() + static_cast<float>(positions[cursor_pos_]);
+        } else {
+            cx = static_cast<float>(positions[cursor_pos_]);
+        }
+    }
+
+    return cx - scroll_offset_ + style.padding.left;
+}
+
 void LineInput::ensure_cursor_visible(Painter &painter) {
     auto const &palette = Theme::current().palette;
     auto content_w = content_available_width();
     auto cursor_x = 0.0f;
-    auto is_rtl = false;
 
     if (password_mode_) {
         auto before_str = get_masked_text(text_, cursor_pos_);
         cursor_x =
-            before_str.empty() ? 0.0f : painter.measure_text(before_str, palette.fonts.size).width;
+            before_str.empty() ? 0.0f : painter.measure_text(before_str, palette.fonts.size, font_family_).width;
     } else {
-        auto positions = painter.text_cursor_positions(text_, palette.fonts.size);
+        painter.set_text_direction(text_direction_);
+        auto positions = painter.text_cursor_positions(text_, palette.fonts.size, font_family_);
         cursor_x = static_cast<float>(positions[cursor_pos_]);
-        if (positions.size() > 1) {
-            is_rtl = text_direction_ == TextDirection::RTL ||
-                     (text_direction_ == TextDirection::Auto && positions[0] > positions[1]);
+        auto is_rtl = text_direction_ == TextDirection::RTL;
+        if (!is_rtl && positions.size() > 1) {
+            is_rtl = text_direction_ == TextDirection::Auto && positions[0] > positions[1];
+        }
+        if (is_rtl) {
+            cursor_x = content_w + cursor_x;
         }
     }
 
-    if (is_rtl) {
-        // RTL: negate so cursor_x is distance from right edge (positive).
-        cursor_x = -cursor_x;
-        if (cursor_x > content_w + scroll_offset_) {
-            // leftmost cursor past left edge → show more left content
-            scroll_offset_ = cursor_x - content_w;
-        } else if (cursor_x < scroll_offset_) {
-            // cursor nearer right edge than the current scroll → reduce scroll
-            scroll_offset_ = cursor_x;
-        }
-    } else {
-        if (cursor_x - scroll_offset_ > content_w) {
-            scroll_offset_ = cursor_x - content_w;
-        } else if (cursor_x - scroll_offset_ < 0) {
-            scroll_offset_ = cursor_x;
-        }
+    if (cursor_x - scroll_offset_ > content_w) {
+        scroll_offset_ = cursor_x - content_w;
+    } else if (cursor_x - scroll_offset_ < 0) {
+        scroll_offset_ = cursor_x;
     }
 
     if (scroll_offset_ < 0) {
@@ -783,7 +802,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         auto rtl_dir = text_direction_ == TextDirection::RTL;
         if (text_direction_ == TextDirection::Auto && !password_mode_ && !text_.empty()) {
             auto const &p = Theme::current().palette;
-            auto pos = text_cursor_positions(text_, p.fonts.size);
+            auto pos = text_cursor_positions(text_, p.fonts.size, font_family_);
             rtl_dir = pos.size() > 1 && pos[0] > pos[1];
         }
         if (event.alt) {
@@ -806,7 +825,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
         auto rtl_dir = text_direction_ == TextDirection::RTL;
         if (text_direction_ == TextDirection::Auto && !password_mode_ && !text_.empty()) {
             auto const &p = Theme::current().palette;
-            auto pos = text_cursor_positions(text_, p.fonts.size);
+            auto pos = text_cursor_positions(text_, p.fonts.size, font_family_);
             rtl_dir = pos.size() > 1 && pos[0] > pos[1];
         }
         if (event.alt) {
@@ -1030,7 +1049,7 @@ void LineInput::show_context_menu(Point pos) {
 Size LineInput::size_hint() const {
     auto const &style = Theme::current().style.lineInput;
     auto const &palette = Theme::current().palette;
-    auto fm = font_metrics(palette.fonts.size);
+    auto fm = font_metrics(palette.fonts.size, font_family_);
     auto h = fm.height + style.padding.top + style.padding.bottom;
     return {150.0f, h};
 }

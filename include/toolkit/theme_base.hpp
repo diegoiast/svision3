@@ -28,7 +28,8 @@ class BaseTheme : public Theme {
                          std::string_view placeholder, int cursor_pos, int selection_start,
                          int selection_end, WidgetState const &state, bool password_mode,
                          float scroll_offset, std::optional<Color> background, bool cursor_visible,
-                         float right_inset = -1) const override;
+                         float right_inset = -1, FontFamily font_family = FontFamily::System)
+        const override;
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
                            bool active, bool show_mnemonics, int mnemonic_index) const override;
     void draw_menubar_background(Painter &painter, Rect const &rect,

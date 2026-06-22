@@ -489,7 +489,8 @@ Painter::FontMetrics CairoTextRasterizer::metrics(float font_size, FontFamily fo
 }
 
 std::vector<double> CairoTextRasterizer::cursor_positions(std::string_view text, float font_size,
-                                                          FontFamily font) {
+                                                          FontFamily font,
+                                                          Painter::TextDirection /*direction*/) {
     if (text.empty()) {
         return {0.0};
     }

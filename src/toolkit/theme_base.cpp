@@ -270,7 +270,8 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                                 std::string_view placeholder, int cursor_pos, int selection_start,
                                 int selection_end, WidgetState const &state, bool password_mode,
                                 float scroll_offset, std::optional<Color> background,
-                                bool cursor_visible, float right_inset) const {
+                                bool cursor_visible, float right_inset,
+                                FontFamily font_family) const {
     auto &style = this->style.lineInput;
     auto focused = state.focused;
     auto enabled = state.enabled;
@@ -285,19 +286,15 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     // RTL: right-align text within the content area
     auto is_rtl = false;
     if (!text.empty() && !password_mode) {
-        auto rtl_positions = painter.text_cursor_positions(text, palette.fonts.size);
-        // positions[0] > positions[1] means the first character's leading edge is to
-        // the right of the next character's → RTL.
-        if (rtl_positions.size() > 1) {
-            is_rtl = rtl_positions[0] > rtl_positions[1];
-        }
+        is_rtl = paragraph_is_rtl(text);
     } else if (text.empty() && painter.text_direction() == Painter::TextDirection::RTL) {
         is_rtl = true;
     }
     if (is_rtl) {
         // RTL paragraph: GDI+ renders with the RIGHT edge at the drawing position,
-        // extending leftward. Position the right edge at the content area's right edge.
-        tx = static_cast<float>(rect.x + content_x + content_w);
+        // extending leftward. Position the right edge at the content area's right edge
+        // plus scroll offset (scrolling right reveals more left-side chars).
+        tx = static_cast<float>(rect.x + content_x + content_w + scroll_offset);
     }
 
     painter.draw_filled_frame(rect, palette.base, border, palette, true);
@@ -307,7 +304,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
 
     auto text_c = enabled ? palette.text : palette.text_disabled;
     if (selection_start >= 0 && selection_end > selection_start) {
-        auto positions = painter.text_cursor_positions(text, palette.fonts.size);
+        auto positions = painter.text_cursor_positions(text, palette.fonts.size, font_family);
         auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
 
@@ -396,11 +393,11 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     }
 
     if (text.empty() && !focused) {
-        painter.draw_text(placeholder, {tx, baseline_y}, palette.placeholder, palette.fonts.size);
+        painter.draw_text(placeholder, {tx, baseline_y}, palette.placeholder, palette.fonts.size, font_family);
     } else if (!text.empty()) {
         if (password_mode) {
             auto dot_radius = palette.fonts.size * 0.25f;
-            auto char_w = painter.measure_text("8", palette.fonts.size).width;
+            auto char_w = painter.measure_text("8", palette.fonts.size, font_family).width;
             auto center_off_y = (fm.ascent - fm.descent) / 2.0f;
             auto char_count = 0;
             auto i = 0;
@@ -416,19 +413,22 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
             if (is_rtl) {
                 painter.set_text_direction_rtl(true);
             }
-            painter.draw_text(text, {tx, baseline_y}, text_c, palette.fonts.size);
+            painter.draw_text(text, {tx, baseline_y}, text_c, palette.fonts.size, font_family);
         }
     }
 
     if (focused && cursor_pos >= 0 && cursor_visible) {
-        auto positions = painter.text_cursor_positions(text, palette.fonts.size);
-        auto cx = tx + static_cast<float>(positions[cursor_pos]);
+        auto positions = painter.text_cursor_positions(text, palette.fonts.size, font_family);
+        auto cx = is_rtl
+            ? tx - static_cast<float>(positions[0]) + static_cast<float>(positions[cursor_pos])
+            : tx + static_cast<float>(positions[cursor_pos]);
         auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto cy_bot = cy_top + fm.height + 2.0f;
         painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);
     }
     painter.pop_clip();
 }
+
 
 void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
                                   bool hovered, bool active, bool show_mnemonics,
@@ -1042,13 +1042,9 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
     auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
 
     // RTL: right-align text within the content area
-    auto is_rtl = false;
-    if (!text.empty()) {
-        auto rtl_positions = painter.text_cursor_positions(text, palette.fonts.size);
-        is_rtl = rtl_positions.size() > 1 && rtl_positions[0] > rtl_positions[text.size()];
-        if (is_rtl) {
-            content_x = static_cast<float>(field_rect.x + style.padding.left + content_w);
-        }
+    auto const is_rtl = !text.empty() && paragraph_is_rtl(text);
+    if (is_rtl) {
+        content_x = static_cast<float>(field_rect.x + style.padding.left + content_w);
     }
 
     auto clip_rect = Rect{content_x, rect.y, content_w, rect.height};
