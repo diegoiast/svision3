@@ -144,6 +144,28 @@ static Key vk_to_key(WPARAM vk) {
         return Key::Escape;
     case VK_TAB:
         return Key::Tab;
+    case VK_LSHIFT:
+        return Key::LeftShift;
+    case VK_RSHIFT:
+        return Key::RightShift;
+    case VK_SHIFT:
+        return Key::LeftShift;
+    case VK_LCONTROL:
+        return Key::LeftControl;
+    case VK_RCONTROL:
+        return Key::RightControl;
+    case VK_CONTROL:
+        return Key::LeftControl;
+    case VK_LMENU:
+        return Key::LeftAlt;
+    case VK_RMENU:
+        return Key::RightAlt;
+    case VK_MENU:
+        return Key::LeftAlt;
+    case VK_LWIN:
+        return Key::LeftSuper;
+    case VK_RWIN:
+        return Key::RightSuper;
     case VK_F1:
         return Key::F1;
     case VK_F2:
