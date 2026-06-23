@@ -223,8 +223,8 @@ static Key keysym_to_key(KeySym ks) {
         return Key::F5;
     case XK_F6:
         return Key::F6;
-        return Key::F7;
     case XK_F7:
+        return Key::F7;
     case XK_F8:
         return Key::F8;
     case XK_F9:
@@ -255,27 +255,41 @@ static Key keysym_to_key(KeySym ks) {
     case XK_equal:
         return Key::Equals;
     case XK_plus:
+    case XK_KP_Add:
         return Key::Plus;
+    case XK_minus:
     case XK_KP_Subtract:
         return Key::Minus;
+    case XK_1:
     case XK_KP_1:
         return Key::Number1;
+    case XK_2:
     case XK_KP_2:
         return Key::Number2;
+    case XK_3:
     case XK_KP_3:
         return Key::Number3;
+    case XK_4:
     case XK_KP_4:
         return Key::Number4;
+    case XK_5:
     case XK_KP_5:
         return Key::Number5;
+    case XK_6:
     case XK_KP_6:
-        return Key::Number7;
+        return Key::Number6;
+    case XK_7:
     case XK_KP_7:
         return Key::Number7;
+    case XK_8:
     case XK_KP_8:
         return Key::Number8;
+    case XK_9:
     case XK_KP_9:
         return Key::Number9;
+    case XK_0:
+    case XK_KP_0:
+        return Key::Number0;
     default:
         // These are ASCII codes, no need to parse them.
         if (128 < ks) {

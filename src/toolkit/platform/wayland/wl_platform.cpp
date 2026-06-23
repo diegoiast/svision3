@@ -232,8 +232,6 @@ static Key xkb_to_key(xkb_keysym_t sym) {
         return Key::Equals;
     case XKB_KEY_plus:
         return Key::Plus;
-    case XKB_KEY_KP_Subtract:
-        return Key::Minus;
     case XKB_KEY_1:
         return Key::Number1;
     case XKB_KEY_2:
@@ -245,13 +243,37 @@ static Key xkb_to_key(xkb_keysym_t sym) {
     case XKB_KEY_5:
         return Key::Number5;
     case XKB_KEY_6:
-        return Key::Number7;
+        return Key::Number6;
     case XKB_KEY_7:
         return Key::Number7;
     case XKB_KEY_8:
         return Key::Number8;
     case XKB_KEY_9:
         return Key::Number9;
+    case XKB_KEY_0:
+    case XKB_KEY_KP_0:
+        return Key::Number0;
+    case XKB_KEY_minus:
+    case XKB_KEY_KP_Subtract:
+        return Key::Minus;
+    case XKB_KEY_KP_Add:
+        return Key::Plus;
+    case XKB_KEY_Shift_L:
+        return Key::LeftShift;
+    case XKB_KEY_Shift_R:
+        return Key::RightShift;
+    case XKB_KEY_Control_L:
+        return Key::LeftControl;
+    case XKB_KEY_Control_R:
+        return Key::RightControl;
+    case XKB_KEY_Alt_L:
+        return Key::LeftAlt;
+    case XKB_KEY_Alt_R:
+        return Key::RightAlt;
+    case XKB_KEY_Super_L:
+        return Key::LeftSuper;
+    case XKB_KEY_Super_R:
+        return Key::RightSuper;
     default:
         if (128 < sym) {
             spdlog::debug("Key {} - not parsed by wayland", sym);
