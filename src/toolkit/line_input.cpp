@@ -674,10 +674,16 @@ auto LineInput::cursor_physical_x(Painter &painter) const -> float {
         auto positions = painter.text_cursor_positions(text_, palette.fonts.size, font_family_);
         auto is_rtl = text_direction_ == TextDirection::RTL;
         if (!is_rtl && positions.size() > 1) {
-            is_rtl = text_direction_ == TextDirection::Auto && positions[0] > positions[1];
+            size_t second_cp = 1;
+            while (second_cp < positions.size() && positions[second_cp] == positions[0]) {
+                second_cp++;
+            }
+            is_rtl = text_direction_ == TextDirection::Auto && second_cp < positions.size() &&
+                     positions[0] > positions[second_cp];
         }
         if (is_rtl) {
-            cx = content_available_width() + static_cast<float>(positions[cursor_pos_]);
+            auto total = painter.measure_text(text_, palette.fonts.size, font_family_);
+            cx = static_cast<float>(positions[cursor_pos_] - total.width);
         } else {
             cx = static_cast<float>(positions[cursor_pos_]);
         }
@@ -699,23 +705,35 @@ void LineInput::ensure_cursor_visible(Painter &painter) {
         painter.set_text_direction(text_direction_);
         auto positions = painter.text_cursor_positions(text_, palette.fonts.size, font_family_);
         cursor_x = static_cast<float>(positions[cursor_pos_]);
+
         auto is_rtl = text_direction_ == TextDirection::RTL;
         if (!is_rtl && positions.size() > 1) {
-            is_rtl = text_direction_ == TextDirection::Auto && positions[0] > positions[1];
+            size_t second_cp = 1;
+            while (second_cp < positions.size() && positions[second_cp] == positions[0]) {
+                second_cp++;
+            }
+            is_rtl = text_direction_ == TextDirection::Auto && second_cp < positions.size() &&
+                     positions[0] > positions[second_cp];
         }
         if (is_rtl) {
-            cursor_x = content_w + cursor_x;
+            // RTL: right side is always visible (right-aligned).
+            // Cursor_x goes from total_advance (start/right) to 0 (end/left).
+            // The rightmost cursor stays at the right edge. Only left-side
+            // overflow (cursor_x < scroll_offset) needs handling.
+            if (cursor_x - scroll_offset_ < 0) {
+                scroll_offset_ = cursor_x;
+            }
+        } else {
+            if (cursor_x - scroll_offset_ > content_w) {
+                scroll_offset_ = cursor_x - content_w;
+            } else if (cursor_x - scroll_offset_ < 0) {
+                scroll_offset_ = cursor_x;
+            }
+
+            if (scroll_offset_ < 0 && cursor_x >= 0) {
+                scroll_offset_ = 0;
+            }
         }
-    }
-
-    if (cursor_x - scroll_offset_ > content_w) {
-        scroll_offset_ = cursor_x - content_w;
-    } else if (cursor_x - scroll_offset_ < 0) {
-        scroll_offset_ = cursor_x;
-    }
-
-    if (scroll_offset_ < 0) {
-        scroll_offset_ = 0;
     }
 }
 
@@ -869,7 +887,7 @@ bool LineInput::handle_key(KeyEvent const &event) {
     }
 
     if (event.ctrl && !event.alt) {
-        if (event.key == Key::NoKey && event.text.empty()) {
+        if ((event.key == Key::LeftShift || event.key == Key::RightShift) && event.text.empty()) {
             if (event.lshift && !event.rshift) {
                 text_direction_ = TextDirection::LTR;
                 sync_commands();

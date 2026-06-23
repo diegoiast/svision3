@@ -286,8 +286,12 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     // RTL: right-align text within the content area
     auto is_rtl = false;
     if (!text.empty() && !password_mode) {
-        is_rtl = paragraph_is_rtl(text);
-    } else if (text.empty() && painter.text_direction() == Painter::TextDirection::RTL) {
+        if (painter.text_direction() == Painter::TextDirection::Auto) {
+            is_rtl = paragraph_is_rtl(text);
+        } else {
+            is_rtl = painter.text_direction() == Painter::TextDirection::RTL;
+        }
+    } else if (painter.text_direction() == Painter::TextDirection::RTL) {
         is_rtl = true;
     }
     if (is_rtl) {
@@ -1042,7 +1046,15 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
     auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
 
     // RTL: right-align text within the content area
-    auto const is_rtl = !text.empty() && paragraph_is_rtl(text);
+    auto const is_rtl = [&]() -> bool {
+        if (text.empty()) {
+            return false;
+        }
+        if (painter.text_direction() == Painter::TextDirection::Auto) {
+            return paragraph_is_rtl(text);
+        }
+        return painter.text_direction() == Painter::TextDirection::RTL;
+    }();
     if (is_rtl) {
         content_x = static_cast<float>(field_rect.x + style.padding.left + content_w);
     }
