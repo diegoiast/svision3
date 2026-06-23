@@ -224,9 +224,10 @@ TEST_CASE("TextShaper single RTL character positions correctly", "[text][shaper]
 
     for (auto &run : shaped.runs) {
         for (auto &g : run.glyphs) {
-            // Single glyph should have a reasonable x position (non-negative)
-            REQUIRE(g.x >= 0);
-            REQUIRE(g.x < 100);
+            // Pure RTL text is shifted left so the right edge aligns
+            // with the origin; glyph x is negative, bounded by advance.
+            REQUIRE(g.x > -shaped.total_advance - 1);
+            REQUIRE(g.x < shaped.total_advance);
         }
     }
 

@@ -312,7 +312,7 @@ TextShaper::~TextShaper() {
 }
 
 auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, FontFamily font,
-                       bool bold, bool italic) -> ShapedText {
+                       bool bold, bool italic, TextDirection direction) -> ShapedText {
     // Short-circuit: empty text
     if (text.empty()) {
         if (cached_text_valid_) {
@@ -329,9 +329,18 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
     fribidi_get_bidi_types(utf32.data(), len, bidi_types.data());
 
     std::vector<FriBidiLevel> levels(len);
-    auto par_type = static_cast<FriBidiParType>(FRIBIDI_PAR_ON);
+    auto par_type = [&]() -> FriBidiParType {
+        switch (direction) {
+        case TextDirection::LTR:
+            return FRIBIDI_PAR_LTR;
+        case TextDirection::RTL:
+            return FRIBIDI_PAR_RTL;
+        default:
+            return FRIBIDI_PAR_ON;
+        }
+    }();
     auto ok = fribidi_get_par_embedding_levels_ex(bidi_types.data(), nullptr, len, &par_type,
-                                                  levels.data());
+                                                   levels.data());
     if (!ok) {
         return {};
     }
@@ -462,6 +471,10 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
             cached_shaped_.cursor_positions.assign(utf32.size() + 1, -1.0);
         }
 
+        // First pass: compute glyph positions and run advance
+        std::vector<double> internal_advances;
+        internal_advances.reserve(glyph_count);
+        double pen_x_before = pen_x;
         {
             double cursor = pen_x;
             for (unsigned i = 0; i < glyph_count; i++) {
@@ -470,22 +483,58 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
                 gr.glyphs[i].y = -static_cast<double>(pos[i].y_offset) / 64.0;
                 double adv = static_cast<double>(pos[i].x_advance) / 64.0;
                 cursor += adv;
+                internal_advances.push_back(adv);
+            }
+            run_advance = cursor - pen_x_before;
+            pen_x = cursor;
+        }
 
+        // Save positions in this run's range so we can tell which ones
+        // THIS run actually changed (vs. being set by a previous run
+        // at a BiDi boundary, first-wins).
+        auto run_cp_start = static_cast<size_t>(run.logical_start);
+        auto run_cp_end = run_cp_start + run_utf32.size(); // exclusive
+        std::vector<double> saved;
+        saved.assign(cached_shaped_.cursor_positions.begin() + run_cp_start,
+                     cached_shaped_.cursor_positions.begin() + run_cp_end + 1);
+
+        // Second pass: set cursor positions
+        // For LTR-level runs in an RTL paragraph, reverse within-run
+        // positions so that cursor_x decreases when going forward
+        // logically (matching the RTL visual flow).
+        bool rev_ltr = !run.is_rtl() && (par_type == FRIBIDI_PAR_RTL || direction == TextDirection::RTL);
+        {
+            double internal = 0;
+            for (unsigned i = 0; i < glyph_count; i++) {
                 auto cp = static_cast<size_t>(run.logical_start + info[i].cluster);
+                auto set_pos = [&](size_t idx, double val) {
+                    if (cached_shaped_.cursor_positions[idx] < 0) {
+                        cached_shaped_.cursor_positions[idx] = val;
+                    }
+                };
+                auto x_start = pen_x_before + internal;
+                auto x_end = x_start + internal_advances[i];
+
                 if (run.is_rtl()) {
-                    cached_shaped_.cursor_positions[cp] = gr.glyphs[i].x + adv;
+                    set_pos(cp, x_end);
                     if (cp + 1 < cached_shaped_.cursor_positions.size()) {
-                        cached_shaped_.cursor_positions[cp + 1] = gr.glyphs[i].x;
+                        set_pos(cp + 1, x_start);
+                    }
+                } else if (rev_ltr) {
+                    auto rev_start = pen_x_before + run_advance - internal;
+                    auto rev_end = pen_x_before + run_advance - (internal + internal_advances[i]);
+                    set_pos(cp, rev_start);
+                    if (cp + 1 < cached_shaped_.cursor_positions.size()) {
+                        set_pos(cp + 1, rev_end);
                     }
                 } else {
-                    cached_shaped_.cursor_positions[cp] = gr.glyphs[i].x;
+                    set_pos(cp, x_start);
                     if (cp + 1 < cached_shaped_.cursor_positions.size()) {
-                        cached_shaped_.cursor_positions[cp + 1] = gr.glyphs[i].x + adv;
+                        set_pos(cp + 1, x_end);
                     }
                 }
+                internal += internal_advances[i];
             }
-            run_advance = cursor - pen_x;
-            pen_x = cursor;
         }
 
         gr.advance = run_advance;
@@ -505,6 +554,42 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
         cached_shaped_.cursor_positions[0] = 0;
     }
 
+    // For RTL-paragraph text, HarfBuzz always positions glyphs left-to-right
+    // with positive x_advance.  When the caller right-aligns such text
+    // (tx = right edge for RTL), the glyphs end up off-screen to the right.
+    //
+    // Shift all glyphs left by total_advance so that the RIGHT edge of the
+    // text sits at the origin (matching the caller's right-aligned tx).
+    //
+    // Two cases need the shift:
+    //   1. Explicit direction == RTL  (user toggled it via menu / Ctrl+Shift)
+    //   2. Auto-detect found RTL text (par_type resolved to RTL + has RTL runs)
+    if (!cached_shaped_.runs.empty()) {
+        bool shift_rtl = false;
+        if (direction == TextDirection::RTL) {
+            shift_rtl = true;
+        } else if (par_type == FRIBIDI_PAR_RTL) {
+            for (auto level : levels) {
+                if (level % 2 == 1) {
+                    shift_rtl = true;
+                    break;
+                }
+            }
+        }
+        if (shift_rtl) {
+            for (auto &run : cached_shaped_.runs) {
+                for (auto &g : run.glyphs) {
+                    g.x -= cached_shaped_.total_advance;
+                }
+            }
+
+            // Note: cursor positions are NOT shifted (they stay in [0,
+            // total_advance] range) even though glyphs are shifted left by
+            // total_advance.  Callers compute the offset for RTL by
+            // subtracting total_advance from the cursor position.
+        }
+    }
+
     // Populate cache metadata
     cached_text_ = text;
     cached_text_utf32_ = std::move(utf32);
@@ -512,6 +597,7 @@ auto TextShaper::shape(cairo_t *cr, std::string_view text, float font_size, Font
     cached_text_family_ = font;
     cached_text_bold_ = bold;
     cached_text_italic_ = italic;
+    cached_text_direction_ = direction;
     cached_text_valid_ = true;
 
     return cached_shaped_;

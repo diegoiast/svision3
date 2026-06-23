@@ -199,7 +199,17 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             std::string s{text};
             cairo_show_text(cr, s.c_str());
         } else {
-            auto shaped = shaper_.shape(cr, text, font_size, font, bold, italic);
+            auto dir = [&]() -> TextShaper::TextDirection {
+                switch (p.text_direction()) {
+                case Painter::TextDirection::LTR:
+                    return TextShaper::TextDirection::LTR;
+                case Painter::TextDirection::RTL:
+                    return TextShaper::TextDirection::RTL;
+                default:
+                    return TextShaper::TextDirection::Auto;
+                }
+            }();
+            auto shaped = shaper_.shape(cr, text, font_size, font, bold, italic, dir);
             if (!shaped.runs.empty()) {
                 for (auto &run : shaped.runs) {
                     if (!run.glyphs.empty()) {
@@ -490,7 +500,7 @@ Painter::FontMetrics CairoTextRasterizer::metrics(float font_size, FontFamily fo
 
 std::vector<double> CairoTextRasterizer::cursor_positions(std::string_view text, float font_size,
                                                           FontFamily font,
-                                                          Painter::TextDirection /*direction*/) {
+                                                          Painter::TextDirection direction) {
     if (text.empty()) {
         return {0.0};
     }
@@ -516,7 +526,17 @@ std::vector<double> CairoTextRasterizer::cursor_positions(std::string_view text,
 
     cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     cairo_t *cr = cairo_create(surf);
-    auto shaped = shaper_.shape(cr, text, font_size, font, false, false);
+    auto dir = [&]() -> TextShaper::TextDirection {
+        switch (direction) {
+        case Painter::TextDirection::LTR:
+            return TextShaper::TextDirection::LTR;
+        case Painter::TextDirection::RTL:
+            return TextShaper::TextDirection::RTL;
+        default:
+            return TextShaper::TextDirection::Auto;
+        }
+    }();
+    auto shaped = shaper_.shape(cr, text, font_size, font, false, false, dir);
     cairo_destroy(cr);
     cairo_surface_destroy(surf);
 

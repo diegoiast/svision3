@@ -27,11 +27,14 @@ struct ShapedText {
 
 class TextShaper {
   public:
+    enum class TextDirection { Auto, LTR, RTL };
+
     TextShaper() = default;
     ~TextShaper();
 
     ShapedText shape(cairo_t *cr, std::string_view text, float font_size, FontFamily font,
-                     bool bold = false, bool italic = false);
+                     bool bold = false, bool italic = false,
+                     TextDirection direction = TextDirection::Auto);
 
     static void select_font_on_cr(cairo_t *cr, std::string_view family, float font_size, bool bold,
                                   bool italic);
@@ -45,6 +48,7 @@ class TextShaper {
     FontFamily cached_text_family_ = FontFamily::System;
     bool cached_text_bold_ = false;
     bool cached_text_italic_ = false;
+    TextDirection cached_text_direction_ = TextDirection::Auto;
     bool cached_text_valid_ = false;
 
     // Per-run font cache: reuse hb_font across runs with the same
