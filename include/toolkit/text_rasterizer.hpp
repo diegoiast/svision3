@@ -39,9 +39,9 @@ class TextRasterizer {
 
     // Visual X positions for each logical codepoint boundary (BiDi-aware).
     // direction can force a specific layout; Auto uses content-based detection.
-    virtual std::vector<double> cursor_positions(std::string_view text, float font_size,
-                                                  FontFamily font = FontFamily::System,
-                                                  Painter::TextDirection direction = Painter::TextDirection::Auto) {
+    virtual std::vector<double>
+    cursor_positions(std::string_view text, float font_size, FontFamily font = FontFamily::System,
+                     Painter::TextDirection direction = Painter::TextDirection::Auto) {
         // Fallback: simple linear positions (LTR only)
         std::vector<double> pos(text.size() + 1, 0.0);
         // Naive LTR fallback - subclasses with BiDi override this
@@ -57,7 +57,7 @@ class DummyRasterizer : public TextRasterizer {
   public:
     virtual RasterizedText rasterize(std::string_view t, float font_size, float scale,
                                      Color const & /*color*/, FontFamily f, bool /*bold*/ = false,
-                                     bool /*italic*/ = false) {
+                                     bool /*italic*/ = false) override {
         auto r = RasterizedText{};
         auto m = measure(t, font_size, f);
         r.width = m.width;
@@ -77,18 +77,19 @@ class DummyRasterizer : public TextRasterizer {
     }
 
     virtual Size measure(std::string_view text, float font_size,
-                         FontFamily font = FontFamily::System) {
+                         FontFamily font = FontFamily::System) override {
         auto y = 16.0f;
         return {8.0f * codepoint_count(text), y};
     };
 
-    virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) {
+    virtual Painter::FontMetrics metrics(float font_size,
+                                         FontFamily font = FontFamily::System) override {
         return {0, 0, 0};
     };
 
-    std::vector<double> cursor_positions(std::string_view text, float font_size,
-                                           FontFamily font = FontFamily::System,
-                                           Painter::TextDirection = Painter::TextDirection::Auto) override {
+    std::vector<double>
+    cursor_positions(std::string_view text, float font_size, FontFamily font = FontFamily::System,
+                     Painter::TextDirection = Painter::TextDirection::Auto) override {
         std::vector<double> pos(text.size() + 1, 0.0);
         auto x = 8.0f;
         size_t byte_pos = 0;
@@ -106,7 +107,7 @@ class DummyRasterizer : public TextRasterizer {
     }
 
     virtual void draw_text(Painter &, std::string_view, Point, Color const &, float, FontFamily,
-                           Painter::TextOrientation, bool, bool) {}
+                           Painter::TextOrientation, bool, bool) override {}
 };
 
 } // namespace toolkit
