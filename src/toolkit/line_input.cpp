@@ -401,10 +401,11 @@ size_t LineInput::pos_from_x(float x) const {
         bool const is_rtl = text_direction_ == TextDirection::RTL ||
                             (text_direction_ == TextDirection::Auto && positions[0] > positions[1]);
         if (is_rtl) {
-            // RTL: positions are right-relative (0 at right edge, negative leftward).
-            // Negate so they increase left-to-right. Flip click_x to right-relative too.
+            // RTL: positions go from total_width (rightmost, index 0) to 0 (leftmost).
+            // Flip to LTR-increasing (0 at start, total_width at end).
+            auto tw = positions[0];
             for (auto &p : positions) {
-                p = -p;
+                p = tw - p;
             }
             click_x = content_available_width() + scroll_offset_ - click_x;
         }

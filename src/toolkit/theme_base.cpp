@@ -347,6 +347,10 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                        (cp >= 0x00C0 && cp <= 0x024F);
             };
 
+            // RTL positions go from total_width (rightmost, index 0) to 0 (leftmost).
+            // Normalise to right-edge-relative so tx + offset gives screen coords.
+            auto rtl_offset = static_cast<float>(positions.empty() ? 0.0 : positions[0]);
+
             for (auto i = static_cast<size_t>(selection_start);
                  i < static_cast<size_t>(selection_end);) {
                 auto n = Utf8Iterator::next(text, i);
@@ -371,11 +375,11 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                         re = rn;
                     }
                     // Mirrored visual span within the reversed run
-                    cx1 = tx + static_cast<float>(positions[rs + re - i]);
-                    cx2 = tx + static_cast<float>(positions[rs + re - n]);
+                    cx1 = tx - rtl_offset + static_cast<float>(positions[rs + re - i]);
+                    cx2 = tx - rtl_offset + static_cast<float>(positions[rs + re - n]);
                 } else {
-                    cx1 = tx + static_cast<float>(positions[i]);
-                    cx2 = tx + static_cast<float>(positions[n]);
+                    cx1 = tx - rtl_offset + static_cast<float>(positions[i]);
+                    cx2 = tx - rtl_offset + static_cast<float>(positions[n]);
                 }
 
                 if (cx1 > cx2) {

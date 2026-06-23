@@ -539,11 +539,32 @@ std::vector<double> Win32TextRasterizer::cursor_positions(std::string_view text,
         gdi_pos[i] = static_cast<double>(sz.cx);
     }
 
+    // RTL convention (shared with Cairo):
+    //   cursor_positions go from total_width (index 0, rightmost visual position)
+    //   down to 0 (index n, leftmost visual position).
+    // All non-RTL code paths return LTR-increasing positions [0 … total_width].
+    //
+    // Why this convention: it keeps positions non-negative for RTL, which means
+    // ensure_cursor_visible() won't spuriously trigger scroll-offset changes
+    // when typing (old Win32 positions [0 … -total] caused the cursor to drift
+    // negative on every keystroke, shifting the whole text left and creating a
+    // growing gap on the right).
+    //
+    // Callers normalise to their own coordinate space:
+    //   cursor_physical_x:  cx = pos[cursor] - total_width          → [0 … -total]
+    //   cursor drawing:     cx = tx - pos[0] + pos[cursor]          → [tx … tx-total]
+    //   selection drawing:  cx = tx - pos[0] + pos[i]               → [tx … tx-total]
+    //   pos_from_x:         p = tw - p, then click_x = flip(click_x) → LTR-increasing
+    //
+    // If adding a new backend, match this convention so all consumers work
+    // without per-backend branches.
+
     if (direction == Painter::TextDirection::LTR) {
         wpos.swap(gdi_pos);
     } else if (direction == Painter::TextDirection::RTL) {
+        auto total = gdi_pos[wlen];
         for (auto i = 0; i <= wlen; i++) {
-            wpos[i] = -gdi_pos[i];
+            wpos[i] = total - gdi_pos[i];
         }
     } else {
         // Auto: use BiDi heuristic based on content
@@ -577,11 +598,9 @@ std::vector<double> Win32TextRasterizer::cursor_positions(std::string_view text,
         }
 
         if (has_rtl && para_is_rtl) {
-            // Leading RTL: all positions are negative (left of right edge).
-            // Pure RTL positions for all characters (including LTR suffix),
-            // so cursor always advances monotonically leftward as text grows.
+            auto total = gdi_pos[wlen];
             for (auto i = 0; i <= wlen; i++) {
-                wpos[i] = -gdi_pos[i];
+                wpos[i] = total - gdi_pos[i];
             }
         } else if (has_rtl) {
             for (auto i = 1; i <= wlen; i++) {

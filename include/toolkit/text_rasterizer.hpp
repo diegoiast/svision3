@@ -39,6 +39,12 @@ class TextRasterizer {
 
     // Visual X positions for each logical codepoint boundary (BiDi-aware).
     // direction can force a specific layout; Auto uses content-based detection.
+    //
+    // RTL convention (must match between all backends):
+    //   Positions go from total_width (index 0, rightmost visual position)
+    //   down to 0 (index n, leftmost visual position) — i.e. non-negative
+    //   and decreasing.  LTR is the inverse:  0 … total_width, increasing.
+    //   See win32_painter.cpp for the rationale.
     virtual std::vector<double>
     cursor_positions(std::string_view text, float font_size, FontFamily font = FontFamily::System,
                      Painter::TextDirection direction = Painter::TextDirection::Auto) {
