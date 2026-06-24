@@ -138,6 +138,7 @@ struct Style {
 struct Palette {
     // Main background for windows
     Color window;
+    // Main background for inactive windows
     std::optional<Color> window_inactive;
     // Background for input widgets/lists
     Color base;
@@ -200,13 +201,18 @@ class Painter;
 class Theme {
   public:
     virtual ~Theme() = default;
+
+    // FIXME: this should be at the application level
     static void add_theme_observer(std::function<void(const Theme &)> observer);
+    // FIXME: this should be at the application level
     static void notify_theme_changed();
 
     // FIXME this should be in the application, this method should be removed
     static const Theme &current();
     static void set_current(std::unique_ptr<Theme> theme);
     static ThemeStyle detect_system_style();
+
+    // FIXME: I think this is not a theme thing, but a ThemeStyle method
     static const char *style_name(ThemeStyle style);
 
     virtual Palette default_palette(ColorScheme scheme) const = 0;
@@ -222,6 +228,8 @@ class Theme {
                                CheckState check_state, WidgetState const &state) const = 0;
     virtual void draw_radio_button(Painter &painter, Rect const &rect, std::string_view text,
                                    bool checked, WidgetState const &state) const = 0;
+    // FIXME: why is cursor position signed? Same for selection.
+    // FIXME: too much arguments, maybe move to a state?
     virtual void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
                                  std::string_view placeholder, int cursor_pos, int selection_start,
                                  int selection_end, WidgetState const &state,
@@ -243,6 +251,7 @@ class Theme {
                                    WidgetState const &state) const = 0;
     virtual void draw_slider(Painter &painter, Rect const &rect, float value, bool horizontal,
                              WidgetState const &state) const = 0;
+    // FIXME: too much arguments, maybe move to a state?
     virtual void draw_scrollbar(Painter &painter, Rect const &rect, float value,
                                 Orientation orientation, WidgetState const &state,
                                 bool hovered_left_btn, bool pressed_left_btn,
@@ -279,6 +288,7 @@ class Theme {
     virtual void draw_tab_content_background(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_toolbar(Painter &painter, Rect const &rect,
                               WidgetState const &state) const = 0;
+    // FIXME: too much argument, use intput line state?
     virtual void draw_spinbox(Painter &painter, Rect const &rect, std::string_view text,
                               int cursor_pos, int selection_start, int selection_end,
                               WidgetState const &state, bool hovered_up, bool pressed_up,
