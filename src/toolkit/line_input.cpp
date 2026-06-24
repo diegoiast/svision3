@@ -374,6 +374,23 @@ bool LineInput::hit_peek_btn(Point pos) const {
     return pos.x >= bx && pos.x <= bx + sz && pos.y >= by && pos.y <= by + sz;
 }
 
+bool LineInput::resolve_rtl_dir(std::vector<double> const &positions) const {
+    if (text_direction_ == TextDirection::RTL) {
+        return true;
+    }
+    if (text_direction_ == TextDirection::LTR) {
+        return false;
+    }
+    if (positions.size() <= 1) {
+        return false;
+    }
+    size_t second_cp = 1;
+    while (second_cp < positions.size() && positions[second_cp] == positions[0]) {
+        second_cp++;
+    }
+    return second_cp < positions.size() && positions[0] > positions[second_cp];
+}
+
 size_t LineInput::pos_from_x(float x) const {
     auto const &style = Theme::current().style.lineInput;
     auto const &palette = Theme::current().palette;
@@ -395,25 +412,10 @@ size_t LineInput::pos_from_x(float x) const {
         return Utf8Iterator::find_char(text_, char_idx);
     }
 
-    auto positions = text_cursor_positions(text_, palette.fonts.size, font_family_);
-
-    if (positions.size() > 1) {
-        bool const is_rtl = text_direction_ == TextDirection::RTL ||
-                            (text_direction_ == TextDirection::Auto && positions[0] > positions[1]);
-        if (is_rtl) {
-            // RTL: positions go from total_width (rightmost, index 0) to 0 (leftmost).
-            // Flip to LTR-increasing (0 at start, total_width at end).
-            auto tw = positions[0];
-            for (auto &p : positions) {
-                p = tw - p;
-            }
-            click_x = content_available_width() + scroll_offset_ - click_x;
-        }
-    }
-
-    if (click_x <= 0) {
-        return 0;
-    }
+    // positions[] is plain absolute local x in [0, total] for every direction
+    // (RTL included) -- no per-direction flip needed; the linear nearest-match
+    // scan below works regardless of whether positions are monotonic.
+    auto positions = text_cursor_positions(text_, palette.fonts.size, font_family_, text_direction_);
 
     auto best = 0;
     auto best_dist = std::abs(positions[0] - static_cast<double>(click_x));
@@ -671,23 +673,11 @@ auto LineInput::cursor_physical_x(Painter &painter) const -> float {
             cx = painter.measure_text(before_str, palette.fonts.size, font_family_).width;
         }
     } else {
+        // positions[] is plain absolute local x in [0, total] for every
+        // direction -- no per-direction transform needed.
         painter.set_text_direction(text_direction_);
         auto positions = painter.text_cursor_positions(text_, palette.fonts.size, font_family_);
-        auto is_rtl = text_direction_ == TextDirection::RTL;
-        if (!is_rtl && positions.size() > 1) {
-            size_t second_cp = 1;
-            while (second_cp < positions.size() && positions[second_cp] == positions[0]) {
-                second_cp++;
-            }
-            is_rtl = text_direction_ == TextDirection::Auto && second_cp < positions.size() &&
-                     positions[0] > positions[second_cp];
-        }
-        if (is_rtl) {
-            auto total = painter.measure_text(text_, palette.fonts.size, font_family_);
-            cx = static_cast<float>(positions[cursor_pos_] - total.width);
-        } else {
-            cx = static_cast<float>(positions[cursor_pos_]);
-        }
+        cx = static_cast<float>(positions[cursor_pos_]);
     }
 
     return cx - scroll_offset_ + style.padding.left;
@@ -703,37 +693,20 @@ void LineInput::ensure_cursor_visible(Painter &painter) {
         cursor_x =
             before_str.empty() ? 0.0f : painter.measure_text(before_str, palette.fonts.size, font_family_).width;
     } else {
+        // positions[] is plain absolute local x in [0, total] for every
+        // direction, so the scroll window logic is direction-agnostic.
         painter.set_text_direction(text_direction_);
         auto positions = painter.text_cursor_positions(text_, palette.fonts.size, font_family_);
         cursor_x = static_cast<float>(positions[cursor_pos_]);
 
-        auto is_rtl = text_direction_ == TextDirection::RTL;
-        if (!is_rtl && positions.size() > 1) {
-            size_t second_cp = 1;
-            while (second_cp < positions.size() && positions[second_cp] == positions[0]) {
-                second_cp++;
-            }
-            is_rtl = text_direction_ == TextDirection::Auto && second_cp < positions.size() &&
-                     positions[0] > positions[second_cp];
+        if (cursor_x - scroll_offset_ > content_w) {
+            scroll_offset_ = cursor_x - content_w;
+        } else if (cursor_x - scroll_offset_ < 0) {
+            scroll_offset_ = cursor_x;
         }
-        if (is_rtl) {
-            // RTL: right side is always visible (right-aligned).
-            // Cursor_x goes from total_advance (start/right) to 0 (end/left).
-            // The rightmost cursor stays at the right edge. Only left-side
-            // overflow (cursor_x < scroll_offset) needs handling.
-            if (cursor_x - scroll_offset_ < 0) {
-                scroll_offset_ = cursor_x;
-            }
-        } else {
-            if (cursor_x - scroll_offset_ > content_w) {
-                scroll_offset_ = cursor_x - content_w;
-            } else if (cursor_x - scroll_offset_ < 0) {
-                scroll_offset_ = cursor_x;
-            }
 
-            if (scroll_offset_ < 0 && cursor_x >= 0) {
-                scroll_offset_ = 0;
-            }
+        if (scroll_offset_ < 0 && cursor_x >= 0) {
+            scroll_offset_ = 0;
         }
     }
 }
@@ -818,11 +791,13 @@ bool LineInput::handle_key(KeyEvent const &event) {
         }
         return true;
     case Key::Left: {
-        auto rtl_dir = text_direction_ == TextDirection::RTL;
-        if (text_direction_ == TextDirection::Auto && !password_mode_ && !text_.empty()) {
+        auto rtl_dir = false;
+        if (!password_mode_ && !text_.empty()) {
             auto const &p = Theme::current().palette;
-            auto pos = text_cursor_positions(text_, p.fonts.size, font_family_);
-            rtl_dir = pos.size() > 1 && pos[0] > pos[1];
+            auto pos = text_cursor_positions(text_, p.fonts.size, font_family_, text_direction_);
+            rtl_dir = resolve_rtl_dir(pos);
+        } else {
+            rtl_dir = text_direction_ == TextDirection::RTL;
         }
         if (event.alt) {
             move_word_left(event.shift);
@@ -841,11 +816,13 @@ bool LineInput::handle_key(KeyEvent const &event) {
         return true;
     }
     case Key::Right: {
-        auto rtl_dir = text_direction_ == TextDirection::RTL;
-        if (text_direction_ == TextDirection::Auto && !password_mode_ && !text_.empty()) {
+        auto rtl_dir = false;
+        if (!password_mode_ && !text_.empty()) {
             auto const &p = Theme::current().palette;
-            auto pos = text_cursor_positions(text_, p.fonts.size, font_family_);
-            rtl_dir = pos.size() > 1 && pos[0] > pos[1];
+            auto pos = text_cursor_positions(text_, p.fonts.size, font_family_, text_direction_);
+            rtl_dir = resolve_rtl_dir(pos);
+        } else {
+            rtl_dir = text_direction_ == TextDirection::RTL;
         }
         if (event.alt) {
             move_word_right(event.shift);

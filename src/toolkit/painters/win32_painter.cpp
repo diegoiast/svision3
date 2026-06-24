@@ -513,6 +513,92 @@ void GDIPainter::draw_circle(Point center, float radius, Color const &c, float l
     impl_->graphics->DrawEllipse(&pen, cx - radius, cy - radius, radius * 2, radius * 2);
 }
 
+namespace {
+
+bool win32_is_weak_char(wchar_t ch) {
+    return std::iswdigit(ch) || std::iswspace(ch) || std::iswpunct(ch);
+}
+
+// Mirrors the strong-LTR rule used by paragraph_is_rtl(): ASCII/extended
+// Latin letters are strong LTR; everything else non-weak defaults to
+// strong LTR too, except actual RTL-script codepoints.
+bool win32_is_strong_ltr_char(wchar_t ch) {
+    return !is_rtl_codepoint(static_cast<uint32_t>(ch)) && !win32_is_weak_char(ch);
+}
+
+bool win32_is_strong_rtl_char(wchar_t ch) { return is_rtl_codepoint(static_cast<uint32_t>(ch)); }
+
+// Lays out cursor positions for a simplified bidi-lite model: text is split
+// into maximal runs whose strong direction differs from the paragraph base
+// direction (weak/neutral characters continue whichever run is currently
+// open). Runs matching the base direction are mirrored within their own
+// span (matching the base direction's natural flow); runs opposite the
+// base direction keep their natural increasing order within their span.
+// For an RTL base, runs are placed right-to-left by logical order (the
+// first logical run gets the rightmost slot); for an LTR base, runs are
+// placed left-to-right by logical order (matching raw GDI positions).
+std::vector<double> win32_layout_bidi_positions(std::wstring const &wtext,
+                                                std::vector<double> const &gdi_pos,
+                                                bool base_is_rtl) {
+    auto wlen = static_cast<int>(wtext.size());
+    std::vector<double> wpos(wlen + 1, 0.0);
+    auto total = gdi_pos[wlen];
+
+    struct Run {
+        int start;
+        int end;
+        bool opposite;
+    };
+    std::vector<Run> runs;
+    auto run_start = 0;
+    auto cur_opposite = false;
+    for (auto i = 0; i < wlen; i++) {
+        if (win32_is_weak_char(wtext[i])) {
+            continue;
+        }
+        auto opp = base_is_rtl ? win32_is_strong_ltr_char(wtext[i]) : win32_is_strong_rtl_char(wtext[i]);
+        if (opp != cur_opposite) {
+            if (i > run_start) {
+                runs.push_back({run_start, i, cur_opposite});
+            }
+            run_start = i;
+            cur_opposite = opp;
+        }
+    }
+    runs.push_back({run_start, wlen, cur_opposite});
+
+    if (!base_is_rtl) {
+        wpos[0] = 0.0;
+        for (auto const &run : runs) {
+            auto slot_start = gdi_pos[run.start];
+            auto slot_end = gdi_pos[run.end];
+            for (auto k = run.start; k < run.end; k++) {
+                wpos[k + 1] = run.opposite ? (slot_start + slot_end - gdi_pos[k + 1]) : gdi_pos[k + 1];
+            }
+        }
+    } else {
+        // RTL base: runs are placed right-to-left by logical order (the first
+        // logical run gets the rightmost slot). All positions are plain
+        // absolute x in [0, total], the same coordinate space LTR uses --
+        // callers must not apply any further direction-dependent transform.
+        wpos[0] = total;
+        auto right_edge = total;
+        for (auto const &run : runs) {
+            auto width = gdi_pos[run.end] - gdi_pos[run.start];
+            auto slot_start = right_edge - width;
+            auto slot_end = right_edge;
+            for (auto k = run.start; k < run.end; k++) {
+                auto local = gdi_pos[k + 1] - gdi_pos[run.start];
+                wpos[k + 1] = run.opposite ? (slot_start + local) : (slot_end - local);
+            }
+            right_edge = slot_start;
+        }
+    }
+    return wpos;
+}
+
+} // namespace
+
 std::vector<double> Win32TextRasterizer::cursor_positions(std::string_view text, float font_size,
                                                           FontFamily font,
                                                           Painter::TextDirection direction) {
@@ -559,61 +645,25 @@ std::vector<double> Win32TextRasterizer::cursor_positions(std::string_view text,
     // If adding a new backend, match this convention so all consumers work
     // without per-backend branches.
 
-    if (direction == Painter::TextDirection::LTR) {
-        wpos.swap(gdi_pos);
-    } else if (direction == Painter::TextDirection::RTL) {
-        auto total = gdi_pos[wlen];
-        for (auto i = 0; i <= wlen; i++) {
-            wpos[i] = total - gdi_pos[i];
-        }
-    } else {
-        // Auto: use BiDi heuristic based on content
-        auto is_rtl_char = [](wchar_t ch) -> bool {
-            return is_rtl_codepoint(static_cast<uint32_t>(ch));
-        };
-
+    auto base_is_rtl = false;
+    if (direction == Painter::TextDirection::RTL) {
+        base_is_rtl = true;
+    } else if (direction == Painter::TextDirection::Auto) {
         // Determine paragraph direction from the first strong character.
         // Weak/neutral characters (digits, spaces, punctuation) at the start
-        // do not set the direction — they follow the paragraph's resolved direction.
-        auto has_rtl = false;
-        auto para_is_rtl = false;
-
-        for (auto i = 0; i < wlen; i++) {
-            if (is_rtl_char(wtext[i])) {
-                has_rtl = true;
-                break;
-            }
-        }
-
+        // do not set the direction.
         for (auto i = 0; i < wlen; i++) {
             auto ch = wtext[i];
-            if (is_rtl_char(ch)) {
-                para_is_rtl = true;
+            if (win32_is_strong_rtl_char(ch)) {
+                base_is_rtl = true;
                 break;
             }
-            if (!std::iswdigit(ch) && !std::iswspace(ch) && !std::iswpunct(ch)) {
-                // Strong LTR character found before any RTL → LTR paragraph
+            if (win32_is_strong_ltr_char(ch)) {
                 break;
             }
-        }
-
-        if (has_rtl && para_is_rtl) {
-            auto total = gdi_pos[wlen];
-            for (auto i = 0; i <= wlen; i++) {
-                wpos[i] = total - gdi_pos[i];
-            }
-        } else if (has_rtl) {
-            for (auto i = 1; i <= wlen; i++) {
-                if (is_rtl_char(wtext[i - 1])) {
-                    wpos[i] = wpos[i - 1];
-                } else {
-                    wpos[i] = gdi_pos[i];
-                }
-            }
-        } else {
-            wpos.swap(gdi_pos);
         }
     }
+    wpos = win32_layout_bidi_positions(wtext, gdi_pos, base_is_rtl);
 
     SelectObject(impl_->hdc, old_font);
     DeleteObject(hfont);
@@ -628,8 +678,10 @@ std::vector<double> Win32TextRasterizer::cursor_positions(std::string_view text,
 
         auto next_pos = Utf8Iterator::next(text, utf8_pos);
 
+        // Continuation bytes are mid-codepoint and have no real cursor position;
+        // fill with the start-of-char value, matching the Cairo backend's convention.
         for (auto j = utf8_pos + 1; j < next_pos; j++) {
-            result[j] = wpos[std::min(wide_pos + 1, static_cast<size_t>(wtext.size()))];
+            result[j] = wpos[wide_pos];
         }
 
         utf8_pos = next_pos;

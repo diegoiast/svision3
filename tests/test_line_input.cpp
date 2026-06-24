@@ -9,6 +9,7 @@
 #include "toolkit/painters/cairo_painter.hpp"
 #endif
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <nlohmann/json.hpp>
 
 using namespace toolkit;
@@ -18,9 +19,7 @@ struct BiDiTestContext {
     std::unique_ptr<TextRasterizer> rasterizer;
     MockPainter painter;
 
-    BiDiTestContext()
-        : rasterizer(create_rasterizer())
-        , painter(rasterizer.get()) {}
+    BiDiTestContext() : rasterizer(create_rasterizer()), painter(rasterizer.get()) {}
 
   private:
     static auto create_rasterizer() -> std::unique_ptr<TextRasterizer> {
@@ -144,10 +143,7 @@ TEST_CASE("LineInput cursor keys", "[lineinput]") {
     cursor_physical = li.cursor_physical_x(painter);
     REQUIRE(cursor_logical == 4);
     REQUIRE(cursor_physical == P + 4 * W);
-
 }
-
-
 
 TEST_CASE("Serialize/de-serialize", "[lineinput]") {
     Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
@@ -223,6 +219,55 @@ TEST_CASE("BiDi cursor right at end", "[lineinput][bidi]") {
     REQUIRE_FALSE(li.text().empty());
     INFO("text after Right at end: '" << li.text() << "'");
     REQUIRE(li.cursor_codepoint() == 7);
+
+    auto palette = Theme::current().palette;
+    auto l = painter.text_cursor_positions(li.text(), palette.fonts.size, li.font_family());
+
+    // Indices below are UTF-8 codepoint boundaries for "abc אבג":
+    // a=0 b=1 c=2 sp=3 א=4-5 ב=6-7 ג=8-9, end=10.
+    // Boundaries: 0,1,2,3,4,6,8,10 (5,7,9 are mid-codepoint, not valid here).
+    //
+    // The RTL run is mirrored within its own [run_start_x, run_end_x] span:
+    // the first logical RTL char (א) renders at the run's right edge, the
+    // last (ג) at its left edge. So crossing into the run jumps the x
+    // position up to the right edge, then it decreases through the run,
+    // ending back at the run's start x (since the run is at the end of the
+    // text, nothing follows it).
+
+    // |a bc אבג -> a| bc אבג
+    auto la = l[1];
+    auto lb = l[0];
+    REQUIRE(la > lb);
+
+    // a|b c אבג -> ab|c אבג
+    la = l[2];
+    lb = l[1];
+    REQUIRE(la > lb);
+
+    // ab|c אבג -> abc| אבג
+    la = l[3];
+    lb = l[2];
+    REQUIRE(la > lb);
+
+    // abc| אבג -> abc |אבג
+    la = l[4];
+    lb = l[3];
+    REQUIRE(la > lb);
+
+    // abc |אבג -> abc א|בג (entering the run: jumps to the run's right edge)
+    la = l[6];
+    lb = l[4];
+    REQUIRE(la > lb);
+
+    // abc א|בג -> abc אב|ג (still inside the run: decreasing)
+    la = l[8];
+    lb = l[6];
+    REQUIRE(la < lb);
+
+    // abc אב|ג -> abc אבג| (leaving the run: decreasing, back to the run's start x)
+    la = l[10];
+    lb = l[8];
+    REQUIRE(la < lb);
 }
 
 TEST_CASE("BiDi leading RTL right from end", "[lineinput][bidi]") {
@@ -295,7 +340,7 @@ TEST_CASE("BiDi RTL with digits stays in RTL run", "[lineinput][bidi]") {
 
     // End position should be at the leftmost edge (past all chars)
     auto x_end_val = positions[10];
-    auto x_3_val = positions[9]; // after '3'
+    auto x_3_val = positions[9];  // after '3'
     REQUIRE(x_end_val < x_3_val); // end is further left than '3'
 
     // Right-march from Home through all chars to end
@@ -349,9 +394,9 @@ TEST_CASE("BiDi RTL leading with LTR suffix positioning", "[lineinput][bidi]") {
     REQUIRE(positions[0] > positions[2]);
 
     // LTR run (bytes 10-13): decreasing positions (monotonic RTL flow)
-    REQUIRE(positions[10] > positions[11]);  // after 'A' → after 'B': more negative
-    REQUIRE(positions[11] > positions[12]);  // after 'B' → after 'C'
-    REQUIRE(positions[12] > positions[13]);  // after 'C' → after 'D'
+    REQUIRE(positions[10] > positions[11]); // after 'A' → after 'B': more negative
+    REQUIRE(positions[11] > positions[12]); // after 'B' → after 'C'
+    REQUIRE(positions[12] > positions[13]); // after 'C' → after 'D'
 
     // RTL end → LTR start: both in monotonic RTL flow
     REQUIRE(positions[9] > positions[10]);
@@ -629,9 +674,9 @@ TEST_CASE("BiDi neutrals at start follow RTL direction", "[lineinput][bidi]") {
     auto positions = painter.text_cursor_positions(li.text(), 14.0f, FontFamily::Monospace);
 
     // All positions should be decreasing (RTL flow) — including digits at start
-    REQUIRE(positions[0] > positions[1]);  // digit 1 → digit 2: leftward
-    REQUIRE(positions[2] > positions[4]);  // digit 3 → space: leftward
-    REQUIRE(positions[5] > positions[7]);  // space → 'ב': leftward (through RTL)
+    REQUIRE(positions[0] > positions[1]); // digit 1 → digit 2: leftward
+    REQUIRE(positions[2] > positions[4]); // digit 3 → space: leftward
+    REQUIRE(positions[5] > positions[7]); // space → 'ב': leftward (through RTL)
 
     // Each successive codepoint position is more negative
     auto prev = positions[0];
@@ -657,4 +702,112 @@ TEST_CASE("BiDi neutrals at start follow RTL direction", "[lineinput][bidi]") {
     REQUIRE(li.text() == "123 אבג ");
     auto x_after = li.cursor_physical_x(painter);
     REQUIRE(x_after < x_before);
+}
+
+// Known-bug regression tests: typing/navigating "שלום test 123" (RTL word,
+// then an embedded LTR run "test 123") currently moves the cursor visually
+// the same direction throughout (continuing the RTL decrease even inside
+// the embedded LTR run), instead of moving forward within the LTR run like
+// ordinary LTR typing/navigation. These document the bug and are expected
+// to FAIL until the embedded-run handling is fixed.
+
+TEST_CASE("BiDi typing within embedded LTR run after RTL word moves cursor forward",
+         "[lineinput][bidi]") {
+    BiDiTestContext ctx;
+    auto &painter = ctx.painter;
+    LineInput li("");
+    li.set_rect({0, 0, 500, 30});
+    li.set_font_family(FontFamily::Monospace);
+
+    auto type_and_x = [&](char const *ch) {
+        li.handle_key({.type = KeyEvent::Type::Press, .text = ch});
+        return li.cursor_physical_x(painter);
+    };
+
+    // "שלום": pure RTL run, each new char moves the cursor LEFT (decreasing
+    // x). This part already works correctly today.
+    auto x_shin = type_and_x("\xd7\xa9");  // ש
+    auto x_lamed = type_and_x("\xd7\x9c"); // ל
+    REQUIRE(x_lamed < x_shin);
+    auto x_vav = type_and_x("\xd7\x95"); // ו
+    REQUIRE(x_vav < x_lamed);
+    auto x_mem = type_and_x("\xd7\x9d"); // ם
+    REQUIRE(x_mem < x_vav);
+    type_and_x(" ");
+
+    // "test 123": an embedded LTR run. The boundary crossing INTO the run
+    // (from the trailing space) is not asserted here -- it is legitimately
+    // ambiguous which "side" a run-boundary cursor position belongs to.
+    // But movement WITHIN the run must move forward (increasing x), the
+    // same as ordinary LTR typing -- not continue the RTL decrease.
+    auto x_t1 = type_and_x("t");
+    auto x_e = type_and_x("e");
+    REQUIRE(x_e > x_t1);
+    auto x_s = type_and_x("s");
+    REQUIRE(x_s > x_e);
+    auto x_t2 = type_and_x("t");
+    REQUIRE(x_t2 > x_s);
+    auto x_sp2 = type_and_x(" ");
+    REQUIRE(x_sp2 > x_t2);
+    auto x_1 = type_and_x("1");
+    REQUIRE(x_1 > x_sp2);
+    auto x_2 = type_and_x("2");
+    REQUIRE(x_2 > x_1);
+    auto x_3 = type_and_x("3");
+    REQUIRE(x_3 > x_2);
+
+    REQUIRE(li.text() == "\xd7\xa9\xd7\x9c\xd7\x95\xd7\x9d test 123");
+}
+
+TEST_CASE("BiDi moving left out of an embedded LTR run causes a visual jump", "[lineinput][bidi]") {
+    BiDiTestContext ctx;
+    auto &painter = ctx.painter;
+    LineInput li("");
+    li.set_rect({0, 0, 500, 30});
+    li.set_font_family(FontFamily::Monospace);
+    li.set_text("\xd7\xa9\xd7\x9c\xd7\x95\xd7\x9d test 123"); // שלום test 123
+    REQUIRE(li.cursor_position() == 17);
+
+    li.handle_key({.type = KeyEvent::Type::Press, .key = Key::End});
+    REQUIRE(li.cursor_position() == 17);
+
+    // March Left through "3 2 1 <space> t s e t" -- 8 presses, all within
+    // the embedded LTR run, ending right before the run's first character
+    // ('t'), i.e. cursor_position() == 9 (just after the space following
+    // "שלום").
+    std::vector<double> deltas;
+    auto prev_x = li.cursor_physical_x(painter);
+    for (auto i = 0; i < 8; i++) {
+        li.handle_key({.type = KeyEvent::Type::Press, .key = Key::Left});
+        auto x = li.cursor_physical_x(painter);
+        deltas.push_back(std::abs(x - prev_x));
+        prev_x = x;
+    }
+    REQUIRE(li.cursor_position() == 9);
+
+    // This press crosses the run boundary, back into the RTL word "שלום".
+    // Visually this must JUMP -- it must not continue the smooth
+    // per-character movement seen above.
+    li.handle_key({.type = KeyEvent::Type::Press, .key = Key::Left});
+    REQUIRE(li.cursor_position() == 8);
+    auto x_after_jump = li.cursor_physical_x(painter);
+    auto jump_delta = std::abs(x_after_jump - prev_x);
+
+    auto typical_delta = deltas[0];
+    for (auto d : deltas) {
+        REQUIRE_THAT(d, Catch::Matchers::WithinAbs(typical_delta, 0.5));
+    }
+    REQUIRE(jump_delta > typical_delta * 2);
+
+    // Resume marching Left through the RTL word; movement should again be
+    // smooth (consistent per-character magnitude), now increasing x since
+    // moving backward through RTL text moves the cursor visually rightward.
+    prev_x = x_after_jump;
+    for (auto i = 0; i < 4; i++) {
+        li.handle_key({.type = KeyEvent::Type::Press, .key = Key::Left});
+        auto x = li.cursor_physical_x(painter);
+        REQUIRE(x > prev_x);
+        prev_x = x;
+    }
+    REQUIRE(li.cursor_position() == 0);
 }

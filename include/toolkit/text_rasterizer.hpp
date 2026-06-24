@@ -45,6 +45,12 @@ class TextRasterizer {
     //   down to 0 (index n, leftmost visual position) — i.e. non-negative
     //   and decreasing.  LTR is the inverse:  0 … total_width, increasing.
     //   See win32_painter.cpp for the rationale.
+    //
+    // Byte-offset contract: the returned vector has one entry per UTF-8 byte
+    // of `text` (size text.size() + 1), but values are only meaningful at
+    // codepoint boundaries. Entries for continuation bytes (mid-codepoint
+    // offsets) are implementation-defined filler — callers must not index
+    // this array at anything other than a codepoint boundary.
     virtual std::vector<double>
     cursor_positions(std::string_view text, float font_size, FontFamily font = FontFamily::System,
                      Painter::TextDirection direction = Painter::TextDirection::Auto) {

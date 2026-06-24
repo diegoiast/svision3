@@ -172,9 +172,10 @@ Painter::FontMetrics Widget::font_metrics(float font_size, FontFamily font) cons
 }
 
 std::vector<double> Widget::text_cursor_positions(std::string_view text, float font_size,
-                                                  FontFamily font) const {
+                                                  FontFamily font,
+                                                  Painter::TextDirection direction) const {
     if (auto *p = detail::current_platform()) {
-        return p->cursor_positions(text, font_size, font);
+        return p->cursor_positions(text, font_size, font, direction);
     }
     return {};
 }

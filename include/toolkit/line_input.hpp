@@ -91,6 +91,7 @@ class LineInput : public Widget, public Fluent<LineInput> {
     void reset_cursor_blink();
     void ensure_cursor_visible(Painter &painter);
     size_t pos_from_x(float x) const;
+    bool resolve_rtl_dir(std::vector<double> const &positions) const;
     bool has_selection() const { return sel_anchor_ != cursor_pos_; }
     size_t sel_start() const { return std::min(sel_anchor_, cursor_pos_); }
     size_t sel_end() const { return std::max(sel_anchor_, cursor_pos_); }

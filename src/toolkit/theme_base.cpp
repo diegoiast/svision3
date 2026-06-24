@@ -306,6 +306,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     auto clip_rect = Rect{rect.x + content_x, rect.y, content_w, rect.height};
     painter.push_clip(clip_rect);
 
+    // FIXME: text_cursor_positions should be calculated on text change event
     auto text_c = enabled ? palette.text : palette.text_disabled;
     if (selection_start >= 0 && selection_end > selection_start) {
         auto positions = painter.text_cursor_positions(text, palette.fonts.size, font_family);
@@ -323,17 +324,14 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                     return c;
                 }
                 if ((c & 0xE0) == 0xC0 && pos + 1 < s.size()) {
-                    return ((c & 0x1F) << 6) |
-                           (static_cast<uint8_t>(s[pos + 1]) & 0x3F);
+                    return ((c & 0x1F) << 6) | (static_cast<uint8_t>(s[pos + 1]) & 0x3F);
                 }
                 if ((c & 0xF0) == 0xE0 && pos + 2 < s.size()) {
-                    return ((c & 0x0F) << 12) |
-                           ((static_cast<uint8_t>(s[pos + 1]) & 0x3F) << 6) |
+                    return ((c & 0x0F) << 12) | ((static_cast<uint8_t>(s[pos + 1]) & 0x3F) << 6) |
                            (static_cast<uint8_t>(s[pos + 2]) & 0x3F);
                 }
                 if ((c & 0xF8) == 0xF0 && pos + 3 < s.size()) {
-                    return ((c & 0x07) << 18) |
-                           ((static_cast<uint8_t>(s[pos + 1]) & 0x3F) << 12) |
+                    return ((c & 0x07) << 18) | ((static_cast<uint8_t>(s[pos + 1]) & 0x3F) << 12) |
                            ((static_cast<uint8_t>(s[pos + 2]) & 0x3F) << 6) |
                            (static_cast<uint8_t>(s[pos + 3]) & 0x3F);
                 }
@@ -341,10 +339,8 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
             };
 
             auto is_rev = [](uint32_t cp) -> bool {
-                return (cp >= '0' && cp <= '9') ||
-                       (cp >= 'A' && cp <= 'Z') ||
-                       (cp >= 'a' && cp <= 'z') ||
-                       (cp >= 0x00C0 && cp <= 0x024F);
+                return (cp >= '0' && cp <= '9') || (cp >= 'A' && cp <= 'Z') ||
+                       (cp >= 'a' && cp <= 'z') || (cp >= 0x00C0 && cp <= 0x024F);
             };
 
             // RTL positions go from total_width (rightmost, index 0) to 0 (leftmost).
@@ -385,8 +381,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                 if (cx1 > cx2) {
                     std::swap(cx1, cx2);
                 }
-                painter.fill_rect(
-                    {cx1, hy, cx2 - cx1, fm.height + 2.0f}, sel_bg);
+                painter.fill_rect({cx1, hy, cx2 - cx1, fm.height + 2.0f}, sel_bg);
                 i = n;
             }
         } else {
@@ -396,12 +391,14 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                 std::swap(sx, ex);
             }
             painter.fill_rect(
-                {static_cast<float>(sx), hy, static_cast<float>(ex - sx), fm.height + 2.0f}, sel_bg);
+                {static_cast<float>(sx), hy, static_cast<float>(ex - sx), fm.height + 2.0f},
+                sel_bg);
         }
     }
 
     if (text.empty() && !focused) {
-        painter.draw_text(placeholder, {tx, baseline_y}, palette.placeholder, palette.fonts.size, font_family);
+        painter.draw_text(placeholder, {tx, baseline_y}, palette.placeholder, palette.fonts.size,
+                          font_family);
     } else if (!text.empty()) {
         if (password_mode) {
             auto dot_radius = palette.fonts.size * 0.25f;
@@ -427,16 +424,15 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
 
     if (focused && cursor_pos >= 0 && cursor_visible) {
         auto positions = painter.text_cursor_positions(text, palette.fonts.size, font_family);
-        auto cx = is_rtl
-            ? tx - static_cast<float>(positions[0]) + static_cast<float>(positions[cursor_pos])
-            : tx + static_cast<float>(positions[cursor_pos]);
+        auto cx = is_rtl ? tx - static_cast<float>(positions[0]) +
+                               static_cast<float>(positions[cursor_pos])
+                         : tx + static_cast<float>(positions[cursor_pos]);
         auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto cy_bot = cy_top + fm.height + 2.0f;
         painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);
     }
     painter.pop_clip();
 }
-
 
 void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
                                   bool hovered, bool active, bool show_mnemonics,

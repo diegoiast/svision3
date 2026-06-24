@@ -101,10 +101,11 @@ class PlatformApplication {
         }
         return {};
     }
-    std::vector<double> cursor_positions(std::string_view text, float font_size,
-                                         FontFamily font = FontFamily::System) const {
+    std::vector<double> cursor_positions(
+        std::string_view text, float font_size, FontFamily font = FontFamily::System,
+        Painter::TextDirection direction = Painter::TextDirection::Auto) const {
         if (rasterizer_) {
-            return rasterizer_->cursor_positions(text, font_size, font);
+            return rasterizer_->cursor_positions(text, font_size, font, direction);
         }
         return {};
     }
