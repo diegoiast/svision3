@@ -68,6 +68,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/spin_box.cpp
     src/toolkit/line_input.cpp
     src/toolkit/line_input_undo.cpp
+    src/toolkit/text/bidi.cpp
     src/toolkit/text_edit.cpp
     src/toolkit/table_view.cpp
     src/toolkit/tree_view.cpp
@@ -491,6 +492,7 @@ target_link_libraries(json_ui_viewer PRIVATE toolkit)
 # ── Tests ─────────────────────────────────────────────────────────────────────
 find_package(Catch2 REQUIRED)
 add_executable(tests
+    tests/test_bidi.cpp
     tests/test_button_serialization.cpp
     tests/test_catalog.cpp
     tests/test_command.cpp
