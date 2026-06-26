@@ -18,6 +18,15 @@ class ToolkitRecipe(ConanFile):
             self.requires("stb/cci.20240213")
             self.requires("fribidi/1.0.13")
             self.requires("harfbuzz/12.3.0", options={"with_glib": False})
+            # Required directly (not just relied on as harfbuzz's transitive
+            # dependency) by src/toolkit/painters/cairo_shaper.cpp -- see
+            # docs/design/cairo-shaper-handoff.md. Version pinned to whatever
+            # was current at the time this was written and NOT verified
+            # against an actual `conan install`; if it conflicts with
+            # harfbuzz's own freetype requirement, drop the explicit pin
+            # (just `self.requires("freetype/...")` with no version, or
+            # remove this line) and let Conan resolve the transitive one.
+            self.requires("freetype/2.13.3")
 
 
     def layout(self):

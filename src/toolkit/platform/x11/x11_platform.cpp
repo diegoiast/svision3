@@ -631,6 +631,7 @@ static void process_pending_events(X11PlatformApplication::Impl *d) {
 X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>()) {
     static CairoTextRasterizer s_rasterizer;
     set_rasterizer(&s_rasterizer);
+    set_shaper(&app_shaper_);
     auto *d = impl_.get();
     XInitThreads();
     d->display = XOpenDisplay(nullptr);

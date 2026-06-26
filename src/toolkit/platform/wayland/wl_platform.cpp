@@ -866,6 +866,7 @@ static void xdg_popup_done(void *data, struct xdg_popup *) {
 WaylandPlatformApplication::WaylandPlatformApplication() {
     static CairoTextRasterizer s_rasterizer;
     set_rasterizer(&s_rasterizer);
+    set_shaper(&app_shaper_);
     display = wl_display_connect(nullptr);
     if (!display) {
         throw std::runtime_error("Failed to connect to Wayland display");

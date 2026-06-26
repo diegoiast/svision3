@@ -1,5 +1,6 @@
 #pragma once
 
+#include "toolkit/painters/cairo_shaper.hpp"
 #include "toolkit/platform.hpp"
 #include <chrono>
 #include <functional>
@@ -133,6 +134,8 @@ class WaylandPlatformApplication : public PlatformApplication {
     void *egl_config = nullptr;
     void *egl_context = nullptr;
     bool opengl_requested = false;
+
+    CairoShaper app_shaper_;
 };
 
 class RenderingBackend;

@@ -29,6 +29,26 @@ if(TOOLKIT_WITH_CAIRO)
         add_library(fontconfig::fontconfig ALIAS PkgConfig::FONTCONFIG)
     endif()
     add_definitions(-DTOOLKIT_HAS_CAIRO)
+
+    # UNVERIFIED (see docs/design/cairo-shaper-handoff.md): harfbuzz + FreeType
+    # for src/toolkit/painters/cairo_shaper.cpp (RTL/bidi text shaping). harfbuzz
+    # is already a Conan dependency on Linux (conanfile.py); FreeType is expected
+    # to come in transitively via cairo's/harfbuzz's own dependencies, but that
+    # was never confirmed against a real `conan install` run -- if find_package
+    # fails to produce these targets, check build/generators/*.cmake for the
+    # actual exported target names first before reaching for pkg-config.
+    find_package(harfbuzz QUIET)
+    if(NOT harfbuzz_FOUND)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(HARFBUZZ REQUIRED IMPORTED_TARGET harfbuzz)
+        add_library(harfbuzz::harfbuzz ALIAS PkgConfig::HARFBUZZ)
+    endif()
+    find_package(Freetype QUIET)
+    if(NOT Freetype_FOUND)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(FREETYPE2 REQUIRED IMPORTED_TARGET freetype2)
+        add_library(Freetype::Freetype ALIAS PkgConfig::FREETYPE2)
+    endif()
 endif()
 
 if(APPLE)
@@ -105,6 +125,7 @@ set(TOOLKIT_SOURCES
 
 if(TOOLKIT_WITH_CAIRO)
     list(APPEND TOOLKIT_SOURCES src/toolkit/painters/cairo_painter.cpp)
+    list(APPEND TOOLKIT_SOURCES src/toolkit/painters/cairo_shaper.cpp)
 endif()
 
 if(APPLE)
@@ -313,6 +334,14 @@ if(TOOLKIT_WITH_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)
     if(TARGET fontconfig::fontconfig)
         target_link_libraries(toolkit PUBLIC fontconfig::fontconfig)
+    endif()
+    # For src/toolkit/painters/cairo_shaper.cpp -- see the harfbuzz/Freetype
+    # find_package block above and docs/design/cairo-shaper-handoff.md.
+    if(TARGET harfbuzz::harfbuzz)
+        target_link_libraries(toolkit PUBLIC harfbuzz::harfbuzz)
+    endif()
+    if(TARGET Freetype::Freetype)
+        target_link_libraries(toolkit PUBLIC Freetype::Freetype)
     endif()
 endif()
 
