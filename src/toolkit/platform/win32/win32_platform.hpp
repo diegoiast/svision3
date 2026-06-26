@@ -2,6 +2,7 @@
 
 #include "toolkit/image.hpp"
 #include "toolkit/painters/win32_painter.hpp"
+#include "toolkit/painters/win32_shaper.hpp"
 #include "toolkit/platform.hpp"
 #include <memory>
 #ifndef NOMINMAX
@@ -76,6 +77,7 @@ class Win32PlatformApplication : public PlatformApplication {
 
   private:
     Win32TextRasterizer app_rasterizer_;
+    Win32Shaper app_shaper_;
 };
 
 class Win32PlatformWindow : public PlatformWindow {

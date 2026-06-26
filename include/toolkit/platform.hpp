@@ -16,6 +16,10 @@
 
 namespace toolkit {
 
+namespace text {
+class TextShaper;
+} // namespace text
+
 bool platformNeedsCSD();
 
 class Window;
@@ -88,6 +92,9 @@ class PlatformApplication {
     void set_rasterizer(TextRasterizer *r) { rasterizer_ = r; }
     TextRasterizer *rasterizer() const { return rasterizer_; }
 
+    void set_shaper(text::TextShaper *s) { shaper_ = s; }
+    text::TextShaper *shaper() const { return shaper_; }
+
     Size measure_text(std::string_view text, float font_size,
                       FontFamily font = FontFamily::System) const {
         if (rasterizer_) {
@@ -108,6 +115,7 @@ class PlatformApplication {
 
   protected:
     TextRasterizer *rasterizer_ = nullptr;
+    text::TextShaper *shaper_ = nullptr;
 };
 
 std::unique_ptr<PlatformApplication> create_platform_application();

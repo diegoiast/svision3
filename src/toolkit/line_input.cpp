@@ -3,6 +3,8 @@
 
 #include "toolkit/line_input.hpp"
 #include "toolkit/clipboard.hpp"
+#include "toolkit/platform.hpp"
+#include "toolkit/text/bidi.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
@@ -182,6 +184,30 @@ void LineInput::move_cursor(size_t pos, bool extend_selection) {
     reset_cursor_blink();
 }
 
+// Movement stays logical (Utf8Iterator::prev/next through the byte string),
+// but which arrow key means "forward" flips with the field's base direction
+// -- the OS convention for RTL text: Right moves toward the start of the
+// typed string, Left toward the end, mirroring the LTR mapping. `key_dir` is
+// the key that was pressed (-1 = Left, +1 = Right), not a screen direction.
+void LineInput::move_arrow(int key_dir, bool extend_selection) {
+    auto base = bidi::detect_base_direction(text_);
+    auto forward = (base == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
+    if (forward && cursor_pos_ < text_.size()) {
+        move_cursor(Utf8Iterator::next(text_, cursor_pos_), extend_selection);
+    } else if (!forward && cursor_pos_ > 0) {
+        move_cursor(Utf8Iterator::prev(text_, cursor_pos_), extend_selection);
+    }
+}
+
+// Which end of the current selection Left/Right should collapse to without
+// Shift: the same forward/backward flip as move_arrow(), landing on
+// sel_end() when this key means "forward" and sel_start() otherwise.
+size_t LineInput::arrow_collapse_target(int key_dir) const {
+    auto base = bidi::detect_base_direction(text_);
+    auto forward = (base == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
+    return forward ? sel_end() : sel_start();
+}
+
 void LineInput::move_word_left(bool extend_selection) {
     auto p = cursor_pos_;
     while (p > 0 && std::isspace(static_cast<unsigned char>(text_[p - 1]))) {
@@ -328,8 +354,33 @@ bool LineInput::hit_peek_btn(Point pos) const {
     return pos.x >= bx && pos.x <= bx + sz && pos.y >= by && pos.y <= by + sz;
 }
 
+std::optional<text::TextLayout> LineInput::build_layout() const {
+    if (password_mode_) {
+        return std::nullopt;
+    }
+    auto *plat = detail::current_platform();
+    auto *shaper = plat ? plat->shaper() : nullptr;
+    if (!shaper) {
+        return std::nullopt;
+    }
+    auto base = bidi::detect_base_direction(text_);
+    return text::TextLayout(text_, base, *shaper, Theme::current().palette.fonts.size);
+}
+
 size_t LineInput::pos_from_x(float x) const {
     auto const &style = Theme::current().style.lineInput;
+
+    if (auto layout = build_layout()) {
+        auto rtl_base = layout->bidi_line().base() == bidi::BaseDirection::RTL;
+        // content_right_inset() already folds in style.padding.right plus any
+        // clear/peek button reservation -- mirrors the inset BaseTheme::draw_line_input
+        // is handed, so hit-testing always agrees with where the glyphs were painted.
+        auto tx = rtl_base
+                      ? rect_.width - content_right_inset() - layout->total_width() + scroll_offset_
+                      : style.padding.left - scroll_offset_;
+        return layout->index_from_x(x - tx);
+    }
+
     auto const &palette = Theme::current().palette;
     auto click_x = x - style.padding.left + scroll_offset_;
     size_t current_pos = 0;
@@ -378,7 +429,8 @@ void LineInput::paint(Painter &painter) {
         bg = theme.palette.error;
     }
 
-    ensure_cursor_visible(painter);
+    auto layout = build_layout();
+    ensure_cursor_visible(painter, layout ? &*layout : nullptr);
 
     auto d_text = password_mode_ ? get_masked_text(text_) : text_;
     auto cursor_visible = true;
@@ -394,9 +446,14 @@ void LineInput::paint(Painter &painter) {
         .enabled = !read_only_,
         .window_active = window_ ? window_->is_active() : true,
     };
+    // Buttons (clear/peek) live on the right today; content_right_inset()
+    // already accounts for them on top of style.padding.right. Kept as a
+    // separate left/right pair (left always 0 for now) so a future mirrored
+    // layout can move the reservation to the left without touching the theme.
+    auto button_inset_right = content_right_inset() - style.padding.right;
     theme.draw_line_input(painter, rect, d_text, placeholder_, static_cast<int>(cursor_pos_),
                           sel_start_pos, sel_end_pos, wstate, password_mode_, scroll_offset_, bg,
-                          cursor_visible);
+                          cursor_visible, layout ? &*layout : nullptr, 0.0f, button_inset_right);
 
     paint_buttons(painter);
 }
@@ -580,13 +637,17 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
     return false;
 }
 
-void LineInput::ensure_cursor_visible(Painter &painter) {
-    auto const &palette = Theme::current().palette;
+void LineInput::ensure_cursor_visible(Painter &painter, text::TextLayout const *layout) {
     auto content_w = content_available_width();
-    auto before_str =
-        password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
-    auto cursor_x =
-        before_str.empty() ? 0.0f : painter.measure_text(before_str, palette.fonts.size).width;
+    auto cursor_x = [&] {
+        if (layout) {
+            return layout->caret_x(cursor_pos_);
+        }
+        auto const &palette = Theme::current().palette;
+        auto before_str =
+            password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
+        return before_str.empty() ? 0.0f : painter.measure_text(before_str, palette.fonts.size).width;
+    }();
 
     if (cursor_x - scroll_offset_ > content_w) {
         scroll_offset_ = cursor_x - content_w;
@@ -682,9 +743,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
         if (event.alt) {
             move_word_left(event.shift);
         } else if (!event.shift && has_selection()) {
-            move_cursor(sel_start(), false);
-        } else if (cursor_pos_ > 0) {
-            move_cursor(Utf8Iterator::prev(text_, cursor_pos_), event.shift);
+            move_cursor(arrow_collapse_target(-1), false);
+        } else {
+            move_arrow(-1, event.shift);
         }
         if (window()) {
             window()->request_redraw("input state");
@@ -694,9 +755,9 @@ bool LineInput::handle_key(KeyEvent const &event) {
         if (event.alt) {
             move_word_right(event.shift);
         } else if (!event.shift && has_selection()) {
-            move_cursor(sel_end(), false);
-        } else if (cursor_pos_ < text_.size()) {
-            move_cursor(Utf8Iterator::next(text_, cursor_pos_), event.shift);
+            move_cursor(arrow_collapse_target(1), false);
+        } else {
+            move_arrow(1, event.shift);
         }
         if (window()) {
             window()->request_redraw("input state");

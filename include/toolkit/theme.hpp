@@ -16,6 +16,10 @@
 
 namespace toolkit {
 
+namespace text {
+class TextLayout;
+} // namespace text
+
 struct Style {
     struct {
         bool bottom_shadow = false;
@@ -230,12 +234,21 @@ class Theme {
                                    bool checked, WidgetState const &state) const = 0;
     // FIXME: why is cursor position signed? Same for selection.
     // FIXME: too much arguments, maybe move to a state?
+    // button_inset_left/right reserve extra space (beyond style.padding) for
+    // in-field buttons (clear/peek) on that side, so text/caret/selection
+    // never draw under them -- whichever side currently hosts the buttons
+    // passes a non-zero inset; the other stays 0. Keeps the theme agnostic
+    // to which side that is, so a future mirrored layout (buttons on the
+    // left) is just a different inset value from the caller.
     virtual void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
                                  std::string_view placeholder, int cursor_pos, int selection_start,
                                  int selection_end, WidgetState const &state,
                                  bool password_mode = false, float scroll_offset = 0.0f,
                                  std::optional<Color> background = std::nullopt,
-                                 bool cursor_visible = true) const = 0;
+                                 bool cursor_visible = true,
+                                 text::TextLayout const *layout = nullptr,
+                                 float button_inset_left = 0.0f,
+                                 float button_inset_right = 0.0f) const = 0;
     virtual void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
                                    bool hovered, bool active, bool show_mnemonics,
                                    int mnemonic_index) const = 0;

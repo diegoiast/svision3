@@ -69,6 +69,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/line_input.cpp
     src/toolkit/line_input_undo.cpp
     src/toolkit/text/bidi.cpp
+    src/toolkit/text/text_layout.cpp
     src/toolkit/text_edit.cpp
     src/toolkit/table_view.cpp
     src/toolkit/tree_view.cpp
@@ -123,6 +124,7 @@ elseif(WIN32)
         src/toolkit/platform/win32/win32_platform.cpp
         src/toolkit/platform/win32/win32_image_loader.cpp
         src/toolkit/painters/win32_painter.cpp
+        src/toolkit/painters/win32_shaper.cpp
     )
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
@@ -322,7 +324,7 @@ if(APPLE)
     target_include_directories(toolkit PRIVATE
         src/toolkit/platform/macos)
 elseif(WIN32)
-    target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32 gdiplus opengl32 shlwapi)
+    target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32 gdiplus opengl32 shlwapi usp10)
     target_include_directories(toolkit PRIVATE src/toolkit/platform/win32)
 elseif(UNIX)
     target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
@@ -493,6 +495,7 @@ target_link_libraries(json_ui_viewer PRIVATE toolkit)
 find_package(Catch2 REQUIRED)
 add_executable(tests
     tests/test_bidi.cpp
+    tests/test_text_layout.cpp
     tests/test_button_serialization.cpp
     tests/test_catalog.cpp
     tests/test_command.cpp
@@ -534,3 +537,8 @@ add_executable(tests
     tests/repro_tab_orientation.cpp
 )
 target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)
+
+if(WIN32)
+    target_sources(tests PRIVATE tests/test_win32_shaper.cpp)
+    target_include_directories(tests PRIVATE src)
+endif()

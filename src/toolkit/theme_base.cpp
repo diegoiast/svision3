@@ -5,6 +5,8 @@
 #include "toolkit/button_state.hpp"
 #include "toolkit/painter.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/text/bidi.hpp"
+#include "toolkit/text/text_layout.hpp"
 #include "toolkit/types.hpp"
 #include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
@@ -270,16 +272,29 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                                 std::string_view placeholder, int cursor_pos, int selection_start,
                                 int selection_end, WidgetState const &state, bool password_mode,
                                 float scroll_offset, std::optional<Color> background,
-                                bool cursor_visible) const {
+                                bool cursor_visible, text::TextLayout const *layout,
+                                float button_inset_left, float button_inset_right) const {
     auto &style = this->style.lineInput;
     auto focused = state.focused;
     auto enabled = state.enabled;
     auto border = focused ? palette.accent : palette.border;
     auto fm = painter.font_metrics(palette.fonts.size);
     auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
-    auto content_x = style.padding.left;
-    auto content_w = rect.width - style.padding.left - style.padding.right;
+    auto content_x = style.padding.left + button_inset_left;
+    auto content_right_edge = rect.width - style.padding.right - button_inset_right;
+    auto content_w = content_right_edge - content_x;
     auto tx = rect.x + content_x - scroll_offset;
+
+    // layout is built by LineInput from the live BiDi+shaper pipeline; it is
+    // null on platforms/builds without a TextShaper yet (or in password
+    // mode), in which case every branch below falls back to the original
+    // logical-prefix-measurement path so non-Win32 behaviour stays unchanged.
+    auto *plat = detail::current_platform();
+    auto *shaper = (layout && plat) ? plat->shaper() : nullptr;
+    auto rtl_base = layout && layout->bidi_line().base() == bidi::BaseDirection::RTL;
+    if (rtl_base) {
+        tx = rect.x + content_right_edge - layout->total_width() + scroll_offset;
+    }
 
     painter.draw_filled_frame(rect, palette.base, border, palette, true);
 
@@ -288,13 +303,20 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
 
     auto text_c = enabled ? palette.text : palette.text_disabled;
     if (selection_start >= 0 && selection_end > selection_start) {
-        auto before_s = text.substr(0, selection_start);
-        auto before_e = text.substr(0, selection_end);
-        auto sx = tx + painter.measure_text(before_s, palette.fonts.size).width;
-        auto ex = tx + painter.measure_text(before_e, palette.fonts.size).width;
         auto hy = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
-        painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
+        if (layout && shaper) {
+            for (auto const &r : layout->selection_rects(static_cast<size_t>(selection_start),
+                                                          static_cast<size_t>(selection_end))) {
+                painter.fill_rect({tx + r.x, hy, r.width, fm.height + 2.0f}, sel_bg);
+            }
+        } else {
+            auto before_s = text.substr(0, selection_start);
+            auto before_e = text.substr(0, selection_end);
+            auto sx = tx + painter.measure_text(before_s, palette.fonts.size).width;
+            auto ex = tx + painter.measure_text(before_e, palette.fonts.size).width;
+            painter.fill_rect({sx, hy, ex - sx, fm.height + 2.0f}, sel_bg);
+        }
     }
 
     if (text.empty() && !focused) {
@@ -314,17 +336,25 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                 char_count++;
                 i = Utf8Iterator::next(text, i);
             }
+        } else if (layout && shaper) {
+            for (auto const &run : layout->runs()) {
+                auto run_text = text.substr(run.byte_start, run.byte_length);
+                shaper->draw_run(painter, run_text, run.rtl, {tx + run.x, baseline_y}, text_c,
+                                 palette.fonts.size, FontFamily::System);
+            }
         } else {
             painter.draw_text(text, {tx, baseline_y}, text_c, palette.fonts.size);
         }
     }
 
     if (focused && cursor_pos >= 0 && cursor_visible) {
-        auto before = text.substr(0, cursor_pos);
-        auto cx = tx;
-        if (!before.empty()) {
-            cx += painter.measure_text(before, palette.fonts.size).width;
-        }
+        auto cx = [&] {
+            if (layout && shaper) {
+                return tx + layout->caret_x(static_cast<size_t>(cursor_pos));
+            }
+            auto before = text.substr(0, cursor_pos);
+            return before.empty() ? tx : tx + painter.measure_text(before, palette.fonts.size).width;
+        }();
         auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto cy_bot = cy_top + fm.height + 2.0f;
         painter.draw_line({cx, cy_top}, {cx, cy_bot}, palette.text, 1.5f);

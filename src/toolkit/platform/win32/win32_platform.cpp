@@ -582,6 +582,7 @@ Win32PlatformApplication::Win32PlatformApplication() {
     enable_dpi_awareness();
     s_win32_app = this;
     set_rasterizer(&app_rasterizer_);
+    set_shaper(&app_shaper_);
     hinstance = GetModuleHandleW(nullptr);
     main_thread_id = GetCurrentThreadId();
 

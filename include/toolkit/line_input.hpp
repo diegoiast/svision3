@@ -4,11 +4,13 @@
 #pragma once
 
 #include "toolkit/context_menu.hpp"
+#include "toolkit/text/text_layout.hpp"
 #include "toolkit/undo_stack.hpp"
 #include "toolkit/widget.hpp"
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace toolkit {
@@ -67,13 +69,16 @@ class LineInput : public Widget, public Fluent<LineInput> {
 
   private:
     void reset_cursor_blink();
-    void ensure_cursor_visible(Painter &painter);
+    void ensure_cursor_visible(Painter &painter, text::TextLayout const *layout);
+    std::optional<text::TextLayout> build_layout() const;
     size_t pos_from_x(float x) const;
     bool has_selection() const { return sel_anchor_ != cursor_pos_; }
     size_t sel_start() const { return std::min(sel_anchor_, cursor_pos_); }
     size_t sel_end() const { return std::max(sel_anchor_, cursor_pos_); }
     void delete_selection();
     void move_cursor(size_t pos, bool extend_selection);
+    void move_arrow(int key_dir, bool extend_selection);
+    size_t arrow_collapse_target(int key_dir) const;
     void move_word_left(bool extend_selection);
     void move_word_right(bool extend_selection);
     void select_word_at(size_t pos);
