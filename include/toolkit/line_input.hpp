@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/context_menu.hpp"
+#include "toolkit/text/bidi.hpp"
 #include "toolkit/text/text_layout.hpp"
 #include "toolkit/undo_stack.hpp"
 #include "toolkit/widget.hpp"
@@ -56,6 +57,13 @@ class LineInput : public Widget, public Fluent<LineInput> {
     }
     ValidationMode validation_mode() const { return validation_mode_; }
     bool is_valid() const;
+
+    enum class TextDirection { LTR, RTL, Auto };
+    LineInput &set_text_direction(TextDirection mode);
+    TextDirection text_direction() const { return direction_mode_; }
+    // What direction_mode_ actually resolves to right now -- Auto runs
+    // detect_base_direction() against the current text, LTR/RTL are fixed.
+    bidi::BaseDirection resolved_direction() const;
 
     Command::Ptr select_all_cmd;
     Command::Ptr cut_cmd;
@@ -118,6 +126,7 @@ class LineInput : public Widget, public Fluent<LineInput> {
     int blink_timer_id_ = 0;
     std::unique_ptr<ContextMenu> context_menu_;
     UndoStack undo_stack_;
+    TextDirection direction_mode_ = TextDirection::Auto;
 };
 
 } // namespace toolkit

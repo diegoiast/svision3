@@ -93,6 +93,9 @@ nlohmann::json LineInput::to_json() const {
     j["read_only"] = read_only_;
     j["is_password"] = password_mode_;
     j["cursor"] = cursor_pos_;
+    j["direction"] = direction_mode_ == TextDirection::LTR
+                         ? "LTR"
+                         : direction_mode_ == TextDirection::RTL ? "RTL" : "Auto";
     return j;
 }
 
@@ -112,6 +115,16 @@ void LineInput::from_json(nlohmann::json const &j) {
     }
     if (j.contains("cursor")) {
         cursor_pos_ = j["cursor"];
+    }
+    if (j.contains("direction")) {
+        auto d = j["direction"];
+        if (d == "LTR") {
+            direction_mode_ = TextDirection::LTR;
+        } else if (d == "RTL") {
+            direction_mode_ = TextDirection::RTL;
+        } else {
+            direction_mode_ = TextDirection::Auto;
+        }
     }
 }
 
@@ -155,6 +168,29 @@ LineInput &LineInput::set_read_only(bool enable) {
     return *this;
 }
 
+LineInput &LineInput::set_text_direction(TextDirection mode) {
+    if (direction_mode_ == mode) {
+        return *this;
+    }
+    direction_mode_ = mode;
+    if (window_) {
+        window_->request_redraw("input state");
+    }
+    return *this;
+}
+
+bidi::BaseDirection LineInput::resolved_direction() const {
+    switch (direction_mode_) {
+    case TextDirection::LTR:
+        return bidi::BaseDirection::LTR;
+    case TextDirection::RTL:
+        return bidi::BaseDirection::RTL;
+    case TextDirection::Auto:
+    default:
+        return bidi::detect_base_direction(text_);
+    }
+}
+
 void LineInput::reset_cursor_blink() { cursor_blink_time_ = std::chrono::steady_clock::now(); }
 
 void LineInput::delete_selection() {
@@ -190,8 +226,7 @@ void LineInput::move_cursor(size_t pos, bool extend_selection) {
 // typed string, Left toward the end, mirroring the LTR mapping. `key_dir` is
 // the key that was pressed (-1 = Left, +1 = Right), not a screen direction.
 void LineInput::move_arrow(int key_dir, bool extend_selection) {
-    auto base = bidi::detect_base_direction(text_);
-    auto forward = (base == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
+    auto forward = (resolved_direction() == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
     if (forward && cursor_pos_ < text_.size()) {
         move_cursor(Utf8Iterator::next(text_, cursor_pos_), extend_selection);
     } else if (!forward && cursor_pos_ > 0) {
@@ -203,8 +238,7 @@ void LineInput::move_arrow(int key_dir, bool extend_selection) {
 // Shift: the same forward/backward flip as move_arrow(), landing on
 // sel_end() when this key means "forward" and sel_start() otherwise.
 size_t LineInput::arrow_collapse_target(int key_dir) const {
-    auto base = bidi::detect_base_direction(text_);
-    auto forward = (base == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
+    auto forward = (resolved_direction() == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
     return forward ? sel_end() : sel_start();
 }
 
@@ -363,8 +397,7 @@ std::optional<text::TextLayout> LineInput::build_layout() const {
     if (!shaper) {
         return std::nullopt;
     }
-    auto base = bidi::detect_base_direction(text_);
-    return text::TextLayout(text_, base, *shaper, Theme::current().palette.fonts.size);
+    return text::TextLayout(text_, resolved_direction(), *shaper, Theme::current().palette.fonts.size);
 }
 
 size_t LineInput::pos_from_x(float x) const {
@@ -783,6 +816,33 @@ bool LineInput::handle_key(KeyEvent const &event) {
             on_submit(text_, *this);
         }
         return true;
+    // Windows convention for toggling paragraph direction: the chord can be
+    // pressed in either order, so each side just checks whether the *other*
+    // modifier is already down when it sees its own key go down.
+    case Key::LeftShift:
+        if (event.ctrl) {
+            set_text_direction(TextDirection::LTR);
+            return true;
+        }
+        return false;
+    case Key::RightShift:
+        if (event.ctrl) {
+            set_text_direction(TextDirection::RTL);
+            return true;
+        }
+        return false;
+    case Key::LeftControl:
+        if (event.shift) {
+            set_text_direction(TextDirection::LTR);
+            return true;
+        }
+        return false;
+    case Key::RightControl:
+        if (event.shift) {
+            set_text_direction(TextDirection::RTL);
+            return true;
+        }
+        return false;
     default:
         break;
     }
@@ -922,6 +982,21 @@ void LineInput::show_context_menu(Point pos) {
         Command::create("Delete", [this] { delete_selection(); }, !read_only_ && has_sel);
     delete_cmd->set_shortcut("Delete");
     items.push_back(MenuItem::action(delete_cmd));
+
+    items.push_back(MenuItem::sep());
+    auto direction_menu = std::make_shared<Menu>("Text Direction");
+    auto auto_cmd = Command::create("Auto", [this] { set_text_direction(TextDirection::Auto); });
+    auto_cmd->set_checked(direction_mode_ == TextDirection::Auto);
+    auto ltr_cmd =
+        Command::create("Left to Right", [this] { set_text_direction(TextDirection::LTR); });
+    ltr_cmd->set_checked(direction_mode_ == TextDirection::LTR);
+    auto rtl_cmd =
+        Command::create("Right to Left", [this] { set_text_direction(TextDirection::RTL); });
+    rtl_cmd->set_checked(direction_mode_ == TextDirection::RTL);
+    direction_menu->add_action(auto_cmd);
+    direction_menu->add_action(ltr_cmd);
+    direction_menu->add_action(rtl_cmd);
+    items.push_back(MenuItem::submenu_item("Text Direction", direction_menu));
 
     context_menu_ = std::make_unique<ContextMenu>(std::move(items));
     context_menu_->show(window(), map_to_window(pos));

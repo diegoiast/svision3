@@ -116,6 +116,28 @@ static char vk_to_base_char(WPARAM vk) {
     return 0;
 }
 
+// WM_KEYDOWN/WM_SYSKEYDOWN always deliver the generic VK_SHIFT/VK_CONTROL/
+// VK_MENU in wParam -- Windows never sends VK_LSHIFT/VK_RSHIFT/etc. as a
+// keydown code. Telling left from right needs lParam: bit 24 (the extended
+// flag) distinguishes Right Control/Alt from Left, and the scan code (bits
+// 16-23) -- mapped through MapVirtualKeyW -- distinguishes Left/Right Shift,
+// which has no extended-key bit of its own.
+static WPARAM resolve_side_specific_vk(WPARAM vk, LPARAM lp) {
+    if (vk == VK_SHIFT) {
+        UINT scancode = (static_cast<UINT>(lp) >> 16) & 0xFF;
+        UINT mapped = MapVirtualKeyW(scancode, MAPVK_VSC_TO_VK_EX);
+        return mapped == VK_LSHIFT || mapped == VK_RSHIFT ? mapped : vk;
+    }
+    bool extended = (lp & 0x01000000) != 0;
+    if (vk == VK_CONTROL) {
+        return extended ? VK_RCONTROL : VK_LCONTROL;
+    }
+    if (vk == VK_MENU) {
+        return extended ? VK_RMENU : VK_LMENU;
+    }
+    return vk;
+}
+
 static Key vk_to_key(WPARAM vk) {
     switch (vk) {
     case VK_BACK:
@@ -473,7 +495,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         bool alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
         bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         bool super = (GetKeyState(VK_LWIN) & 0x8000) != 0 || (GetKeyState(VK_RWIN) & 0x8000) != 0;
-        Key key = vk_to_key(wp);
+        Key key = vk_to_key(resolve_side_specific_vk(wp, lp));
         if (key != Key::NoKey || ctrl || alt || super) {
             KeyEvent ke;
             ke.type = KeyEvent::Type::Press;
