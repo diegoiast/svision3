@@ -54,6 +54,7 @@ class Painter {
     virtual void fill_circle(Point center, float radius, Color const &color) = 0;
     virtual void draw_circle(Point center, float radius, Color const &color,
                              float line_width = 1.0f) = 0;
+    // FIXME: do we need to use string_view? all platforms will create a string anyway
     void draw_text(std::string_view text, Point position, Color const &color,
                    float font_size = 14.0f, FontFamily font = FontFamily::System,
                    TextOrientation orientation = TextOrientation::Horizontal, bool bold = false,

@@ -21,6 +21,7 @@ class CairoShaper : public text::TextShaper {
   public:
     CairoShaper();
     ~CairoShaper() override;
+    void release_fonts();
 
     std::vector<text::ClusterAdvance> shape_run(std::string_view run_utf8, bool rtl,
                                                 float font_size, FontFamily font) override;

@@ -19,6 +19,7 @@
 #include <X11/keysym.h>
 #include <cairo-xlib.h>
 #include <cairo.h>
+#include <fontconfig/fontconfig.h>
 #include <spdlog/spdlog.h>
 
 #undef None
@@ -629,8 +630,9 @@ static void process_pending_events(X11PlatformApplication::Impl *d) {
 // ── X11PlatformApplication ──────────────────────────────────────────────────
 
 X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>()) {
-    static CairoTextRasterizer s_rasterizer;
-    set_rasterizer(&s_rasterizer);
+    FcInit();
+    app_rasterizer_ = std::make_unique<CairoTextRasterizer>();
+    set_rasterizer(app_rasterizer_.get());
     set_shaper(&app_shaper_);
     auto *d = impl_.get();
     XInitThreads();
@@ -708,6 +710,11 @@ X11PlatformApplication::~X11PlatformApplication() {
     if (d->wakeup_pipe[1] >= 0) {
         ::close(d->wakeup_pipe[1]);
     }
+    app_shaper_.release_fonts();
+    set_rasterizer(nullptr);
+    app_rasterizer_.reset();
+    cairo_debug_reset_static_data();
+    FcFini();
 }
 
 std::unique_ptr<PlatformWindow> X11PlatformApplication::create_window(std::string_view title,

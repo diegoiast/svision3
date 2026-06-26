@@ -19,6 +19,7 @@
 #include <EGL/egl.h>
 #include <GL/gl.h>
 #include <cairo.h>
+#include <fontconfig/fontconfig.h>
 #include <cmath>
 #include <fcntl.h>
 #include <poll.h>
@@ -864,8 +865,9 @@ static void xdg_popup_done(void *data, struct xdg_popup *) {
 // --- WaylandPlatformApplication ---
 
 WaylandPlatformApplication::WaylandPlatformApplication() {
-    static CairoTextRasterizer s_rasterizer;
-    set_rasterizer(&s_rasterizer);
+    FcInit();
+    app_rasterizer_ = std::make_unique<CairoTextRasterizer>();
+    set_rasterizer(app_rasterizer_.get());
     set_shaper(&app_shaper_);
     display = wl_display_connect(nullptr);
     if (!display) {
@@ -1034,6 +1036,14 @@ WaylandPlatformApplication::~WaylandPlatformApplication() {
     if (wakeup_pipe[1] >= 0) {
         ::close(wakeup_pipe[1]);
     }
+    // Destroy all Cairo font faces before Cairo clears its global font map.
+    // Members (app_shaper_, app_rasterizer_) are destroyed after the body,
+    // so we must release their cached faces explicitly here.
+    app_shaper_.release_fonts();
+    set_rasterizer(nullptr);
+    app_rasterizer_.reset();
+    cairo_debug_reset_static_data();
+    FcFini();
 }
 
 std::unique_ptr<PlatformWindow> WaylandPlatformApplication::create_window(std::string_view title,

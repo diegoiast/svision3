@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/image.hpp"
+#include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/painters/cairo_shaper.hpp"
 #include "toolkit/platform.hpp"
 #include <memory>
@@ -37,7 +38,8 @@ class X11PlatformApplication : public PlatformApplication {
     std::unique_ptr<Impl> impl_;
     std::shared_ptr<ImageLoaderInterface> image_loader_;
     std::shared_ptr<SVGLoaderInterface> svg_loader_;
-    CairoShaper app_shaper_;
+    CairoShaper           app_shaper_;
+    std::unique_ptr<CairoTextRasterizer> app_rasterizer_;
 };
 
 class X11PlatformWindow : public PlatformWindow {

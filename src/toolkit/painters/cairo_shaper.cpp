@@ -1,16 +1,10 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-// !!! UNTESTED !!! Written without access to a Linux/Cairo/HarfBuzz/FreeType
-// toolchain -- it has never been compiled, let alone run. See
-// docs/design/cairo-shaper-handoff.md for implementation status, the
-// reasoning behind the choices below, known gaps, and a verification
-// checklist for whoever (human or LLM) picks this up on a real Linux box.
-
 #ifdef TOOLKIT_HAS_CAIRO
 
-#include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/painters/cairo_shaper.hpp"
+#include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/utf8.hpp"
 
@@ -19,9 +13,13 @@
 #include <fontconfig/fontconfig.h>
 #include <freetype/freetype.h>
 #include <hb-ft.h>
+#include <hb-ot.h>
 #include <hb.h>
+#include <spdlog/spdlog.h>
 
 #include <cmath>
+#include <map>
+#include <string>
 #include <vector>
 
 namespace toolkit {
@@ -81,21 +79,35 @@ std::vector<ScriptSpan> segment_by_script(std::string_view utf8) {
         return spans;
     }
 
-    auto *ufuncs = hb_unicode_funcs_get_default();
-    size_t pos = 0;
-    size_t seg_start = 0;
-    auto seg_script = HB_SCRIPT_INVALID; // "no strong script seen yet in this span"
+    auto ufuncs = hb_unicode_funcs_get_default();
+    auto pos = size_t{0};
+    auto seg_start = size_t{0};
+    auto seg_script = HB_SCRIPT_INVALID;
 
     while (pos < utf8.size()) {
         auto next = Utf8Iterator::next(utf8, pos);
         auto cp = decode_codepoint(utf8, pos, next);
         auto cp_script = hb_unicode_script(ufuncs, static_cast<hb_codepoint_t>(cp));
-        auto is_common = cp_script == HB_SCRIPT_COMMON || cp_script == HB_SCRIPT_INHERITED ||
-                         cp_script == HB_SCRIPT_UNKNOWN;
-        if (!is_common) {
-            if (seg_script == HB_SCRIPT_INVALID) {
+        auto is_weak = cp_script == HB_SCRIPT_COMMON || cp_script == HB_SCRIPT_INHERITED ||
+                       cp_script == HB_SCRIPT_UNKNOWN;
+
+        if (is_weak) {
+            // A weak character following a strong script closes that span and
+            // opens a COMMON run. The COMMON run will absorb the next strong
+            // script (so "★ français" becomes a LATIN span, not a COMMON one).
+            if (seg_script != HB_SCRIPT_INVALID && seg_script != HB_SCRIPT_COMMON) {
+                spans.push_back({seg_start, pos - seg_start, seg_script});
+                seg_start = pos;
+                seg_script = HB_SCRIPT_COMMON;
+            }
+            // Already COMMON or INVALID: just continue accumulating.
+        } else {
+            if (seg_script == HB_SCRIPT_INVALID || seg_script == HB_SCRIPT_COMMON) {
+                // No strong script yet, or inside a COMMON run: absorb this
+                // script so the COMMON prefix joins this strong-script span.
                 seg_script = cp_script;
             } else if (cp_script != seg_script) {
+                // Different strong script: close current span, start new one.
                 spans.push_back({seg_start, pos - seg_start, seg_script});
                 seg_start = pos;
                 seg_script = cp_script;
@@ -103,44 +115,17 @@ std::vector<ScriptSpan> segment_by_script(std::string_view utf8) {
         }
         pos = next;
     }
-    spans.push_back(
-        {seg_start, utf8.size() - seg_start, seg_script == HB_SCRIPT_INVALID ? HB_SCRIPT_COMMON : seg_script});
+
+    if (seg_start < utf8.size()) {
+        auto final_script = (seg_script == HB_SCRIPT_INVALID) ? HB_SCRIPT_COMMON : seg_script;
+        spans.push_back({seg_start, utf8.size() - seg_start, final_script});
+    }
     return spans;
 }
 
 std::string family_for(FontFamily family) {
     auto const &fonts = Theme::current().palette.fonts;
     return family == FontFamily::Monospace ? fonts.monospace : fonts.system;
-}
-
-// Resolves a CSS-style family name ("sans-serif", "monospace", or a real
-// family name) to a concrete font file path + face index via fontconfig.
-// Assumes fontconfig has already been initialized somewhere at the
-// application/platform layer (see handoff doc -- this was NOT verified).
-bool resolve_font_file(std::string const &family, std::string &path_out, int &index_out) {
-    auto *pattern = FcNameParse(reinterpret_cast<FcChar8 const *>(family.c_str()));
-    if (!pattern) {
-        return false;
-    }
-    FcConfigSubstitute(nullptr, pattern, FcMatchPattern);
-    FcDefaultSubstitute(pattern);
-    FcResult result{};
-    auto *match = FcFontMatch(nullptr, pattern, &result);
-    FcPatternDestroy(pattern);
-    if (!match) {
-        return false;
-    }
-
-    FcChar8 *file = nullptr;
-    auto ok = FcPatternGetString(match, FC_FILE, 0, &file) == FcResultMatch;
-    if (ok) {
-        path_out = reinterpret_cast<char const *>(file);
-        int index = 0;
-        FcPatternGetInteger(match, FC_INDEX, 0, &index);
-        index_out = index;
-    }
-    FcPatternDestroy(match);
-    return ok;
 }
 
 // One shaped span: HarfBuzz's own glyph-info/-position arrays, copied out
@@ -154,18 +139,19 @@ struct ShapeResult {
     std::vector<hb_glyph_position_t> positions;
 };
 
-ShapeResult shape_one_span(hb_font_t *font, std::string_view span_utf8, hb_script_t script, bool rtl) {
+ShapeResult shape_one_span(hb_font_t *font, std::string_view span_utf8, hb_script_t script,
+                           bool rtl) {
     ShapeResult out;
-    auto *buf = hb_buffer_create();
+    auto buf = hb_buffer_create();
     hb_buffer_add_utf8(buf, span_utf8.data(), static_cast<int>(span_utf8.size()), 0, -1);
     hb_buffer_set_direction(buf, rtl ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
     hb_buffer_set_script(buf, script);
     hb_buffer_set_language(buf, hb_language_get_default());
     hb_shape(font, buf, nullptr, 0);
 
-    unsigned int count = 0;
-    auto *infos = hb_buffer_get_glyph_infos(buf, &count);
-    auto *positions = hb_buffer_get_glyph_positions(buf, &count);
+    auto count = 0U;
+    auto infos = hb_buffer_get_glyph_infos(buf, &count);
+    auto positions = hb_buffer_get_glyph_positions(buf, &count);
     out.infos.assign(infos, infos + count);
     out.positions.assign(positions, positions + count);
     hb_buffer_destroy(buf);
@@ -179,14 +165,15 @@ ShapeResult shape_one_span(hb_font_t *font, std::string_view span_utf8, hb_scrip
 // ClusterAdvance's v1 contract, this approximates ligatures/marks as a
 // single wider "cluster" rather than reporting per-character sub-widths --
 // same documented limitation as the Win32 backend.
-std::vector<text::ClusterAdvance> advances_from_shape(ShapeResult const &shaped, size_t span_offset) {
+std::vector<text::ClusterAdvance> advances_from_shape(ShapeResult const &shaped,
+                                                      size_t span_offset) {
     std::vector<text::ClusterAdvance> out;
     auto const n = shaped.infos.size();
-    size_t i = 0;
+    auto i = 0;
     while (i < n) {
         auto cluster = shaped.infos[i].cluster;
         auto advance = 0.0f;
-        size_t j = i;
+        auto j = i;
         while (j < n && shaped.infos[j].cluster == cluster) {
             advance += static_cast<float>(shaped.positions[j].x_advance) / 64.0f;
             ++j;
@@ -199,8 +186,47 @@ std::vector<text::ClusterAdvance> advances_from_shape(ShapeResult const &shaped,
 
 } // namespace
 
+// One loaded font, keyed by the actual file+face+size rather than the logical
+// family name. Different scripts that resolve to the same font file share a
+// single FaceEntry, keeping resource use proportional to distinct physical
+// fonts rather than distinct (family,script) pairs.
+//
+// Two separate FT_Face instances are required: hb_ft_face_create_referenced
+// installs FreeType user-data hooks that conflict with Cairo's own hooks when
+// they share an instance (Cairo asserts at exit). ft_face_hb is HarfBuzz's
+// exclusive copy; ft_face_cairo is Cairo's exclusive copy from the same file.
+//
+// hb_ot_font_set_funcs + hb_font_set_scale make HarfBuzz read metrics from
+// OpenType tables directly, so Cairo's internal FT_Set_Char_Size calls during
+// cairo_show_glyphs never corrupt HarfBuzz's size state.
+struct FaceEntry {
+    FT_Face ft_face_hb = nullptr;
+    hb_font_t *hb_font = nullptr;
+    FT_Face ft_face_cairo = nullptr;
+    cairo_font_face_t *cairo_face = nullptr;
+};
+
+struct FaceKey {
+    std::string path;
+    int face_index = 0;
+    int pixel_size = 0;
+
+    bool operator<(FaceKey const &o) const {
+        if (path != o.path) {
+            return path < o.path;
+        }
+        if (face_index != o.face_index) {
+            return face_index < o.face_index;
+        }
+        return pixel_size < o.pixel_size;
+    }
+};
+
 struct CairoShaper::Impl {
     FT_Library ft_library = nullptr;
+    std::map<FaceKey, FaceEntry> face_cache;
+    // FcFontSort result per family, lazily filled
+    std::map<std::string, FcFontSet *> fc_sets; 
 
     Impl() {
         if (FT_Init_FreeType(&ft_library) != 0) {
@@ -209,36 +235,193 @@ struct CairoShaper::Impl {
     }
 
     ~Impl() {
+        for (auto &[key, e] : face_cache) {
+            if (e.cairo_face) {
+                cairo_font_face_destroy(e.cairo_face);
+            }
+            if (e.ft_face_cairo) {
+                FT_Done_Face(e.ft_face_cairo);
+            }
+            if (e.hb_font) {
+                hb_font_destroy(e.hb_font);
+            }
+            if (e.ft_face_hb) {
+                FT_Done_Face(e.ft_face_hb);
+            }
+        }
+        for (auto &[fam, fs] : fc_sets) {
+            if (fs) {
+                FcFontSetDestroy(fs);
+            }
+        }
         if (ft_library) {
             FT_Done_FreeType(ft_library);
         }
     }
 
-    // Caller must FT_Done_Face() the result. A fresh face is loaded per
-    // call (no caching) -- same simplicity-over-micro-optimization choice
-    // win32_shaper.cpp makes with CreateFontW; see handoff doc for the
-    // follow-up note on caching by (family, pixel size).
-    FT_Face load_face(FontFamily family, float font_size) {
+    // Returns the FcFontSort set for `family`, caching it so FcFontSort
+    // (which scans the whole system font database) runs at most once per family.
+    FcFontSet *fc_set_for(std::string const &family) {
+        auto it = fc_sets.find(family);
+        if (it != fc_sets.end()) {
+            return it->second;
+        }
+
+        auto *pat = FcPatternCreate();
+        FcPatternAddString(pat, FC_FAMILY, reinterpret_cast<FcChar8 const *>(family.c_str()));
+        FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
+        FcConfigSubstitute(nullptr, pat, FcMatchPattern);
+        FcDefaultSubstitute(pat);
+        auto result = FcResult{};
+        FcFontSet *fs = FcFontSort(nullptr, pat, FcTrue, nullptr, &result);
+        FcPatternDestroy(pat);
+
+        fc_sets[family] = fs;
+        return fs;
+    }
+
+    // Walk the FcFontSort set for `family` and return the first font whose
+    // FC_CHARSET covers all non-whitespace codepoints in `span_utf8`.
+    // Falls back to the first font in the set if no perfect match is found.
+    bool find_font_file(std::string const &family, std::string_view span_utf8,
+                        std::string &path_out, int &index_out) {
+        auto fs = fc_set_for(family);
+        if (!fs || fs->nfont == 0) {
+            return false;
+        }
+
+        auto needed = FcCharSetCreate();
+        auto  pos = 0;
+        while (pos < span_utf8.size()) {
+            auto next = Utf8Iterator::next(span_utf8, pos);
+            auto cp = decode_codepoint(span_utf8, pos, next);
+            if (cp > 0x20u) {
+                FcCharSetAddChar(needed, cp);
+            }
+            pos = next;
+        }
+
+        std::string fallback_path;
+        auto fallback_index = 0;
+        auto found = false;
+        for (auto i = 0; i < fs->nfont && !found; ++i) {
+            FcChar8 *file = nullptr;
+            if (FcPatternGetString(fs->fonts[i], FC_FILE, 0, &file) != FcResultMatch) {
+                continue;
+            }
+
+            if (fallback_path.empty()) {
+                fallback_path = reinterpret_cast<char const *>(file);
+                FcPatternGetInteger(fs->fonts[i], FC_INDEX, 0, &fallback_index);
+            }
+
+            FcCharSet *fcs = nullptr;
+            if (FcPatternGetCharSet(fs->fonts[i], FC_CHARSET, 0, &fcs) != FcResultMatch || !fcs) {
+                continue;
+            }
+            if (FcCharSetIsSubset(needed, fcs)) {
+                path_out = reinterpret_cast<char const *>(file);
+                FcPatternGetInteger(fs->fonts[i], FC_INDEX, 0, &index_out);
+                found = true;
+            }
+        }
+
+        FcCharSetDestroy(needed);
+        if (!found && !fallback_path.empty()) {
+            path_out = fallback_path;
+            index_out = fallback_index;
+            found = true;
+        }
+        return found;
+    }
+
+    // Returns a cached FaceEntry for the font that covers `span_utf8` at the
+    // requested family and size, loading it on first use. Returns nullptr on
+    // any failure (FreeType, Cairo, or fontconfig).
+    FaceEntry const *get(FontFamily family, float font_size, std::string_view span_utf8) {
         if (!ft_library) {
             return nullptr;
         }
+
         std::string path;
-        int index = 0;
-        if (!resolve_font_file(family_for(family), path, index)) {
+        auto face_index = 0;
+        if (!find_font_file(family_for(family), span_utf8, path, face_index)) {
             return nullptr;
         }
-        FT_Face face = nullptr;
-        if (FT_New_Face(ft_library, path.c_str(), index, &face) != 0) {
+
+        FaceKey key;
+        key.path = path;
+        key.face_index = face_index;
+        key.pixel_size = static_cast<int>(std::lround(font_size));
+
+        auto it = face_cache.find(key);
+        if (it != face_cache.end()) {
+            return &it->second;
+        }
+
+        FT_Face face_hb = nullptr;
+        if (FT_New_Face(ft_library, path.c_str(), face_index, &face_hb) != 0) {
             return nullptr;
         }
-        FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(std::lround(font_size)));
-        return face;
+        auto hb_face_obj = hb_ft_face_create_referenced(face_hb);
+        auto hb = hb_font_create(hb_face_obj);
+        hb_ot_font_set_funcs(hb);
+        hb_font_set_scale(hb, key.pixel_size * 64, key.pixel_size * 64);
+        hb_face_destroy(hb_face_obj);
+
+        FT_Face face_cairo = nullptr;
+        if (FT_New_Face(ft_library, path.c_str(), face_index, &face_cairo) != 0) {
+            hb_font_destroy(hb);
+            FT_Done_Face(face_hb);
+            return nullptr;
+        }
+        auto cairo_face = cairo_ft_font_face_create_for_ft_face(face_cairo, 0);
+        if (cairo_font_face_status(cairo_face) != CAIRO_STATUS_SUCCESS) {
+            cairo_font_face_destroy(cairo_face);
+            FT_Done_Face(face_cairo);
+            hb_font_destroy(hb);
+            FT_Done_Face(face_hb);
+            return nullptr;
+        }
+
+        FaceEntry e;
+        e.ft_face_hb = face_hb;
+        e.hb_font = hb;
+        e.ft_face_cairo = face_cairo;
+        e.cairo_face = cairo_face;
+        auto [inserted, ok] = face_cache.emplace(key, e);
+        return &inserted->second;
     }
 };
 
 CairoShaper::CairoShaper() : impl_(std::make_unique<Impl>()) {}
 
 CairoShaper::~CairoShaper() = default;
+
+void CairoShaper::release_fonts() {
+    if (!impl_) {
+        return;
+    }
+    for (auto &[key, e] : impl_->face_cache) {
+        if (e.cairo_face) {
+            cairo_font_face_destroy(e.cairo_face);
+            e.cairo_face = nullptr;
+        }
+        if (e.ft_face_cairo) {
+            FT_Done_Face(e.ft_face_cairo);
+            e.ft_face_cairo = nullptr;
+        }
+        if (e.hb_font) {
+            hb_font_destroy(e.hb_font);
+            e.hb_font = nullptr;
+        }
+        if (e.ft_face_hb) {
+            FT_Done_Face(e.ft_face_hb);
+            e.ft_face_hb = nullptr;
+        }
+    }
+    impl_->face_cache.clear();
+}
 
 std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_utf8, bool rtl,
                                                          float font_size, FontFamily font) {
@@ -247,27 +430,22 @@ std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_ut
         return result;
     }
 
-    FT_Face face = impl_->load_face(font, font_size);
-    if (!face) {
-        return result;
-    }
-    auto *hb_font = hb_ft_font_create_referenced(face);
-
     auto spans = segment_by_script(run_utf8);
     std::vector<std::vector<text::ClusterAdvance>> per_span;
     per_span.reserve(spans.size());
+
     for (auto const &span : spans) {
-        auto shaped = shape_one_span(hb_font, run_utf8.substr(span.start, span.length), span.script, rtl);
+        auto span_text = run_utf8.substr(span.start, span.length);
+        auto entry = impl_->get(font, font_size, span_text);
+        if (!entry) {
+            per_span.push_back({});
+            continue;
+        }
+        auto shaped = shape_one_span(entry->hb_font, run_utf8.substr(span.start, span.length),
+                                     span.script, rtl);
         per_span.push_back(advances_from_shape(shaped, span.start));
     }
 
-    // Spans were sliced off `run_utf8` in LOGICAL order. Each span's own
-    // glyph order is already final visual order (HarfBuzz's own guarantee
-    // for the direction set on its buffer), but for an RTL run the spans
-    // THEMSELVES still need reversing relative to each other -- the
-    // last-typed span renders leftmost -- mirroring win32_shaper.cpp's
-    // per-item reversal one level up (script spans here play the role
-    // Uniscribe's ScriptItemize items play there).
     if (!rtl) {
         for (auto &entries : per_span) {
             result.insert(result.end(), entries.begin(), entries.end());
@@ -277,67 +455,57 @@ std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_ut
             result.insert(result.end(), it->begin(), it->end());
         }
     }
-
-    hb_font_destroy(hb_font);
-    FT_Done_Face(face);
     return result;
 }
 
 void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,
-                          Color const &color, float font_size, FontFamily font) {
+                           Color const &color, float font_size, FontFamily font) {
     if (run_utf8.empty()) {
         return;
     }
 
-    auto *cairo_painter = dynamic_cast<CairoPainter *>(&painter);
+    auto cairo_painter = dynamic_cast<CairoPainter *>(&painter);
     if (!cairo_painter) {
-        return; // v1: only the Cairo backend can interop with HarfBuzz/FreeType glyph indices here
-    }
-    auto *cr = cairo_painter->cairo();
-
-    FT_Face face = impl_->load_face(font, font_size);
-    if (!face) {
+        spdlog::debug("ERROR: using the cairo shaper without a cairo painter");
         return;
     }
-    auto *hb_font = hb_ft_font_create_referenced(face);
+    
+    auto *cr = cairo_painter->cairo();
+    cairo_save(cr);
 
-    // cairo_glyph_t::index is a glyph ID in the FreeType face's own glyph
-    // table -- the SAME space HarfBuzz's post-shape codepoint values use
-    // when shaped against an hb_font_t built from this same FT_Face (see
-    // ShapeResult's doc comment above). Building the cairo_font_face_t
-    // from this exact `face` guarantees the indices line up.
-    auto *cairo_face = cairo_ft_font_face_create_for_ft_face(face, 0);
-    cairo_set_font_face(cr, cairo_face);
-    cairo_set_font_size(cr, font_size);
-    cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
-
-    // Cairo's CTM (set up by the X11/Wayland backend before constructing
-    // this CairoPainter) already bakes in the DPI scale -- unlike
-    // win32_shaper.cpp, there is no separate scale factor to multiply
-    // font_size by here; see handoff doc.
     auto x = static_cast<double>(origin.x);
     auto y = static_cast<double>(origin.y);
-
     auto spans = segment_by_script(run_utf8);
+
     auto draw_one_span = [&](ScriptSpan const &span) {
-        auto shaped = shape_one_span(hb_font, run_utf8.substr(span.start, span.length), span.script, rtl);
-        auto const count = shaped.infos.size();
-        if (count == 0) {
+        auto span_text = run_utf8.substr(span.start, span.length);
+        auto *entry = impl_->get(font, font_size, span_text);
+        if (!entry) {
             return;
         }
-        std::vector<cairo_glyph_t> glyphs(count);
-        for (size_t i = 0; i < count; ++i) {
-            glyphs[i].index = shaped.infos[i].codepoint;
-            glyphs[i].x = x + static_cast<double>(shaped.positions[i].x_offset) / 64.0;
-            // HarfBuzz's y axis is font/PostScript-style (up is positive);
-            // Cairo's is screen-style (down is positive) -- NEGATE both the
-            // per-glyph y_offset and the y_advance. Sign not verified on a
-            // real renderer; see handoff doc.
-            glyphs[i].y = y - static_cast<double>(shaped.positions[i].y_offset) / 64.0;
-            x += static_cast<double>(shaped.positions[i].x_advance) / 64.0;
-            y -= static_cast<double>(shaped.positions[i].y_advance) / 64.0;
+
+        // cairo_face is owned by the cache; don't destroy it here.
+        // Using the same pointer every frame lets Cairo reuse its
+        // cairo_scaled_font_t and glyph raster cache.
+        cairo_set_font_face(cr, entry->cairo_face);
+        cairo_set_font_size(cr, font_size);
+        cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
+
+        auto shaped = shape_one_span(entry->hb_font, run_utf8.substr(span.start, span.length),
+                                     span.script, rtl);
+        auto const count = shaped.infos.size();
+        if (count > 0) {
+            std::vector<cairo_glyph_t> glyphs(count);
+            for (auto i = 0; i < count; ++i) {
+                glyphs[i].index = shaped.infos[i].codepoint;
+                glyphs[i].x = x + static_cast<double>(shaped.positions[i].x_offset) / 64.0;
+                // HarfBuzz y is PostScript-style (up+); Cairo is screen-style (down+).
+                glyphs[i].y = y - static_cast<double>(shaped.positions[i].y_offset) / 64.0;
+                x += static_cast<double>(shaped.positions[i].x_advance) / 64.0;
+                y -= static_cast<double>(shaped.positions[i].y_advance) / 64.0;
+            }
+            cairo_show_glyphs(cr, glyphs.data(), static_cast<int>(count));
         }
-        cairo_show_glyphs(cr, glyphs.data(), static_cast<int>(count));
     };
 
     if (!rtl) {
@@ -350,9 +518,7 @@ void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
         }
     }
 
-    cairo_font_face_destroy(cairo_face);
-    hb_font_destroy(hb_font);
-    FT_Done_Face(face);
+    cairo_restore(cr);
 }
 
 } // namespace toolkit

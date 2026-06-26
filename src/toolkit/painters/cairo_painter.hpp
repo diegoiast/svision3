@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/painter.hpp"
+#include "toolkit/painters/cairo_shaper.hpp"
 #include "toolkit/painters/gl_painter.hpp"
 #include "toolkit/text_rasterizer.hpp"
 
@@ -69,6 +70,9 @@ class CairoTextRasterizer : public TextRasterizer {
     void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
                    float font_size, FontFamily font, Painter::TextOrientation orientation,
                    bool bold, bool italic) override;
+
+  private:
+    CairoShaper shaper_;
 };
 
 } // namespace toolkit

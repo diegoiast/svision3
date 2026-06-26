@@ -32,11 +32,6 @@
 #endif
 #endif
 
-// FIXME: this should not be on this code, but in lower level code.
-#ifdef TOOLKIT_HAS_CAIRO
-#include <cairo.h>
-#include <fontconfig/fontconfig.h>
-#endif
 
 namespace toolkit {
 
@@ -183,10 +178,6 @@ Application::Application() : impl_(std::make_unique<Impl>()) {
 Application::~Application() {
     detail::set_current_platform(nullptr);
     detail::set_current_application(nullptr);
-#ifdef TOOLKIT_HAS_CAIRO
-    cairo_debug_reset_static_data();
-    FcFini();
-#endif
 }
 
 Application &Application::instance() { return *detail::current_application(); }
