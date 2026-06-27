@@ -18,6 +18,13 @@ class Win32Shaper : public text::TextShaper {
     Win32Shaper();
     ~Win32Shaper() override;
 
+    // Drops every cached HFONT/SCRIPT_CACHE (keyed by resolved face name +
+    // pixel size -- see Impl::font_cache in win32_shaper.cpp). Not called
+    // from anywhere yet; the destructor does the same cleanup on its own
+    // regardless, so this is an optional early-release hook (e.g. for a
+    // future theme-change handler), mirroring CairoShaper::release_fonts().
+    void release_fonts();
+
     std::vector<text::ClusterAdvance> shape_run(std::string_view run_utf8, bool rtl,
                                                 float font_size, FontFamily font) override;
     void draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,

@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <vector>
 
 namespace toolkit {
@@ -54,13 +55,14 @@ WideRun to_wide_run(std::string_view run_utf8) {
     WideRun out;
     out.text.reserve(run_utf8.size());
     out.byte_offset.reserve(run_utf8.size());
-    size_t pos = 0;
+
+    auto pos = 0;
     while (pos < run_utf8.size()) {
-        auto next = Utf8Iterator::next(run_utf8, pos);
         wchar_t buf[2];
-        int n = MultiByteToWideChar(CP_UTF8, 0, run_utf8.data() + pos,
+        auto next = Utf8Iterator::next(run_utf8, pos);
+        auto n = MultiByteToWideChar(CP_UTF8, 0, run_utf8.data() + pos,
                                     static_cast<int>(next - pos), buf, 2);
-        for (int i = 0; i < n; ++i) {
+        for (auto i = 0; i < n; ++i) {
             out.text.push_back(buf[i]);
             out.byte_offset.push_back(pos);
         }
@@ -121,10 +123,11 @@ std::vector<ShapedItem> shape_items(HDC hdc, SCRIPT_CACHE *cache, std::wstring c
 
         auto chars = wide.c_str() + item.char_start;
         auto max_glyphs = item.char_count * 2 + 16;
-        item.log_clusters.resize(static_cast<size_t>(item.char_count));
-
         auto num_glyphs = 0;
-        HRESULT shr = E_OUTOFMEMORY;
+        auto shr = E_OUTOFMEMORY;
+        auto abc = ABC{};
+
+        item.log_clusters.resize(static_cast<size_t>(item.char_count));
         for (auto attempt = 0; attempt < 3 && shr == E_OUTOFMEMORY; ++attempt) {
             item.glyphs.resize(static_cast<size_t>(max_glyphs));
             item.visattrs.resize(static_cast<size_t>(max_glyphs));
@@ -146,11 +149,9 @@ std::vector<ShapedItem> shape_items(HDC hdc, SCRIPT_CACHE *cache, std::wstring c
         }
         item.glyphs.resize(static_cast<size_t>(num_glyphs));
         item.visattrs.resize(static_cast<size_t>(num_glyphs));
-
         item.advances.resize(static_cast<size_t>(num_glyphs));
         item.goffsets.resize(static_cast<size_t>(num_glyphs));
-        ABC abc{};
-        HRESULT phr = ScriptPlace(hdc, cache, item.glyphs.data(), num_glyphs, item.visattrs.data(),
+        auto phr = ScriptPlace(hdc, cache, item.glyphs.data(), num_glyphs, item.visattrs.data(),
                                   &item.sa, item.advances.data(), item.goffsets.data(), &abc);
         if (FAILED(phr)) {
             continue;
@@ -202,21 +203,78 @@ std::vector<ClusterAdvance> item_to_scalars(ShapedItem const &item,
 
 } // namespace
 
+// HFONT + SCRIPT_CACHE for one (resolved face name, pixel size) pair. Both
+// are meant by their own APIs to be persisted across calls for the same
+// font -- SCRIPT_CACHE in particular exists specifically so Uniscribe
+// doesn't re-derive a font's shaping tables on every ScriptShape/ScriptPlace
+// call. Unlike CairoShaper's analogous cache, there's no handle-sharing
+// hazard here: SCRIPT_CACHE is documented as tied to a font's
+// characteristics, not to whichever HDC happened to populate it, so the
+// same cache entry is safe to reuse from both shape_run's private
+// measurement HDC and draw_run's live device HDC.
+struct FontEntry {
+    HFONT hfont = nullptr;
+    SCRIPT_CACHE cache = nullptr;
+};
+
+struct FontKey {
+    std::wstring face_name;
+    int pixel_size = 0;
+
+    bool operator<(FontKey const &o) const {
+        if (face_name != o.face_name) {
+            return face_name < o.face_name;
+        }
+        return pixel_size < o.pixel_size;
+    }
+};
+
 struct Win32Shaper::Impl {
     // private, off-screen DC used only to measure (shape_run)
     HDC hdc = nullptr;
+    std::map<FontKey, FontEntry> font_cache;
 
-    HFONT create_font(float font_size, FontFamily family) {
+    // Returns a cached FontEntry for (family, font_size) as resolved against
+    // the *current* theme, creating it on first use. Keyed by the resolved
+    // face name (not the FontFamily enum) so a theme change naturally misses
+    // the cache and loads the new font, rather than serving a stale HFONT.
+    FontEntry &get(float font_size, FontFamily family) {
         auto const &t = Theme::current();
         auto face_name =
             (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
-        auto wface = to_wide(face_name);
-        auto height = -static_cast<int>(std::round(font_size));
+        FontKey key{to_wide(face_name), static_cast<int>(std::round(font_size))};
+
+        auto it = font_cache.find(key);
+        if (it != font_cache.end()) {
+            return it->second;
+        }
+
+        auto height = -key.pixel_size;
         auto pitch =
             (family == FontFamily::Monospace) ? FIXED_PITCH | FF_MODERN : DEFAULT_PITCH | FF_SWISS;
-        return CreateFontW(height, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                           OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, pitch,
-                           wface.c_str());
+        auto hfont = CreateFontW(height, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                                 OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, pitch,
+                                 key.face_name.c_str());
+        return font_cache.emplace(key, FontEntry{hfont, nullptr}).first->second;
+    }
+
+    void release_fonts() {
+        for (auto &[key, e] : font_cache) {
+            if (e.cache) {
+                ScriptFreeCache(&e.cache);
+            }
+            if (e.hfont) {
+                DeleteObject(e.hfont);
+            }
+        }
+        font_cache.clear();
+    }
+
+    ~Impl() {
+        release_fonts();
+        if (hdc) {
+            DeleteDC(hdc);
+        }
     }
 };
 
@@ -224,11 +282,9 @@ Win32Shaper::Win32Shaper() : impl_(std::make_unique<Impl>()) {
     impl_->hdc = CreateCompatibleDC(nullptr);
 }
 
-Win32Shaper::~Win32Shaper() {
-    if (impl_->hdc) {
-        DeleteDC(impl_->hdc);
-    }
-}
+Win32Shaper::~Win32Shaper() = default;
+
+void Win32Shaper::release_fonts() { impl_->release_fonts(); }
 
 std::vector<ClusterAdvance> Win32Shaper::shape_run(std::string_view run_utf8, bool rtl,
                                                    float font_size, FontFamily font) {
@@ -242,20 +298,13 @@ std::vector<ClusterAdvance> Win32Shaper::shape_run(std::string_view run_utf8, bo
         return result;
     }
 
-    auto hfont = impl_->create_font(font_size, font);
-    auto old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
-
-    // SCRIPT_CACHE is tied to one specific font; shape_run/draw_run may be
-    // called with varying font_size/family, so each call gets its own
-    // short-lived cache rather than risking a stale one in Impl.
-    SCRIPT_CACHE cache = nullptr;
-    auto items = shape_items(impl_->hdc, &cache, wide.text, rtl);
-    if (cache) {
-        ScriptFreeCache(&cache);
+    auto &entry = impl_->get(font_size, font);
+    if (!entry.hfont) {
+        return result;
     }
-
+    auto old_font = static_cast<HFONT>(SelectObject(impl_->hdc, entry.hfont));
+    auto items = shape_items(impl_->hdc, &entry.cache, wide.text, rtl);
     SelectObject(impl_->hdc, old_font);
-    DeleteObject(hfont);
 
     if (items.empty()) {
         return result;
@@ -315,8 +364,12 @@ void Win32Shaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
         return;
     }
 
-    HFONT hfont = impl_->create_font(font_size * scale, font);
-    HFONT old_font = static_cast<HFONT>(SelectObject(hdc, hfont));
+    auto &entry = impl_->get(font_size * scale, font);
+    if (!entry.hfont) {
+        graphics->ReleaseHDC(hdc);
+        return;
+    }
+    HFONT old_font = static_cast<HFONT>(SelectObject(hdc, entry.hfont));
 
     auto clamp = [](float v) {
         if (v < 0.0f) {
@@ -333,11 +386,10 @@ void Win32Shaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
     // convention as Win32TextRasterizer::draw_text's DrawString call).
     SetTextAlign(hdc, TA_LEFT | TA_BASELINE);
 
-    SCRIPT_CACHE cache = nullptr;
-    auto items = shape_items(hdc, &cache, wide.text, rtl);
+    auto items = shape_items(hdc, &entry.cache, wide.text, rtl);
 
     auto draw_item = [&](ShapedItem const &item) {
-        ScriptTextOut(hdc, &cache, static_cast<int>(std::round(device_origin.X)),
+        ScriptTextOut(hdc, &entry.cache, static_cast<int>(std::round(device_origin.X)),
                      static_cast<int>(std::round(device_origin.Y)), 0, nullptr, &item.sa, nullptr, 0,
                      item.glyphs.data(), static_cast<int>(item.glyphs.size()),
                      item.advances.data(), nullptr, item.goffsets.data());
@@ -358,11 +410,7 @@ void Win32Shaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
         }
     }
 
-    if (cache) {
-        ScriptFreeCache(&cache);
-    }
     SelectObject(hdc, old_font);
-    DeleteObject(hfont);
     graphics->ReleaseHDC(hdc);
 }
 
