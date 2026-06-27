@@ -14,5 +14,9 @@ namespace linux_utils {
 
 SystemFonts detect_system_fonts();
 
+// Call after FcInit(). Loads the system fontconfig alias rules (conf.d) that
+// the conan static fontconfig misses because its baked-in prefix is wrong.
+void init_fontconfig();
+
 } // namespace linux_utils
 } // namespace toolkit

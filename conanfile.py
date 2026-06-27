@@ -18,6 +18,7 @@ class ToolkitRecipe(ConanFile):
             self.requires("stb/cci.20240213")
             self.requires("fribidi/1.0.13")
             self.requires("harfbuzz/12.3.0", options={"with_glib": False})
+            self.requires("freetype/2.13.3")
 
     def layout(self):
         cmake_layout(self, build_folder="build")

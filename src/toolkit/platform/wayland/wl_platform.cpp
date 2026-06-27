@@ -866,6 +866,7 @@ static void xdg_popup_done(void *data, struct xdg_popup *) {
 
 WaylandPlatformApplication::WaylandPlatformApplication() {
     FcInit();
+    linux_utils::init_fontconfig();
     app_rasterizer_ = std::make_unique<CairoTextRasterizer>();
     set_rasterizer(app_rasterizer_.get());
     set_shaper(&app_shaper_);

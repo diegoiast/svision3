@@ -631,6 +631,7 @@ static void process_pending_events(X11PlatformApplication::Impl *d) {
 
 X11PlatformApplication::X11PlatformApplication() : impl_(std::make_unique<Impl>()) {
     FcInit();
+    linux_utils::init_fontconfig();
     app_rasterizer_ = std::make_unique<CairoTextRasterizer>();
     set_rasterizer(app_rasterizer_.get());
     set_shaper(&app_shaper_);

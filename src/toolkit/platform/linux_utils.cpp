@@ -5,14 +5,17 @@
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
+#include <fontconfig/fontconfig.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <toml++/toml.hpp>
+#include <unistd.h>
 
 namespace toolkit::linux_utils {
 
 static SystemFonts detect_kde_fonts() {
-    SystemFonts result = {"sans-serif", "monospace", 0};
+    // 10pt is Plasma's compiled-in default when no font= key is written to kdeglobals
+    SystemFonts result = {"sans-serif", "monospace", 10};
     const char *home = std::getenv("HOME");
     if (!home) {
         return result;
@@ -96,5 +99,36 @@ static SystemFonts detect_kde_fonts() {
 }
 
 SystemFonts detect_system_fonts() { return detect_kde_fonts(); }
+
+void init_fontconfig() {
+    // The conan fontconfig static library has a wrong baked-in prefix, so the
+    // relative <include conf.d/> in the system fonts.conf resolves to a
+    // non-existent path and alias rules never load.  Probe standard locations
+    // and explicitly load them so "sans-serif" etc. resolve correctly.
+    static const char *candidates[] = {
+        "/etc/fonts/fonts.conf",
+        "/usr/local/etc/fonts/fonts.conf",
+        nullptr,
+    };
+
+    auto *cfg = FcConfigGetCurrent();
+    for (auto **c = candidates; *c; ++c) {
+        if (access(*c, R_OK) == 0) {
+            auto conf = std::string(*c);
+            auto conf_d = conf.substr(0, conf.rfind('/')) + "/conf.d";
+            FcConfigParseAndLoad(cfg, reinterpret_cast<FcChar8 const *>(conf.c_str()), FcFalse);
+            FcConfigParseAndLoad(cfg, reinterpret_cast<FcChar8 const *>(conf_d.c_str()), FcFalse);
+            spdlog::debug("fontconfig: loaded {} + conf.d", conf);
+            break;
+        }
+    }
+
+    if (const char *home = std::getenv("HOME")) {
+        auto user_fc = std::string(home) + "/.config/fontconfig";
+        FcConfigParseAndLoad(cfg, reinterpret_cast<FcChar8 const *>(user_fc.c_str()), FcFalse);
+    }
+
+    FcConfigBuildFonts(cfg);
+}
 
 } // namespace toolkit::linux_utils

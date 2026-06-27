@@ -261,19 +261,45 @@ struct CairoShaper::Impl {
 
     // Returns the FcFontSort set for `family`, caching it so FcFontSort
     // (which scans the whole system font database) runs at most once per family.
+    //
+    // Generic aliases like "sans-serif" are first resolved to a concrete family
+    // via FcFontMatch (the same path cairo_select_font_face uses internally),
+    // then FcFontSort is called on that concrete name so the fallback list is
+    // rooted at the correct primary font rather than being ranked by charset
+    // coverage order, which can surface a serif font ahead of the intended one.
     FcFontSet *fc_set_for(std::string const &family) {
         auto it = fc_sets.find(family);
         if (it != fc_sets.end()) {
             return it->second;
         }
 
+        // Step 1: resolve the family (handles generic aliases like "sans-serif")
+        auto *resolve_pat = FcPatternCreate();
+        FcPatternAddString(resolve_pat, FC_FAMILY,
+                           reinterpret_cast<FcChar8 const *>(family.c_str()));
+        FcPatternAddInteger(resolve_pat, FC_SLANT, FC_SLANT_ROMAN);
+        FcPatternAddInteger(resolve_pat, FC_WEIGHT, FC_WEIGHT_NORMAL);
+        FcConfigSubstitute(nullptr, resolve_pat, FcMatchPattern);
+        FcDefaultSubstitute(resolve_pat);
+        auto result = FcResult{};
+        auto *best = FcFontMatch(nullptr, resolve_pat, &result);
+        FcPatternDestroy(resolve_pat);
+
+        std::string primary = family;
+        if (best) {
+            FcChar8 *fc_fam = nullptr;
+            if (FcPatternGetString(best, FC_FAMILY, 0, &fc_fam) == FcResultMatch && fc_fam) {
+                primary = reinterpret_cast<char const *>(fc_fam);
+            }
+            FcPatternDestroy(best);
+        }
+        // Step 2: build the full fallback set from the concrete primary family
         auto *pat = FcPatternCreate();
-        FcPatternAddString(pat, FC_FAMILY, reinterpret_cast<FcChar8 const *>(family.c_str()));
+        FcPatternAddString(pat, FC_FAMILY, reinterpret_cast<FcChar8 const *>(primary.c_str()));
         FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
         FcConfigSubstitute(nullptr, pat, FcMatchPattern);
         FcDefaultSubstitute(pat);
-        auto result = FcResult{};
-        FcFontSet *fs = FcFontSort(nullptr, pat, FcTrue, nullptr, &result);
+        FcFontSet *fs = FcFontSort(nullptr, pat, FcFalse, nullptr, &result);
         FcPatternDestroy(pat);
 
         fc_sets[family] = fs;
