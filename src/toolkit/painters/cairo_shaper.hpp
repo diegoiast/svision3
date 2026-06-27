@@ -24,9 +24,11 @@ class CairoShaper : public text::TextShaper {
     void release_fonts();
 
     std::vector<text::ClusterAdvance> shape_run(std::string_view run_utf8, bool rtl,
-                                                float font_size, FontFamily font) override;
+                                                float font_size, FontFamily font,
+                                                bool bold = false, bool italic = false) override;
     void draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,
-                 Color const &color, float font_size, FontFamily font) override;
+                 Color const &color, float font_size, FontFamily font,
+                 bool bold = false, bool italic = false) override;
 
   private:
     struct Impl;

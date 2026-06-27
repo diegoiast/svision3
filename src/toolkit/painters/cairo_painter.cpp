@@ -183,12 +183,13 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             for (auto const &run : bidi_line.runs_visual()) {
                 auto run_text = text.substr(run.start, run.length);
                 // Shape first to know the run width, then draw at the right x.
-                auto advances = shaper_.shape_run(run_text, run.rtl(), font_size, font);
+                auto advances = shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic);
                 auto run_width = 0.0f;
                 for (auto const &ca : advances) {
                     run_width += ca.advance;
                 }
-                shaper_.draw_run(p, run_text, run.rtl(), {x, position.y}, color, font_size, font);
+                shaper_.draw_run(p, run_text, run.rtl(), {x, position.y}, color, font_size, font,
+                                 bold, italic);
                 x += run_width;
             }
         } else {
@@ -403,7 +404,7 @@ Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFa
     auto width = 0.0f;
     for (auto const &run : bidi_line.runs_visual()) {
         auto run_text = text.substr(run.start, run.length);
-        for (auto const &ca : shaper_.shape_run(run_text, run.rtl(), font_size, font)) {
+        for (auto const &ca : shaper_.shape_run(run_text, run.rtl(), font_size, font, false, false)) {
             width += ca.advance;
         }
     }

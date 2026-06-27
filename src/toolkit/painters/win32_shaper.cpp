@@ -287,7 +287,8 @@ Win32Shaper::~Win32Shaper() = default;
 void Win32Shaper::release_fonts() { impl_->release_fonts(); }
 
 std::vector<ClusterAdvance> Win32Shaper::shape_run(std::string_view run_utf8, bool rtl,
-                                                   float font_size, FontFamily font) {
+                                                   float font_size, FontFamily font,
+                                                   bool /*bold*/, bool /*italic*/) {
     std::vector<ClusterAdvance> result;
     if (run_utf8.empty()) {
         return result;
@@ -331,7 +332,8 @@ std::vector<ClusterAdvance> Win32Shaper::shape_run(std::string_view run_utf8, bo
 }
 
 void Win32Shaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,
-                           Color const &color, float font_size, FontFamily font) {
+                           Color const &color, float font_size, FontFamily font,
+                           bool /*bold*/, bool /*italic*/) {
     if (run_utf8.empty()) {
         return;
     }

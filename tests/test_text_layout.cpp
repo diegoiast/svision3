@@ -19,7 +19,7 @@ class DummyTextShaper : public TextShaper {
     static constexpr float kCharWidth = 8.0f;
 
     std::vector<ClusterAdvance> shape_run(std::string_view run_utf8, bool rtl, float,
-                                          FontFamily) override {
+                                          FontFamily, bool = false, bool = false) override {
         std::vector<size_t> offs;
         size_t pos = 0;
         while (pos < run_utf8.size()) {
@@ -42,7 +42,7 @@ class DummyTextShaper : public TextShaper {
     }
 
     void draw_run(Painter &, std::string_view, bool, Point, Color const &, float,
-                  FontFamily) override {}
+                  FontFamily, bool = false, bool = false) override {}
 };
 
 } // namespace

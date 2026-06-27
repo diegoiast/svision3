@@ -31,12 +31,14 @@ class TextShaper {
     // ordered VISUALLY left-to-right (for an rtl run that is the reverse of
     // logical order) so TextLayout can prefix-sum it directly into pixel x.
     virtual std::vector<ClusterAdvance> shape_run(std::string_view run_utf8, bool rtl,
-                                                  float font_size, FontFamily font) = 0;
+                                                  float font_size, FontFamily font,
+                                                  bool bold = false, bool italic = false) = 0;
 
     // Draws `run_utf8` starting at `origin` (left edge, baseline y), advancing
     // left-to-right -- the same geometry shape_run() reported.
     virtual void draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,
-                          Color const &color, float font_size, FontFamily font) = 0;
+                          Color const &color, float font_size, FontFamily font,
+                          bool bold = false, bool italic = false) = 0;
 };
 
 // One visually-ordered, already-placed run, ready for painting.

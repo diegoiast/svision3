@@ -267,18 +267,28 @@ struct CairoShaper::Impl {
     // then FcFontSort is called on that concrete name so the fallback list is
     // rooted at the correct primary font rather than being ranked by charset
     // coverage order, which can surface a serif font ahead of the intended one.
-    FcFontSet *fc_set_for(std::string const &family) {
-        auto it = fc_sets.find(family);
+    FcFontSet *fc_set_for(std::string const &family, bool bold, bool italic) {
+        auto cache_key = family;
+        if (bold) {
+            cache_key += ":b";
+        }
+        if (italic) {
+            cache_key += ":i";
+        }
+        auto it = fc_sets.find(cache_key);
         if (it != fc_sets.end()) {
             return it->second;
         }
+
+        auto fc_weight = bold ? FC_WEIGHT_BOLD : FC_WEIGHT_NORMAL;
+        auto fc_slant = italic ? FC_SLANT_ITALIC : FC_SLANT_ROMAN;
 
         // Step 1: resolve the family (handles generic aliases like "sans-serif")
         auto *resolve_pat = FcPatternCreate();
         FcPatternAddString(resolve_pat, FC_FAMILY,
                            reinterpret_cast<FcChar8 const *>(family.c_str()));
-        FcPatternAddInteger(resolve_pat, FC_SLANT, FC_SLANT_ROMAN);
-        FcPatternAddInteger(resolve_pat, FC_WEIGHT, FC_WEIGHT_NORMAL);
+        FcPatternAddInteger(resolve_pat, FC_SLANT, fc_slant);
+        FcPatternAddInteger(resolve_pat, FC_WEIGHT, fc_weight);
         FcConfigSubstitute(nullptr, resolve_pat, FcMatchPattern);
         FcDefaultSubstitute(resolve_pat);
         auto result = FcResult{};
@@ -297,12 +307,14 @@ struct CairoShaper::Impl {
         auto *pat = FcPatternCreate();
         FcPatternAddString(pat, FC_FAMILY, reinterpret_cast<FcChar8 const *>(primary.c_str()));
         FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
+        FcPatternAddInteger(pat, FC_SLANT, fc_slant);
+        FcPatternAddInteger(pat, FC_WEIGHT, fc_weight);
         FcConfigSubstitute(nullptr, pat, FcMatchPattern);
         FcDefaultSubstitute(pat);
         FcFontSet *fs = FcFontSort(nullptr, pat, FcFalse, nullptr, &result);
         FcPatternDestroy(pat);
 
-        fc_sets[family] = fs;
+        fc_sets[cache_key] = fs;
         return fs;
     }
 
@@ -310,8 +322,9 @@ struct CairoShaper::Impl {
     // FC_CHARSET covers all non-whitespace codepoints in `span_utf8`.
     // Falls back to the first font in the set if no perfect match is found.
     bool find_font_file(std::string const &family, std::string_view span_utf8,
-                        std::string &path_out, int &index_out) {
-        auto fs = fc_set_for(family);
+                        std::string &path_out, int &index_out, bool bold = false,
+                        bool italic = false) {
+        auto fs = fc_set_for(family, bold, italic);
         if (!fs || fs->nfont == 0) {
             return false;
         }
@@ -364,14 +377,15 @@ struct CairoShaper::Impl {
     // Returns a cached FaceEntry for the font that covers `span_utf8` at the
     // requested family and size, loading it on first use. Returns nullptr on
     // any failure (FreeType, Cairo, or fontconfig).
-    FaceEntry const *get(FontFamily family, float font_size, std::string_view span_utf8) {
+    FaceEntry const *get(FontFamily family, float font_size, std::string_view span_utf8,
+                         bool bold = false, bool italic = false) {
         if (!ft_library) {
             return nullptr;
         }
 
         std::string path;
         auto face_index = 0;
-        if (!find_font_file(family_for(family), span_utf8, path, face_index)) {
+        if (!find_font_file(family_for(family), span_utf8, path, face_index, bold, italic)) {
             return nullptr;
         }
 
@@ -450,7 +464,8 @@ void CairoShaper::release_fonts() {
 }
 
 std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_utf8, bool rtl,
-                                                         float font_size, FontFamily font) {
+                                                         float font_size, FontFamily font,
+                                                         bool bold, bool italic) {
     std::vector<text::ClusterAdvance> result;
     if (run_utf8.empty()) {
         return result;
@@ -462,7 +477,7 @@ std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_ut
 
     for (auto const &span : spans) {
         auto span_text = run_utf8.substr(span.start, span.length);
-        auto entry = impl_->get(font, font_size, span_text);
+        auto entry = impl_->get(font, font_size, span_text, bold, italic);
         if (!entry) {
             per_span.push_back({});
             continue;
@@ -485,7 +500,8 @@ std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_ut
 }
 
 void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,
-                           Color const &color, float font_size, FontFamily font) {
+                           Color const &color, float font_size, FontFamily font,
+                           bool bold, bool italic) {
     if (run_utf8.empty()) {
         return;
     }
@@ -495,7 +511,7 @@ void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
         spdlog::debug("ERROR: using the cairo shaper without a cairo painter");
         return;
     }
-    
+
     auto *cr = cairo_painter->cairo();
     cairo_save(cr);
 
@@ -505,7 +521,7 @@ void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
 
     auto draw_one_span = [&](ScriptSpan const &span) {
         auto span_text = run_utf8.substr(span.start, span.length);
-        auto *entry = impl_->get(font, font_size, span_text);
+        auto *entry = impl_->get(font, font_size, span_text, bold, italic);
         if (!entry) {
             return;
         }
