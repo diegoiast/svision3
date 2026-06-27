@@ -137,7 +137,8 @@ class Widget {
     //        - but in practice this may differ. We should choose the rasterizer
     //        from the painter.
     Size measure_text(std::string_view text, float font_size,
-                      FontFamily font = FontFamily::System) const;
+                      FontFamily font = FontFamily::System,
+                      bool bold = false, bool italic = false) const;
     Painter::FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) const;
 
     void set_parent(Widget *p) { parent_ = p; }

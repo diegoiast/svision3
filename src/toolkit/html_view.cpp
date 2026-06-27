@@ -103,7 +103,7 @@ class LitehtmlContainer : public litehtml::document_container {
             return 0;
         }
         auto *handle = reinterpret_cast<FontHandle *>(hFont);
-        auto w = view_->measure_text(text, handle->size, handle->family).width;
+        auto w = view_->measure_text(text, handle->size, handle->family, handle->bold, handle->italic).width;
 
         // Cairo text_extents measures ink bounds, not advance — spaces return 0.
         // Fall back to a proportional estimate when the result is zero.

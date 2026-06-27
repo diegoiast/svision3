@@ -204,12 +204,15 @@ struct FaceEntry {
     hb_font_t *hb_font = nullptr;
     FT_Face ft_face_cairo = nullptr;
     cairo_font_face_t *cairo_face = nullptr;
+    bool synthetic_italic = false;
 };
 
 struct FaceKey {
     std::string path;
     int face_index = 0;
     int pixel_size = 0;
+    bool bold = false;
+    bool italic = false;
 
     bool operator<(FaceKey const &o) const {
         if (path != o.path) {
@@ -218,7 +221,13 @@ struct FaceKey {
         if (face_index != o.face_index) {
             return face_index < o.face_index;
         }
-        return pixel_size < o.pixel_size;
+        if (pixel_size != o.pixel_size) {
+            return pixel_size < o.pixel_size;
+        }
+        if (bold != o.bold) {
+            return bold < o.bold;
+        }
+        return italic < o.italic;
     }
 };
 
@@ -321,16 +330,19 @@ struct CairoShaper::Impl {
     // Walk the FcFontSort set for `family` and return the first font whose
     // FC_CHARSET covers all non-whitespace codepoints in `span_utf8`.
     // Falls back to the first font in the set if no perfect match is found.
+    // actual_slant_out receives the FC_SLANT of the selected font so the
+    // caller can detect when fontconfig fell back to an upright face despite
+    // an italic request (i.e. synthetic oblique is needed).
     bool find_font_file(std::string const &family, std::string_view span_utf8,
-                        std::string &path_out, int &index_out, bool bold = false,
-                        bool italic = false) {
+                        std::string &path_out, int &index_out, int &actual_slant_out,
+                        bool bold = false, bool italic = false) {
         auto fs = fc_set_for(family, bold, italic);
         if (!fs || fs->nfont == 0) {
             return false;
         }
 
         auto needed = FcCharSetCreate();
-        auto  pos = 0;
+        auto pos = 0;
         while (pos < span_utf8.size()) {
             auto next = Utf8Iterator::next(span_utf8, pos);
             auto cp = decode_codepoint(span_utf8, pos, next);
@@ -342,6 +354,7 @@ struct CairoShaper::Impl {
 
         std::string fallback_path;
         auto fallback_index = 0;
+        auto fallback_slant = FC_SLANT_ROMAN;
         auto found = false;
         for (auto i = 0; i < fs->nfont && !found; ++i) {
             FcChar8 *file = nullptr;
@@ -352,6 +365,7 @@ struct CairoShaper::Impl {
             if (fallback_path.empty()) {
                 fallback_path = reinterpret_cast<char const *>(file);
                 FcPatternGetInteger(fs->fonts[i], FC_INDEX, 0, &fallback_index);
+                FcPatternGetInteger(fs->fonts[i], FC_SLANT, 0, &fallback_slant);
             }
 
             FcCharSet *fcs = nullptr;
@@ -361,6 +375,7 @@ struct CairoShaper::Impl {
             if (FcCharSetIsSubset(needed, fcs)) {
                 path_out = reinterpret_cast<char const *>(file);
                 FcPatternGetInteger(fs->fonts[i], FC_INDEX, 0, &index_out);
+                FcPatternGetInteger(fs->fonts[i], FC_SLANT, 0, &actual_slant_out);
                 found = true;
             }
         }
@@ -369,6 +384,7 @@ struct CairoShaper::Impl {
         if (!found && !fallback_path.empty()) {
             path_out = fallback_path;
             index_out = fallback_index;
+            actual_slant_out = fallback_slant;
             found = true;
         }
         return found;
@@ -385,7 +401,8 @@ struct CairoShaper::Impl {
 
         std::string path;
         auto face_index = 0;
-        if (!find_font_file(family_for(family), span_utf8, path, face_index, bold, italic)) {
+        auto actual_slant = FC_SLANT_ROMAN;
+        if (!find_font_file(family_for(family), span_utf8, path, face_index, actual_slant, bold, italic)) {
             return nullptr;
         }
 
@@ -393,6 +410,8 @@ struct CairoShaper::Impl {
         key.path = path;
         key.face_index = face_index;
         key.pixel_size = static_cast<int>(std::lround(font_size));
+        key.bold = bold;
+        key.italic = italic;
 
         auto it = face_cache.find(key);
         if (it != face_cache.end()) {
@@ -429,6 +448,16 @@ struct CairoShaper::Impl {
         e.hb_font = hb;
         e.ft_face_cairo = face_cairo;
         e.cairo_face = cairo_face;
+        // Synthesise oblique when fontconfig fell back to an upright face
+        // (FC_SLANT_ROMAN) despite an italic request.  Checking the FC_SLANT
+        // of the *selected* font is more reliable than FT_STYLE_FLAG_ITALIC:
+        // oblique/slnt-axis variable fonts are FC_SLANT_OBLIQUE but may not
+        // set the FreeType italic flag, so the flag check would cause double-
+        // slanting on systems that do have a real oblique face.
+        e.synthetic_italic = italic && (actual_slant == FC_SLANT_ROMAN);
+        if (e.synthetic_italic) {
+            spdlog::warn("CairoShaper: no italic face for '{}' — applying synthetic oblique", path);
+        }
         auto [inserted, ok] = face_cache.emplace(key, e);
         return &inserted->second;
     }
@@ -530,7 +559,17 @@ void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
         // Using the same pointer every frame lets Cairo reuse its
         // cairo_scaled_font_t and glyph raster cache.
         cairo_set_font_face(cr, entry->cairo_face);
-        cairo_set_font_size(cr, font_size);
+        if (entry->synthetic_italic) {
+            // Font has no true italic face (common for many non-Latin scripts).
+            // Apply a ~12° oblique shear to mimic italic, same as Cairo's toy
+            // API and GDI+ do automatically for fonts without a separate italic.
+            cairo_matrix_t fm;
+            cairo_matrix_init_scale(&fm, font_size, font_size);
+            fm.xy = -0.2 * font_size;
+            cairo_set_font_matrix(cr, &fm);
+        } else {
+            cairo_set_font_size(cr, font_size);
+        }
         cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
 
         auto shaped = shape_one_span(entry->hb_font, run_utf8.substr(span.start, span.length),

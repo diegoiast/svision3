@@ -65,7 +65,8 @@ class Painter {
     virtual float scale_factor() const { return 1.0f; }
 
     Size measure_text(std::string_view text, float font_size = 14.0f,
-                      FontFamily font = FontFamily::System);
+                      FontFamily font = FontFamily::System,
+                      bool bold = false, bool italic = false);
     FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System);
 
     // FIXME: draw_filled_frame - this should be removed and use the version from the theme

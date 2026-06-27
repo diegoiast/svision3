@@ -22,7 +22,8 @@ class Win32TextRasterizer : public TextRasterizer {
                              Color const &color, FontFamily font = FontFamily::System,
                              bool bold = false, bool italic = false) override;
     Size measure(std::string_view text, float font_size,
-                 FontFamily font = FontFamily::System) override;
+                 FontFamily font = FontFamily::System,
+                 bool bold = false, bool italic = false) override;
     Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) override;
     void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
                    float font_size, FontFamily font, Painter::TextOrientation orientation,

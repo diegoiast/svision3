@@ -173,20 +173,22 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
     return result;
 }
 
-Size Win32TextRasterizer::measure(std::string_view text, float font_size, FontFamily font) {
+Size Win32TextRasterizer::measure(std::string_view text, float font_size, FontFamily font,
+                                  bool bold, bool italic) {
     if (text.empty()) {
         return {0, 0};
     }
 
     auto cache_key = std::string(text) + '\0' + std::to_string(font_size) + '\0' +
-                     (font == FontFamily::Monospace ? '1' : '0');
+                     (font == FontFamily::Monospace ? '1' : '0') +
+                     (bold ? 'b' : '_') + (italic ? 'i' : '_');
     auto it = impl_->measure_cache.find(cache_key);
     if (it != impl_->measure_cache.end()) {
         return it->second;
     }
 
     auto wtext = to_wide(text);
-    HFONT hfont = impl_->create_font(font_size, 1.0f, font);
+    HFONT hfont = impl_->create_font(font_size, 1.0f, font, bold, italic);
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
     SIZE sz;
