@@ -96,9 +96,10 @@ class PlatformApplication {
     text::TextShaper *shaper() const { return shaper_; }
 
     Size measure_text(std::string_view text, float font_size,
-                      FontFamily font = FontFamily::System) const {
+                      FontFamily font = FontFamily::System,
+                      bool bold = false, bool italic = false) const {
         if (rasterizer_) {
-            return rasterizer_->measure(text, font_size, font);
+            return rasterizer_->measure(text, font_size, font, bold, italic);
         }
         return {};
     }

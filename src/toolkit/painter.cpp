@@ -125,11 +125,12 @@ void Painter::draw_text(std::string_view text, Point position, Color const &colo
     }
 }
 
-Size Painter::measure_text(std::string_view text, float font_size, FontFamily family) {
+Size Painter::measure_text(std::string_view text, float font_size, FontFamily family,
+                           bool bold, bool italic) {
     if (!rasterizer_ || text.empty()) {
         return {0, 0};
     }
-    return rasterizer_->measure(text, font_size, family);
+    return rasterizer_->measure(text, font_size, family, bold, italic);
 }
 
 Painter::FontMetrics Painter::font_metrics(float font_size, FontFamily family) {

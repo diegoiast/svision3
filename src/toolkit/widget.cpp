@@ -155,10 +155,11 @@ bool Widget::handle_key_impl(KeyEvent const &event) {
     return false;
 }
 
-Size Widget::measure_text(std::string_view text, float font_size, FontFamily font) const {
+Size Widget::measure_text(std::string_view text, float font_size, FontFamily font,
+                          bool bold, bool italic) const {
     // FIXME: use the painter or something? I don't like accsing the rasterizer from platform
     if (auto *p = detail::current_platform()) {
-        return p->measure_text(text, font_size, font);
+        return p->measure_text(text, font_size, font, bold, italic);
     }
     return {};
 }

@@ -33,7 +33,8 @@ class TextRasterizer {
     //        It would be cool to tell the metric which font to use so they would
     //        cache.
     virtual Size measure(std::string_view text, float font_size,
-                         FontFamily font = FontFamily::System) = 0;
+                         FontFamily font = FontFamily::System,
+                         bool bold = false, bool italic = false) = 0;
     virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) = 0;
 
     virtual void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
@@ -55,7 +56,8 @@ class DummyRasterizer : public TextRasterizer {
     };
 
     virtual Size measure(std::string_view text, float font_size,
-                         FontFamily font = FontFamily::System) {
+                         FontFamily font = FontFamily::System,
+                         bool bold = false, bool italic = false) {
         auto x = 8.0f;
         auto y = 16.0f;
         return {x * text.size(), y};

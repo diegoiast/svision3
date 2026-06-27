@@ -392,7 +392,8 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     return result;
 }
 
-Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFamily font) {
+Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFamily font,
+                                  bool bold, bool italic) {
     if (text.empty()) {
         return {0, 0};
     }
@@ -404,7 +405,7 @@ Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFa
     auto width = 0.0f;
     for (auto const &run : bidi_line.runs_visual()) {
         auto run_text = text.substr(run.start, run.length);
-        for (auto const &ca : shaper_.shape_run(run_text, run.rtl(), font_size, font, false, false)) {
+        for (auto const &ca : shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic)) {
             width += ca.advance;
         }
     }
