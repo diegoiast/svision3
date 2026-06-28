@@ -143,7 +143,25 @@ ShapeResult shape_one_span(hb_font_t *font, std::string_view span_utf8, hb_scrip
                            bool rtl) {
     ShapeResult out;
     auto buf = hb_buffer_create();
-    hb_buffer_add_utf8(buf, span_utf8.data(), static_cast<int>(span_utf8.size()), 0, -1);
+    if (rtl) {
+        // UAX #9 L4: a Bidi_Mirrored character at an RTL position must be
+        // rendered as its mirror glyph. hb_unicode_mirroring() covers the full
+        // Unicode BidiMirroring.txt table (brackets, angle brackets, …).
+        // hb_buffer_add() does not set content_type, so we declare it explicitly
+        // before adding codepoints; hb_shape() asserts UNICODE content type.
+        hb_buffer_set_content_type(buf, HB_BUFFER_CONTENT_TYPE_UNICODE);
+        auto ufuncs = hb_unicode_funcs_get_default();
+        auto pos = size_t{0};
+        while (pos < span_utf8.size()) {
+            auto next = Utf8Iterator::next(span_utf8, pos);
+            auto cp = decode_codepoint(span_utf8, pos, next);
+            auto mirrored = hb_unicode_mirroring(ufuncs, static_cast<hb_codepoint_t>(cp));
+            hb_buffer_add(buf, mirrored, static_cast<unsigned int>(pos));
+            pos = next;
+        }
+    } else {
+        hb_buffer_add_utf8(buf, span_utf8.data(), static_cast<int>(span_utf8.size()), 0, -1);
+    }
     hb_buffer_set_direction(buf, rtl ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
     hb_buffer_set_script(buf, script);
     hb_buffer_set_language(buf, hb_language_get_default());
