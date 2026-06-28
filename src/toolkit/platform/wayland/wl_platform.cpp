@@ -799,10 +799,6 @@ static void xdg_surface_configure(void *data, xdg_surface *surf, uint32_t serial
 static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_t h,
                                    wl_array *states) {
     auto *win = static_cast<WaylandPlatformWindow *>(data);
-    if (w > 0 && h > 0) {
-        win->pending_width = w;
-        win->pending_height = h;
-    }
     auto activated = false;
     auto maximized = false;
     if (states) {
@@ -815,6 +811,14 @@ static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_
                 maximized = true;
             }
         }
+    }
+    if (w > 0 && h > 0) {
+        // Compositor sends window-geometry dimensions; add shadow margins to get buffer size
+        auto shadow = (win->owner_->options().csd && !maximized)
+                          ? static_cast<int>(Theme::current().style.shadow.size)
+                          : 0;
+        win->pending_width = w + 2 * shadow;
+        win->pending_height = h + 2 * shadow;
     }
     if (win->owner_) {
         if (!activated) {
@@ -1629,6 +1633,19 @@ void WaylandPlatformWindow::do_paint() {
     frame_cb = wl_surface_frame(surface);
     if (frame_cb) {
         wl_callback_add_listener(frame_cb, &frame_listener, this);
+    }
+
+    // Tell the compositor the visible window area, excluding the transparent shadow border.
+    // Without this, the compositor treats the full buffer as the window boundary and caps
+    // movement so the shadow (not the content) sits at the screen edge.
+    if (xdg_surface_) {
+        if (owner_->options().csd && !owner_->is_maximized()) {
+            auto shadow = static_cast<int>(Theme::current().style.shadow.size);
+            xdg_surface_set_window_geometry(xdg_surface_, shadow, shadow, lw - 2 * shadow,
+                                            lh - 2 * shadow);
+        } else {
+            xdg_surface_set_window_geometry(xdg_surface_, 0, 0, lw, lh);
+        }
     }
 
     if (backend) {
