@@ -9,7 +9,7 @@
 #include "toolkit/window.hpp"
 
 #include "db/connection.hpp"
-#include "nfd.h"
+#include "toolkit/file_dialog.hpp"
 
 #include <spdlog/spdlog.h>
 #include <memory>
@@ -103,19 +103,6 @@ static void run_query(std::string const &sql,
     }
 }
 
-static std::string pick_db_file() {
-    NFD_Init();
-    nfdu8char_t *out_path = nullptr;
-    nfdu8filteritem_t filters[] = {{"SQLite databases", "db,sqlite,sqlite3,db3"}};
-    nfdresult_t result = NFD_OpenDialogU8(&out_path, filters, 1, nullptr);
-    std::string path;
-    if (result == NFD_OKAY && out_path) {
-        path = out_path;
-        NFD_FreePathU8(out_path);
-    }
-    NFD_Quit();
-    return path;
-}
 
 struct ViewerState {
     toolkit::Window *window = nullptr;
@@ -181,9 +168,14 @@ int main(int argc, char *argv[]) {
 
     auto open_btn = std::make_unique<toolkit::Button>("&Open...");
     open_btn->on_click = [&vs] {
-        auto path = pick_db_file();
-        if (!path.empty())
-            open_database(vs, path);
+        toolkit::FileDialog(vs.window)
+            .add_filter("SQLite databases", "*.db *.sqlite *.sqlite3 *.db3")
+            .use_native()
+            .open()
+            .then([&vs](toolkit::FileDialog::Result path) {
+                if (path)
+                    open_database(vs, *path);
+            });
     };
     toolbar->add_widget(std::move(open_btn));
 
