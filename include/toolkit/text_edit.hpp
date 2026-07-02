@@ -88,6 +88,13 @@ class TextEdit : public ScrollableWidget {
     void redo();
     void show_context_menu(Point pos);
     void sync_commands();
+    void insert_newline();
+    void delete_char_backward(bool word = false);
+    void delete_char_forward();
+    void indent_selection(bool unindent, int spaces = 4);
+    std::string range_text(Pos start, Pos end) const;
+    void insert_text_raw(std::string_view t, Pos at);
+    void delete_range_raw(Pos start, Pos end);
 
     std::vector<std::string> lines_{""};
     Pos cursor_;
@@ -97,6 +104,10 @@ class TextEdit : public ScrollableWidget {
     int blink_timer_id_ = 0;
     std::unique_ptr<ContextMenu> context_menu_;
     UndoStack undo_stack_;
+    mutable float cached_max_line_w_ = 0.0f;
+    mutable bool max_line_w_dirty_ = true;
+    mutable size_t last_lines_count_ = 0;
+    bool paste_available_ = false;
 };
 
 } // namespace toolkit

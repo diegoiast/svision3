@@ -13,53 +13,77 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/utf8.hpp"
 #include "toolkit/window.hpp"
-#include <nlohmann/json.hpp>
-
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <nlohmann/json.hpp>
+
 #include <sstream>
 
 namespace toolkit {
 
 static constexpr FontFamily kFont = FontFamily::Monospace;
 
+// Stores only the changed range rather than full-document snapshots.
+// Replace: range [pos_, before_end_] (text_before_) → [pos_, after_end_] (text_after_).
+// undo: delete [pos_..after_end_], insert text_before_ at pos_.
+// redo: delete [pos_..before_end_], insert text_after_ at pos_.
 class TextEditCommand : public UndoCommand {
   public:
-    TextEditCommand(TextEdit *edit, std::string old_text, std::string new_text,
-                    TextEdit::Pos old_cursor, TextEdit::Pos new_cursor)
-        : edit_(edit), old_text_(std::move(old_text)), new_text_(std::move(new_text)),
-          old_cursor_(old_cursor), new_cursor_(new_cursor) {}
+    TextEditCommand(TextEdit *edit, TextEdit::Pos pos, TextEdit::Pos before_end,
+                    TextEdit::Pos after_end, std::string text_before, std::string text_after,
+                    TextEdit::Pos old_cursor, TextEdit::Pos new_cursor, int cmd_id = 0)
+        : edit_(edit), pos_(pos), before_end_(before_end), after_end_(after_end),
+          text_before_(std::move(text_before)), text_after_(std::move(text_after)),
+          old_cursor_(old_cursor), new_cursor_(new_cursor), id_(cmd_id) {}
 
     void undo() override {
-        edit_->set_text(old_text_);
+        edit_->delete_range_raw(pos_, after_end_);
+        if (!text_before_.empty()) {
+            edit_->insert_text_raw(text_before_, pos_);
+        }
         edit_->set_cursor_for_undo(old_cursor_);
     }
 
     void redo() override {
-        edit_->set_text(new_text_);
+        edit_->delete_range_raw(pos_, before_end_);
+        if (!text_after_.empty()) {
+            edit_->insert_text_raw(text_after_, pos_);
+        }
         edit_->set_cursor_for_undo(new_cursor_);
     }
 
     bool merge_with(const UndoCommand *other) override {
+        if (id_ != 1) {
+            return false;
+        }
         auto const *o = static_cast<const TextEditCommand *>(other);
-        // Merge if it's the same command and pos is after current
-        if (o->old_cursor_.line == new_cursor_.line && o->old_cursor_.col == new_cursor_.col) {
-            new_text_ = o->new_text_;
+        if (o->id_ != 1) {
+            return false;
+        }
+        // Merge sequential single-char inserts (no deletion on either side)
+        if (text_before_.empty() && o->text_before_.empty() && after_end_ == o->pos_) {
+            text_after_ += o->text_after_;
+            after_end_ = o->after_end_;
             new_cursor_ = o->new_cursor_;
             return true;
         }
         return false;
     }
 
-    int id() const override { return 1; }
-    std::string text() const override { return "Typing"; }
+    int id() const override { return id_; }
+    std::string text() const override { return "Editing"; }
 
   private:
     TextEdit *edit_;
-    std::string old_text_;
-    std::string new_text_;
+    TextEdit::Pos pos_;
+    TextEdit::Pos before_end_;
+    TextEdit::Pos after_end_;
+    std::string text_before_;
+    std::string text_after_;
     TextEdit::Pos old_cursor_;
     TextEdit::Pos new_cursor_;
+    int id_;
 };
 
 TextEdit::TextEdit(std::string text) {
@@ -107,7 +131,12 @@ void TextEdit::from_json(nlohmann::json const &j) {
 }
 
 std::string TextEdit::text() const {
-    std::string result;
+    auto total = lines_.size() > 1 ? lines_.size() - 1 : 0;
+    for (auto const &ln : lines_) {
+        total += ln.size();
+    }
+    auto result = std::string();
+    result.reserve(total);
     for (auto i = 0; i < (int)lines_.size(); i++) {
         if (i > 0) {
             result += '\n';
@@ -133,9 +162,15 @@ void TextEdit::set_text(std::string const &text) {
     if (lines_.empty()) {
         lines_.emplace_back();
     }
+    // std::getline discards the newline delimiter, so a text that ends with
+    // '\n' loses the implicit empty last line.  Restore it here.
+    if (!text.empty() && text.back() == '\n') {
+        lines_.emplace_back();
+    }
     cursor_ = {0, 0};
     anchor_ = cursor_;
     scroll_x_ = scroll_y_ = 0;
+    max_line_w_dirty_ = true;
     update_scroll_state();
     sync_commands();
     if (window_) {
@@ -167,20 +202,25 @@ void TextEdit::update_scroll_state() {
     auto lh = line_height();
     auto const &palette = Theme::current().palette;
     auto content_h = lh * static_cast<float>(lines_.size());
-    auto max_line_w = 0.0f;
 
-    for (auto const &ln : lines_) {
-        float w = measure_text(ln, palette.fonts.size, kFont).width;
-        if (w > max_line_w) {
-            max_line_w = w;
+    if (max_line_w_dirty_) {
+        cached_max_line_w_ = 0.0f;
+        for (auto const &ln : lines_) {
+            float w = measure_text(ln, palette.fonts.size, kFont).width;
+            if (w > cached_max_line_w_) {
+                cached_max_line_w_ = w;
+            }
         }
+        max_line_w_dirty_ = false;
     }
+
     auto gw = gutter_width();
-    // FIXME what is this 20.0f?
-    update_scrollbars({max_line_w + gw + 20.0f, content_h});
+    update_scrollbars({cached_max_line_w_ + gw + 20.0f, content_h});
+    last_lines_count_ = lines_.size();
 }
 
 void TextEdit::on_focus() {
+    paste_available_ = !Clipboard::get_text().empty();
     reset_cursor_blink();
     if (window_ && blink_timer_id_ == 0) {
         // FIXME: cursor blink time should be defined by platform
@@ -285,8 +325,8 @@ void TextEdit::ensure_cursor_visible() {
     if (cx < scroll_x_ + gw) {
         scroll_x_ = cx - gw;
     }
-
-    update_scroll_state();
+    // Scrollbar range is updated lazily in paint() to avoid rescanning all
+    // lines on every keystroke/delete. scroll_x_/scroll_y_ are already correct.
 }
 
 void TextEdit::move_cursor(Pos p, bool extend_selection) {
@@ -297,17 +337,21 @@ void TextEdit::move_cursor(Pos p, bool extend_selection) {
     sync_commands();
     reset_cursor_blink();
     ensure_cursor_visible();
+    if (window_) {
+        window_->request_redraw("cursor move");
+    }
 }
 
 void TextEdit::delete_selection() {
     if (!has_selection()) {
         return;
     }
-    auto before = text();
+    auto s = sel_start(), e = sel_end();
+    auto deleted = range_text(s, e);
     auto old_cursor = cursor_;
     delete_selection_internal();
-    undo_stack_.push(std::make_unique<TextEditCommand>(this, before, text(), old_cursor, cursor_));
-
+    undo_stack_.push(std::make_unique<TextEditCommand>(this, s, e, s, std::move(deleted), "",
+                                                       old_cursor, cursor_));
     sync_commands();
     ensure_cursor_visible();
     if (window_) {
@@ -324,10 +368,30 @@ void TextEdit::delete_selection_internal() {
 
     if (s.line == e.line) {
         lines_[s.line].erase(s.col, e.col - s.col);
+        // Width can only shrink; leave cache conservative (same as single-char delete)
     } else {
+        auto const &pal = Theme::current().palette;
+        // Check if any deleted line was as wide as the cached max.
+        // If so, the true max may have dropped and we need a full rescan.
+        // Otherwise the cache is still valid — avoid rescanning the whole document.
+        auto need_rescan = false;
+        for (auto i = s.line; i <= e.line && !need_rescan; i++) {
+            auto w = measure_text(lines_[i], pal.fonts.size, kFont).width;
+            if (w >= cached_max_line_w_) {
+                need_rescan = true;
+            }
+        }
         auto merged = lines_[s.line].substr(0, s.col) + lines_[e.line].substr(e.col);
         lines_.erase(lines_.begin() + s.line, lines_.begin() + e.line + 1);
         lines_.insert(lines_.begin() + s.line, std::move(merged));
+        // Update cache with the merged line (may only grow, not shrink)
+        auto mw = measure_text(lines_[s.line], pal.fonts.size, kFont).width;
+        if (mw > cached_max_line_w_) {
+            cached_max_line_w_ = mw;
+        }
+        if (need_rescan) {
+            max_line_w_dirty_ = true;
+        }
     }
     cursor_ = anchor_ = s;
 }
@@ -341,17 +405,66 @@ void TextEdit::set_cursor_for_undo(Pos p) {
     }
 }
 
-void TextEdit::insert_text(std::string_view t) {
-    auto before = text();
-    auto old_cursor = cursor_;
+std::string TextEdit::range_text(Pos start, Pos end) const {
+    if (start == end) {
+        return {};
+    }
+    auto result = std::string{};
+    for (auto i = start.line; i <= end.line; i++) {
+        auto sc = (i == start.line) ? start.col : 0;
+        auto ec = (i == end.line) ? end.col : static_cast<int>(lines_[i].size());
+        result.append(lines_[i], sc, ec - sc);
+        if (i < end.line) {
+            result += '\n';
+        }
+    }
+    return result;
+}
 
+void TextEdit::insert_text_raw(std::string_view t, Pos at) {
+    cursor_ = anchor_ = at;
+    for (auto i = 0; i < (int)t.size(); i++) {
+        if (t[i] == '\n' || t[i] == '\r') {
+            if (t[i] == '\r' && i + 1 < (int)t.size() && t[i + 1] == '\n') {
+                i++;
+            }
+            auto rest = lines_[cursor_.line].substr(cursor_.col);
+            lines_[cursor_.line].erase(cursor_.col);
+            lines_.insert(lines_.begin() + cursor_.line + 1, std::move(rest));
+            cursor_.line++;
+            cursor_.col = 0;
+        } else {
+            lines_[cursor_.line].insert(lines_[cursor_.line].begin() + cursor_.col, t[i]);
+            cursor_.col++;
+        }
+    }
+    anchor_ = cursor_;
+}
+
+void TextEdit::delete_range_raw(Pos start, Pos end) {
+    if (start == end) {
+        return;
+    }
+    cursor_ = end;
+    anchor_ = start;
+    delete_selection_internal();
+}
+
+void TextEdit::insert_text(std::string_view t) {
+    auto old_cursor = cursor_;
+    auto insert_pos = has_selection() ? sel_start() : cursor_;
+    auto sel_e = has_selection() ? sel_end() : cursor_;
+
+    auto deleted_text = std::string{};
     if (has_selection()) {
+        deleted_text = range_text(insert_pos, sel_e);
         delete_selection_internal();
     }
 
+    // FIXME: support for unicode UTF/8
+    // FIXME: support for unicode char - new paragraph
+    auto insert_start_line = cursor_.line;
     for (auto i = 0; i < (int)t.size(); i++) {
-        // FIXME: support for unicode UTF/8
-        // FIXME: support for unicode char - new paragraph
         if (t[i] == '\n' || t[i] == '\r') {
             if (t[i] == '\r' && i + 1 < (int)t.size() && t[i + 1] == '\n') {
                 i++;
@@ -367,7 +480,25 @@ void TextEdit::insert_text(std::string_view t) {
         }
     }
     anchor_ = cursor_;
-    undo_stack_.push(std::make_unique<TextEditCommand>(this, before, text(), old_cursor, cursor_));
+
+    // id=1 enables merging for single-char inserts with no replaced selection
+    auto cmd_id = (deleted_text.empty() && t.size() == 1 && t[0] != '\n' && t[0] != '\r') ? 1 : 0;
+    undo_stack_.push(std::make_unique<TextEditCommand>(this, insert_pos, sel_e, cursor_,
+                                                       std::move(deleted_text), std::string(t),
+                                                       old_cursor, cursor_, cmd_id));
+
+    // Insertion can only increase line widths — check only the affected lines
+    // rather than doing a full rescan. If a selection was deleted first,
+    // max_line_w_dirty_ is already true and the rescan will cover everything.
+    if (!max_line_w_dirty_) {
+        auto const &palette = Theme::current().palette;
+        for (auto i = insert_start_line; i <= cursor_.line && i < (int)lines_.size(); i++) {
+            auto w = measure_text(lines_[i], palette.fonts.size, kFont).width;
+            if (w > cached_max_line_w_) {
+                cached_max_line_w_ = w;
+            }
+        }
+    }
 
     sync_commands();
     ensure_cursor_visible();
@@ -422,6 +553,7 @@ void TextEdit::select_all() {
     anchor_ = {0, 0};
     cursor_ = {static_cast<int>(lines_.size()) - 1, static_cast<int>(lines_.back().size())};
     sync_commands();
+    reset_cursor_blink();
     ensure_cursor_visible();
     if (window_) {
         window_->request_redraw("text change");
@@ -451,6 +583,7 @@ void TextEdit::copy() {
         }
     }
     Clipboard::set_text(sel);
+    paste_available_ = true;
 }
 
 void TextEdit::paste() {
@@ -462,6 +595,7 @@ void TextEdit::paste() {
 
 void TextEdit::undo() {
     if (undo_stack_.undo()) {
+        max_line_w_dirty_ = true;
         sync_commands();
         if (window_) {
             window_->request_redraw("undo");
@@ -471,6 +605,7 @@ void TextEdit::undo() {
 
 void TextEdit::redo() {
     if (undo_stack_.redo()) {
+        max_line_w_dirty_ = true;
         sync_commands();
         if (window_) {
             window_->request_redraw("redo");
@@ -505,12 +640,12 @@ void TextEdit::sync_commands() {
     if (!select_all_cmd) {
         return;
     }
-    bool has_sel = has_selection();
-    bool not_empty = lines_.size() > 1 || !lines_[0].empty();
+    auto has_sel = has_selection();
+    auto not_empty = lines_.size() > 1 || !lines_[0].empty();
     select_all_cmd->set_enabled(not_empty);
     cut_cmd->set_enabled(has_sel);
     copy_cmd->set_enabled(has_sel);
-    paste_cmd->set_enabled(!Clipboard::get_text().empty());
+    paste_cmd->set_enabled(paste_available_);
 
     undo_cmd->set_enabled(undo_stack_.can_undo());
     if (undo_stack_.can_undo()) {
@@ -533,7 +668,12 @@ void TextEdit::paint(Painter &painter) {
     auto gw = gutter_width();
     auto local_rect = Rect{0, 0, rect_.width, rect_.height};
 
-    update_scroll_state();
+    // Update scrollbars when width is dirty OR the line count changed.
+    // The expensive width rescan only runs when max_line_w_dirty_ is set.
+    // Drag and pure cursor movement skip both checks and go straight to drawing.
+    if (max_line_w_dirty_ || lines_.size() != last_lines_count_) {
+        update_scroll_state();
+    }
 
     auto first = std::max(0, static_cast<int>(scroll_y_ / lh));
     auto ss = sel_start();
@@ -559,8 +699,16 @@ void TextEdit::paint(Painter &painter) {
 // ── Mouse ───────────────────────────────────────────────────────────────────
 
 bool TextEdit::handle_mouse(MouseEvent const &event) {
-    if (event.type == MouseEvent::Type::Release) {
+    // Clear drag state before handle_scrollbar_mouse so the flag is not left
+    // stuck when the scrollbar consumes a Release that follows a text drag.
+    if (event.type == MouseEvent::Type::Release && dragging_) {
         dragging_ = false;
+        reset_cursor_blink();
+        sync_commands();
+        if (window_) {
+            window_->request_redraw("selection");
+        }
+        return true;
     }
 
     if (handle_scrollbar_mouse(event)) {
@@ -596,12 +744,18 @@ bool TextEdit::handle_mouse(MouseEvent const &event) {
             cursor_ = {p.line, end};
             sync_commands();
             reset_cursor_blink();
+            if (window_) {
+                window_->request_redraw("selection");
+            }
         } else if (event.click_count >= 3) {
             // Select entire line
             anchor_ = {p.line, 0};
             cursor_ = {p.line, static_cast<int>(lines_[p.line].size())};
             sync_commands();
             reset_cursor_blink();
+            if (window_) {
+                window_->request_redraw("selection");
+            }
         } else {
             move_cursor(p, event.shift);
             dragging_ = true;
@@ -610,14 +764,25 @@ bool TextEdit::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Drag && dragging_) {
+        auto prev = cursor_;
         cursor_ = pos_from_point(event.position);
-        sync_commands();
+        if (cursor_ == prev) {
+            return true;
+        }
+        // Skip clipboard check — Clipboard::get_text() blocks on X11 for up to 1s
+        if (cut_cmd) {
+            cut_cmd->set_enabled(has_selection());
+            copy_cmd->set_enabled(has_selection());
+        }
         reset_cursor_blink();
+        ensure_cursor_visible();
+        if (window_) {
+            window_->request_redraw("selection");
+        }
         return true;
     }
 
     if (event.type == MouseEvent::Type::Release) {
-        dragging_ = false;
         return false;
     }
 
@@ -625,6 +790,175 @@ bool TextEdit::handle_mouse(MouseEvent const &event) {
 }
 
 // ── Keyboard ────────────────────────────────────────────────────────────────
+
+void TextEdit::insert_newline() {
+    auto const &line = lines_[cursor_.line];
+    auto indent_end = 0;
+    while (indent_end < (int)line.size() && (line[indent_end] == ' ' || line[indent_end] == '\t')) {
+        indent_end++;
+    }
+    insert_text("\n" + line.substr(0, indent_end));
+}
+
+void TextEdit::delete_char_backward(bool word) {
+    std::unique_ptr<TextEditCommand> cmd;
+    if (word) {
+        auto end_pos = cursor_;
+        move_word_left(false);
+        auto start_pos = cursor_;
+        anchor_ = start_pos;
+        cursor_ = end_pos;
+        auto deleted = range_text(start_pos, end_pos);
+        delete_selection_internal();
+        max_line_w_dirty_ = true;
+        cmd = std::make_unique<TextEditCommand>(this, start_pos, end_pos, start_pos,
+                                                std::move(deleted), "", end_pos, cursor_);
+    } else if (cursor_.col > 0) {
+        auto prev = (int)Utf8Iterator::prev(lines_[cursor_.line], cursor_.col);
+        auto del_start = Pos{cursor_.line, prev};
+        auto del_end = cursor_;
+        auto old_cursor = cursor_;
+        auto deleted_char = lines_[cursor_.line].substr(prev, cursor_.col - prev);
+        lines_[cursor_.line].erase(prev, cursor_.col - prev);
+        cursor_.col = prev;
+        anchor_ = cursor_;
+        cmd = std::make_unique<TextEditCommand>(this, del_start, del_end, del_start,
+                                                std::move(deleted_char), "", old_cursor, cursor_);
+    } else if (cursor_.line > 0) {
+        auto prev_len = static_cast<int>(lines_[cursor_.line - 1].size());
+        auto old_cursor = cursor_;
+        auto del_start = Pos{cursor_.line - 1, prev_len};
+        auto del_end = Pos{cursor_.line, 0};
+        lines_[cursor_.line - 1] += lines_[cursor_.line];
+        lines_.erase(lines_.begin() + cursor_.line);
+        cursor_ = {cursor_.line - 1, prev_len};
+        anchor_ = cursor_;
+        auto const &p = Theme::current().palette;
+        auto w = measure_text(lines_[cursor_.line], p.fonts.size, kFont).width;
+        if (w > cached_max_line_w_) {
+            cached_max_line_w_ = w;
+        }
+        cmd = std::make_unique<TextEditCommand>(this, del_start, del_end, del_start, "\n", "",
+                                                old_cursor, cursor_);
+    }
+    if (cmd) {
+        undo_stack_.push(std::move(cmd));
+        sync_commands();
+        ensure_cursor_visible();
+        if (window_) {
+            window_->request_redraw("text change");
+        }
+        if (on_change) {
+            on_change();
+        }
+    }
+}
+
+void TextEdit::delete_char_forward() {
+    auto nlines = static_cast<int>(lines_.size());
+    std::unique_ptr<TextEditCommand> cmd;
+    if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
+        auto next = (int)Utf8Iterator::next(lines_[cursor_.line], cursor_.col);
+        auto del_start = cursor_;
+        auto del_end = Pos{cursor_.line, next};
+        auto deleted_char = lines_[cursor_.line].substr(cursor_.col, next - cursor_.col);
+        lines_[cursor_.line].erase(cursor_.col, next - cursor_.col);
+        cmd = std::make_unique<TextEditCommand>(this, del_start, del_end, del_start,
+                                                std::move(deleted_char), "", cursor_, cursor_);
+    } else if (cursor_.line + 1 < nlines) {
+        auto old_cursor = cursor_;
+        auto del_start = Pos{cursor_.line, (int)lines_[cursor_.line].size()};
+        auto del_end = Pos{cursor_.line + 1, 0};
+        lines_[cursor_.line] += lines_[cursor_.line + 1];
+        lines_.erase(lines_.begin() + cursor_.line + 1);
+        auto const &p = Theme::current().palette;
+        auto w = measure_text(lines_[cursor_.line], p.fonts.size, kFont).width;
+        if (w > cached_max_line_w_) {
+            cached_max_line_w_ = w;
+        }
+        cmd = std::make_unique<TextEditCommand>(this, del_start, del_end, del_start, "\n", "",
+                                                old_cursor, cursor_);
+    }
+    if (cmd) {
+        undo_stack_.push(std::move(cmd));
+        sync_commands();
+        ensure_cursor_visible();
+        if (window_) {
+            window_->request_redraw("text change");
+        }
+        if (on_change) {
+            on_change();
+        }
+    }
+}
+
+void TextEdit::indent_selection(bool unindent, int spaces) {
+    auto first_line = has_selection() ? sel_start().line : cursor_.line;
+    auto last_sel = has_selection() ? sel_end() : cursor_;
+    // A selection ending at col 0 doesn't visually include that line
+    auto last_line =
+        (last_sel.col == 0 && last_sel.line > first_line) ? last_sel.line - 1 : last_sel.line;
+    auto multi_line = last_line > first_line;
+
+    if (!unindent && !multi_line) {
+        insert_text(std::string(spaces, ' '));
+        return;
+    }
+
+    auto old_cursor = cursor_;
+    auto changed = false;
+    auto range_start = Pos{first_line, 0};
+    auto range_end_before = Pos{last_line, (int)lines_[last_line].size()};
+    auto text_before = range_text(range_start, range_end_before);
+    auto indent = std::string(spaces, ' ');
+
+    if (unindent) {
+        for (auto i = first_line; i <= last_line; i++) {
+            auto sp = 0;
+            while (sp < spaces && sp < (int)lines_[i].size() && lines_[i][sp] == ' ') {
+                sp++;
+            }
+            if (sp > 0) {
+                lines_[i].erase(0, sp);
+                if (cursor_.line == i) {
+                    cursor_.col = std::max(0, cursor_.col - sp);
+                }
+                if (anchor_.line == i) {
+                    anchor_.col = std::max(0, anchor_.col - sp);
+                }
+                changed = true;
+            }
+        }
+    } else {
+        for (auto i = first_line; i <= last_line; i++) {
+            lines_[i].insert(0, indent);
+        }
+        if (cursor_.line >= first_line && cursor_.line <= last_line) {
+            cursor_.col += spaces;
+        }
+        if (anchor_.line >= first_line && anchor_.line <= last_line) {
+            anchor_.col += spaces;
+        }
+        changed = true;
+    }
+
+    if (changed) {
+        auto range_end_after = Pos{last_line, (int)lines_[last_line].size()};
+        auto text_after = range_text(range_start, range_end_after);
+        max_line_w_dirty_ = true;
+        undo_stack_.push(std::make_unique<TextEditCommand>(
+            this, range_start, range_end_before, range_end_after, std::move(text_before),
+            std::move(text_after), old_cursor, cursor_));
+        sync_commands();
+        ensure_cursor_visible();
+        if (window_) {
+            window_->request_redraw("indent");
+        }
+        if (on_change) {
+            on_change();
+        }
+    }
+}
 
 bool TextEdit::handle_key(KeyEvent const &event) {
     if (Widget::handle_key(event)) {
@@ -640,85 +974,27 @@ bool TextEdit::handle_key(KeyEvent const &event) {
 
     switch (event.key) {
     case Key::Enter:
-        // FIXME: add better API for entering new lines
-        insert_text("\n");
+        insert_newline();
         return true;
 
-    case Key::Backspace: {
+    case Key::Backspace:
         if (has_selection()) {
             delete_selection();
         } else {
-            auto before = text();
-            auto old_cursor = cursor_;
-            bool changed = false;
-            if (event.alt) {
-                auto old = cursor_;
-                move_word_left(false);
-                anchor_ = cursor_;
-                cursor_ = old;
-                delete_selection_internal();
-                changed = true;
-            } else if (cursor_.col > 0) {
-                auto prev = Utf8Iterator::prev(lines_[cursor_.line], cursor_.col);
-                lines_[cursor_.line].erase(prev, cursor_.col - prev);
-                cursor_.col = static_cast<int>(prev);
-                anchor_ = cursor_;
-                changed = true;
-            } else if (cursor_.line > 0) {
-                auto prev_len = static_cast<int>(lines_[cursor_.line - 1].size());
-                lines_[cursor_.line - 1] += lines_[cursor_.line];
-                lines_.erase(lines_.begin() + cursor_.line);
-                cursor_ = {cursor_.line - 1, prev_len};
-                anchor_ = cursor_;
-                changed = true;
-            }
-
-            if (changed) {
-                undo_stack_.push(
-                    std::make_unique<TextEditCommand>(this, before, text(), old_cursor, cursor_));
-                sync_commands();
-                ensure_cursor_visible();
-                if (on_change) {
-                    on_change();
-                }
-            }
+            delete_char_backward(event.alt);
         }
         return true;
-    }
 
-    case Key::Delete: {
+    case Key::Delete:
         if (has_selection()) {
             delete_selection();
         } else {
-            auto before = text();
-            auto old_cursor = cursor_;
-            bool changed = false;
-
-            if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
-                auto next = Utf8Iterator::next(lines_[cursor_.line], cursor_.col);
-                lines_[cursor_.line].erase(cursor_.col, next - cursor_.col);
-                changed = true;
-            } else if (cursor_.line + 1 < nlines) {
-                lines_[cursor_.line] += lines_[cursor_.line + 1];
-                lines_.erase(lines_.begin() + cursor_.line + 1);
-                changed = true;
-            }
-
-            if (changed) {
-                undo_stack_.push(
-                    std::make_unique<TextEditCommand>(this, before, text(), old_cursor, cursor_));
-                sync_commands();
-                ensure_cursor_visible();
-                if (on_change) {
-                    on_change();
-                }
-            }
+            delete_char_forward();
         }
         return true;
-    }
 
     case Key::Left:
-        if (event.alt) {
+        if (event.alt || event.ctrl) {
             move_word_left(event.shift);
         } else if (!event.shift && has_selection()) {
             move_cursor(sel_start(), false);
@@ -733,7 +1009,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         return true;
 
     case Key::Right:
-        if (event.alt) {
+        if (event.alt || event.ctrl) {
             move_word_right(event.shift);
         } else if (!event.shift && has_selection()) {
             move_cursor(sel_end(), false);
@@ -764,6 +1040,26 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         }
         return true;
 
+    case Key::PageUp: {
+        auto lh = line_height();
+        auto vr = viewport_rect();
+        auto page_lines = std::max(1, static_cast<int>(vr.height / lh) - 1);
+        auto new_line = std::max(0, cursor_.line - page_lines);
+        auto col = std::min(cursor_.col, static_cast<int>(lines_[new_line].size()));
+        move_cursor({new_line, col}, event.shift);
+        return true;
+    }
+
+    case Key::PageDown: {
+        auto lh = line_height();
+        auto vr = viewport_rect();
+        auto page_lines = std::max(1, static_cast<int>(vr.height / lh) - 1);
+        auto new_line = std::min(nlines - 1, cursor_.line + page_lines);
+        auto col = std::min(cursor_.col, static_cast<int>(lines_[new_line].size()));
+        move_cursor({new_line, col}, event.shift);
+        return true;
+    }
+
     case Key::Home:
         if (event.super) {
             move_cursor({0, 0}, event.shift);
@@ -781,7 +1077,10 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         return true;
 
     case Key::Tab:
-        insert_text("    ");
+        if (event.alt || event.ctrl || event.super) {
+            return false;
+        }
+        indent_selection(event.shift);
         return true;
 
     default:

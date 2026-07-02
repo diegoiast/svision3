@@ -1048,7 +1048,7 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
         auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
         auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;
 
-        if (has_sel) {
+        if (has_sel && i >= selection_start_line && i <= selection_end_line) {
             auto line_start_col = 0;
             auto line_end_col = static_cast<int>(lines[i].size());
             auto sel_start = (i == selection_start_line) ? selection_start_col : line_start_col;

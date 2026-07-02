@@ -886,6 +886,9 @@ void Window::handle_mouse(MouseEvent const &event) {
         }
         set_focused_widget(under);
         captured_widget_ = under;
+        if (captured_widget_ && event.button == 0) {
+            platform_window()->grab_pointer();
+        }
         needs_redraw = true;
     }
 
@@ -998,6 +1001,9 @@ void Window::handle_key(KeyEvent const &event) {
     }
 
     if (event.type == KeyEvent::Type::Press && event.key == Key::Tab) {
+        if (focused_widget_ && focused_widget_->handle_key_impl(event)) {
+            return;
+        }
         focus_next(event.shift);
         request_redraw("event");
         return;
