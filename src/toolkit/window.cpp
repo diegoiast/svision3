@@ -11,6 +11,7 @@
 #include <cctype>
 #include <chrono>
 #include <nlohmann/json.hpp>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
@@ -664,6 +665,9 @@ void Window::handle_paint(Painter &painter) {
             draw_debug_frames_recursive(painter, widget.get());
         }
     }
+    if (Widget::debug_show_inspector) {
+        draw_widget_inspector(painter);
+    }
 
     for (auto const &popup : popups_) {
         if (popup.on_paint) {
@@ -1254,6 +1258,107 @@ void Window::draw_debug_frames_recursive(Painter &painter, Widget *widget) {
     painter.push_translation({r.x, r.y});
     widget->for_each_child([&](Widget *child) { draw_debug_frames_recursive(painter, child); });
     painter.pop_translation();
+}
+
+// Fixed "debug HUD" colors for the widget inspector overlay. These are
+// intentionally outside the theme palette (and identical across themes) so
+// the overlay stays legible over both light and dark palettes.
+static constexpr auto kInspectorBackground = Color{0.05f, 0.05f, 0.05f, 0.72f};
+static constexpr auto kInspectorText = Color::rgb(0.15f, 1.0f, 0.45f);
+static constexpr auto kInspectorBorder = kInspectorText;
+static constexpr auto kInspectorHighlight = kInspectorText;
+// Widgets that never overrode class_name() (still reporting the generic
+// "Widget" base name) are flagged in red as a hint to add DECLARE_WIDGET.
+static constexpr auto kInspectorWarning = Color::rgb(1.0f, 0.15f, 0.15f);
+
+static auto json_value_to_string(nlohmann::json const &value) -> std::string {
+    if (value.is_string()) {
+        return value.get<std::string>();
+    }
+    auto s = value.dump();
+    if (s.size() > 60) {
+        s = s.substr(0, 57) + "...";
+    }
+    return s;
+}
+
+void Window::draw_widget_inspector(Painter &painter) {
+    auto *widget = hovered_widget_;
+    auto j = nlohmann::json{};
+    auto lines = std::vector<std::string>{};
+    auto theme = static_cast<Theme const *>(nullptr);
+    auto pal = static_cast<Palette const *>(nullptr);
+    auto font_size = 0.0f;
+    auto fm = Painter::FontMetrics{};
+    auto line_height = 0.0f;
+    auto padding = 0.0f;
+    auto max_w = 0.0f;
+    auto box_w = 0.0f;
+    auto box_h = 0.0f;
+    auto origin = Point{};
+    auto box_x = 0.0f;
+    auto box_y = 0.0f;
+    auto box = Rect{};
+    auto text_y = 0.0f;
+    auto is_generic_widget = false;
+
+    if (!widget) {
+        return;
+    }
+
+    j = widget->to_json();
+    auto const &r = widget->rect();
+    is_generic_widget = widget->class_name() == "Widget";
+    lines.push_back(fmt::format("{}  ({:.0f}x{:.0f} @ {:.0f},{:.0f})", widget->class_name(),
+                                r.width, r.height, r.x, r.y));
+    for (auto const &[key, value] : j.items()) {
+        if (key == "type" || key == "rect" || value.is_object()) {
+            continue;
+        }
+        lines.push_back(fmt::format("{}: {}", key, json_value_to_string(value)));
+    }
+
+    theme = &Theme::current();
+    pal = &theme->palette;
+    font_size = pal->fonts.size;
+    fm = painter.font_metrics(font_size);
+    line_height = fm.height + 2.0f;
+    padding = theme->style.tooltip.padding + 2.0f;
+
+    for (auto const &line : lines) {
+        max_w = std::max(max_w, painter.measure_text(line, font_size).width);
+    }
+
+    box_w = max_w + padding * 2.0f;
+    box_h = static_cast<float>(lines.size()) * line_height + padding * 2.0f;
+
+    origin = widget->map_to_window({0, 0});
+    box_x = origin.x;
+    box_y = origin.y - box_h - 4.0f;
+    if (box_y < 0.0f) {
+        box_y = origin.y + r.height + 4.0f;
+    }
+    box_x = std::min(box_x, size_.width - box_w);
+    box_y = std::min(box_y, size_.height - box_h);
+    box_x = std::max(0.0f, box_x);
+    box_y = std::max(0.0f, box_y);
+
+    box = Rect{box_x, box_y, box_w, box_h};
+    painter.fill_rounded_rect(box, kInspectorBackground, theme->style.corner_radius);
+    painter.draw_rounded_rect(box, kInspectorBorder, theme->style.corner_radius,
+                              theme->style.border_width);
+
+    text_y = box_y + padding + fm.ascent;
+    for (auto i = size_t{0}; i < lines.size(); ++i) {
+        auto const is_header = i == 0;
+        auto const color = (is_header && is_generic_widget) ? kInspectorWarning : kInspectorText;
+        painter.draw_text(lines[i], {box_x + padding, text_y}, color, font_size);
+        text_y += line_height;
+    }
+
+    painter.set_line_style(Painter::LineStyle::Dotted);
+    painter.draw_rect(Rect{origin.x, origin.y, r.width, r.height}, kInspectorHighlight, 2.0f);
+    painter.set_line_style(Painter::LineStyle::Solid);
 }
 
 nlohmann::json Window::to_json() const {

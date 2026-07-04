@@ -142,6 +142,7 @@ class Window {
     void start_toast_timer();
 
     void draw_debug_frames_recursive(Painter &painter, Widget *widget);
+    void draw_widget_inspector(Painter &painter);
 
     std::string title_;
     Size size_;

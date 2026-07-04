@@ -34,6 +34,11 @@ class Widget {
     // layouts.
     static bool debug_show_frames;
 
+    // This is a global flag. When set, the window will draw an overlay next
+    // to the hovered widget showing its to_json() attributes (type,
+    // dimensions, and other properties).
+    static bool debug_show_inspector;
+
     void add_command(Command::Ptr cmd) { commands_.push_back(std::move(cmd)); }
     void remove_command(Command::Ptr const &cmd) {
         auto it = std::find(commands_.begin(), commands_.end(), cmd);

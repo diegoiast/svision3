@@ -467,6 +467,10 @@ int main(int argc, char *argv[]) {
                     spdlog::set_level(spdlog::level::info);
                 }
                 window->set_statistics_logging_enabled(checked);
+            }))
+            .add(ui::checkbox("Show widget inspector").on_toggle([&window](auto checked) {
+                toolkit::Widget::debug_show_inspector = checked;
+                window->request_redraw();
             }));
     };
 

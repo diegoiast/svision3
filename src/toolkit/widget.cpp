@@ -10,6 +10,7 @@
 namespace toolkit {
 
 bool Widget::debug_show_frames = false;
+bool Widget::debug_show_inspector = false;
 
 void Widget::invalidate_layout() {
     state.layout_dirty = true;

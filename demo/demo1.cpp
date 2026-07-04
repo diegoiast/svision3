@@ -350,6 +350,10 @@ int main(int argc, char *argv[]) {
                     spdlog::set_level(spdlog::level::info);
                 }
                 window->set_statistics_logging_enabled(checked);
+            }))
+            .add(ui::checkbox("Show Widget Inspector").on_toggle([&window](bool checked) {
+                toolkit::Widget::debug_show_inspector = checked;
+                window->request_redraw();
             }));
     };
 

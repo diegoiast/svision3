@@ -71,6 +71,7 @@ auto create_toolbar_separator() -> std::unique_ptr<Widget> {
 
 Toolbar::Toolbar() {
     layout_ = std::make_unique<HBoxLayout>();
+    layout_->set_parent(this);
     layout_->set_margins({2, 4, 2, 4});
     layout_->set_spacing(2);
 }
