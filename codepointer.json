@@ -1,5 +1,5 @@
 {
-    "activeExecutableName": "demo3",
+    "activeExecutableName": "demo_declarative",
     "activeTaskName": "",
     "build_directory": "${source_directory}/build",
     "displayFilter": "",
@@ -22,14 +22,6 @@
         },
         {
             "executables": {
-                "linux": "build/Debug/demo2",
-                "windows": "build\\Debug\\demo2.exe"
-            },
-            "name": "Demo2 (declarative)",
-            "runDirectory": "${source_directory}"
-        },
-        {
-            "executables": {
                 "linux": "SVISION_PAINT=cairo SVISION_BACKEND=wayland build/Debug/demo",
                 "windows": "build\\Debug\\demo.exe"
             },
@@ -38,18 +30,10 @@
         },
         {
             "executables": {
-                "linux": "SVISION_PAINT=cairo SVISION_BACKEND=wayland build/Debug/demo2",
-                "windows": "build\\Debug\\demo2.exe"
+                "linux": "SVISION_PAINT=cairo SVISION_BACKEND=wayland build/Debug/demo_declarative",
+                "windows": "build\\Debug\\demo_declarative.exe"
             },
-            "name": "Demo declarative 2",
-            "runDirectory": "${source_directory}"
-        },
-        {
-            "executables": {
-                "linux": "SVISION_PAINT=cairo SVISION_BACKEND=wayland build/Debug/demo3",
-                "windows": "build\\Debug\\demo3.exe"
-            },
-            "name": "Demo declarative 3 (cairo/wayland)",
+            "name": "Demo declarative (cairo/wayland)",
             "runDirectory": "${source_directory}"
         },
         {

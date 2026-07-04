@@ -15,6 +15,12 @@ if(UNIX AND NOT APPLE)
 else()
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" OFF)
 endif()
+option(TOOLKIT_BUILD_DEMOS "Build demo applications and tools" ON)
+option(TOOLKIT_BUILD_TESTS "Build the test suite" ON)
+if(UNIX AND NOT APPLE)
+    option(TOOLKIT_WITH_X11 "Build the X11 backend if available" ON)
+    option(TOOLKIT_WITH_WAYLAND "Build the Wayland backend if available" ON)
+endif()
 
 find_package(litehtml REQUIRED)
 find_package(md4c REQUIRED)
@@ -156,22 +162,26 @@ elseif(UNIX)
     )
 
     # --- X11 (optional) ---
-    find_package(X11 QUIET)
-    if(X11_FOUND)
-        set(TOOLKIT_HAS_X11 ON)
-        pkg_check_modules(XEXT REQUIRED xext)
-        list(APPEND TOOLKIT_SOURCES
-            src/toolkit/platform/x11/x11_platform.cpp
-        )
+    if(TOOLKIT_WITH_X11)
+        find_package(X11 QUIET)
+        if(X11_FOUND)
+            set(TOOLKIT_HAS_X11 ON)
+            pkg_check_modules(XEXT REQUIRED xext)
+            list(APPEND TOOLKIT_SOURCES
+                src/toolkit/platform/x11/x11_platform.cpp
+            )
+        endif()
     endif()
 
     # --- Wayland (optional) ---
-    pkg_check_modules(WAYLAND QUIET wayland-client wayland-cursor wayland-egl egl)
-    pkg_check_modules(WAYLAND_PROTOCOLS QUIET wayland-protocols)
-    pkg_check_modules(XKBCOMMON QUIET xkbcommon)
-    find_program(WAYLAND_SCANNER wayland-scanner)
+    if(TOOLKIT_WITH_WAYLAND)
+        pkg_check_modules(WAYLAND QUIET wayland-client wayland-cursor wayland-egl egl)
+        pkg_check_modules(WAYLAND_PROTOCOLS QUIET wayland-protocols)
+        pkg_check_modules(XKBCOMMON QUIET xkbcommon)
+        find_program(WAYLAND_SCANNER wayland-scanner)
+    endif()
 
-    if(WAYLAND_FOUND AND WAYLAND_PROTOCOLS_FOUND AND XKBCOMMON_FOUND AND WAYLAND_SCANNER)
+    if(TOOLKIT_WITH_WAYLAND AND WAYLAND_FOUND AND WAYLAND_PROTOCOLS_FOUND AND XKBCOMMON_FOUND AND WAYLAND_SCANNER)
         set(TOOLKIT_HAS_WAYLAND ON)
 
         pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
@@ -327,7 +337,7 @@ elseif(UNIX)
 endif()
 
 add_library(toolkit STATIC ${TOOLKIT_SOURCES})
-target_include_directories(toolkit PUBLIC include PRIVATE src)
+target_include_directories(toolkit PUBLIC include PRIVATE src src/nfd)
 target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus litehtml md4c::md4c-html nlohmann_json::nlohmann_json lunasvg::lunasvg)
 
 if(TOOLKIT_WITH_CAIRO)
@@ -348,7 +358,8 @@ endif()
 if(APPLE)
     target_link_libraries(toolkit PUBLIC
         "-framework Cocoa" "-framework CoreGraphics"
-        "-framework CoreText" "-framework ImageIO" "-framework OpenGL")
+        "-framework CoreText" "-framework ImageIO" "-framework OpenGL"
+        "-framework AppKit" "-framework UniformTypeIdentifiers")
     target_compile_options(toolkit PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
     target_include_directories(toolkit PRIVATE
         src/toolkit/platform/macos)
@@ -449,13 +460,11 @@ else()
     set(I18N_BUILTIN_SRC ${I18N_GEN_DIR}/builtin_translations.cpp)
 endif()
 
-# Full i18n library = core + generated builtin translations
-add_library(i18n STATIC $<TARGET_OBJECTS:i18n_core> ${I18N_BUILTIN_SRC})
-target_include_directories(i18n PUBLIC include)
-target_compile_features(i18n PUBLIC cxx_std_20)
+# Bake i18n objects directly into toolkit
+target_sources(toolkit PRIVATE $<TARGET_OBJECTS:i18n_core> ${I18N_BUILTIN_SRC})
 
 # ── db ────────────────────────────────────────────────────────────────────────
-add_library(db STATIC
+add_library(db OBJECT
     src/db/registry.cpp
     src/db/sqlite_connection.cpp
     src/db/sqlite/sqlite3.c
@@ -463,64 +472,60 @@ add_library(db STATIC
 target_include_directories(db PUBLIC include PRIVATE src/db)
 target_compile_features(db PUBLIC cxx_std_20)
 if(UNIX)
-    target_link_libraries(db PRIVATE pthread dl)
+    target_link_libraries(toolkit PUBLIC pthread dl)
 endif()
 
-add_executable(demo demo/demo1.cpp)
-set_target_properties(demo PROPERTIES WIN32_EXECUTABLE ON)
-if(WIN32)
-    set_target_properties(demo PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
-endif()
-target_link_libraries(demo PRIVATE toolkit nfd)
+# Bake db objects directly into toolkit
+target_sources(toolkit PRIVATE $<TARGET_OBJECTS:db>)
 
-add_executable(demo2 demo/demo2.cpp)
-set_target_properties(demo2 PROPERTIES WIN32_EXECUTABLE ON)
-if(WIN32)
-    set_target_properties(demo2 PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
-endif()
-target_link_libraries(demo2 PRIVATE toolkit nfd)
+if(TOOLKIT_BUILD_DEMOS)
+    add_executable(demo demo/demo1.cpp)
+    set_target_properties(demo PROPERTIES WIN32_EXECUTABLE ON)
+    if(WIN32)
+        set_target_properties(demo PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+    endif()
+    target_link_libraries(demo PRIVATE toolkit)
 
-add_executable(demo3 demo/demo3.cpp)
-set_target_properties(demo3 PROPERTIES WIN32_EXECUTABLE ON)
-if(WIN32)
-    set_target_properties(demo3 PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+    add_executable(demo_declarative demo/demo_declarative.cpp)
+    set_target_properties(demo_declarative PROPERTIES WIN32_EXECUTABLE ON)
+    if(WIN32)
+        set_target_properties(demo_declarative PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+    endif()
+    target_link_libraries(demo_declarative PRIVATE toolkit)
 endif()
-target_link_libraries(demo3 PRIVATE toolkit nfd)
 
 # ── nfd (Native File Dialog) ──────────────────────────────────────────────────
 if(APPLE)
     enable_language(OBJC)
-    add_library(nfd STATIC src/nfd/nfd_cocoa.m)
-    target_include_directories(nfd PUBLIC src/nfd)
-    target_link_libraries(nfd PRIVATE "-framework AppKit" "-framework UniformTypeIdentifiers")
+    add_library(nfd OBJECT src/nfd/nfd_cocoa.m)
     target_compile_options(nfd PRIVATE -fno-objc-arc)
 elseif(WIN32)
-    add_library(nfd STATIC src/nfd/nfd_win.cpp)
-    target_include_directories(nfd PUBLIC src/nfd)
+    add_library(nfd OBJECT src/nfd/nfd_win.cpp)
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(DBUS REQUIRED dbus-1)
-    add_library(nfd STATIC src/nfd/nfd_portal.cpp)
-    target_include_directories(nfd PUBLIC src/nfd)
-    target_link_libraries(nfd PRIVATE ${DBUS_LIBRARIES})
+    add_library(nfd OBJECT src/nfd/nfd_portal.cpp)
     target_include_directories(nfd PRIVATE ${DBUS_INCLUDE_DIRS})
+    target_link_libraries(toolkit PUBLIC ${DBUS_LIBRARIES})
 endif()
 
-# file_dialog.cpp uses NFD directly, so the toolkit itself needs it.
-target_link_libraries(toolkit PRIVATE nfd)
+# Bake nfd objects directly into toolkit — it is an implementation detail.
+target_sources(toolkit PRIVATE $<TARGET_OBJECTS:nfd>)
 
-add_executable(sqlite_viewer tools/sqlite_viewer.cpp)
-set_target_properties(sqlite_viewer PROPERTIES WIN32_EXECUTABLE ON)
-if(WIN32)
-    set_target_properties(sqlite_viewer PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+if(TOOLKIT_BUILD_DEMOS)
+    add_executable(sqlite_viewer tools/sqlite_viewer.cpp)
+    set_target_properties(sqlite_viewer PROPERTIES WIN32_EXECUTABLE ON)
+    if(WIN32)
+        set_target_properties(sqlite_viewer PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+    endif()
+    target_link_libraries(sqlite_viewer PRIVATE toolkit)
+
+    add_executable(json_ui_viewer tools/json_ui_viewer.cpp)
+    target_link_libraries(json_ui_viewer PRIVATE toolkit)
 endif()
-target_link_libraries(sqlite_viewer PRIVATE toolkit db nfd)
-
-
-add_executable(json_ui_viewer tools/json_ui_viewer.cpp)
-target_link_libraries(json_ui_viewer PRIVATE toolkit)
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+if(TOOLKIT_BUILD_TESTS)
 find_package(Catch2 REQUIRED)
 add_executable(tests
     tests/test_bidi.cpp
@@ -565,9 +570,19 @@ add_executable(tests
     tests/test_xdg_image_loader.cpp
     tests/repro_tab_orientation.cpp
 )
-target_link_libraries(tests PRIVATE toolkit i18n db Catch2::Catch2)
+target_link_libraries(tests PRIVATE toolkit Catch2::Catch2)
 
 if(WIN32)
     target_sources(tests PRIVATE tests/test_win32_shaper.cpp)
     target_include_directories(tests PRIVATE src)
 endif()
+endif()
+
+# ── Install (for Conan packaging and manual installs) ─────────────────────────
+include(GNUInstallDirs)
+install(TARGETS toolkit
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
