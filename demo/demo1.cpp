@@ -790,7 +790,7 @@ int main(int argc, char *argv[]) {
     editor_toolbar->add_widget(std::move(toolbar_spacer), 1);
 
     tab5->add_widget(std::move(editor_toolbar));
-    tab5->add_widget(std::unique_ptr<toolkit::TextEdit>(editor));
+    tab5->add_widget(std::unique_ptr<toolkit::TextEdit>(editor), 1);
 
     tabs->add_tab("Editor", std::move(tab5));
 
