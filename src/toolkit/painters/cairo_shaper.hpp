@@ -29,6 +29,7 @@ class CairoShaper : public text::TextShaper {
     void draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,
                  Color const &color, float font_size, FontFamily font,
                  bool bold = false, bool italic = false) override;
+    bool supports_painter(Painter const &painter) const override;
 
   private:
     struct Impl;

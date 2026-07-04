@@ -291,6 +291,9 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     // logical-prefix-measurement path so non-Win32 behaviour stays unchanged.
     auto *plat = detail::current_platform();
     auto *shaper = (layout && plat) ? plat->shaper() : nullptr;
+    if (shaper && !shaper->supports_painter(painter)) {
+        shaper = nullptr;
+    }
     auto rtl_base = layout && layout->bidi_line().base() == bidi::BaseDirection::RTL;
     if (rtl_base) {
         tx = rect.x + content_right_edge - layout->total_width() + scroll_offset;

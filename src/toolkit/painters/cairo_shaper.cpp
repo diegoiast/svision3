@@ -485,6 +485,10 @@ CairoShaper::CairoShaper() : impl_(std::make_unique<Impl>()) {}
 
 CairoShaper::~CairoShaper() = default;
 
+bool CairoShaper::supports_painter(Painter const &painter) const {
+    return dynamic_cast<CairoPainter const *>(&painter) != nullptr;
+}
+
 void CairoShaper::release_fonts() {
     if (!impl_) {
         return;
@@ -555,7 +559,6 @@ void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
 
     auto cairo_painter = dynamic_cast<CairoPainter *>(&painter);
     if (!cairo_painter) {
-        spdlog::debug("ERROR: using the cairo shaper without a cairo painter");
         return;
     }
 

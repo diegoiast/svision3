@@ -39,6 +39,10 @@ class TextShaper {
     virtual void draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,
                           Color const &color, float font_size, FontFamily font,
                           bool bold = false, bool italic = false) = 0;
+
+    // Returns true if this shaper can render into `painter`. Callers should
+    // fall back to painter.draw_text() when this returns false.
+    virtual bool supports_painter(Painter const &painter) const { return true; }
 };
 
 // One visually-ordered, already-placed run, ready for painting.

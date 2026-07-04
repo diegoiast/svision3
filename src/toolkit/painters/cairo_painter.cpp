@@ -325,34 +325,33 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
         return {};
     }
 
-    auto slant = italic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL;
-    auto weight = bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL;
-    auto apply_font_options = [](cairo_t *cr) {
-        cairo_font_options_t *fo = cairo_font_options_create();
-        cairo_font_options_set_antialias(fo, CAIRO_ANTIALIAS_GRAY);
-        cairo_font_options_set_hint_style(fo, CAIRO_HINT_STYLE_SLIGHT);
-        cairo_set_font_options(cr, fo);
-        cairo_font_options_destroy(fo);
-    };
+    // Use the shaper (BIDI split + per-script font fallback via fontconfig
+    // charset matching) for both sizing and drawing, same as the CairoPainter
+    // path in draw_text(). A single cairo_select_font_face()/cairo_show_text()
+    // call only ever uses one font, so scripts that font doesn't cover (e.g.
+    // Hebrew when the system font is Latin-only) rasterized as .notdef boxes.
+    auto base = bidi::detect_base_direction(text);
+    auto bidi_line = bidi::BidiLine::analyze(text, base);
+    auto runs = bidi_line.runs_visual();
 
-    auto temp_surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
-    auto temp_cr = cairo_create(temp_surf);
-    apply_font_options(temp_cr);
-    cairo_select_font_face(temp_cr, font_name_for(font).c_str(), slant, weight);
-    cairo_set_font_size(temp_cr, std::floor(font_size));
+    auto width = 0.0f;
+    std::vector<float> run_widths;
+    run_widths.reserve(runs.size());
+    for (auto const &run : runs) {
+        auto run_text = text.substr(run.start, run.length);
+        auto run_width = 0.0f;
+        for (auto const &ca : shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic)) {
+            run_width += ca.advance;
+        }
+        run_widths.push_back(run_width);
+        width += run_width;
+    }
 
-    cairo_text_extents_t te;
-    cairo_font_extents_t fe;
-    std::string str(text);
-    cairo_text_extents(temp_cr, str.c_str(), &te);
-    cairo_font_extents(temp_cr, &fe);
-    cairo_destroy(temp_cr);
-    cairo_surface_destroy(temp_surf);
+    auto fm = metrics(font_size, font);
 
-    // Ink bounding box starts at x_bearing and spans width
     // Add 2px padding (1px on each side) to avoid clipping and aliasing artifacts
-    auto pw = static_cast<int>(std::ceil(te.width * scale)) + 2;
-    auto ph = static_cast<int>(std::ceil(fe.height * scale)) + 2;
+    auto pw = static_cast<int>(std::ceil(width * scale)) + 2;
+    auto ph = static_cast<int>(std::ceil(fm.height * scale)) + 2;
     if (pw <= 0 || ph <= 0) {
         return {};
     }
@@ -366,25 +365,32 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     cairo_paint(cr);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
 
-    apply_font_options(cr);
+    cairo_font_options_t *fo = cairo_font_options_create();
+    cairo_font_options_set_antialias(fo, CAIRO_ANTIALIAS_GRAY);
+    cairo_font_options_set_hint_style(fo, CAIRO_HINT_STYLE_SLIGHT);
+    cairo_set_font_options(cr, fo);
+    cairo_font_options_destroy(fo);
     cairo_scale(cr, scale, scale);
-
-    cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
-    cairo_select_font_face(cr, font_name_for(font).c_str(), slant, weight);
-    cairo_set_font_size(cr, std::floor(font_size));
 
     // Align ink to the left edge of our surface, plus 1px padding (logical)
     auto pad = 1.0f / scale;
-    cairo_move_to(cr, -te.x_bearing + pad, fe.ascent + pad);
-    cairo_show_text(cr, str.c_str());
+    auto temp_painter = CairoPainter(cr);
+    auto x = pad;
+    for (size_t i = 0; i < runs.size(); ++i) {
+        auto const &run = runs[i];
+        auto run_text = text.substr(run.start, run.length);
+        shaper_.draw_run(temp_painter, run_text, run.rtl(), {x, fm.ascent + pad}, color, font_size,
+                         font, bold, italic);
+        x += run_widths[i];
+    }
     cairo_surface_flush(surf);
 
     auto data = cairo_image_surface_get_data(surf);
     RasterizedText result;
     result.width = pw;
     result.height = ph;
-    result.ascent = static_cast<float>(fe.ascent);
-    result.x_offset = static_cast<float>(te.x_bearing);
+    result.ascent = fm.ascent;
+    result.x_offset = 0.0f;
     argb32_to_rgba(result.pixels, data, pw * ph);
 
     cairo_destroy(cr);
