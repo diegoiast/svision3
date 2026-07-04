@@ -21,14 +21,14 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 9. [x] Cairo 2D drawing abstraction (Painter)
 10. [x] High DPI / fractional scaling (all platforms)
 11. [x] OpenGL rendering backend on Linux/Windows blurry fonts.
-12. [ ] OpenGl artifacts - specially on buttons on Plasma.
-13. [x] Cairo has blurry fonts.
-14. [ ] OpenGL uses cairo for painting text. Should use stb_ttf or something.
+12. [x] OpenGL artifacts - specially on buttons on Plasma.
+13. [ ] OpenGL uses cairo for painting text. Should use stb_ttf or something.
+14. [x] Cairo has blurry fonts.
 15. [x] Command interfaces for menus/toolbars and app shortcuts.
 16. [x] Backends have open/cairo/whatevre backed in. We need to separate them.
 17. [x] Paintings inside widgets should start at (0,0) not position at window.
 18. [ ] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
-19. [ ] Shortcuts per platform. Functions to read shortcuts per platform on runtime.
+19. [ ] API to read keyboard shortcuts per platform on runtime.
 20. [x] Generic timer system (start_timer / stop_timer)
 21. [x] Popup/overlay mechanism (used by Combobox)
 22. [x] Painter helpers (draw_frame, draw_focus_ring, fill_circle, etc.)
@@ -41,22 +41,22 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 29. [x] Image loading - using platform APIs.
 30. [ ] Animation framework (transitions, easing).
 31. [x] Undo/redo framework.
-33. [ ] Declarative UI support. - WIP.
-34. [x] All setters should return a reference to self - for chainability.
-35. [x] Winwodws should have a `Window::add<T>` template that
+32. [ ] Declarative UI support. - WIP.
+33. [x] All setters should return a reference to self - for chainability.
+34. [x] Winwodws should have a `Window::add<T>` template that
         internally creates the shared ptr, and returns a reference.
-36. [ ] Signals/slots (beyond single std::function) - or alternative.
-37. [ ] Logging levels configurable at runtime.
-38. [ ] Scroll size - detect at runtime.
-39. [ ] Natural scrolling - detect at runtime.
-40. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
-41. [ ] Implement font caching for measurements.
-42. [ ] Resource / asset management.
-43. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
-44. [x] Set window icon.
-45. [ ] Rounded frame clip. When drawing a frame, cliping with a radius would be
+35. [ ] Signals/slots (beyond single std::function) - or alternative.
+36. [ ] Logging levels configurable at runtime.
+37. [ ] Scroll size - detect at runtime.
+38. [ ] Natural scrolling - detect at runtime.
+39. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
+40. [ ] Implement font caching for measurements.
+41. [ ] Resource / asset management.
+42. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
+43. [x] Set window icon.
+44. [ ] Rounded frame clip. When drawing a frame, cliping with a radius would be
         nice. However, I am unsure how to clean the clipping at the end of function call.
-46. [x] Toast support
+45. [x] Toast support
 
 ## Platform – Not Yet Implemented
 
@@ -65,11 +65,11 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 3. [x] Message boxes / alerts.
 4. [x] Multi-window.
 5. [ ] IME / input method support.
-6. [ ] RTL / bidirectional text.
+6. [x] RTL / bidirectional text.
 7. [ ] Accessibility (screen readers).
 8. [ ] System tray / notifications.
 9. [ ] Native file drag-and-drop.
-10. [ ] Wayland clipboard (cross-client).X11/OpenGL/
+10. [x] Wayland clipboard (cross-client).X11/OpenGL/
 11. [x] Wayland tooltips (xdg_popup)
 12. [ ] Date picker API dialog
 
@@ -91,6 +91,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [ ] Material: implement
 1. [ ] Disable close/max/min buttons when needed.
 1. [ ] Do not support resize or move (on popups for example, under mutter).
+1. [ ] Always use local decorations
+    1. [ ] Flag to choose to follow theme or platform for CSD
+    2. [ ] Theme palette should follow theme or platform?
 
 ## Widgets [20/37]
 
@@ -273,7 +276,6 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## ScrollArea
 
 1. [ ] Review code
-
 
 ## Image Widget
 

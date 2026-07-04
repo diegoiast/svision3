@@ -5,6 +5,7 @@
 #include "toolkit/platform.hpp"
 #include <chrono>
 #include <functional>
+#include <map>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -21,6 +22,8 @@ struct wl_callback;
 struct wl_cursor_theme;
 struct wl_data_device_manager;
 struct wl_data_device;
+struct wl_data_offer;
+struct wl_data_source;
 struct xdg_wm_base;
 struct xdg_surface;
 struct xdg_toplevel;
@@ -123,6 +126,17 @@ class WaylandPlatformApplication : public PlatformApplication {
     std::mutex posted_mutex;
     std::vector<std::function<void()>> posted_fns;
     std::string clipboard_content;
+    // Cross-client clipboard state (wl_data_device_manager). `clipboard_source`
+    // is non-null exactly while we own the selection (cleared by the compositor
+    // "cancelled" event once another client takes it), which lets get_text()
+    // shortcut to `clipboard_content` for self-paste instead of round-tripping
+    // through our own data_source, same trick x11_platform.cpp uses with
+    // clipboard_owner_window.
+    wl_data_source *clipboard_source = nullptr;
+    wl_data_offer *current_selection_offer = nullptr;
+    wl_data_offer *dnd_offer = nullptr;
+    std::map<wl_data_offer *, std::vector<std::string>> offer_mime_types;
+    uint32_t input_serial = 0;
     std::vector<wl_output *> outputs;
     float output_scale = 1.0f;
 

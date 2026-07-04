@@ -20,6 +20,8 @@
 #include <GL/gl.h>
 #include <cairo.h>
 #include <fontconfig/fontconfig.h>
+#include <algorithm>
+#include <cerrno>
 #include <cmath>
 #include <fcntl.h>
 #include <poll.h>
@@ -118,6 +120,33 @@ static const wl_keyboard_listener keyboard_listener = {keyboard_keymap,    keybo
 static void seat_capabilities(void *data, wl_seat *seat, uint32_t caps);
 static void seat_name(void *, wl_seat *, const char *) {}
 static const wl_seat_listener seat_listener = {seat_capabilities, seat_name};
+
+static void data_offer_offer(void *data, wl_data_offer *offer, const char *mime_type);
+static void data_offer_source_actions(void *, wl_data_offer *, uint32_t) {}
+static void data_offer_action(void *, wl_data_offer *, uint32_t) {}
+static const wl_data_offer_listener data_offer_listener = {data_offer_offer, data_offer_source_actions,
+                                                           data_offer_action};
+
+static void data_device_data_offer(void *data, wl_data_device *dev, wl_data_offer *offer);
+static void data_device_enter(void *data, wl_data_device *dev, uint32_t serial, wl_surface *surf,
+                              wl_fixed_t x, wl_fixed_t y, wl_data_offer *offer);
+static void data_device_leave(void *data, wl_data_device *dev);
+static void data_device_motion(void *, wl_data_device *, uint32_t, wl_fixed_t, wl_fixed_t) {}
+static void data_device_drop(void *data, wl_data_device *dev);
+static void data_device_selection(void *data, wl_data_device *dev, wl_data_offer *offer);
+static const wl_data_device_listener data_device_listener = {
+    data_device_data_offer, data_device_enter, data_device_leave,
+    data_device_motion,     data_device_drop,  data_device_selection};
+
+static void data_source_target(void *, wl_data_source *, const char *) {}
+static void data_source_send(void *data, wl_data_source *source, const char *mime_type, int32_t fd);
+static void data_source_cancelled(void *data, wl_data_source *source);
+static void data_source_dnd_drop_performed(void *, wl_data_source *) {}
+static void data_source_dnd_finished(void *, wl_data_source *) {}
+static void data_source_action(void *, wl_data_source *, uint32_t) {}
+static const wl_data_source_listener data_source_listener = {
+    data_source_target,           data_source_send,        data_source_cancelled,
+    data_source_dnd_drop_performed, data_source_dnd_finished, data_source_action};
 
 static void frame_done(void *data, wl_callback *cb, uint32_t time);
 static const wl_callback_listener frame_listener = {frame_done};
@@ -497,6 +526,7 @@ static void pointer_button(void *data, wl_pointer *, uint32_t serial, uint32_t t
         return;
     }
     app->pressed_button_serial = serial;
+    app->input_serial = serial;
 
     MouseEvent e{};
 
@@ -663,9 +693,10 @@ static void process_key(WaylandPlatformApplication *app, uint32_t key) {
     app->keyboard_focus->owner_->handle_key(ke);
 }
 
-static void keyboard_key(void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t key,
+static void keyboard_key(void *data, wl_keyboard *, uint32_t serial, uint32_t, uint32_t key,
                          uint32_t state) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
+    app->input_serial = serial;
     if (!app->keyboard_focus || !app->xkb_st) {
         return;
     }
@@ -782,6 +813,83 @@ static void keyboard_modifiers(void *data, wl_keyboard *, uint32_t, uint32_t dep
         xkb_state_mod_name_is_active(app->xkb_st, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE);
 }
 
+// --- Data device (clipboard) ---
+
+static void data_offer_offer(void *data, wl_data_offer *offer, const char *mime_type) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    app->offer_mime_types[offer].emplace_back(mime_type);
+}
+
+static void data_device_data_offer(void *data, wl_data_device *, wl_data_offer *offer) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    wl_data_offer_add_listener(offer, &data_offer_listener, app);
+    app->offer_mime_types[offer] = {};
+}
+
+// Drag-and-drop isn't implemented by this toolkit; decline the drag so the
+// source knows the drop will fail, and release the offer once the session
+// over our surface ends.
+static void data_device_enter(void *data, wl_data_device *, uint32_t serial, wl_surface *,
+                              wl_fixed_t, wl_fixed_t, wl_data_offer *offer) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    wl_data_offer_accept(offer, serial, nullptr);
+    app->dnd_offer = offer;
+}
+
+static void release_dnd_offer(WaylandPlatformApplication *app) {
+    if (!app->dnd_offer) {
+        return;
+    }
+    app->offer_mime_types.erase(app->dnd_offer);
+    wl_data_offer_destroy(app->dnd_offer);
+    app->dnd_offer = nullptr;
+}
+
+static void data_device_leave(void *data, wl_data_device *) {
+    release_dnd_offer(static_cast<WaylandPlatformApplication *>(data));
+}
+
+static void data_device_drop(void *data, wl_data_device *) {
+    release_dnd_offer(static_cast<WaylandPlatformApplication *>(data));
+}
+
+// The data_offer/offer events for the new selection are always sent
+// immediately before this event, so offer_mime_types[offer] is already
+// populated by the time we get here.
+static void data_device_selection(void *data, wl_data_device *, wl_data_offer *offer) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if (app->current_selection_offer && app->current_selection_offer != offer) {
+        app->offer_mime_types.erase(app->current_selection_offer);
+        wl_data_offer_destroy(app->current_selection_offer);
+    }
+    app->current_selection_offer = offer;
+}
+
+static void data_source_send(void *data, wl_data_source *, const char *, int32_t fd) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    auto const &text = app->clipboard_content;
+    size_t off = 0;
+    while (off < text.size()) {
+        auto n = ::write(fd, text.data() + off, text.size() - off);
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            break;
+        }
+        off += static_cast<size_t>(n);
+    }
+    ::close(fd);
+}
+
+static void data_source_cancelled(void *data, wl_data_source *source) {
+    auto *app = static_cast<WaylandPlatformApplication *>(data);
+    if (app->clipboard_source == source) {
+        app->clipboard_source = nullptr;
+    }
+    wl_data_source_destroy(source);
+}
+
 // --- xdg_surface / xdg_toplevel ---
 
 static void xdg_surface_configure(void *data, xdg_surface *surf, uint32_t serial) {
@@ -891,6 +999,13 @@ WaylandPlatformApplication::WaylandPlatformApplication() {
         throw std::runtime_error("Wayland compositor missing required globals");
     }
 
+    if (data_device_manager && seat) {
+        data_device = wl_data_device_manager_get_data_device(data_device_manager, seat);
+        wl_data_device_add_listener(data_device, &data_device_listener, this);
+    } else {
+        spdlog::warn("wl_data_device_manager or wl_seat not available; clipboard disabled");
+    }
+
     repeat_rate = 25;
     repeat_delay = 600;
     output_scale = 1;
@@ -989,6 +1104,15 @@ WaylandPlatformApplication::~WaylandPlatformApplication() {
     }
     if (keyboard) {
         wl_keyboard_destroy(keyboard);
+    }
+    if (current_selection_offer) {
+        wl_data_offer_destroy(current_selection_offer);
+    }
+    if (dnd_offer) {
+        wl_data_offer_destroy(dnd_offer);
+    }
+    if (clipboard_source) {
+        wl_data_source_destroy(clipboard_source);
     }
     if (data_device) {
         wl_data_device_destroy(data_device);
@@ -1182,13 +1306,82 @@ void WaylandPlatformApplication::post_to_main_thread(std::function<void()> fn) {
 }
 
 std::string WaylandPlatformApplication::clipboard_get_text() {
-    // TODO: implement via wl_data_device/wl_data_offer for cross-client paste
-    return clipboard_content;
+    if (clipboard_source) {
+        // We still own the selection; no need to round-trip through the
+        // compositor and back to our own data_source.
+        return clipboard_content;
+    }
+    if (!current_selection_offer) {
+        return {};
+    }
+
+    auto mime = std::string{"text/plain;charset=utf-8"};
+    auto it = offer_mime_types.find(current_selection_offer);
+    if (it != offer_mime_types.end()) {
+        auto const &types = it->second;
+        auto has = [&](char const *m) {
+            return std::find(types.begin(), types.end(), m) != types.end();
+        };
+        if (has("text/plain;charset=utf-8")) {
+            mime = "text/plain;charset=utf-8";
+        } else if (has("UTF8_STRING")) {
+            mime = "UTF8_STRING";
+        } else if (has("text/plain")) {
+            mime = "text/plain";
+        } else if (has("STRING")) {
+            mime = "STRING";
+        } else if (has("TEXT")) {
+            mime = "TEXT";
+        } else if (!types.empty()) {
+            mime = types.front();
+        } else {
+            return {};
+        }
+    }
+
+    int fds[2];
+    if (pipe(fds) != 0) {
+        return {};
+    }
+    wl_data_offer_receive(current_selection_offer, mime.c_str(), fds[1]);
+    ::close(fds[1]);
+    wl_display_flush(display);
+
+    // Bounded wait for the owning client to write and close its end,
+    // mirroring the X11 backend's ~1s poll loop for XConvertSelection.
+    std::string result;
+    char buf[4096];
+    for (;;) {
+        struct pollfd pfd = {fds[0], POLLIN, 0};
+        if (poll(&pfd, 1, 1000) <= 0) {
+            break;
+        }
+        auto n = ::read(fds[0], buf, sizeof(buf));
+        if (n <= 0) {
+            break;
+        }
+        result.append(buf, static_cast<size_t>(n));
+    }
+    ::close(fds[0]);
+    return result;
 }
 
 void WaylandPlatformApplication::clipboard_set_text(std::string const &text) {
     clipboard_content = text;
-    // TODO: implement via wl_data_source for cross-client copy
+    if (!data_device_manager || !data_device) {
+        return;
+    }
+
+    auto *source = wl_data_device_manager_create_data_source(data_device_manager);
+    wl_data_source_add_listener(source, &data_source_listener, this);
+    wl_data_source_offer(source, "text/plain;charset=utf-8");
+    wl_data_source_offer(source, "text/plain");
+    wl_data_source_offer(source, "UTF8_STRING");
+    wl_data_source_offer(source, "STRING");
+    wl_data_source_offer(source, "TEXT");
+    wl_data_device_set_selection(data_device, source, input_serial);
+    clipboard_source = source;
+    wl_display_flush(display);
 }
 
 // --- WaylandPlatformWindow ---
