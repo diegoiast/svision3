@@ -14,6 +14,9 @@ class IconProvider;
 
 class Application {
   public:
+    // Reads the SVISION_LOG_LEVEL environment variable (trace, debug, info, warning, error,
+    // critical, off, or their numeric 0-6 equivalents), same convention as SVISION_BACKEND /
+    // SVISION_PAINT, and applies it via set_log_level().
     Application();
     ~Application();
 
@@ -22,6 +25,11 @@ class Application {
 
     Application(Application const &) = delete;
     Application &operator=(Application const &) = delete;
+
+    // Parses a spdlog level name (trace, debug, info, warning, error, critical, off) or its
+    // numeric 0-6 equivalent, and applies it via spdlog::set_level(). Returns false (and logs a
+    // warning) if the value is unrecognized.
+    static bool set_log_level(std::string_view name);
 
     Window *create_window(std::string_view title, Size size, WindowOptions options = {});
     int run();

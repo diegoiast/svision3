@@ -7,7 +7,9 @@
 #include "toolkit/widget.hpp"
 #include "toolkit/xdg_image_loader.hpp"
 
+#include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <cstdlib>
 #include <map>
 #include <spdlog/fmt/fmt.h>
@@ -159,6 +161,10 @@ static std::string get_executable_name() {
 }
 
 Application::Application() : impl_(std::make_unique<Impl>()) {
+    if (const char *env_level = std::getenv("SVISION_LOG_LEVEL")) {
+        set_log_level(env_level);
+    }
+
     impl_->application_name = get_executable_name();
     detail::set_current_application(this);
     impl_->platform = create_platform_application();
@@ -181,6 +187,30 @@ Application::~Application() {
 }
 
 Application &Application::instance() { return *detail::current_application(); }
+
+bool Application::set_log_level(std::string_view name) {
+    auto numeric = 0;
+    auto const [ptr, ec] = std::from_chars(name.data(), name.data() + name.size(), numeric);
+    if (ec == std::errc{} && ptr == name.data() + name.size() && numeric >= spdlog::level::trace &&
+        numeric < spdlog::level::n_levels) {
+        spdlog::set_level(static_cast<spdlog::level::level_enum>(numeric));
+        return true;
+    }
+
+    static constexpr std::string_view valid_names[] = {
+        "trace", "debug", "info", "warning", "warn", "error", "err", "critical", "off",
+    };
+    auto known = std::find(std::begin(valid_names), std::end(valid_names), name) !=
+                std::end(valid_names);
+    if (!known) {
+        spdlog::warn("Application::set_log_level: unknown level '{}' (expected 0-6, or one of: "
+                     "trace, debug, info, warning, error, critical, off)",
+                     name);
+        return false;
+    }
+    spdlog::set_level(spdlog::level::from_str(std::string(name)));
+    return true;
+}
 
 bool platformNeedsCSD() {
     // FIXME: what other sessions must have CSD?

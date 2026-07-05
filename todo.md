@@ -46,7 +46,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 34. [x] Winwodws should have a `Window::add<T>` template that
         internally creates the shared ptr, and returns a reference.
 35. [ ] Signals/slots (beyond single std::function) - or alternative.
-36. [ ] Logging levels configurable at runtime.
+36. [x] Logging levels configurable at runtime.
 37. [ ] Scroll size - detect at runtime.
 38. [ ] Natural scrolling - detect at runtime.
 39. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
