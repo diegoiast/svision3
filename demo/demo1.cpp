@@ -383,15 +383,15 @@ int main(int argc, char *argv[]) {
     rich_label->set_markdown_tooltip(rich_label->text());
     tab_main->add_widget(std::move(rich_label));
 
-    auto cb1 = std::make_unique<toolkit::Checkbox>("Enable notifications");
+    auto cb1 = std::make_unique<toolkit::Checkbox>("Enable &notifications");
     cb1->set_checked(true);
-    cb1->set_tooltip("Toggle desktop notifications");
+    cb1->set_tooltip("Toggle desktop notifications (Alt+N)");
     tab_main->add_widget(std::move(cb1));
 
-    auto cb2 = std::make_unique<toolkit::Checkbox>("Tri-state option");
+    auto cb2 = std::make_unique<toolkit::Checkbox>("Tri-&state option");
     cb2->set_tri_state(true);
     cb2->set_check_state(toolkit::CheckState::Partial);
-    cb2->set_tooltip("This checkbox cycles through three states");
+    cb2->set_tooltip("This checkbox cycles through three states (Alt+S)");
     tab_main->add_widget(std::move(cb2));
 
     std::vector<std::string> main_page_style_names;
@@ -423,10 +423,10 @@ int main(int argc, char *argv[]) {
     });
     tab_main->add_widget(std::move(combo));
 
-    auto rb_light = std::make_unique<toolkit::RadioButton>("Light", scheme_group);
-    rb_light->set_tooltip("Light color scheme");
-    auto rb_dark = std::make_unique<toolkit::RadioButton>("Dark", scheme_group);
-    rb_dark->set_tooltip("Dark color scheme");
+    auto rb_light = std::make_unique<toolkit::RadioButton>("&Light", scheme_group);
+    rb_light->set_tooltip("Light color scheme (Alt+L)");
+    auto rb_dark = std::make_unique<toolkit::RadioButton>("&Dark", scheme_group);
+    rb_dark->set_tooltip("Dark color scheme (Alt+D)");
     scheme_group.select(rb_light.get());
     scheme_group.on_change = [&app, window](int index) {
         constexpr toolkit::ColorScheme schemes[] = {toolkit::ColorScheme::Light,
@@ -508,6 +508,16 @@ int main(int argc, char *argv[]) {
     auto tab_inputs = std::make_unique<toolkit::VBoxLayout>();
     tab_inputs->set_margins({20, 20, 20, 20});
     tab_inputs->set_spacing(12);
+
+    // Label buddy: Alt+U focuses the username input
+    auto username_row = std::make_unique<toolkit::HBoxLayout>();
+    username_row->set_spacing(8);
+    auto *username_input = new toolkit::LineInput("Enter username");
+    auto username_label = std::make_unique<toolkit::Label>("&Username:");
+    username_label->set_buddy(username_input);
+    username_row->add_widget(std::move(username_label));
+    username_row->add_widget(std::unique_ptr<toolkit::LineInput>(username_input), 1);
+    tab_inputs->add_widget(std::move(username_row));
 
     auto input1 = std::make_unique<toolkit::LineInput>("Regular input");
     tab_inputs->add_widget(std::move(input1));
@@ -678,14 +688,14 @@ int main(int argc, char *argv[]) {
     };
     filter_row->add_widget(std::move(filter_input), 1);
 
-    auto delay_label = std::make_unique<toolkit::Label>("Delay (ms):");
-    filter_row->add_widget(std::move(delay_label));
-
     auto delay_spin = std::make_unique<toolkit::SpinBox>(10, 0, 200, 5);
     delay_spin->on_change = [filter_adapter](int val, toolkit::SpinBox &) {
         filter_adapter->set_simulated_delay_ms(val);
     };
     delay_spin->set_tooltip("Simulated delay per item (ms)");
+    auto delay_label = std::make_unique<toolkit::Label>("Delay (ms):");
+    delay_label->set_buddy(delay_spin.get());
+    filter_row->add_widget(std::move(delay_label));
     filter_row->add_widget(std::move(delay_spin));
 
     tab3->add_widget(std::move(filter_row));

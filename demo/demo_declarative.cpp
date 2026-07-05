@@ -111,8 +111,8 @@ int main(int argc, char *argv[]) {
         current_scheme = (index == 0) ? toolkit::ColorScheme::Light : toolkit::ColorScheme::Dark;
         apply_theme(app, window);
     });
-    auto rb_light = ui::radio_button("Light", group).selected(true);
-    auto rb_dark = ui::radio_button("Dark", group);
+    auto rb_light = ui::radio_button("&Light", group).selected(true);
+    auto rb_dark = ui::radio_button("&Dark", group);
     auto *rb_light_ptr = rb_light.get();
     auto *rb_dark_ptr = rb_dark.get();
 
@@ -487,12 +487,12 @@ int main(int argc, char *argv[]) {
                 ui::vbox()
                     .add(ui::label(LOREM_IPSUM).tooltip(LOREM_IPSUM).shrinkable(true))
                     .add(ui::rich_label_md(LOREM_IPSUM_MD).markdownToolTip(LOREM_IPSUM_MD))
-                    .add(ui::checkbox("Enable notifications")
-                             .tooltip("Toggle desktop notifications")
+                    .add(ui::checkbox("Enable &notifications")
+                             .tooltip("Toggle desktop notifications (Alt+N)")
                              .checked(true))
-                    .add(ui::checkbox("Tri-state option")
+                    .add(ui::checkbox("Tri-&state option")
                              .tri_state(true)
-                             .tooltip("This checkbox cycles trough 3 state")
+                             .tooltip("This checkbox cycles through 3 states (Alt+S)")
                              .checked(true))
                     .add(main_theme_combo)
                     .add(rb_light)
@@ -522,6 +522,15 @@ int main(int argc, char *argv[]) {
             .add_tab(
                 "Inputs",
                 ui::vbox()
+                    .add([&]() {
+                        // Label buddy: Alt+U focuses the username input
+                        auto username_input = ui::line_input("Enter username");
+                        auto *input_ptr = username_input.get();
+                        return ui::hbox()
+                            .margins(ui::no_margins())
+                            .add(ui::label("&Username:").buddy(input_ptr))
+                            .add(std::move(username_input), ui::expand);
+                    }())
                     .add(ui::line_input("Regular input"))
                     .add(ui::line_input("Password").password_mode(true))
                     .add(ui::line_input().text("This text cannot be edited").read_only(true))
@@ -570,17 +579,24 @@ int main(int argc, char *argv[]) {
                 "Songs",
                 ui::vbox()
                     .margins(ui::default_margins_no_bottom())
-                    .add(ui::hbox()
-                             .margins(ui::no_margins())
-                             .add(ui::line_input("Filter songs...")
-                                      .on_change([filter_adapter](auto &text, auto &) {
-                                          filter_adapter->set_filter(text);
-                                      }),
-                                  ui::expand)
-                             .add(ui::label("Delay (ms)").tooltip("Simulated delay per item (ms)"))
-                             .add(ui::spin_box(10).on_change([filter_adapter](auto v, auto &w) {
-                                 filter_adapter->set_simulated_delay_ms(v);
-                             })))
+                    .add([filter_adapter]() {
+                        auto spin =
+                            ui::spin_box(10).on_change([filter_adapter](auto v, auto &) {
+                                filter_adapter->set_simulated_delay_ms(v);
+                            });
+                        auto *spin_ptr = spin.get();
+                        return ui::hbox()
+                            .margins(ui::no_margins())
+                            .add(ui::line_input("Filter songs...")
+                                     .on_change([filter_adapter](auto &text, auto &) {
+                                         filter_adapter->set_filter(text);
+                                     }),
+                                 ui::expand)
+                            .add(ui::label("Delay (ms):")
+                                     .tooltip("Simulated delay per item (ms)")
+                                     .buddy(spin_ptr))
+                            .add(std::move(spin));
+                    }())
                     .add(filter_progress)
                     .add(ui::list_view(filter_adapter).alternate_row_colors(true), ui::expand))
             .add_tab("Table",

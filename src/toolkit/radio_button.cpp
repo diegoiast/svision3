@@ -4,6 +4,7 @@
 #include "toolkit/radio_button.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include <cctype>
 #include <nlohmann/json.hpp>
 
 namespace toolkit {
@@ -63,8 +64,15 @@ bool RadioButton::should_fire_click() const {
     return state_handler_.button_state == ButtonState::ClickedInside;
 }
 
-RadioButton::RadioButton(std::string text, RadioGroup &group)
-    : text_(std::move(text)), group_(group) {
+RadioButton::RadioButton(std::string text, RadioGroup &group) : group_(group) {
+    auto pos = text.find('&');
+    if (pos != std::string::npos && pos + 1 < text.size()) {
+        mnemonic_index_ = static_cast<int>(pos);
+        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
+        text_ = text.substr(0, pos) + text.substr(pos + 1);
+    } else {
+        text_ = std::move(text);
+    }
     state.focusable = true;
     group_.add(this);
     state_handler_.on_state_change_callback = [this] { on_state_changed(); };
@@ -130,5 +138,16 @@ bool RadioButton::handle_key(KeyEvent const &event) {
 }
 
 Size RadioButton::size_hint() const { return Theme::current().measure_radio_button(text_); }
+
+bool RadioButton::trigger_mnemonic(char key) {
+    if (!is_enabled()) {
+        return false;
+    }
+    if (mnemonic_key_ && mnemonic_key_ == key) {
+        group_.select(this);
+        return true;
+    }
+    return false;
+}
 
 } // namespace toolkit

@@ -6,6 +6,7 @@
 #include "toolkit/widget.hpp"
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace toolkit {
 
@@ -20,9 +21,28 @@ class Label : public Widget, public Fluent<Label> {
     Size size_hint() const override;
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;
+    Widget *find_focusable_at(Point p) override {
+        if (buddy_ && buddy_->is_enabled() && buddy_->is_focusable() && hit_test(p)) {
+            return buddy_;
+        }
+        return nullptr;
+    }
+
+    bool trigger_mnemonic(char key) override;
+    void collect_mnemonics(std::vector<Widget *> &out) override {
+        if (mnemonic_key_) {
+            out.push_back(this);
+        }
+    }
 
     Label &set_text(std::string const &text);
     std::string const &text() const { return text_; }
+
+    Label &set_buddy(Widget *buddy) {
+        buddy_ = buddy;
+        return *this;
+    }
+    Widget *buddy() const { return buddy_; }
 
     Label &set_color(Color const &color) {
         color_override_ = color;
@@ -52,6 +72,9 @@ class Label : public Widget, public Fluent<Label> {
 
   private:
     std::string text_;
+    int mnemonic_index_ = -1;
+    char mnemonic_key_ = 0;
+    Widget *buddy_ = nullptr;
     std::optional<Color> color_override_;
     std::optional<float> font_size_override_;
     bool shrinkable_ = false;

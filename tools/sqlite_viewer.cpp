@@ -179,14 +179,18 @@ int main(int argc, char *argv[]) {
     };
     toolbar->add_widget(std::move(open_btn));
 
-    toolbar->add_widget(std::make_unique<toolkit::Label>("Schema:"));
     auto schema_combo = std::make_unique<toolkit::Combobox>();
     vs.schema_combo = schema_combo.get();
+    auto schema_label = std::make_unique<toolkit::Label>("&Schema:");
+    schema_label->set_buddy(vs.schema_combo);
+    toolbar->add_widget(std::move(schema_label));
     toolbar->add_widget(std::move(schema_combo));
 
-    toolbar->add_widget(std::make_unique<toolkit::Label>("Table:"));
     auto table_combo = std::make_unique<toolkit::Combobox>();
     vs.table_combo = table_combo.get();
+    auto table_label = std::make_unique<toolkit::Label>("&Table:");
+    table_label->set_buddy(vs.table_combo);
+    toolbar->add_widget(std::move(table_label));
     toolbar->add_widget(std::move(table_combo), 1);
 
     root->add_widget(std::move(toolbar));

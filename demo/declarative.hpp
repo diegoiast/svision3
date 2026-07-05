@@ -166,6 +166,14 @@ template <typename T> struct Element {
         w->set_alignment(a);
         return std::move(*this);
     }
+    Element buddy(toolkit::Widget *b) {
+        if constexpr (std::is_same_v<T, toolkit::Label>) {
+            w->set_buddy(b);
+        } else {
+            static_assert(std::is_same_v<T, void>, "buddy only works on Label");
+        }
+        return std::move(*this);
+    }
     Element padding(toolkit::Margins m) {
         w->set_padding(m);
         return std::move(*this);

@@ -227,14 +227,13 @@ bool Menu::handle_mouse(MouseEvent const &event) {
 
         if (hovered_ != -1 && previously_hovered != hovered_) {
             if (open_submenu_index_ != -1 && hovered_ != open_submenu_index_) {
+                // Clear the callback before closing so hovering away doesn't close this menu too
+                auto &submenu = items_[open_submenu_index_].submenu;
+                if (submenu) {
+                    submenu->on_close_callback = nullptr;
+                }
                 if (window_) {
-                    while (window_->num_popups() > 0) {
-                        window_->close_popup();
-                        if (open_submenu_index_ == -1) {
-                            break;
-                        }
-                        break;
-                    }
+                    window_->close_popup();
                 }
                 open_submenu_index_ = -1;
             }

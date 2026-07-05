@@ -255,13 +255,13 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 3. [x] Scroll wheel support (macOS scrollWheel:).
 4. [x] Focus management (Tab / Shift+Tab navigation).
 5. [x] Mnemonic shortcuts (& prefix, Alt/Cmd/Ctrl activation - button.
-6. [ ] Better handle of mnemonic: I don't like current implementation.
-7. [ ] Mnemonic shortcuts for readio buttons
-8. [ ] Mnemonic shortcuts for checkbox
-9. [ ] Mnemonic shortcuts selecting a label's buddy
-10. [x] Cmd+Q / Ctrl+Q triggers Quit mnemonic.
+6. [x] Mnemonic shortcuts for readio buttons
+7. [x] Mnemonic shortcuts for checkbox
+8. [x] Mnemonic shortcuts selecting a label's buddy
+9. [x] Cmd+Q / Ctrl+Q triggers Quit mnemonic.
+10. [x] Mouse enter/leave events on widgets.
 11. [ ] Global keyboard shortcuts / accelerators.
-12. [x] Mouse enter/leave events on widgets.
+12. [ ] Better handle of mnemonic: I don't like current implementation.
 
 ## Button features [4/7]
 
@@ -357,7 +357,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [x] Text alignment (left / center / right).
 2. [ ] Word wrap / multi-line.
 3. [x] Rich text / markdown.
-4. [ ] Buddy support - when clicking a label, mark the buddy active.
+4. [x] Buddy support - when clicking a label, mark the buddy active.
 5. [x] Markdown label using litehtml+(markdown processor for C++).
 
 ## Combobox Features [0/2]

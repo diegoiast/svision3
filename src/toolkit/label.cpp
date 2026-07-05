@@ -4,6 +4,7 @@
 #include "toolkit/label.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include <cctype>
 #include <nlohmann/json.hpp>
 
 namespace toolkit {
@@ -21,15 +22,37 @@ void Label::from_json(nlohmann::json const &j) {
     }
 }
 
+static void parse_mnemonic(std::string const &raw, std::string &out_text, int &out_index,
+                           char &out_key) {
+    auto pos = raw.find('&');
+    if (pos != std::string::npos && pos + 1 < raw.size()) {
+        out_index = static_cast<int>(pos);
+        out_key = static_cast<char>(std::tolower(static_cast<unsigned char>(raw[pos + 1])));
+        out_text = raw.substr(0, pos) + raw.substr(pos + 1);
+    } else {
+        out_index = -1;
+        out_key = 0;
+        out_text = raw;
+    }
+}
+
 Label::Label() {}
 
-Label::Label(std::string text) : text_(std::move(text)) {}
+Label::Label(std::string text) {
+    parse_mnemonic(text, text_, mnemonic_index_, mnemonic_key_);
+}
 
 Label &Label::set_text(std::string const &text) {
-    if (text_ == text) {
+    std::string new_text;
+    int new_index = -1;
+    char new_key = 0;
+    parse_mnemonic(text, new_text, new_index, new_key);
+    if (text_ == new_text && mnemonic_index_ == new_index) {
         return *this;
     }
-    text_ = text;
+    text_ = std::move(new_text);
+    mnemonic_index_ = new_index;
+    mnemonic_key_ = new_key;
     invalidate_layout();
     return *this;
 }
@@ -69,6 +92,17 @@ void Label::paint(Painter &painter) {
 }
 
 bool Label::handle_mouse(MouseEvent const &) { return false; }
+
+bool Label::trigger_mnemonic(char key) {
+    if (!mnemonic_key_ || mnemonic_key_ != key || !buddy_) {
+        return false;
+    }
+    if (buddy_->is_enabled() && buddy_->is_focusable()) {
+        buddy_->set_focused(true);
+        return true;
+    }
+    return false;
+}
 
 Size Label::size_hint() const {
     auto pallete = Theme::current().palette;
