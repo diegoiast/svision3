@@ -339,25 +339,43 @@ void Window::set_cursor(CursorShape shape) {
     }
 }
 
+bool Window::is_resizable() const { return options_.resizable; }
+bool Window::is_movable() const { return options_.movable; }
+bool Window::is_minimizable() const { return options_.minimizable; }
+bool Window::is_maximizable() const { return options_.maximizable; }
+bool Window::is_closable() const { return options_.closable; }
+
 void Window::start_system_move(uint32_t serial) {
+    if (!is_movable()) {
+        return;
+    }
     if (impl_ && impl_->platform) {
         impl_->platform->start_system_move(serial);
     }
 }
 
 void Window::start_system_resize(WindowEdge edge, uint32_t serial) {
+    if (!is_resizable()) {
+        return;
+    }
     if (impl_ && impl_->platform) {
         impl_->platform->start_system_resize(edge, serial);
     }
 }
 
 void Window::minimize() {
+    if (!is_minimizable()) {
+        return;
+    }
     if (impl_ && impl_->platform) {
         impl_->platform->minimize();
     }
 }
 
 void Window::maximize() {
+    if (!is_maximizable()) {
+        return;
+    }
     is_maximized_ = true;
     if (impl_ && impl_->platform) {
         impl_->platform->maximize();
@@ -747,7 +765,7 @@ void Window::handle_mouse(MouseEvent const &event) {
         last_serial_ = event.serial;
     }
 
-    if (options_.csd) {
+    if (options_.csd && is_resizable()) {
         auto const &s = Theme::current().style;
         auto const &r = event.position;
         auto shadow = is_maximized_ ? 0.0f : s.shadow.size;

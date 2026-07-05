@@ -44,7 +44,7 @@ class Win11TitleBar : public WindowTitleBar {
         button_layout->set_spacing(0.0f);
         button_layout->set_margins({0, 0, 0, 0});
 
-        auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
+        min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
         min_btn->on_click = [this] { window_->minimize(); };
 
         max_btn = new TitlebarButton(DecorationButton::Maximize, "Maximize", btn_size);
@@ -56,8 +56,10 @@ class Win11TitleBar : public WindowTitleBar {
             }
         };
 
-        auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close", btn_size);
+        close_btn = new TitlebarButton(DecorationButton::Close, "Close", btn_size);
         close_btn->on_click = [this] { window_->close(); };
+
+        sync_button_states();
 
         button_layout->add_widget(std::unique_ptr<Widget>(min_btn), 0, Alignment::Fill);
         button_layout->add_widget(std::unique_ptr<Widget>(max_btn), 0, Alignment::Fill);
@@ -73,6 +75,7 @@ class Win11TitleBar : public WindowTitleBar {
         auto fg = active ? pal.text : pal.text_disabled;
 
         painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
+        sync_button_states();
 
         if (title_label) {
             title_label->set_text(std::string(window_->title()));

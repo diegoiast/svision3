@@ -89,8 +89,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [x] GNome: implement
 1. [x] Windows95: implement
 1. [ ] Material: implement
-1. [ ] Disable close/max/min buttons when needed.
-1. [ ] Do not support resize or move (on popups for example, under mutter).
+1. [x] Disable close/max/min buttons when needed.
+1. [x] Do not support resize or move (on popups for example, under mutter).
 1. [ ] Always use local decorations
     1. [ ] Flag to choose to follow theme or platform for CSD
     2. [ ] Theme palette should follow theme or platform?

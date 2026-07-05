@@ -38,10 +38,11 @@ class GnomeTitleBar : public WindowTitleBar {
         icon_widget->set_image(window_->get_icon());
 
         // Set buttons to 32px height.
-        auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close", {22, 22});
+        close_btn = new TitlebarButton(DecorationButton::Close, "Close", {22, 22});
         close_btn->on_click = [this] { window_->close(); };
         close_btn->set_min_size({22, 22});
         close_btn->set_max_size({22, 22});
+        sync_button_states();
 
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
@@ -58,6 +59,7 @@ class GnomeTitleBar : public WindowTitleBar {
         auto fg = active ? pal.text : pal.text_disabled;
 
         painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
+        sync_button_states();
         title_label->set_text(std::string(window_->title()));
         title_label->set_color(fg);
         layout->paint(painter);

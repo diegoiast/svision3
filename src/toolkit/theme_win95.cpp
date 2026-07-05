@@ -33,7 +33,7 @@ class Win95TitleBar : public WindowTitleBar {
         auto const &decoration = Theme::current().style.window_decoration;
         auto btn_size = Size{decoration.top - 4.0f, decoration.top - 4.0f};
 
-        auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
+        min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
         min_btn->on_click = [this] { window_->minimize(); };
 
         max_btn = new TitlebarButton(DecorationButton::Maximize, "Maximize", btn_size);
@@ -45,8 +45,10 @@ class Win95TitleBar : public WindowTitleBar {
             }
         };
 
-        auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close", btn_size);
+        close_btn = new TitlebarButton(DecorationButton::Close, "Close", btn_size);
         close_btn->on_click = [this] { window_->close(); };
+
+        sync_button_states();
 
         layout->add_widget(std::unique_ptr<Widget>(min_btn));
         layout->add_widget(std::unique_ptr<Widget>(max_btn));
@@ -65,6 +67,7 @@ class Win95TitleBar : public WindowTitleBar {
         auto fg = active ? pal.highlighted_text : pal.text_disabled;
 
         painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
+        sync_button_states();
 
         if (title_label) {
             title_label->set_text(std::string(window_->title()));

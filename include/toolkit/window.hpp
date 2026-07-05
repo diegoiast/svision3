@@ -86,6 +86,15 @@ class Window {
     WindowOptions options() const { return options_; }
     void set_csd_mode(bool csd) { options_.csd = csd; }
 
+    // Combine the requested WindowOptions with a live query of the native window/WM/compositor,
+    // so an external, out-of-band change to the native window (e.g. a raw Win32/Cocoa call)
+    // can only ever make an action *more* restricted than what was requested, never less.
+    bool is_resizable() const;
+    bool is_movable() const;
+    bool is_minimizable() const;
+    bool is_maximizable() const;
+    bool is_closable() const;
+
     void start_system_move(uint32_t serial);
     void start_system_resize(WindowEdge edge, uint32_t serial);
     void minimize();

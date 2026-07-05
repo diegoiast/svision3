@@ -68,9 +68,15 @@ class WindowTitleBar : public Widget {
 
   protected:
     auto create_btn(DecorationButton type) -> Button *;
+    // Re-reads Window::is_minimizable/is_maximizable/is_closable and applies them to whichever
+    // of these buttons exist, plus the Maximize/Restore tooltip swap. Call at the top of paint()
+    // so a runtime change (e.g. WindowOptions changing) is reflected without redoing layout.
+    void sync_button_states();
     ImageWidget *icon_widget = nullptr;
     Label *title_label;
+    Button *min_btn = nullptr;
     Button *max_btn = nullptr;
+    Button *close_btn = nullptr;
     HBoxLayout *layout;
 };
 

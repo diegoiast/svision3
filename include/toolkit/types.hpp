@@ -150,6 +150,16 @@ struct WindowOptions {
     // means false even while the app-wide default is true.
     bool csd = detail::default_force_csd();
     bool frameless = false;
+    // Enforced both by the CSD title bar (hides the corresponding button, and
+    // Window::minimize/maximize/start_system_move/start_system_resize become no-ops) and, where
+    // the platform allows it, by the native window manager itself, even when using native
+    // decorations. Useful for utility windows (message boxes, file dialogs) that should stay
+    // fixed-size and not be confused with regular top-level windows.
+    bool resizable = true;
+    bool movable = true;
+    bool minimizable = true;
+    bool maximizable = true;
+    bool closable = true;
 };
 
 enum class WindowEdge {

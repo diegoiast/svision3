@@ -53,7 +53,8 @@ MessageBox::Future MessageBox::show() {
     MessageBoxButtons buttons = buttons_;
     bool use_markdown = markdown_;
 
-    auto *win = Application::instance().create_window(title_str, {400, 160});
+    auto *win = Application::instance().create_window(
+        title_str, {400, 160}, {.resizable = false, .minimizable = false, .maximizable = false});
     auto root = std::make_unique<VBoxLayout>();
     root->set_margins({16, 16, 16, 16});
     root->set_spacing(12);
@@ -164,7 +165,8 @@ std::future<MessageBoxResult> MessageBox::show_static(Window *parent, std::strin
 
     auto result = MessageBoxResult::Cancel;
     auto done = false;
-    auto *win = Application::instance().create_window(title_str, {400, 160});
+    auto *win = Application::instance().create_window(
+        title_str, {400, 160}, {.resizable = false, .minimizable = false, .maximizable = false});
     auto root = std::make_unique<VBoxLayout>();
     root->set_margins({16, 16, 16, 16});
     root->set_spacing(12);

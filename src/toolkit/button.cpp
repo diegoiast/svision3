@@ -316,6 +316,7 @@ bool Button::handle_key(KeyEvent const &event) {
 }
 
 bool Button::handle_mouse(MouseEvent const &event) {
+    auto inside = Rect{0, 0, rect_.width, rect_.height}.contains(event.position);
     if (!is_enabled() || !is_visible()) {
         if (state_handler_.button_state != ButtonState::Normal) {
             state_handler_.button_state = ButtonState::Normal;
@@ -324,9 +325,12 @@ bool Button::handle_mouse(MouseEvent const &event) {
                 window_->request_redraw("button state");
             }
         }
-        return false;
+        // Swallow presses/releases that land on a disabled button so they don't fall through to
+        // a parent's fallback handling (e.g. WindowTitleBar's click-and-drag-to-move-window),
+        // even though the button itself performs no action while disabled.
+        return inside && (event.type == MouseEvent::Type::Press ||
+                         event.type == MouseEvent::Type::Release);
     }
-    auto inside = Rect{0, 0, rect_.width, rect_.height}.contains(event.position);
 
     switch (event.type) {
     case MouseEvent::Type::Move:

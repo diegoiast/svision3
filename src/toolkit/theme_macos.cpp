@@ -26,10 +26,10 @@ class MacOSTitleBar : public WindowTitleBar {
         layout->set_spacing(8.0f);
         layout->set_margins({11, 72, 11, 12.0f});
 
-        auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close");
+        close_btn = new TitlebarButton(DecorationButton::Close, "Close");
         close_btn->on_click = [this] { window_->close(); };
 
-        auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize");
+        min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize");
         min_btn->on_click = [this] { window_->minimize(); };
 
         max_btn = new TitlebarButton(DecorationButton::Maximize, "Zoom");
@@ -40,6 +40,8 @@ class MacOSTitleBar : public WindowTitleBar {
                 window_->maximize();
             }
         };
+
+        sync_button_states();
 
         icon_widget = new TitleBarIcon(window_);
         icon_widget->set_window(window_);

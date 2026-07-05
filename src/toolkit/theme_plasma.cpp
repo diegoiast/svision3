@@ -32,10 +32,10 @@ class PlasmaTitleBar : public WindowTitleBar {
         icon_widget->set_max_size({16, 16});
         icon_widget->set_image(window_->get_icon());
 
-        auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close");
+        close_btn = new TitlebarButton(DecorationButton::Close, "Close");
         close_btn->on_click = [this] { window_->close(); };
 
-        auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize");
+        min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize");
         min_btn->on_click = [this] { window_->minimize(); };
 
         max_btn = new TitlebarButton(DecorationButton::Maximize, "Zoom");
@@ -46,6 +46,8 @@ class PlasmaTitleBar : public WindowTitleBar {
                 window_->maximize();
             }
         };
+
+        sync_button_states();
 
         layout->add_widget(std::unique_ptr<Widget>(icon_widget));
         title_label = new Label(std::string{window_->title()});
@@ -68,11 +70,7 @@ class PlasmaTitleBar : public WindowTitleBar {
         }
 
         painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
-        if (window_->is_maximized()) {
-            max_btn->set_tooltip("Restore");
-        } else {
-            max_btn->set_tooltip("Maximized");
-        }
+        sync_button_states();
         title_label->set_text(std::string(window_->title()));
         title_label->set_color(fg);
         layout->paint(painter);

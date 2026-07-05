@@ -72,10 +72,10 @@ void WindowTitleBar::initializeTitleBar() {
     icon_widget->set_max_size({16, 16});
     icon_widget->set_image(window_->get_icon());
 
-    auto *close_btn = new TitlebarButton(DecorationButton::Close, "Close");
+    close_btn = new TitlebarButton(DecorationButton::Close, "Close");
     close_btn->on_click = [this] { window_->close(); };
 
-    auto *min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize");
+    min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize");
     min_btn->on_click = [this] { window_->minimize(); };
 
     max_btn = new TitlebarButton(DecorationButton::Maximize, "Zoom");
@@ -86,6 +86,8 @@ void WindowTitleBar::initializeTitleBar() {
             window_->maximize();
         }
     };
+
+    sync_button_states();
 
     layout->add_widget(std::unique_ptr<Widget>(icon_widget));
     title_label = new Label(std::string{window_->title()});
@@ -142,6 +144,19 @@ auto WindowTitleBar::create_btn(DecorationButton type) -> Button * {
     return btn;
 }
 
+void WindowTitleBar::sync_button_states() {
+    if (min_btn) {
+        min_btn->set_enabled(window_->is_minimizable());
+    }
+    if (max_btn) {
+        max_btn->set_enabled(window_->is_maximizable());
+        max_btn->set_tooltip(window_->is_maximized() ? "Restore" : "Maximize");
+    }
+    if (close_btn) {
+        close_btn->set_enabled(window_->is_closable());
+    }
+}
+
 Size WindowTitleBar::size_hint() const {
     auto const &m = Theme::current().Theme::current().style.window_decoration;
     return {100.0f, m.top};
@@ -155,14 +170,7 @@ void WindowTitleBar::paint(Painter &painter) {
 
     // FIXME: it would be nice for this to be changable from other themes
     painter.fill_rect({0, 0, rect_.width, rect_.height}, bg);
-    // FIXME: update window button tooltips on resize
-    if (max_btn) {
-        if (window_->is_maximized()) {
-            max_btn->set_tooltip("Restore");
-        } else {
-            max_btn->set_tooltip("Maximized");
-        }
-    }
+    sync_button_states();
 
     // FIXME: update window label only when the window title changed
     title_label->set_text(std::string(window_->title()));
