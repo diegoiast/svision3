@@ -91,6 +91,7 @@ static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
 
 int main(int argc, char *argv[]) {
     toolkit::Application app;
+    app.set_force_csd(true);
     app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("Faenza"));
     // app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("breeze-icons-6.4.0/icons"));
     // app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>(

@@ -132,8 +132,23 @@ struct SystemFonts {
     float auto_repeat_interval = 0;
 };
 
+namespace detail {
+// Backing storage for Application::set_force_csd()/force_csd(). Declared here rather than in
+// application.hpp so WindowOptions's default member initializer for `csd` can read it without
+// types.hpp depending on application.hpp (which itself depends on window.hpp -> types.hpp).
+inline bool &default_force_csd() {
+    static bool value = false;
+    return value;
+}
+} // namespace detail
+
 struct WindowOptions {
-    bool csd = false;
+    // Defaults to whatever Application::set_force_csd() last set (false until called). Give an
+    // explicit `.csd = true` or `.csd = false` at a create_window() call site to override the
+    // app-wide default for just that window -- aggregate init skips this default member
+    // initializer entirely for any field given an explicit value, so an explicit false really
+    // means false even while the app-wide default is true.
+    bool csd = detail::default_force_csd();
     bool frameless = false;
 };
 

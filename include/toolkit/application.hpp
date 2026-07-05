@@ -31,6 +31,16 @@ class Application {
     // warning) if the value is unrecognized.
     static bool set_log_level(std::string_view name);
 
+    // Application-wide default for WindowOptions::csd, so you don't have to repeat `.csd = true`
+    // at every create_window() call site. A specific window can still override this default in
+    // either direction with an explicit `.csd = true`/`.csd = false` in the WindowOptions passed
+    // to create_window() -- only an unset `csd` field (the common case: omitting it entirely, or
+    // passing `{}`) inherits this app-wide default. A platform that lacks server-side decorations
+    // entirely (PlatformApplication::needs_csd(), e.g. GNOME/mutter's Wayland compositor) forces
+    // CSD on regardless, always winning over both. Off by default.
+    void set_force_csd(bool force);
+    bool force_csd() const;
+
     Window *create_window(std::string_view title, Size size, WindowOptions options = {});
     int run();
     void run_until(std::function<bool()> should_exit);

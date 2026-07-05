@@ -8,7 +8,6 @@
 #include "toolkit/xdg_image_loader.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <charconv>
 #include <cstdlib>
 #include <map>
@@ -212,24 +211,16 @@ bool Application::set_log_level(std::string_view name) {
     return true;
 }
 
-bool platformNeedsCSD() {
-    // FIXME: what other sessions must have CSD?
-    auto xdg = std::getenv("XDG_CURRENT_DESKTOP");
-    auto is_gnome = false;
-    if (xdg) {
-        std::string s(xdg);
-        std::transform(s.begin(), s.end(), s.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
-        if (s.find("gnome") != std::string::npos) {
-            is_gnome = true;
-        }
-    }
-    auto is_wayland = std::getenv("WAYLAND_DISPLAY") != nullptr;
-    return is_gnome && is_wayland;
-}
+void Application::set_force_csd(bool force) { detail::default_force_csd() = force; }
+
+bool Application::force_csd() const { return detail::default_force_csd(); }
 
 Window *Application::create_window(std::string_view title, Size size, WindowOptions options) {
-    if (platformNeedsCSD()) {
+    if (impl_->platform->needs_csd()) {
+        // Native decorations aren't an option at all here (e.g. GNOME/mutter's Wayland
+        // compositor doesn't implement the xdg-decoration protocol); this platform mandate still
+        // always wins, unlike force_csd() (see WindowOptions::csd) which a caller can override
+        // per-window with an explicit `.csd = false`.
         options.csd = true;
     }
     windows_.push_back(std::make_unique<Window>(title, size, options));

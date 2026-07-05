@@ -71,6 +71,7 @@ class WaylandPlatformApplication : public PlatformApplication {
 
     float scale_factor() const override;
     SystemFonts system_fonts() const override;
+    bool needs_csd() const override { return decoration_manager == nullptr; }
 
     wl_display *display = nullptr;
     wl_compositor *compositor = nullptr;

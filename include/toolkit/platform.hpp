@@ -20,8 +20,6 @@ namespace text {
 class TextShaper;
 } // namespace text
 
-bool platformNeedsCSD();
-
 class Window;
 class PlatformApplication;
 class PlatformWindow;
@@ -113,6 +111,13 @@ class PlatformApplication {
     virtual std::string_view name() const = 0;
     virtual float scale_factor() const = 0;
     virtual SystemFonts system_fonts() const = 0;
+
+    // True only when we know for a fact the WM/compositor cannot decorate a plain top-level
+    // window itself (e.g. a Wayland compositor that doesn't implement the xdg-decoration
+    // protocol, such as GNOME/mutter) -- in which case Application::create_window forces CSD on
+    // regardless of WindowOptions::csd/Application::force_csd(). False by default: most backends
+    // (X11 WMs, Win32, macOS) always have real native decorations available.
+    virtual bool needs_csd() const { return false; }
 
   protected:
     TextRasterizer *rasterizer_ = nullptr;
