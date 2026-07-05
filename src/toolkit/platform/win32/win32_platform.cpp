@@ -834,6 +834,14 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
 
     app_->window_map[hwnd] = {owner, arrow_cursor};
 
+    if (options.csd) {
+        // WM_NCCALCSIZE fired during CreateWindowExW before window_map was populated,
+        // so DefWindowProc handled it and kept the native frame. Now that we are
+        // registered, force a recalculation so the CSD handler can strip it.
+        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
+
     if (app_->opengl_requested) {
         HDC hdc = GetDC(hwnd);
         PIXELFORMATDESCRIPTOR pfd = {};
