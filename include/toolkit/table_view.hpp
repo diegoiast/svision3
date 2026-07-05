@@ -16,8 +16,12 @@ namespace toolkit {
 enum class SortOrder { None, Ascending, Descending };
 
 class TableView : public ScrollableWidget, public Fluent<TableView> {
+    DECLARE_WIDGET(TableView)
   public:
     explicit TableView(std::shared_ptr<ItemModel> model);
+
+    nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     TableView &set_model(std::shared_ptr<ItemModel> model);
     std::shared_ptr<ItemModel> model() const { return model_; }

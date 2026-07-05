@@ -4,8 +4,37 @@
 #include "toolkit/tree_view.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
+
+nlohmann::json TreeView::to_json() const {
+    auto j = Widget::to_json();
+    j["selected_node"] = cursor_;
+    j["selection"] = selection_;
+    j["multi_select"] = multi_select_;
+    j["alternating_row_colors"] = alternating_;
+    if (model_) {
+        j["root_count"] = model_->root_count();
+    }
+    return j;
+}
+
+void TreeView::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("selected_node")) {
+        set_selected_node(j["selected_node"]);
+    }
+    if (j.contains("selection")) {
+        set_selection(j["selection"].get<std::set<int>>());
+    }
+    if (j.contains("multi_select")) {
+        set_multi_select(j["multi_select"]);
+    }
+    if (j.contains("alternating_row_colors")) {
+        set_alternating_row_colors(j["alternating_row_colors"]);
+    }
+}
 
 SimpleTreeModel::SimpleTreeModel(std::vector<TreeNode> roots) : roots_(std::move(roots)) {}
 

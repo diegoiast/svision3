@@ -9,9 +9,13 @@
 namespace toolkit {
 
 class RichLabel : public HtmlView, public Fluent<RichLabel> {
+    DECLARE_WIDGET(RichLabel)
   public:
     RichLabel();
     explicit RichLabel(std::string text);
+
+    nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     RichLabel &set_text(std::string const &text);
     RichLabel &set_markdown(std::string const &markdown);

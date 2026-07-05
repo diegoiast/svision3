@@ -44,8 +44,12 @@ class SimpleTreeModel : public TreeModel {
 };
 
 class TreeView : public ScrollableWidget, public Fluent<TreeView> {
+    DECLARE_WIDGET(TreeView)
   public:
     explicit TreeView(std::shared_ptr<TreeModel> model);
+
+    nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     TreeView &set_model(std::shared_ptr<TreeModel> model);
     std::shared_ptr<TreeModel> model() const { return model_; }

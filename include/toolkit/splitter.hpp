@@ -10,8 +10,12 @@
 namespace toolkit {
 
 class Splitter : public Widget, public Fluent<Splitter> {
+    DECLARE_WIDGET(Splitter)
   public:
     explicit Splitter(Orientation o = Orientation::Horizontal);
+
+    nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     Splitter &set_first(std::unique_ptr<Widget> w);
     Splitter &set_second(std::unique_ptr<Widget> w);

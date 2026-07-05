@@ -14,8 +14,12 @@
 namespace toolkit {
 
 class IconGrid : public ScrollableWidget, public Fluent<IconGrid> {
+    DECLARE_WIDGET(IconGrid)
   public:
     explicit IconGrid(std::shared_ptr<ItemModel> model);
+
+    nlohmann::json to_json() const override;
+    void from_json(nlohmann::json const &j) override;
 
     IconGrid &set_model(std::shared_ptr<ItemModel> model);
     std::shared_ptr<ItemModel> model() const { return model_; }

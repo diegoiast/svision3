@@ -6,6 +6,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <cmath>
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
@@ -22,6 +23,31 @@ IconGrid::IconGrid(std::shared_ptr<ItemModel> model) : model_(std::move(model)) 
             }
             invalidate_layout();
         };
+    }
+}
+
+nlohmann::json IconGrid::to_json() const {
+    auto j = Widget::to_json();
+    j["icon_size"] = icon_size_;
+    j["scale_icons"] = scale_icons_;
+    j["selected_index"] = cursor_ ? nlohmann::json(*cursor_) : nlohmann::json(nullptr);
+    j["selected_indices"] = selected_indices_;
+    if (model_) {
+        j["row_count"] = model_->row_count();
+    }
+    return j;
+}
+
+void IconGrid::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("icon_size")) {
+        set_icon_size(j["icon_size"]);
+    }
+    if (j.contains("scale_icons")) {
+        set_scale_icons(j["scale_icons"]);
+    }
+    if (j.contains("selected_index") && !j["selected_index"].is_null()) {
+        set_selected(j["selected_index"].get<size_t>());
     }
 }
 

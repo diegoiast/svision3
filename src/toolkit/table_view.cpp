@@ -6,6 +6,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <algorithm>
+#include <nlohmann/json.hpp>
 #include <numeric>
 
 namespace toolkit {
@@ -23,6 +24,40 @@ TableView::TableView(std::shared_ptr<ItemModel> model) : model_(std::move(model)
         };
         ensure_column_widths();
         rebuild_sort_index();
+    }
+}
+
+nlohmann::json TableView::to_json() const {
+    auto j = Widget::to_json();
+    j["selected_row"] = cursor_row_ ? nlohmann::json(*cursor_row_) : nlohmann::json(nullptr);
+    j["selection"] = selection_;
+    j["multi_select"] = multi_select_;
+    j["alternating_row_colors"] = alternating_;
+    j["show_header"] = show_header_;
+    j["sort_column"] = sort_column_;
+    j["sort_order"] = static_cast<int>(sort_order_);
+    if (model_) {
+        j["row_count"] = model_->row_count();
+    }
+    return j;
+}
+
+void TableView::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("selected_row") && !j["selected_row"].is_null()) {
+        set_selected_row(j["selected_row"].get<size_t>());
+    }
+    if (j.contains("selection")) {
+        set_selection(j["selection"].get<std::set<size_t>>());
+    }
+    if (j.contains("multi_select")) {
+        set_multi_select(j["multi_select"]);
+    }
+    if (j.contains("alternating_row_colors")) {
+        set_alternating_row_colors(j["alternating_row_colors"]);
+    }
+    if (j.contains("show_header")) {
+        set_show_header(j["show_header"]);
     }
 }
 

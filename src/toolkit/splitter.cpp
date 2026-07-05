@@ -7,10 +7,34 @@
 #include "toolkit/window.hpp"
 
 #include <algorithm>
+#include <nlohmann/json.hpp>
 
 namespace toolkit {
 
 Splitter::Splitter(Orientation o) : orientation_(o) {}
+
+nlohmann::json Splitter::to_json() const {
+    auto j = Widget::to_json();
+    j["orientation"] = static_cast<int>(orientation_);
+    j["ratio"] = ratio_;
+    if (first_) {
+        j["first"] = first_->to_json();
+    }
+    if (second_) {
+        j["second"] = second_->to_json();
+    }
+    return j;
+}
+
+void Splitter::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("orientation")) {
+        orientation_ = static_cast<Orientation>(j["orientation"].get<int>());
+    }
+    if (j.contains("ratio")) {
+        set_ratio(j["ratio"]);
+    }
+}
 
 Splitter &Splitter::set_first(std::unique_ptr<Widget> w) {
     first_ = std::move(w);

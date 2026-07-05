@@ -5,6 +5,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/utf8.hpp"
 
+#include <nlohmann/json.hpp>
 #include <spdlog/fmt/fmt.h>
 
 namespace toolkit {
@@ -23,6 +24,19 @@ RichLabel::RichLabel() {
 }
 
 RichLabel::RichLabel(std::string text) : RichLabel() { set_markdown(text); }
+
+nlohmann::json RichLabel::to_json() const {
+    auto j = Widget::to_json();
+    j["text"] = text_;
+    return j;
+}
+
+void RichLabel::from_json(nlohmann::json const &j) {
+    Widget::from_json(j);
+    if (j.contains("text")) {
+        set_markdown(j["text"]);
+    }
+}
 
 RichLabel &RichLabel::set_text(std::string const &text) {
     text_ = text;
