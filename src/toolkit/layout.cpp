@@ -276,6 +276,8 @@ auto VBoxLayout::release_item(int index) -> std::unique_ptr<Widget> {
     }
     auto widget = std::move(items_[index].widget);
     items_.erase(items_.begin() + index);
+    widget->set_parent(nullptr);
+    widget->set_window(nullptr);
     return widget;
 }
 
@@ -530,6 +532,8 @@ auto HBoxLayout::release_item(int index) -> std::unique_ptr<Widget> {
     }
     auto widget = std::move(items_[index].widget);
     items_.erase(items_.begin() + index);
+    widget->set_parent(nullptr);
+    widget->set_window(nullptr);
     return widget;
 }
 

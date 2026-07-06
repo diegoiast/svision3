@@ -27,7 +27,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 15. [x] Command interfaces for menus/toolbars and app shortcuts.
 16. [x] Backends have open/cairo/whatevre backed in. We need to separate them.
 17. [x] Paintings inside widgets should start at (0,0) not position at window.
-18. [ ] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
+18. [x] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
 19. [ ] API to read keyboard shortcuts per platform on runtime.
 20. [x] Generic timer system (start_timer / stop_timer)
 21. [x] Popup/overlay mechanism (used by Combobox)

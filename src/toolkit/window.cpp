@@ -132,6 +132,14 @@ Window::Window(std::string_view title, Size size, WindowOptions options)
 }
 
 Window::~Window() {
+    // Null out window_ on all owned widgets so any stale external Widget*
+    // references see window_ == nullptr rather than a dangling pointer.
+    if (root_) {
+        root_->set_window(nullptr);
+    }
+    for (auto &w : widgets_) {
+        w->set_window(nullptr);
+    }
     *theme_observer_alive_ = false;
     if (impl_->platform) {
         impl_->platform->hide_tooltip_window();
@@ -281,6 +289,7 @@ void Window::on_theme_changed() {
                 title_bar->set_window(this);
                 new_layout->add_widget(std::move(content), 1);
                 root_ = std::move(new_layout);
+                root_->set_window(this);
             }
         }
     }
