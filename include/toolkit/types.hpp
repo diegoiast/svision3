@@ -3,7 +3,9 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <string_view>
 
@@ -178,8 +180,8 @@ enum class WindowEdge {
 enum class DecorationButton { Minimize, Maximize, Restore, Close, Menu };
 
 struct MnemonicInfo {
-    std::string text;  // display text with & removed
-    std::string key;   // UTF-8 mnemonic character, ASCII-lowercased (empty if none)
+    std::string text; // display text with & removed
+    std::string key;  // UTF-8 mnemonic character, ASCII-lowercased (empty if none)
 };
 
 MnemonicInfo parse_mnemonic(std::string_view text);
@@ -188,5 +190,8 @@ std::string strip_mnemonic(std::string_view text);
 // (ASCII only; non-ASCII codepoints are returned as-is). Used to normalize a
 // raw key-event character so it can be compared against a stored mnemonic_key_.
 std::string normalize_mnemonic_key(std::string_view char_text);
+
+std::string format_size(std::uintmax_t bytes);
+std::string format_mtime(std::filesystem::file_time_type t);
 
 } // namespace toolkit
