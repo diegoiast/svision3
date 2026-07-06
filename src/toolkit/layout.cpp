@@ -873,16 +873,12 @@ void StackedLayout::apply_layout() {
 }
 
 auto StackedLayout::size_hint() const -> Size {
-    auto w = 0.0f;
-    auto h = 0.0f;
-    for (auto const &item : items_) {
-        auto hint = item->size_hint();
-        w = std::max(w, hint.width);
-        h = std::max(h, hint.height);
+    if (current_ >= 0 && current_ < static_cast<int>(items_.size())) {
+        auto hint = items_[current_]->size_hint();
+        return {hint.width + margins_.left + margins_.right,
+                hint.height + margins_.top + margins_.bottom};
     }
-    w += margins_.left + margins_.right;
-    h += margins_.top + margins_.bottom;
-    return {w, h};
+    return {margins_.left + margins_.right, margins_.top + margins_.bottom};
 }
 
 nlohmann::json StackedLayout::to_json() const {
