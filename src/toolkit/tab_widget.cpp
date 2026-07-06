@@ -93,10 +93,54 @@ TabWidget &TabWidget::add_tab(std::string title, std::unique_ptr<Widget> content
     if (window_) {
         content->set_window(window_);
     }
-    tabs_.push_back({std::move(title), std::move(content), closable});
+    tabs_.push_back(
+        {.title = std::move(title), .content = std::move(content), .closable = closable});
     if (rect_.width > 0 || rect_.height > 0) {
         layout_content();
     }
+    return *this;
+}
+
+TabWidget &TabWidget::remove_tab(int index) {
+    if (index < 0 || index >= static_cast<int>(tabs_.size())) {
+        return *this;
+    }
+    tabs_.erase(tabs_.begin() + index);
+
+    // Keep current_ in valid range.
+    auto n = static_cast<int>(tabs_.size());
+    if (n == 0) {
+        current_ = -1;
+    } else if (current_ >= n) {
+        current_ = n - 1;
+        tabs_[current_].content->set_visible(true);
+    } else if (current_ == index) {
+        // The current tab was removed; show the one now at that position (or the last).
+        current_ = std::min(index, n - 1);
+        tabs_[current_].content->set_visible(true);
+    } else if (current_ > index) {
+        current_--;
+    }
+
+    layout_content();
+    if (window_) {
+        window_->request_redraw("tab removed");
+    }
+    return *this;
+}
+
+std::string TabWidget::tab_title(int index) const {
+    if (index < 0 || index >= static_cast<int>(tabs_.size())) {
+        return {};
+    }
+    return tabs_[index].title;
+}
+
+TabWidget &TabWidget::set_tab_tooltip(int index, std::string tooltip) {
+    if (index < 0 || index >= static_cast<int>(tabs_.size())) {
+        return *this;
+    }
+    tabs_[index].tooltip = std::move(tooltip);
     return *this;
 }
 
@@ -285,6 +329,23 @@ TabWidget &TabWidget::set_trailing_widget(std::unique_ptr<Widget> widget) {
     return *this;
 }
 
+float TabWidget::tab_bar_size() const { return tab_bar_thickness(); }
+
+TabWidget &TabWidget::set_collapsed(bool c) {
+    if (collapsed_ == c) {
+        return *this;
+    }
+    collapsed_ = c;
+    layout_content();
+    if (on_collapsed) {
+        on_collapsed(collapsed_);
+    }
+    if (window_) {
+        window_->request_redraw("tab collapse");
+    }
+    return *this;
+}
+
 auto TabWidget::tab_bar_thickness() const -> float {
     auto const &theme = Theme::current();
 
@@ -423,7 +484,7 @@ void TabWidget::layout_content() {
     update_scroll_bounds();
 
     for (auto i = 0; i < static_cast<int>(tabs_.size()); i++) {
-        bool is_current = (i == current_);
+        bool is_current = (i == current_) && !collapsed_;
         tabs_[i].content->set_visible(is_current);
         if (is_current) {
             tabs_[i].content->set_rect(content_rect);
@@ -891,7 +952,10 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
 
     if (event.type == MouseEvent::Type::Move) {
         if (in_bar) {
-            hovered_tab_ = hr.tab;
+            if (hovered_tab_ != hr.tab) {
+                hovered_tab_ = hr.tab;
+                state.tooltip = tabs_[hr.tab].tooltip;
+            }
             hovered_close_ = hr.on_close ? hr.tab : -1;
             if (window_) {
                 window_->request_redraw("tab hover");
@@ -901,6 +965,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
         if (hovered_tab_ != -1 || hovered_close_ != -1) {
             hovered_tab_ = -1;
             hovered_close_ = -1;
+            state.tooltip.clear();
             if (window_) {
                 window_->request_redraw("tab hover");
             }
@@ -915,6 +980,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
         if (hovered_tab_ != -1 || hovered_close_ != -1) {
             hovered_tab_ = -1;
             hovered_close_ = -1;
+            state.tooltip.clear();
             if (window_) {
                 window_->request_redraw("tab leave");
             }
@@ -937,7 +1003,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
     }
 
     if (event.type == MouseEvent::Type::Press && in_bar) {
-        if (window_) {
+        if (window_ && focus_on_tab_click_) {
             window_->set_focused_widget(this);
         }
         if (hr.on_close) {
@@ -948,7 +1014,19 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
             return true;
         }
         if (hr.tab >= 0) {
+            auto is_collapsible_orientation =
+                (orientation_ == TabOrientation::West || orientation_ == TabOrientation::East ||
+                 orientation_ == TabOrientation::WestVertical ||
+                 orientation_ == TabOrientation::EastVertical ||
+                 orientation_ == TabOrientation::South);
+            if (collapsible_ && is_collapsible_orientation && hr.tab == current_) {
+                set_collapsed(!collapsed_);
+                return true;
+            }
             if (hr.tab != current_) {
+                if (collapsed_) {
+                    set_collapsed(false);
+                }
                 set_current(hr.tab);
             }
             if (tabs_movable_) {
@@ -1031,20 +1109,25 @@ auto TabWidget::size_hint() const -> Size {
         trail_size = vertical ? sz.height : sz.width;
     }
 
-    auto bar_size = lead_size + trail_size;
-    for (int i = 0; i < (int)tabs_.size(); ++i) {
-        bar_size += tab_size(i);
-    }
+    // The tab bar scrolls, so its minimum only needs to fit the lead/trail
+    // widgets and the scroll buttons — not the sum of all tabs.
+    auto bar_min = lead_size + trail_size;
     if (!tabs_.empty()) {
         auto sz_prev = prev_button_->size_hint();
         auto sz_next = next_button_->size_hint();
-        bar_size += vertical ? (sz_prev.height + sz_next.height) : (sz_prev.width + sz_next.width);
+        bar_min += vertical ? (sz_prev.height + sz_next.height) : (sz_prev.width + sz_next.width);
     }
 
     if (orientation_ == TabOrientation::North || orientation_ == TabOrientation::South) {
-        return {std::max(max_w, bar_size), max_h + thickness};
+        if (collapsed_) {
+            return {std::max(max_w, bar_min), thickness};
+        }
+        return {std::max(max_w, bar_min), max_h + thickness};
     } else {
-        return {max_w + thickness, std::max(max_h, bar_size)};
+        if (collapsed_) {
+            return {thickness, std::max(max_h, bar_min)};
+        }
+        return {max_w + thickness, std::max(max_h, bar_min)};
     }
 }
 

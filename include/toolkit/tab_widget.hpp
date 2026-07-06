@@ -19,11 +19,14 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     void from_json(nlohmann::json const &j) override;
 
     TabWidget &add_tab(std::string title, std::unique_ptr<Widget> content, bool closable = true);
+    TabWidget &remove_tab(int index);
 
     int current_index() const { return current_; }
     TabWidget &set_current(int index);
 
     size_t tab_count() const { return tabs_.size(); }
+    std::string tab_title(int index) const;
+    TabWidget &set_tab_tooltip(int index, std::string tooltip);
 
     TabWidget &set_tabs_closable(bool closable);
     bool tabs_closable() const { return tabs_closable_; }
@@ -36,6 +39,35 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
         return *this;
     }
     bool tabs_movable() const { return tabs_movable_; }
+
+    // When false, clicking a tab header switches the tab but does not move
+    // keyboard focus to this TabWidget. Useful for dock panels where the
+    // center content should remain focused.
+    TabWidget &set_focus_on_tab_click(bool f) {
+        focus_on_tab_click_ = f;
+        return *this;
+    }
+    bool focus_on_tab_click() const { return focus_on_tab_click_; }
+
+    // Collapsed tab widget, show only the tab headers. They are used mainly
+    // in dock areas.
+    // When true, clicking the currently-active tab collapses the content area,
+    // leaving only the tab bar visible. Clicking the same tab again expands it.
+    TabWidget &set_collapsible(bool c) {
+        collapsible_ = c;
+        return *this;
+    }
+
+    bool is_collapsible() const { return collapsible_; }
+    TabWidget &set_collapsed(bool c);
+    bool is_collapsed() const { return collapsed_; }
+
+    // Function to be called when set_collapsed is called
+    std::function<void(bool collapsed)> on_collapsed;
+
+    // Returns the pixel thickness of the tab bar strip (width for side bars,
+    // height for top/bottom bars). Useful for computing collapse ratios.
+    float tab_bar_size() const;
 
     TabWidget &set_orientation(TabOrientation o);
     TabOrientation orientation() const { return orientation_; }
@@ -64,6 +96,7 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
   private:
     struct Tab {
         std::string title;
+        std::string tooltip;
         std::unique_ptr<Widget> content;
         bool closable = true;
     };
@@ -100,6 +133,9 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     bool tabs_closable_ = true;
     float min_tab_width_ = 0.0f;
     bool tabs_movable_ = true;
+    bool focus_on_tab_click_ = true;
+    bool collapsible_ = false;
+    bool collapsed_ = false;
 
     bool dragging_ = false;
     int drag_tab_ = -1;
