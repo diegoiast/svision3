@@ -3,7 +3,7 @@
 
 #include "toolkit/file_dialog.hpp"
 #include "toolkit/application.hpp"
-#include "toolkit/file_dialog_widget.hpp"
+#include "toolkit/file_browser_widget.hpp"
 #include "toolkit/platform.hpp"
 #include "toolkit/window.hpp"
 #include <cstdlib>
@@ -65,7 +65,8 @@ FileDialog::Future FileDialog::show(std::string_view ok_label) {
     auto callback = std::make_shared<Callback>();
     auto settled = std::make_shared<bool>(false);
     auto win = Application::instance().create_window(title_, {700, 500});
-    auto widget = std::make_unique<FileDialogWidget>();
+    auto widget = std::make_unique<FileBrowserWidget>();
+    widget->set_browser_mode(false);
     auto fdp = widget.get();
 
     if (!start_path_.empty()) {

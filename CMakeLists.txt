@@ -86,7 +86,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/item_model.cpp
     src/toolkit/list_view.cpp
     src/toolkit/icon_grid.cpp
-    src/toolkit/file_dialog_widget.cpp
+    src/toolkit/file_browser_widget.cpp
     src/toolkit/file_dialog.cpp
     src/toolkit/directory_dialog.cpp
     src/toolkit/undo_stack.cpp

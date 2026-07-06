@@ -1,5 +1,6 @@
 #include "toolkit/widget_loader.hpp"
 #include "toolkit/button.hpp"
+#include "toolkit/file_browser_widget.hpp"
 #include "toolkit/checkbox.hpp"
 #include "toolkit/combobox.hpp"
 #include "toolkit/image_widget.hpp"
@@ -83,6 +84,7 @@ void WidgetLoader::register_all_widgets() {
     DO_REGISTER_WIDGET(GridLayout);
     DO_REGISTER_WIDGET(FormLayout);
     DO_REGISTER_WIDGET(StackedLayout);
+    DO_REGISTER_WIDGET(FileBrowserWidget);
 }
 
 std::unique_ptr<Widget> WidgetLoader::create_widget(nlohmann::json const &j) {
