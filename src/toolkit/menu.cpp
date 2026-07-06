@@ -17,22 +17,10 @@ MenuItem MenuItem::submenu_item(std::string name, std::shared_ptr<class Menu> me
     return {Type::Submenu, std::move(cmd), std::move(menu)};
 }
 
-static char get_mnemonic(std::string_view name) {
-    auto pos = name.find('&');
-    if (pos != std::string_view::npos && pos + 1 < name.size()) {
-        return static_cast<char>(std::tolower(static_cast<unsigned char>(name[pos + 1])));
-    }
-    return 0;
-}
-
-
 Menu::Menu(std::string title) : title_(std::move(title)) {
-    mnemonic_key_ = get_mnemonic(title_);
-    auto pos = title_.find('&');
-    if (pos != std::string::npos) {
-        mnemonic_index_ = static_cast<int>(pos);
-    }
-    display_title_ = strip_mnemonic(title_);
+    auto m = parse_mnemonic(title_);
+    mnemonic_key_ = std::move(m.key);
+    display_title_ = std::move(m.text);
     state_handler_.on_state_change_callback = [this] {
         if (window_) {
             window_->request_redraw("menu state");
@@ -339,12 +327,12 @@ bool Menu::handle_key(KeyEvent const &event) {
         return true;
     default:
         if (!event.text.empty()) {
-            auto key = static_cast<char>(std::tolower(static_cast<unsigned char>(event.text[0])));
+            auto key = normalize_mnemonic_key(event.text);
             for (int i = 0; i < static_cast<int>(items_.size()); ++i) {
                 if (items_[i].is_separator()) {
                     continue;
                 }
-                if (get_mnemonic(items_[i].command->name()) == key) {
+                if (parse_mnemonic(items_[i].command->name()).key == key) {
                     if (items_[i].is_action()) {
                         auto cmd = items_[i].command;
                         close();

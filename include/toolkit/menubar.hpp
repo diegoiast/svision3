@@ -29,7 +29,7 @@ class MenuBar : public Widget, public Fluent<MenuBar> {
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
     void collect_mnemonics(std::vector<Widget *> &out) override;
-    bool trigger_mnemonic(char key) override;
+    bool trigger_mnemonic(std::string_view key) override;
     void set_show_mnemonics(bool show);
 
   private:

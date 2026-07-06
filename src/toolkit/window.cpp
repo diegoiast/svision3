@@ -1033,7 +1033,7 @@ void Window::handle_key(KeyEvent const &event) {
 
     auto mnemonic_mod = event.alt || event.super || event.ctrl;
     if (event.type == KeyEvent::Type::Press && mnemonic_mod && !event.text.empty()) {
-        auto key = static_cast<char>(std::tolower(static_cast<unsigned char>(event.text[0])));
+        auto key = normalize_mnemonic_key(event.text);
         auto targets = std::vector<Widget *>{};
 
         if (root_) {

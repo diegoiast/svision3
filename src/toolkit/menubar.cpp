@@ -247,8 +247,7 @@ bool MenuBar::handle_key(KeyEvent const &event) {
 
     // Mnemonic handling
     if (alt_key_down_ && !event.text.empty()) {
-        // FIXME: this will not work with non ASCII letters
-        char key = std::tolower(static_cast<unsigned char>(event.text[0]));
+        auto key = normalize_mnemonic_key(event.text);
         if (trigger_mnemonic(key)) {
             set_show_mnemonics(false);
             return true;
@@ -260,7 +259,7 @@ bool MenuBar::handle_key(KeyEvent const &event) {
 
 void MenuBar::collect_mnemonics(std::vector<Widget *> &out) { out.push_back(this); }
 
-bool MenuBar::trigger_mnemonic(char key) {
+bool MenuBar::trigger_mnemonic(std::string_view key) {
     for (size_t i = 0; i < menus_.size(); ++i) {
         if (menus_[i]->mnemonic_key() == key) {
             toggle_menu(i);

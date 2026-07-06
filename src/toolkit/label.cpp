@@ -25,10 +25,7 @@ void Label::from_json(nlohmann::json const &j) {
 Label::Label() {}
 
 Label::Label(std::string text) {
-    auto pos = text.find('&');
-    if (pos != std::string::npos && pos + 1 < text.size()) {
-        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-    }
+    mnemonic_key_ = parse_mnemonic(text).key;
     text_ = std::move(text);
 }
 
@@ -36,11 +33,7 @@ Label &Label::set_text(std::string const &text) {
     if (text_ == text) {
         return *this;
     }
-    auto pos = text.find('&');
-    mnemonic_key_ = 0;
-    if (pos != std::string::npos && pos + 1 < text.size()) {
-        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-    }
+    mnemonic_key_ = parse_mnemonic(text).key;
     text_ = text;
     invalidate_layout();
     return *this;
@@ -85,8 +78,8 @@ void Label::paint(Painter &painter) {
 
 bool Label::handle_mouse(MouseEvent const &) { return false; }
 
-bool Label::trigger_mnemonic(char key) {
-    if (!mnemonic_key_ || mnemonic_key_ != key || !buddy_) {
+bool Label::trigger_mnemonic(std::string_view key) {
+    if (mnemonic_key_.empty() || mnemonic_key_ != key || !buddy_) {
         return false;
     }
     if (buddy_->is_enabled() && buddy_->is_focusable()) {

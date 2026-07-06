@@ -65,10 +65,7 @@ bool RadioButton::should_fire_click() const {
 }
 
 RadioButton::RadioButton(std::string text, RadioGroup &group) : group_(group) {
-    auto pos = text.find('&');
-    if (pos != std::string::npos && pos + 1 < text.size()) {
-        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-    }
+    mnemonic_key_ = parse_mnemonic(text).key;
     text_ = std::move(text);
     state.focusable = true;
     group_.add(this);
@@ -136,15 +133,12 @@ bool RadioButton::handle_key(KeyEvent const &event) {
 
 Size RadioButton::size_hint() const { return Theme::current().measure_radio_button(text_); }
 
-bool RadioButton::trigger_mnemonic(char key) {
-    if (!is_enabled()) {
+bool RadioButton::trigger_mnemonic(std::string_view key) {
+    if (!is_enabled() || mnemonic_key_.empty() || mnemonic_key_ != key) {
         return false;
     }
-    if (mnemonic_key_ && mnemonic_key_ == key) {
-        group_.select(this);
-        return true;
-    }
-    return false;
+    group_.select(this);
+    return true;
 }
 
 } // namespace toolkit

@@ -28,9 +28,9 @@ class Button : public Widget, public Fluent<Button> {
     CursorShape cursor() const override {
         return is_enabled() ? CursorShape::Arrow : CursorShape::NotAllowed;
     }
-    bool trigger_mnemonic(char key) override;
+    bool trigger_mnemonic(std::string_view key) override;
     void collect_mnemonics(std::vector<Widget *> &out) override {
-        if (mnemonic_key_) {
+        if (!mnemonic_key_.empty()) {
             out.push_back(this);
         }
     }
@@ -90,7 +90,7 @@ class Button : public Widget, public Fluent<Button> {
 
     std::string text_;
     Icon icon_;
-    char mnemonic_key_ = 0;
+    std::string mnemonic_key_;
     bool flat_ = false;
     bool checkable_ = false;
     bool checked_ = false;

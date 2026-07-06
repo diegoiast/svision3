@@ -260,8 +260,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 8. [x] Mnemonic shortcuts selecting a label's buddy
 9. [x] Cmd+Q / Ctrl+Q triggers Quit mnemonic.
 10. [x] Mouse enter/leave events on widgets.
-11. [ ] Global keyboard shortcuts / accelerators.
-12. [ ] Better handle of mnemonic: I don't like current implementation.
+11. [x] Better handle of mnemonic: I don't like current implementation.
+12. [ ] Global keyboard shortcuts / accelerators.
 
 ## Button features [4/7]
 

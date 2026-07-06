@@ -177,6 +177,16 @@ enum class WindowEdge {
 
 enum class DecorationButton { Minimize, Maximize, Restore, Close, Menu };
 
+struct MnemonicInfo {
+    std::string text;  // display text with & removed
+    std::string key;   // UTF-8 mnemonic character, ASCII-lowercased (empty if none)
+};
+
+MnemonicInfo parse_mnemonic(std::string_view text);
 std::string strip_mnemonic(std::string_view text);
+// Extracts the first UTF-8 codepoint from char_text and returns it lowercased
+// (ASCII only; non-ASCII codepoints are returned as-is). Used to normalize a
+// raw key-event character so it can be compared against a stored mnemonic_key_.
+std::string normalize_mnemonic_key(std::string_view char_text);
 
 } // namespace toolkit

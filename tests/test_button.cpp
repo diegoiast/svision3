@@ -10,28 +10,28 @@ TEST_CASE("Button is focusable", "[button]") {
 
 TEST_CASE("Button mnemonic parsing with &", "[button]") {
     Button b("&Save");
-    REQUIRE(b.trigger_mnemonic('s') == true);
-    REQUIRE(b.trigger_mnemonic('S') == false);
-    REQUIRE(b.trigger_mnemonic('x') == false);
+    REQUIRE(b.trigger_mnemonic("s") == true);
+    REQUIRE(b.trigger_mnemonic("S") == false);
+    REQUIRE(b.trigger_mnemonic("x") == false);
 }
 
 TEST_CASE("Button mnemonic in middle", "[button]") {
     Button b("E&xit");
-    REQUIRE(b.trigger_mnemonic('x') == true);
-    REQUIRE(b.trigger_mnemonic('e') == false);
+    REQUIRE(b.trigger_mnemonic("x") == true);
+    REQUIRE(b.trigger_mnemonic("e") == false);
 }
 
 TEST_CASE("Button no mnemonic", "[button]") {
     Button b("Close");
-    REQUIRE(b.trigger_mnemonic('c') == false);
-    REQUIRE(b.trigger_mnemonic('l') == false);
+    REQUIRE(b.trigger_mnemonic("c") == false);
+    REQUIRE(b.trigger_mnemonic("l") == false);
 }
 
 TEST_CASE("Button mnemonic fires on_click", "[button]") {
     Button b("&ok");
     bool clicked = false;
     b.on_click = [&] { clicked = true; };
-    b.trigger_mnemonic('o');
+    b.trigger_mnemonic("o");
     REQUIRE(clicked == true);
 }
 
@@ -40,7 +40,7 @@ TEST_CASE("Button mnemonic does not fire when disabled", "[button]") {
     bool clicked = false;
     b.on_click = [&] { clicked = true; };
     b.set_enabled(false);
-    b.trigger_mnemonic('o');
+    b.trigger_mnemonic("o");
     REQUIRE(clicked == false);
 }
 
@@ -294,10 +294,10 @@ TEST_CASE("Button toggle on mnemonic", "[button]") {
     Button b("&Toggle");
     b.set_checkable(true);
 
-    b.trigger_mnemonic('t');
+    b.trigger_mnemonic("t");
     REQUIRE(b.is_checked() == true);
 
-    b.trigger_mnemonic('t');
+    b.trigger_mnemonic("t");
     REQUIRE(b.is_checked() == false);
 }
 

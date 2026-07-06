@@ -38,9 +38,9 @@ class RadioButton : public Widget {
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
     Size size_hint() const override;
-    bool trigger_mnemonic(char key) override;
+    bool trigger_mnemonic(std::string_view key) override;
     void collect_mnemonics(std::vector<Widget *> &out) override {
-        if (mnemonic_key_) {
+        if (!mnemonic_key_.empty()) {
             out.push_back(this);
         }
     }
@@ -54,7 +54,7 @@ class RadioButton : public Widget {
     bool should_fire_click() const;
 
     std::string text_;
-    char mnemonic_key_ = 0;
+    std::string mnemonic_key_;
     RadioGroup &group_;
     bool selected_ = false;
     ButtonStateHandler state_handler_;

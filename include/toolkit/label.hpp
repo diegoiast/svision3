@@ -28,9 +28,9 @@ class Label : public Widget, public Fluent<Label> {
         return nullptr;
     }
 
-    bool trigger_mnemonic(char key) override;
+    bool trigger_mnemonic(std::string_view key) override;
     void collect_mnemonics(std::vector<Widget *> &out) override {
-        if (mnemonic_key_) {
+        if (!mnemonic_key_.empty()) {
             out.push_back(this);
         }
     }
@@ -72,7 +72,7 @@ class Label : public Widget, public Fluent<Label> {
 
   private:
     std::string text_;
-    char mnemonic_key_ = 0;
+    std::string mnemonic_key_;
     Widget *buddy_ = nullptr;
     std::optional<Color> color_override_;
     std::optional<float> font_size_override_;

@@ -41,10 +41,7 @@ bool Checkbox::should_fire_click() const {
 }
 
 Checkbox::Checkbox(std::string text) {
-    auto pos = text.find('&');
-    if (pos != std::string::npos && pos + 1 < text.size()) {
-        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-    }
+    mnemonic_key_ = parse_mnemonic(text).key;
     text_ = std::move(text);
     state.focusable = true;
     state_handler_.on_state_change_callback = [this] { on_state_changed(); };
@@ -149,15 +146,12 @@ bool Checkbox::handle_key(KeyEvent const &event) {
 
 Size Checkbox::size_hint() const { return Theme::current().measure_checkbox(text_); }
 
-bool Checkbox::trigger_mnemonic(char key) {
-    if (!is_enabled()) {
+bool Checkbox::trigger_mnemonic(std::string_view key) {
+    if (!is_enabled() || mnemonic_key_.empty() || mnemonic_key_ != key) {
         return false;
     }
-    if (mnemonic_key_ && mnemonic_key_ == key) {
-        toggle();
-        return true;
-    }
-    return false;
+    toggle();
+    return true;
 }
 
 } // namespace toolkit

@@ -128,7 +128,7 @@ class Widget {
         return nullptr;
     }
 
-    virtual bool trigger_mnemonic(char /*key*/) { return false; }
+    virtual bool trigger_mnemonic(std::string_view /*key*/) { return false; }
     virtual void collect_mnemonics(std::vector<Widget *> &out) { (void)out; }
     virtual void for_each_child(std::function<void(Widget *)> const &callback) { (void)callback; }
 

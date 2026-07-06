@@ -36,13 +36,9 @@ void Button::from_json(nlohmann::json const &j) {
 }
 
 Button::Button(std::string text) {
-    auto pos = text.find('&');
     auto const &style = Theme::current().style.button;
-
     state.focusable = true;
-    if (pos != std::string::npos && pos + 1 < text.size()) {
-        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-    }
+    mnemonic_key_ = parse_mnemonic(text).key;
     text_ = std::move(text);
 
     // FIXME: read values from system
@@ -119,19 +115,11 @@ bool Button::should_fire_click() const {
 }
 
 Button &Button::set_text(std::string text) {
-    auto pos = text.find('&');
-    char new_mnemonic_key = 0;
-    if (pos != std::string::npos && pos + 1 < text.size()) {
-        new_mnemonic_key =
-            static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-    }
-
     if (text_ == text) {
         return *this;
     }
-
+    mnemonic_key_ = parse_mnemonic(text).key;
     text_ = std::move(text);
-    mnemonic_key_ = new_mnemonic_key;
 
     if (window_) {
         window_->request_redraw("button state");
@@ -245,15 +233,12 @@ void Button::paint(Painter &painter) {
     }
 }
 
-bool Button::trigger_mnemonic(char key) {
-    if (!is_enabled()) {
+bool Button::trigger_mnemonic(std::string_view key) {
+    if (!is_enabled() || mnemonic_key_.empty() || mnemonic_key_ != key) {
         return false;
     }
-    if (mnemonic_key_ && mnemonic_key_ == key) {
-        fire_click();
-        return true;
-    }
-    return false;
+    fire_click();
+    return true;
 }
 
 Button &Button::set_flat(bool f) {
