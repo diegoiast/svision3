@@ -1147,6 +1147,11 @@ void Window::relayout() {
         auto shadow = (options_.csd && !is_maximized_) ? s.shadow.size : 0.0f;
         auto inset = bw + shadow;
         root_->set_rect({inset, inset, size_.width - 2 * inset, size_.height - 2 * inset});
+        // Keep the compositor's minimum in sync with the content whenever it
+        // is not overridden by an explicit set_min_size() call.
+        if (impl_->platform && !(min_size_.width > 0 || min_size_.height > 0)) {
+            impl_->platform->set_min_size(content_min_size());
+        }
     }
     request_redraw();
 }

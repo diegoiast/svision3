@@ -1092,15 +1092,6 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
     }
 
     painter.pop_clip();
-
-    auto content_h = line_height * static_cast<float>(lines.size());
-    if (content_h > rect.height) {
-        auto bar_h = std::max(20.0f, rect.height * (rect.height / content_h));
-        auto bar_y = (scroll_y / content_h) * rect.height;
-        auto sb = Rect{rect.x + rect.width - 6.0f, rect.y + bar_y, 4.0f, bar_h};
-        // FIXME: whats is this 2.0f?
-        painter.fill_rounded_rect(sb, palette.text, 2.0f);
-    }
 }
 
 void BaseTheme::draw_scrollbar(Painter &painter, Rect const &rect, float value,
