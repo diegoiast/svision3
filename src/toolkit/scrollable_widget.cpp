@@ -119,17 +119,6 @@ void ScrollableWidget::layout_scrollbars() {
     bool needs_v = needs_vscroll();
     bool needs_h = needs_hscroll();
 
-    // Check if adding one scrollbar triggers the other
-    if (needs_v && !needs_h) {
-        if (content_size_.width > rect_.width - sw - bw * 2) {
-            needs_h = true;
-        }
-    } else if (needs_h && !needs_v) {
-        if (content_size_.height > rect_.height - sw - bw * 2) {
-            needs_v = true;
-        }
-    }
-
     vscroll_->set_visible(needs_v);
     hscroll_->set_visible(needs_h);
 
@@ -244,12 +233,12 @@ bool ScrollableWidget::handle_scrollbar_mouse(MouseEvent const &event) {
 }
 
 bool ScrollableWidget::needs_vscroll() const {
-    return content_size_.height >
-           rect_.height - Theme::current().Theme::current().style.border_width * 2;
+    auto bw = Theme::current().style.border_width;
+    return content_size_.height > rect_.height - bw * 2;
 }
 bool ScrollableWidget::needs_hscroll() const {
-    return content_size_.width >
-           rect_.width - Theme::current().Theme::current().style.border_width * 2;
+    auto bw = Theme::current().style.border_width;
+    return content_size_.width > rect_.width - bw * 2;
 }
 
 Rect ScrollableWidget::vthumb_rect() const {
