@@ -68,7 +68,7 @@ class FileDialogWidget : public VBoxLayout, public Fluent<FileDialogWidget> {
 
     std::unique_ptr<HBoxLayout> toolbar_;
     std::unique_ptr<VBoxLayout> content_;
-    std::unique_ptr<VBoxLayout> bottom_controls_;
+    std::unique_ptr<FormLayout> bottom_controls_;
 
     Combobox *drive_combo_ = nullptr;
     LineInput *path_input_ = nullptr;

@@ -58,7 +58,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
         nice. However, I am unsure how to clean the clipping at the end of function call.
 45. [x] Toast support
 
-## Platform – Not Yet Implemented
+## Platform
 
 1. [x] File dialogs (open/save) - implemented via NFD internally
 2. [x] Non-native file dialogs (open/save) - re-implement them in this toolkit.
@@ -145,11 +145,11 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 4. [x] Buttons don't stretch vertically.
 5. [x] Layouts skip hidden widgets.
 6. [x] Min/max size constraints respected in layout.
-7. [ ] Make an abstract layout class
-8. [ ] HBoxLayout, VBoxLayout: make them return "self"
-9. [ ] GridLayout.
-10. [ ] FormLayout (label + field pairs).
-11. [ ] StackedLayout (one visible child at a time).
+7. [x] Make an abstract layout class
+8. [x] HBoxLayout, VBoxLayout: make them return "self"
+9. [x] GridLayout.
+10. [x] FormLayout (label + field pairs).
+11. [x] StackedLayout (one visible child at a time).
 12. [ ] RTL layout direction switch (right-to-left mirroring).
 13. [ ] Method to center point inside rect.
 14. [ ] Paddings/margins should be defined by the theme (unless overriden in the widget).

@@ -80,6 +80,9 @@ void WidgetLoader::register_all_widgets() {
     DO_REGISTER_WIDGET(SpinBox);
     DO_REGISTER_WIDGET(Toolbar);
     DO_REGISTER_WIDGET(VBoxLayout);
+    DO_REGISTER_WIDGET(GridLayout);
+    DO_REGISTER_WIDGET(FormLayout);
+    DO_REGISTER_WIDGET(StackedLayout);
 }
 
 std::unique_ptr<Widget> WidgetLoader::create_widget(nlohmann::json const &j) {

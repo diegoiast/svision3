@@ -497,19 +497,18 @@ void FileDialogWidget::setup_ui() {
     add_widget(std::move(content_), 1);
 
     // ── Bottom: Filename and Filter ───────────────────────────────────
-    bottom_controls_ = std::make_unique<VBoxLayout>();
+    // FormLayout auto-sizes the label column to the widest label.
+    bottom_controls_ = std::make_unique<FormLayout>();
     bottom_controls_->set_margins({});
     bottom_controls_->set_spacing(4);
+    bottom_controls_->set_label_spacing(8);
 
-    auto const label_min = Size{100, 0};
     auto const button_min = Size{80, 0};
 
-    // Row 1: File name label | input | Open button
-    auto name_row = std::make_unique<HBoxLayout>();
-    name_row->set_spacing(8);
-    auto name_label = std::make_unique<Label>("File name:");
-    name_label->set_min_size(label_min);
-    name_row->add_widget(std::move(name_label), 0, Alignment::Center);
+    // Row 1: "File name:" | [LineInput] [Open]
+    auto name_field = std::make_unique<HBoxLayout>();
+    name_field->set_margins({});
+    name_field->set_spacing(8);
 
     auto path_in = std::make_unique<LineInput>();
     path_input_ = path_in.get();
@@ -521,7 +520,7 @@ void FileDialogWidget::setup_ui() {
             on_ok();
         }
     };
-    name_row->add_widget(std::move(path_in), 1);
+    name_field->add_widget(std::move(path_in), 1);
 
     auto open_btn = std::make_unique<Button>("Open");
     ok_button_ = open_btn.get();
@@ -534,19 +533,18 @@ void FileDialogWidget::setup_ui() {
             on_ok();
         }
     };
-    name_row->add_widget(std::move(open_btn), 0);
-    bottom_controls_->add_widget(std::move(name_row));
+    name_field->add_widget(std::move(open_btn));
 
-    // Row 2: Files of type label | combo | Cancel button
-    auto type_row = std::make_unique<HBoxLayout>();
-    type_row->set_spacing(8);
-    auto type_label = std::make_unique<Label>("Files of type:");
-    type_label->set_min_size(label_min);
-    type_row->add_widget(std::move(type_label), 0, Alignment::Center);
+    bottom_controls_->add_row(std::make_unique<Label>("File name:"), std::move(name_field));
+
+    // Row 2: "Files of type:" | [Combobox] [Cancel]
+    auto type_field = std::make_unique<HBoxLayout>();
+    type_field->set_margins({});
+    type_field->set_spacing(8);
 
     auto ext_combo = std::make_unique<Combobox>(std::vector<std::string>{"All Files (*.*)"});
     extension_combo_ = ext_combo.get();
-    type_row->add_widget(std::move(ext_combo), 1);
+    type_field->add_widget(std::move(ext_combo), 1);
 
     auto cancel_btn = std::make_unique<Button>("Cancel");
     cancel_button_ = cancel_btn.get();
@@ -556,8 +554,9 @@ void FileDialogWidget::setup_ui() {
             on_cancel();
         }
     };
-    type_row->add_widget(std::move(cancel_btn), 0);
-    bottom_controls_->add_widget(std::move(type_row));
+    type_field->add_widget(std::move(cancel_btn));
+
+    bottom_controls_->add_row(std::make_unique<Label>("Files of type:"), std::move(type_field));
 
     add_widget(std::move(bottom_controls_));
 }
