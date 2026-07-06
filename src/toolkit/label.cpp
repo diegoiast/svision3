@@ -82,8 +82,8 @@ bool Label::trigger_mnemonic(std::string_view key) {
     if (mnemonic_key_.empty() || mnemonic_key_ != key || !buddy_) {
         return false;
     }
-    if (buddy_->is_enabled() && buddy_->is_focusable()) {
-        buddy_->set_focused(true);
+    if (buddy_->is_enabled() && buddy_->is_focusable() && buddy_->window()) {
+        buddy_->window()->set_focused_widget(buddy_);
         return true;
     }
     return false;
