@@ -66,6 +66,7 @@ elseif(WIN32)
 endif()
 
 set(TOOLKIT_SOURCES
+    src/toolkit/types.cpp
     src/toolkit/painter.cpp
     src/toolkit/command.cpp
     src/toolkit/xdg_image_loader.cpp

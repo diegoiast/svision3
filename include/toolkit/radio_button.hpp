@@ -6,6 +6,7 @@
 #include "toolkit/button_state.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -53,7 +54,6 @@ class RadioButton : public Widget {
     bool should_fire_click() const;
 
     std::string text_;
-    int mnemonic_index_ = -1;
     char mnemonic_key_ = 0;
     RadioGroup &group_;
     bool selected_ = false;

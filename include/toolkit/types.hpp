@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace toolkit {
 
@@ -175,5 +176,7 @@ enum class WindowEdge {
 };
 
 enum class DecorationButton { Minimize, Maximize, Restore, Close, Menu };
+
+std::string strip_mnemonic(std::string_view text);
 
 } // namespace toolkit

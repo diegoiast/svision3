@@ -16,7 +16,7 @@ class BaseTheme : public Theme {
 
     void draw_button(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                      WidgetState const &state, bool flat,
-                     std::optional<Color> background) const override;
+                     std::optional<Color> background = std::nullopt) const override;
 
     void draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
                        CheckState check_state, WidgetState const &state) const override;
@@ -31,7 +31,7 @@ class BaseTheme : public Theme {
                          text::TextLayout const *layout, float button_inset_left,
                          float button_inset_right) const override;
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
-                           bool active, bool show_mnemonics, int mnemonic_index) const override;
+                           bool active, bool show_mnemonics) const override;
     void draw_menubar_background(Painter &painter, Rect const &rect,
                                  WidgetState const &state) const override;
     void draw_menu_background(Painter &painter, Rect const &rect) const override;

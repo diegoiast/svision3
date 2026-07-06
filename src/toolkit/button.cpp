@@ -12,7 +12,7 @@ namespace toolkit {
 
 nlohmann::json Button::to_json() const {
     auto j = Widget::to_json();
-    j["text"] = display_text_;
+    j["text"] = text_;
     j["checked"] = checked_;
     j["checkable"] = checkable_;
     j["flat"] = flat_;
@@ -41,12 +41,9 @@ Button::Button(std::string text) {
 
     state.focusable = true;
     if (pos != std::string::npos && pos + 1 < text.size()) {
-        mnemonic_index_ = static_cast<int>(pos);
         mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-        display_text_ = text.substr(0, pos) + text.substr(pos + 1);
-    } else {
-        display_text_ = std::move(text);
     }
+    text_ = std::move(text);
 
     // FIXME: read values from system
     auto_repeat_delay_ = 1.0f;
@@ -123,25 +120,17 @@ bool Button::should_fire_click() const {
 
 Button &Button::set_text(std::string text) {
     auto pos = text.find('&');
-    std::string new_display_text;
-    int new_mnemonic_index = -1;
     char new_mnemonic_key = 0;
-
     if (pos != std::string::npos && pos + 1 < text.size()) {
-        new_mnemonic_index = static_cast<int>(pos);
         new_mnemonic_key =
             static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-        new_display_text = text.substr(0, pos) + text.substr(pos + 1);
-    } else {
-        new_display_text = std::move(text);
     }
 
-    if (display_text_ == new_display_text && mnemonic_index_ == new_mnemonic_index) {
+    if (text_ == text) {
         return *this;
     }
 
-    display_text_ = std::move(new_display_text);
-    mnemonic_index_ = new_mnemonic_index;
+    text_ = std::move(text);
     mnemonic_key_ = new_mnemonic_key;
 
     if (window_) {
@@ -250,8 +239,7 @@ void Button::paint(Painter &painter) {
         .window_active = window_ ? window_->is_active() : true,
         .checked = checked_,
     };
-    Theme::current().draw_button(painter, rect, display_text_, icon_, wstate, flat_,
-                                 background_color_);
+    Theme::current().draw_button(painter, rect, text_, icon_, wstate, flat_, background_color_);
     if (menu_) {
         Theme::current().draw_menu_indicator(painter, rect, is_enabled());
     }
@@ -390,7 +378,7 @@ bool Button::handle_mouse(MouseEvent const &event) {
 }
 
 Size Button::size_hint() const {
-    auto sh = Theme::current().measure_button(display_text_, icon_);
+    auto sh = Theme::current().measure_button(text_, icon_);
     if (menu_) {
         sh.width += Theme::current().style.button.menu_indicator_width + 8.0f;
     }

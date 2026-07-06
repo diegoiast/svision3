@@ -9,6 +9,7 @@
 #include "toolkit/painter.hpp"
 #include "toolkit/types.hpp"
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -57,7 +58,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
     std::string const &title() const { return title_; }
     std::string const &display_title() const { return display_title_; }
     char mnemonic_key() const { return mnemonic_key_; }
-    int mnemonic_index() const { return mnemonic_index_; }
+    std::optional<int> mnemonic_index() const { return mnemonic_index_; }
     int hovered_item() const { return hovered_; }
     std::vector<MenuItem> const &items() const { return items_; }
     void set_parent_menu(Menu *parent) { parent_menu_ = parent; }
@@ -77,7 +78,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
     std::string title_;
     std::string display_title_;
     char mnemonic_key_ = 0;
-    int mnemonic_index_ = -1;
+    std::optional<int> mnemonic_index_;
     std::vector<MenuItem> items_;
     Window *window_ = nullptr;
     Rect bounds_;

@@ -43,12 +43,9 @@ bool Checkbox::should_fire_click() const {
 Checkbox::Checkbox(std::string text) {
     auto pos = text.find('&');
     if (pos != std::string::npos && pos + 1 < text.size()) {
-        mnemonic_index_ = static_cast<int>(pos);
         mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
-        text_ = text.substr(0, pos) + text.substr(pos + 1);
-    } else {
-        text_ = std::move(text);
     }
+    text_ = std::move(text);
     state.focusable = true;
     state_handler_.on_state_change_callback = [this] { on_state_changed(); };
 }

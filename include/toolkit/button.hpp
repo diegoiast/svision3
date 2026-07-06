@@ -38,7 +38,7 @@ class Button : public Widget, public Fluent<Button> {
     Button &set_icon(Icon icon);
     Button &clear_icon();
     Button &set_text(std::string text);
-    std::string const &text() const { return display_text_; }
+    std::string const &text() const { return text_; }
     Button &set_padding(Margins const &padding) {
         padding_override_ = padding;
         return *this;
@@ -88,9 +88,8 @@ class Button : public Widget, public Fluent<Button> {
     void on_state_changed();
     bool should_fire_click() const;
 
-    std::string display_text_;
+    std::string text_;
     Icon icon_;
-    int mnemonic_index_ = -1;
     char mnemonic_key_ = 0;
     bool flat_ = false;
     bool checkable_ = false;

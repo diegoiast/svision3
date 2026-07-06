@@ -61,8 +61,8 @@ void MenuBar::paint(Painter &painter) {
         auto item_w = theme.measure_menubar_item(menu->display_title()).width;
         auto item_rect = Rect{x, 0, item_w, rect_.height};
 
-        theme.draw_menubar_item(painter, item_rect, menu->display_title(), i == hovered_,
-                                i == active_, show_mnemonics_, menu->mnemonic_index());
+        theme.draw_menubar_item(painter, item_rect, menu->title(), i == hovered_,
+                                i == active_, show_mnemonics_);
 
         x += item_w;
     }

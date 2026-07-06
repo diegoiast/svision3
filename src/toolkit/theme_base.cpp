@@ -17,6 +17,7 @@
 
 namespace toolkit {
 
+
 BaseTheme::BaseTheme(ColorScheme scheme, std::optional<Palette> p) {
     if (p) {
         this->palette = std::move(*p);
@@ -117,7 +118,8 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
     auto text_c = enabled ? palette.text : palette.text_disabled;
     auto text_offset = (style.beveled && pressed && enabled) ? 1.0f : 0.0f;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto text_w = painter.measure_text(text, palette.fonts.size).width;
+    auto display = strip_mnemonic(text);
+    auto text_w = painter.measure_text(display, palette.fonts.size).width;
     auto icon_w = 0.0f;
     auto icon_h = 0.0f;
 
@@ -160,7 +162,7 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
         auto icon_y = (rect.height - icon_h) / 2.0f;
         painter.draw_image(*icon, Point{icon_x, icon_y});
     }
-    painter.draw_text(text, text_pos, text_c, palette.fonts.size);
+    painter.draw_mnemonic_text(text, text_pos, text_c, palette.fonts.size);
 }
 
 void BaseTheme::draw_checkbox(Painter &painter, Rect const &rect, std::string_view text,
@@ -205,8 +207,9 @@ void BaseTheme::draw_checkbox(Painter &painter, Rect const &rect, std::string_vi
     auto text_x = rect.x + box + style.toggle.spacing;
     auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
     auto text_c = enabled ? palette.text : palette.text_disabled;
-    painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
+    painter.draw_mnemonic_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 }
+
 void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::string_view text,
                                   bool checked, WidgetState const &state) const {
     auto &style = this->style;
@@ -265,7 +268,7 @@ void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::strin
     }
 
     auto text_c = enabled ? palette.text : palette.text_disabled;
-    painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
+    painter.draw_mnemonic_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 }
 
 void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
@@ -366,8 +369,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
 }
 
 void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
-                                  bool hovered, bool active, bool show_mnemonics,
-                                  int mnemonic_index) const {
+                                  bool hovered, bool active, bool show_mnemonics) const {
     auto padding = style.menuBar.padding;
     auto fm = painter.font_metrics(palette.fonts.size);
     auto text_c = palette.text;
@@ -381,18 +383,11 @@ void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::strin
     }
 
     auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
-    painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, palette.fonts.size);
-
-    if (show_mnemonics && mnemonic_index >= 0) {
-        auto before = title.substr(0, mnemonic_index);
-        auto ch = std::string(1, title[mnemonic_index]);
-        auto before_w =
-            before.empty() ? 0.0f : painter.measure_text(before, palette.fonts.size).width;
-        auto ch_w = painter.measure_text(ch, palette.fonts.size).width;
-        auto ul_y = baseline + fm.descent * 0.4f;
-
-        painter.draw_line({rect.x + padding.left + before_w, ul_y},
-                          {rect.x + padding.left + before_w + ch_w, ul_y}, text_c, 1.0f);
+    auto pos = Point{rect.x + padding.left, baseline};
+    if (show_mnemonics) {
+        painter.draw_mnemonic_text(title, pos, text_c, palette.fonts.size);
+    } else {
+        painter.draw_text(strip_mnemonic(title), pos, text_c, palette.fonts.size);
     }
 }
 
@@ -1256,7 +1251,7 @@ void BaseTheme::draw_focus_ring(Painter &painter, Rect const &rect, float corner
 Size BaseTheme::measure_label(std::string_view text, float font_size) const {
     auto *p = detail::current_platform();
     auto fm = p->font_metrics(font_size);
-    auto w = p->measure_text(text, font_size).width;
+    auto w = p->measure_text(strip_mnemonic(text), font_size).width;
     return {w, fm.height + 4.0f};
 }
 
@@ -1264,7 +1259,7 @@ Size BaseTheme::measure_button(std::string_view text, Icon const &icon) const {
     auto &style = this->style;
     auto *p = detail::current_platform();
     auto fm = p->font_metrics(palette.fonts.size);
-    auto text_w = p->measure_text(text, palette.fonts.size).width;
+    auto text_w = p->measure_text(strip_mnemonic(text), palette.fonts.size).width;
     auto icon_w = 0.0f;
     if (icon) {
         icon_w = static_cast<float>(icon->width);
@@ -1279,7 +1274,7 @@ Size BaseTheme::measure_checkbox(std::string_view text) const {
     auto &style = this->style;
     auto *p = detail::current_platform();
     auto fm = p->font_metrics(palette.fonts.size);
-    auto text_w = p->measure_text(text, palette.fonts.size).width;
+    auto text_w = p->measure_text(strip_mnemonic(text), palette.fonts.size).width;
     auto w = style.toggle.box_size + style.toggle.spacing + text_w;
     auto h = std::max(style.toggle.box_size, fm.height);
     return Size{w, h};
@@ -1289,7 +1284,7 @@ Size BaseTheme::measure_radio_button(std::string_view text) const {
     auto &style = this->style;
     auto *p = detail::current_platform();
     auto fm = p->font_metrics(palette.fonts.size);
-    auto text_w = p->measure_text(text, palette.fonts.size).width;
+    auto text_w = p->measure_text(strip_mnemonic(text), palette.fonts.size).width;
     // Circle diameter equals the row height (fm.height); text follows after spacing.
     auto h = fm.height;
     auto w = h + style.toggle.spacing + text_w;
@@ -1300,7 +1295,7 @@ Size BaseTheme::measure_menubar_item(std::string_view text) const {
     // FIXME: using platform to measure text
     auto &style = this->style;
     auto p = detail::current_platform();
-    auto text_w = p->measure_text(text, palette.fonts.size).width;
+    auto text_w = p->measure_text(strip_mnemonic(text), palette.fonts.size).width;
     return {text_w + style.menuBar.padding.left + style.menuBar.padding.right, 0};
 }
 

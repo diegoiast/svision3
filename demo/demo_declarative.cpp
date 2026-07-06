@@ -502,7 +502,7 @@ int main(int argc, char *argv[]) {
                         return ui::hbox()
                             .margins(ui::no_margins())
                             .add(
-                                ui::button("Auto repeat").auto_repeat(true).on_click(repeat_action))
+                                ui::button("Auto &repeat").auto_repeat(true).on_click(repeat_action))
                             .add(ui::button("Open")
                                      .icon(open_icon)
                                      .on_click(open_action)

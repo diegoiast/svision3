@@ -6,6 +6,7 @@
 #include "toolkit/button_state.hpp"
 #include "toolkit/widget.hpp"
 #include <functional>
+#include <optional>
 #include <string>
 
 namespace toolkit {
@@ -46,7 +47,6 @@ class Checkbox : public Widget {
     bool should_fire_click() const;
 
     std::string text_;
-    int mnemonic_index_ = -1;
     char mnemonic_key_ = 0;
     CheckState state_ = CheckState::Unchecked;
     bool tri_state_ = false;

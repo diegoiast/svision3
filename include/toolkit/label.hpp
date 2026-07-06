@@ -72,7 +72,6 @@ class Label : public Widget, public Fluent<Label> {
 
   private:
     std::string text_;
-    int mnemonic_index_ = -1;
     char mnemonic_key_ = 0;
     Widget *buddy_ = nullptr;
     std::optional<Color> color_override_;

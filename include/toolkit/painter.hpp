@@ -59,6 +59,8 @@ class Painter {
                    float font_size = 14.0f, FontFamily font = FontFamily::System,
                    TextOrientation orientation = TextOrientation::Horizontal, bool bold = false,
                    bool italic = false);
+    void draw_mnemonic_text(std::string_view raw_text, Point position, Color const &color,
+                            float font_size = 14.0f);
     virtual void draw_image(ImageData const &image, Point position) = 0;
     virtual void draw_image_scaled(ImageData const &image, Rect const &dest) = 0;
     virtual std::string_view name() const = 0;

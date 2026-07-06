@@ -2,8 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/painter.hpp"
+#include "toolkit/platform.hpp"
+#include "toolkit/text/bidi.hpp"
+#include "toolkit/text/text_layout.hpp"
 #include "toolkit/text_rasterizer.hpp"
 #include "toolkit/theme.hpp"
+#include "toolkit/utf8.hpp"
 
 #include <cmath>
 
@@ -122,6 +126,36 @@ void Painter::draw_text(std::string_view text, Point position, Color const &colo
     if (rasterizer_) {
         rasterizer_->draw_text(*this, text, position, color, font_size, font, orientation, bold,
                                italic);
+    }
+}
+
+void Painter::draw_mnemonic_text(std::string_view raw_text, Point pos, Color const &color,
+                                  float font_size) {
+    auto amp_pos = raw_text.find('&');
+    if (amp_pos == std::string_view::npos) {
+        draw_text(raw_text, pos, color, font_size);
+        return;
+    }
+    auto display = strip_mnemonic(raw_text);
+    draw_text(display, pos, color, font_size);
+    if (amp_pos >= display.size()) {
+        return;
+    }
+    auto fm = font_metrics(font_size);
+    auto ul_y = pos.y + fm.descent * 0.4f;
+    auto *plat = detail::current_platform();
+    auto *shaper = plat ? plat->shaper() : nullptr;
+    if (shaper) {
+        auto dir = bidi::detect_base_direction(display);
+        auto tl = text::TextLayout(display, dir, *shaper, font_size);
+        for (auto const &r : tl.selection_rects(amp_pos, Utf8Iterator::next(display, amp_pos))) {
+            draw_line({pos.x + r.x, ul_y}, {pos.x + r.x + r.width, ul_y}, color, 1.0f);
+        }
+    } else {
+        auto before_w = amp_pos > 0 ? measure_text(display.substr(0, amp_pos), font_size).width
+                                    : 0.0f;
+        auto ch_w = measure_text(display.substr(amp_pos, 1), font_size).width;
+        draw_line({pos.x + before_w, ul_y}, {pos.x + before_w + ch_w, ul_y}, color, 1.0f);
     }
 }
 

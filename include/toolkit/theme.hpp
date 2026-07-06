@@ -250,8 +250,7 @@ class Theme {
                                  float button_inset_left = 0.0f,
                                  float button_inset_right = 0.0f) const = 0;
     virtual void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
-                                   bool hovered, bool active, bool show_mnemonics,
-                                   int mnemonic_index) const = 0;
+                                   bool hovered, bool active, bool show_mnemonics) const = 0;
     virtual void draw_menubar_background(Painter &painter, Rect const &rect,
                                          WidgetState const &state) const = 0;
     virtual void draw_menu_background(Painter &painter, Rect const &rect) const = 0;

@@ -25,17 +25,8 @@ static char get_mnemonic(std::string_view name) {
     return 0;
 }
 
-static std::string strip_mnemonic(std::string_view name) {
-    auto pos = name.find('&');
-    if (pos != std::string_view::npos) {
-        std::string res(name.substr(0, pos));
-        res += name.substr(pos + 1);
-        return res;
-    }
-    return std::string(name);
-}
 
-Menu::Menu(std::string title) : title_(std::move(title)), mnemonic_index_(-1) {
+Menu::Menu(std::string title) : title_(std::move(title)) {
     mnemonic_key_ = get_mnemonic(title_);
     auto pos = title_.find('&');
     if (pos != std::string::npos) {

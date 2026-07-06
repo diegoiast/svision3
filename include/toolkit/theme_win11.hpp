@@ -21,7 +21,7 @@ class Win11Theme : public BaseTheme {
     std::unique_ptr<Widget> create_title_bar(Window *window) const override;
 
     void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
-                           bool active, bool show_mnemonics, int mnemonic_index) const override;
+                           bool active, bool show_mnemonics) const override;
 
     void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
                         bool has_children, bool expanded, bool selected, bool hovered,

@@ -167,8 +167,7 @@ Palette Win11Theme::default_palette(ColorScheme scheme) const {
 }
 
 void Win11Theme::draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
-                                   bool hovered, bool active, bool show_mnemonics,
-                                   int mnemonic_index) const {
+                                   bool hovered, bool active, bool show_mnemonics) const {
     auto const &mbar_style = this->style.menuBar;
     auto padding = mbar_style.padding;
     auto fm = painter.font_metrics(palette.fonts.size);
@@ -185,7 +184,13 @@ void Win11Theme::draw_menubar_item(Painter &painter, Rect const &rect, std::stri
     if (hovered || active) {
         text_c = palette.highlighted_text;
     }
-    painter.draw_text(title, {rect.x + padding.left, baseline}, text_c, palette.fonts.size);
+    if (show_mnemonics) {
+        painter.draw_mnemonic_text(title, {rect.x + padding.left, baseline}, text_c,
+                                   palette.fonts.size);
+    } else {
+        painter.draw_text(strip_mnemonic(title), {rect.x + padding.left, baseline}, text_c,
+                          palette.fonts.size);
+    }
 }
 
 void Win11Theme::draw_tree_item(Painter &painter, Rect const &rect, std::string_view text,

@@ -90,3 +90,18 @@ TEST_CASE("Margins construction", "[types]") {
     REQUIRE(m.bottom == 3.0f);
     REQUIRE(m.left == 4.0f);
 }
+
+TEST_CASE("strip_mnemonic removes ampersand", "[types]") {
+    REQUIRE(strip_mnemonic("Auto &repeat") == "Auto repeat");
+    REQUIRE(strip_mnemonic("&File") == "File");
+    REQUIRE(strip_mnemonic("E&xit") == "Exit");
+}
+
+TEST_CASE("strip_mnemonic passthrough when no ampersand", "[types]") {
+    REQUIRE(strip_mnemonic("No mnemonic") == "No mnemonic");
+    REQUIRE(strip_mnemonic("") == "");
+}
+
+TEST_CASE("strip_mnemonic ampersand at end", "[types]") {
+    REQUIRE(strip_mnemonic("Trailing&") == "Trailing");
+}

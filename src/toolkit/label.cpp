@@ -22,37 +22,26 @@ void Label::from_json(nlohmann::json const &j) {
     }
 }
 
-static void parse_mnemonic(std::string const &raw, std::string &out_text, int &out_index,
-                           char &out_key) {
-    auto pos = raw.find('&');
-    if (pos != std::string::npos && pos + 1 < raw.size()) {
-        out_index = static_cast<int>(pos);
-        out_key = static_cast<char>(std::tolower(static_cast<unsigned char>(raw[pos + 1])));
-        out_text = raw.substr(0, pos) + raw.substr(pos + 1);
-    } else {
-        out_index = -1;
-        out_key = 0;
-        out_text = raw;
-    }
-}
-
 Label::Label() {}
 
 Label::Label(std::string text) {
-    parse_mnemonic(text, text_, mnemonic_index_, mnemonic_key_);
+    auto pos = text.find('&');
+    if (pos != std::string::npos && pos + 1 < text.size()) {
+        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
+    }
+    text_ = std::move(text);
 }
 
 Label &Label::set_text(std::string const &text) {
-    std::string new_text;
-    int new_index = -1;
-    char new_key = 0;
-    parse_mnemonic(text, new_text, new_index, new_key);
-    if (text_ == new_text && mnemonic_index_ == new_index) {
+    if (text_ == text) {
         return *this;
     }
-    text_ = std::move(new_text);
-    mnemonic_index_ = new_index;
-    mnemonic_key_ = new_key;
+    auto pos = text.find('&');
+    mnemonic_key_ = 0;
+    if (pos != std::string::npos && pos + 1 < text.size()) {
+        mnemonic_key_ = static_cast<char>(std::tolower(static_cast<unsigned char>(text[pos + 1])));
+    }
+    text_ = text;
     invalidate_layout();
     return *this;
 }
@@ -62,22 +51,24 @@ void Label::paint(Painter &painter) {
     auto fs = font_size_override_.value_or(pallete.fonts.size);
     auto col = color_override_.value_or(pallete.text);
     auto fm = painter.font_metrics(fs);
-    auto display_text = text_;
+
+    auto display_text = strip_mnemonic(text_);
+
     auto text_w = painter.measure_text(display_text, fs).width;
+    std::string_view draw_text = text_;
 
     if (elide_ && text_w > rect_.width && rect_.width > 0) {
         auto suffix = std::string_view{"..."};
         float sw = painter.measure_text(suffix, fs).width;
         if (sw < rect_.width) {
             while (!display_text.empty() && text_w + sw > rect_.width) {
-                // Simplified: remove one byte at a time.
-                // In a production app we should use Utf8Iterator to remove a full codepoint.
                 display_text.pop_back();
                 text_w = painter.measure_text(display_text, fs).width;
             }
             display_text += suffix;
             text_w = painter.measure_text(display_text, fs).width;
         }
+        draw_text = display_text;
     }
 
     auto text_x = 0.0f;
@@ -88,7 +79,8 @@ void Label::paint(Painter &painter) {
     } else if (alignment_ == Alignment::End) {
         text_x = rect_.width - text_w;
     }
-    painter.draw_text(display_text, {text_x, baseline_y}, col, fs);
+
+    painter.draw_mnemonic_text(draw_text, {text_x, baseline_y}, col, fs);
 }
 
 bool Label::handle_mouse(MouseEvent const &) { return false; }
