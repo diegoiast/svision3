@@ -2,13 +2,13 @@
 
 Legend: [x] done [ ] pending
 
-Implemented: 112
-Total: 207
-Progress: 112 / 207 ≈ 54%
+Implemented: 192
+Total: 267
+Progress: 192 / 267 ≈ 72%
 
 Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
-## Core Architecture [19/41]
+## Core Architecture [32/45]
 
 1. [x] Cross-platform GUI toolkit in C++20
 2. [x] macOS backend (Cocoa/CoreGraphics)
@@ -55,7 +55,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 42. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
 43. [x] Set window icon.
 44. [ ] Rounded frame clip. When drawing a frame, cliping with a radius would be
-        nice. However, I am unsure how to clean the clipping at the end of function call.
+        nice. However, I am unsure how to clean the clipping at the egnd of function call.
 45. [x] Toast support
 
 ## Platform
@@ -95,7 +95,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
     1. [ ] Flag to choose to follow theme or platform for CSD
     2. [ ] Theme palette should follow theme or platform?
 
-## Widgets [20/37]
+## Widgets [34/39]
 
 1. [x] Button (click callback, hover/pressed states).
 2. [x] Label (text display, shrinkable/clippable)
@@ -137,7 +137,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 38. [ ] MainWindow with docking widgets on the sides.
 39. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
 
-## Layout System [6/12]
+## Layout System [11/14]
 
 1. [x] VBoxLayout (vertical stacking, stretch factors, alignment).
 2. [x] HBoxLayout (horizontal stacking, stretch factors, alignment).
@@ -154,7 +154,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 13. [ ] Method to center point inside rect.
 14. [ ] Paddings/margins should be defined by the theme (unless overriden in the widget).
 
-## Theming & Styling [11/19]
+## Theming & Styling [14/19]
 
 1. [x] Theme/style abstraction (WidgetStyle base struct).
 2. [x] Palette-based theme derivation (Theme::from_palette).
@@ -248,7 +248,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 1. Fix
 
-## Event Handling [7/12]
+## Event Handling [11/12]
 
 1. [x] Mouse events (Press, Release, Move, Drag, Scroll).
 2. [x] Keyboard events (key codes, modifiers, text input).
@@ -263,7 +263,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 11. [x] Better handle of mnemonic: I don't like current implementation.
 12. [ ] Global keyboard shortcuts / accelerators.
 
-## Button features [4/7]
+## Button features [7/7]
 
 1. [x] Background color defintion.
 2. [x] Flat display (borders on hover only).
@@ -282,7 +282,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [x] Scrollbar drag is not working, instead it acts as dragging inside the main widget
 2. [ ] We got round cornders on the left side only
 
-## LineInput Features [14/15]
+## LineInput Features [15/15]
 
 1. [x] Text cursor with blinking (NSTimer + steady_clock).
 2. [x] Cursor navigation (arrows, Home, End).
@@ -309,7 +309,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 5. [x] Min/max size constraints on window
 6. [x] Window min size auto-computed from root content
 
-## TabWidget / TabHeader Features [9/11]
+## TabWidget / TabHeader Features [10/12]
 
 1. [x] Clickable tab bar with active/inactive/hover states.
 2. [x] Close button on tabs (logs, doesn't close).
@@ -324,7 +324,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 11. [x] When tab bar is selected, it has a ring around it.
 12. [ ] Tabs can have several icons at the title
 
-## ListView Features [15/17]
+## ListView Features [15/18]
 
 1. [x] ListAdapter abstract interface (count, text_at)
 2. [x] StringListAdapter (`vector<string>`, append, remove, set_items)
@@ -352,7 +352,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [ ] Add support for "clicks".
 1. [ ] Add support for custom labels,
 
-## Label Features [3/6]
+## Label Features [4/5]
 
 1. [x] Text alignment (left / center / right).
 2. [ ] Word wrap / multi-line.
