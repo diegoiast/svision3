@@ -22,6 +22,8 @@ class Splitter : public Widget, public Fluent<Splitter> {
     Splitter &set_ratio(float r);
     float ratio() const { return ratio_; }
     Orientation orientation() const { return orientation_; }
+    Splitter &set_locked(bool locked);
+    bool locked() const { return locked_; }
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
@@ -43,11 +45,13 @@ class Splitter : public Widget, public Fluent<Splitter> {
     Orientation orientation_;
     CursorShape cursor_ = CursorShape::Arrow;
     bool dragging_ = false;
+    bool locked_ = false;
     int active_pane_ = -1; // 0 = first, 1 = second, -1 = none
 
     static constexpr float kHandleSize = 5.0f;
     static constexpr float kBorderWidth = 2.0f;
 
+    float split_pos() const; // clamped pixel position of the split
     Rect handle_rect() const;
     void layout_children();
 };

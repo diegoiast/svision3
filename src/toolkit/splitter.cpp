@@ -65,13 +65,44 @@ Splitter &Splitter::set_ratio(float r) {
     return *this;
 }
 
-Rect Splitter::handle_rect() const {
+Splitter &Splitter::set_locked(bool locked) {
+    locked_ = locked;
+    if (locked_ && dragging_) {
+        dragging_ = false;
+    }
+    cursor_ = CursorShape::Arrow;
+    if (window_) {
+        window_->request_redraw("splitter lock");
+    }
+    return *this;
+}
+
+float Splitter::split_pos() const {
     if (orientation_ == Orientation::Horizontal) {
-        auto x = rect_.width * ratio_ - kHandleSize / 2.0f;
-        return {x, 0, kHandleSize, rect_.height};
+        auto total = rect_.width;
+        auto min_first = first_ ? first_->size_hint().width : 0.0f;
+        auto min_second = second_ ? second_->size_hint().width : 0.0f;
+        auto pos = total * ratio_ - kHandleSize / 2.0f;
+        pos = std::max(pos, min_first);
+        pos = std::min(pos, total - kHandleSize - min_second);
+        return std::max(pos, 0.0f);
     } else {
-        auto y = rect_.height * ratio_ - kHandleSize / 2.0f;
-        return {0, y, rect_.width, kHandleSize};
+        auto total = rect_.height;
+        auto min_first = first_ ? first_->size_hint().height : 0.0f;
+        auto min_second = second_ ? second_->size_hint().height : 0.0f;
+        auto pos = total * ratio_ - kHandleSize / 2.0f;
+        pos = std::max(pos, min_first);
+        pos = std::min(pos, total - kHandleSize - min_second);
+        return std::max(pos, 0.0f);
+    }
+}
+
+Rect Splitter::handle_rect() const {
+    auto pos = split_pos();
+    if (orientation_ == Orientation::Horizontal) {
+        return {pos, 0, kHandleSize, rect_.height};
+    } else {
+        return {0, pos, rect_.width, kHandleSize};
     }
 }
 
@@ -79,21 +110,21 @@ void Splitter::layout_children() {
     if (!first_ && !second_) {
         return;
     }
-    auto h = handle_rect();
+    auto pos = split_pos();
     if (orientation_ == Orientation::Horizontal) {
         if (first_) {
-            first_->set_rect({0, 0, h.x, rect_.height});
+            first_->set_rect({0, 0, pos, rect_.height});
         }
         if (second_) {
-            auto x2 = h.x + h.width;
+            auto x2 = pos + kHandleSize;
             second_->set_rect({x2, 0, rect_.width - x2, rect_.height});
         }
     } else {
         if (first_) {
-            first_->set_rect({0, 0, rect_.width, h.y});
+            first_->set_rect({0, 0, rect_.width, pos});
         }
         if (second_) {
-            auto y2 = h.y + h.height;
+            auto y2 = pos + kHandleSize;
             second_->set_rect({0, y2, rect_.width, rect_.height - y2});
         }
     }
@@ -131,7 +162,7 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
 
     switch (event.type) {
     case MouseEvent::Type::Move:
-        if (h.contains(event.position)) {
+        if (!locked_ && h.contains(event.position)) {
             auto desired = orientation_ == Orientation::Horizontal ? CursorShape::ResizeEW
                                                                    : CursorShape::ResizeNS;
             if (cursor_ != desired) {
@@ -151,7 +182,7 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
         break;
 
     case MouseEvent::Type::Press:
-        if (h.contains(event.position)) {
+        if (!locked_ && h.contains(event.position)) {
             dragging_ = true;
             cursor_ = orientation_ == Orientation::Horizontal ? CursorShape::ResizeEW
                                                               : CursorShape::ResizeNS;
@@ -197,29 +228,40 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
 
     // Forward non-handle events to children; track active pane on press
     if (!dragging_) {
-        if (first_ && first_->rect().contains(event.position)) {
-            if (event.type == MouseEvent::Type::Press && active_pane_ != 0) {
-                active_pane_ = 0;
-                if (window_) {
-                    window_->request_redraw("splitter active pane");
-                }
+        // Returns true if the window's focused widget is inside `container`.
+        auto focused_inside = [&](Widget *container) -> bool {
+            if (!window_) return false;
+            auto *fw = window_->focused_widget();
+            while (fw) {
+                if (fw == container) return true;
+                fw = fw->parent();
             }
+            return false;
+        };
+
+        if (first_ && first_->rect().contains(event.position)) {
             auto shifted = event;
             shifted.position.x -= first_->rect().x;
             shifted.position.y -= first_->rect().y;
-            return first_->handle_mouse(shifted);
+            auto result = first_->handle_mouse(shifted);
+            if (event.type == MouseEvent::Type::Press && focused_inside(first_.get()) &&
+                active_pane_ != 0) {
+                active_pane_ = 0;
+                if (window_) window_->request_redraw("splitter active pane");
+            }
+            return result;
         }
         if (second_ && second_->rect().contains(event.position)) {
-            if (event.type == MouseEvent::Type::Press && active_pane_ != 1) {
-                active_pane_ = 1;
-                if (window_) {
-                    window_->request_redraw("splitter active pane");
-                }
-            }
             auto shifted = event;
             shifted.position.x -= second_->rect().x;
             shifted.position.y -= second_->rect().y;
-            return second_->handle_mouse(shifted);
+            auto result = second_->handle_mouse(shifted);
+            if (event.type == MouseEvent::Type::Press && focused_inside(second_.get()) &&
+                active_pane_ != 1) {
+                active_pane_ = 1;
+                if (window_) window_->request_redraw("splitter active pane");
+            }
+            return result;
         }
     }
     return false;
