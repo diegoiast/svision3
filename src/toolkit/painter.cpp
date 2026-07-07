@@ -71,8 +71,14 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
             frame_rect.height = std::max(0.0f, frame_rect.height - 1.0f);
         }
 
-        if (style.corner_radius > 0.0f) {
-            fill_rounded_rect(frame_rect, bg, style.corner_radius);
+        // Clamp so the radius never exceeds half the shortest side — prevents the
+        // diamond shape that occurs when corner_radius >= box_size/2 (e.g. GNOME
+        // checkbox: 10px radius on a 16px box).
+        auto max_r = std::min(frame_rect.width, frame_rect.height) / 2.0f;
+        auto cr = std::min(style.corner_radius, max_r);
+
+        if (cr > 0.0f) {
+            fill_rounded_rect(frame_rect, bg, cr);
         } else {
             fill_rect(frame_rect, bg);
         }
@@ -81,9 +87,8 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
             auto inset = bw / 2.0f;
             auto border_rect = frame_rect.inset(inset);
 
-            if (style.corner_radius > 0.0f) {
-                draw_rounded_rect(border_rect, border, std::max(0.0f, style.corner_radius - inset),
-                                  bw);
+            if (cr > 0.0f) {
+                draw_rounded_rect(border_rect, border, std::max(0.0f, cr - inset), bw);
             } else {
                 draw_rect(border_rect, border, bw);
             }
@@ -91,7 +96,7 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
 
         // Draw the bottom line, with corners, a pixel down, used by Plasma and GNome
         if (bw > 0 && bottom_shadow) {
-            auto r = style.corner_radius;
+            auto r = cr;
             // The frame was 1px smaller, so we draw shadow at full size and clip to bottom part
             push_clip({rect.x, rect.y + rect.height - r - 1.0f, rect.width, r + 1.0f});
             draw_rounded_rect(rect.inset(bw / 2.0f), palette.dark_shadow, r, bw);
