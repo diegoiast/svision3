@@ -16,6 +16,8 @@
 
 namespace toolkit {
 
+static void draw_size_hint_guides_recursive(Painter &painter, Widget *widget, float font_size);
+
 static auto is_descendant_of(Widget *descendant, Widget *ancestor) -> bool {
     while (descendant) {
         if (descendant == ancestor) {
@@ -693,6 +695,13 @@ void Window::handle_paint(Painter &painter) {
         }
     }
     if (Widget::debug_show_inspector) {
+        auto const font_size = Theme::current().palette.fonts.size * 0.8f;
+        if (root_) {
+            draw_size_hint_guides_recursive(painter, root_.get(), font_size);
+        }
+        for (auto &widget : widgets_) {
+            draw_size_hint_guides_recursive(painter, widget.get(), font_size);
+        }
         draw_widget_inspector(painter);
     }
 
@@ -866,12 +875,6 @@ void Window::handle_mouse(MouseEvent const &event) {
                                 close_popup();
                             }
                             popups_.push_back(std::move(new_child));
-                        }
-                    } else {
-                        if (event.type == MouseEvent::Type::Press) {
-                            while (static_cast<int>(popups_.size()) - 1 > i) {
-                                close_popup();
-                            }
                         }
                     }
                     request_redraw("event");
@@ -1303,6 +1306,95 @@ static constexpr auto kInspectorHighlight = kInspectorText;
 // "Widget" base name) are flagged in red as a hint to add DECLARE_WIDGET.
 static constexpr auto kInspectorWarning = Color::rgb(1.0f, 0.15f, 0.15f);
 
+// Bracket guide style for size-hint overlays.
+// kGuideArm: how far the arm extends from the widget edge to the bracket bar.
+// kGuideTick: half-length of the perpendicular tick at each bracket end.
+// kGuideSlack: widgets whose rect exceeds their hint by less than this are
+//              considered "at minimum" and drawn in a warning colour.
+static constexpr auto kGuideArm = 20.0f;
+static constexpr auto kGuideTick = 6.0f;
+static constexpr auto kGuideLineWidth = 1.5f;
+static constexpr auto kGuideArmWidth = 0.75f;
+static constexpr auto kGuideSlack = 4.0f;
+
+// Returns the guide colour for a widget based on how much slack it has
+// relative to its size_hint.
+//   Red    – rect is BELOW the hint (layout violation, should not happen)
+//   Orange – rect is AT the hint (this widget sets the minimum, bottleneck)
+//   Blue   – rect exceeds hint (has slack, not the constraining widget)
+static auto guide_color_for(Size const &hint, Rect const &r) -> Color {
+    auto const slack_w = hint.width > 0.0f ? r.width - hint.width : kGuideSlack + 1.0f;
+    auto const slack_h = hint.height > 0.0f ? r.height - hint.height : kGuideSlack + 1.0f;
+    auto const slack = std::min(slack_w, slack_h);
+    if (slack < 0.0f) {
+        return Color{1.0f, 0.15f, 0.15f, 0.9f}; // red – below minimum (layout bug)
+    }
+    if (slack <= kGuideSlack) {
+        return Color{1.0f, 0.65f, 0.1f, 0.9f}; // orange – at minimum, constraining
+    }
+    return Color{0.2f, 0.55f, 1.0f, 0.55f}; // blue – has slack
+}
+
+// Draw |---hint---|  bracket guides for every widget that has a non-zero
+// size_hint().  Width guide is drawn above the widget (horizontal bracket);
+// height guide is drawn to the left (vertical bracket).  Colour encodes
+// how constrained the widget currently is (red = bottleneck).
+static void draw_size_hint_guides_recursive(Painter &painter, Widget *widget, float font_size) {
+    if (!widget || !widget->is_visible()) {
+        return;
+    }
+
+    auto const hint = widget->size_hint();
+    auto const r = widget->rect();
+
+    if (hint.width > 0.0f || hint.height > 0.0f) {
+        auto const col = guide_color_for(hint, r);
+
+        if (hint.width > 0.0f) {
+            // Horizontal bracket kGuideArm pixels above the widget top edge.
+            auto const bar_y = r.y - kGuideArm;
+            auto const x1 = r.x;
+            auto const x2 = r.x + hint.width;
+            painter.set_line_style(Painter::LineStyle::Dashed);
+            painter.draw_line({x1, r.y}, {x1, bar_y}, col, kGuideArmWidth);
+            painter.draw_line({x2, r.y}, {x2, bar_y}, col, kGuideArmWidth);
+            painter.set_line_style(Painter::LineStyle::Solid);
+            painter.draw_line({x1, bar_y}, {x2, bar_y}, col, kGuideLineWidth);
+            painter.draw_line({x1, bar_y - kGuideTick}, {x1, bar_y + kGuideTick}, col,
+                              kGuideLineWidth);
+            painter.draw_line({x2, bar_y - kGuideTick}, {x2, bar_y + kGuideTick}, col,
+                              kGuideLineWidth);
+            auto const label_w = fmt::format("{:.0f}", hint.width);
+            auto const lw = painter.measure_text(label_w, font_size).width;
+            painter.draw_text(label_w, {(x1 + x2) / 2.0f - lw / 2.0f, bar_y - kGuideTick - 2.0f},
+                              col, font_size);
+        }
+
+        if (hint.height > 0.0f) {
+            // Vertical bracket kGuideArm pixels to the left of the widget.
+            auto const bar_x = r.x - kGuideArm;
+            auto const y1 = r.y;
+            auto const y2 = r.y + hint.height;
+            painter.set_line_style(Painter::LineStyle::Dashed);
+            painter.draw_line({r.x, y1}, {bar_x, y1}, col, kGuideArmWidth);
+            painter.draw_line({r.x, y2}, {bar_x, y2}, col, kGuideArmWidth);
+            painter.set_line_style(Painter::LineStyle::Solid);
+            painter.draw_line({bar_x, y1}, {bar_x, y2}, col, kGuideLineWidth);
+            painter.draw_line({bar_x - kGuideTick, y1}, {bar_x + kGuideTick, y1}, col,
+                              kGuideLineWidth);
+            painter.draw_line({bar_x - kGuideTick, y2}, {bar_x + kGuideTick, y2}, col,
+                              kGuideLineWidth);
+            auto const label_h = fmt::format("{:.0f}", hint.height);
+            painter.draw_text(label_h, {bar_x - kGuideTick - 2.0f, y1}, col, font_size);
+        }
+    }
+
+    painter.push_translation({r.x, r.y});
+    widget->for_each_child(
+        [&](Widget *child) { draw_size_hint_guides_recursive(painter, child, font_size); });
+    painter.pop_translation();
+}
+
 static auto json_value_to_string(nlohmann::json const &value) -> std::string {
     if (value.is_string()) {
         return value.get<std::string>();
@@ -1316,75 +1408,67 @@ static auto json_value_to_string(nlohmann::json const &value) -> std::string {
 
 void Window::draw_widget_inspector(Painter &painter) {
     auto *widget = hovered_widget_;
-    auto j = nlohmann::json{};
-    auto lines = std::vector<std::string>{};
-    auto theme = static_cast<Theme const *>(nullptr);
-    auto pal = static_cast<Palette const *>(nullptr);
-    auto font_size = 0.0f;
-    auto fm = Painter::FontMetrics{};
-    auto line_height = 0.0f;
-    auto padding = 0.0f;
-    auto max_w = 0.0f;
-    auto box_w = 0.0f;
-    auto box_h = 0.0f;
-    auto origin = Point{};
-    auto box_x = 0.0f;
-    auto box_y = 0.0f;
-    auto box = Rect{};
-    auto text_y = 0.0f;
-    auto is_generic_widget = false;
-
     if (!widget) {
         return;
     }
 
-    j = widget->to_json();
+    using Line = std::pair<std::string, Color>;
+    auto lines = std::vector<Line>{};
+    auto j = widget->to_json();
     auto const &r = widget->rect();
-    is_generic_widget = widget->class_name() == "Widget";
-    lines.push_back(fmt::format("{}  ({:.0f}x{:.0f} @ {:.0f},{:.0f})", widget->class_name(),
-                                r.width, r.height, r.x, r.y));
+    auto const hint = widget->size_hint();
+    auto const is_generic_widget = widget->class_name() == "Widget";
+
+    auto const header_color = is_generic_widget ? kInspectorWarning : kInspectorText;
+    lines.push_back({fmt::format("{}  ({:.0f}x{:.0f} @ {:.0f},{:.0f})", widget->class_name(),
+                                 r.width, r.height, r.x, r.y),
+                     header_color});
+
+    if (hint.width > 0.0f || hint.height > 0.0f) {
+        auto const hint_col = guide_color_for(hint, r);
+        lines.push_back(
+            {fmt::format("min: {:.0f}x{:.0f}", hint.width, hint.height), hint_col});
+    }
+
     for (auto const &[key, value] : j.items()) {
         if (key == "type" || key == "rect" || value.is_object()) {
             continue;
         }
-        lines.push_back(fmt::format("{}: {}", key, json_value_to_string(value)));
+        lines.push_back({fmt::format("{}: {}", key, json_value_to_string(value)), kInspectorText});
     }
 
-    theme = &Theme::current();
-    pal = &theme->palette;
-    font_size = pal->fonts.size;
-    fm = painter.font_metrics(font_size);
-    line_height = fm.height + 2.0f;
-    padding = theme->style.tooltip.padding + 2.0f;
+    auto const &theme = Theme::current();
+    auto const &pal = theme.palette;
+    auto const font_size = pal.fonts.size;
+    auto const fm = painter.font_metrics(font_size);
+    auto const line_height = fm.height + 2.0f;
+    auto const padding = theme.style.tooltip.padding + 2.0f;
 
-    for (auto const &line : lines) {
-        max_w = std::max(max_w, painter.measure_text(line, font_size).width);
+    auto max_w = 0.0f;
+    for (auto const &[text, _] : lines) {
+        max_w = std::max(max_w, painter.measure_text(text, font_size).width);
     }
 
-    box_w = max_w + padding * 2.0f;
-    box_h = static_cast<float>(lines.size()) * line_height + padding * 2.0f;
+    auto const box_w = max_w + padding * 2.0f;
+    auto const box_h = static_cast<float>(lines.size()) * line_height + padding * 2.0f;
+    auto const origin = widget->map_to_window({0, 0});
 
-    origin = widget->map_to_window({0, 0});
-    box_x = origin.x;
-    box_y = origin.y - box_h - 4.0f;
+    auto box_x = origin.x;
+    auto box_y = origin.y - box_h - 4.0f;
     if (box_y < 0.0f) {
         box_y = origin.y + r.height + 4.0f;
     }
-    box_x = std::min(box_x, size_.width - box_w);
-    box_y = std::min(box_y, size_.height - box_h);
-    box_x = std::max(0.0f, box_x);
-    box_y = std::max(0.0f, box_y);
+    box_x = std::clamp(box_x, 0.0f, size_.width - box_w);
+    box_y = std::clamp(box_y, 0.0f, size_.height - box_h);
 
-    box = Rect{box_x, box_y, box_w, box_h};
-    painter.fill_rounded_rect(box, kInspectorBackground, theme->style.corner_radius);
-    painter.draw_rounded_rect(box, kInspectorBorder, theme->style.corner_radius,
-                              theme->style.border_width);
+    auto const box = Rect{box_x, box_y, box_w, box_h};
+    painter.fill_rounded_rect(box, kInspectorBackground, theme.style.corner_radius);
+    painter.draw_rounded_rect(box, kInspectorBorder, theme.style.corner_radius,
+                              theme.style.border_width);
 
-    text_y = box_y + padding + fm.ascent;
-    for (auto i = size_t{0}; i < lines.size(); ++i) {
-        auto const is_header = i == 0;
-        auto const color = (is_header && is_generic_widget) ? kInspectorWarning : kInspectorText;
-        painter.draw_text(lines[i], {box_x + padding, text_y}, color, font_size);
+    auto text_y = box_y + padding + fm.ascent;
+    for (auto const &[text, color] : lines) {
+        painter.draw_text(text, {box_x + padding, text_y}, color, font_size);
         text_y += line_height;
     }
 
