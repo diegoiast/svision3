@@ -126,6 +126,12 @@ class Win32PlatformWindow : public PlatformWindow {
     HCURSOR resize_nw_cursor = nullptr, resize_nesw_cursor = nullptr, move_cursor = nullptr;
     Win32TextRasterizer rasterizer_;
     std::unique_ptr<RenderingBackend> backend_;
+
+    // Cached GDI back-buffer — recreated only on resize
+    HDC     back_dc  = nullptr;
+    HBITMAP back_bm  = nullptr;
+    int     back_w   = 0;
+    int     back_h   = 0;
 };
 
 LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);

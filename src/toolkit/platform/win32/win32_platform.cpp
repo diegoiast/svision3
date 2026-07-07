@@ -301,17 +301,25 @@ void Win32PlatformApplication::paint_window(HWND hwnd, Window *win) {
         return;
     }
 
-    HDC mem_dc = CreateCompatibleDC(hdc);
-    HBITMAP hbm = CreateCompatibleBitmap(hdc, pw, ph);
-    HBITMAP old_bm = static_cast<HBITMAP>(SelectObject(mem_dc, hbm));
+    if (win_plat->back_w != pw || win_plat->back_h != ph) {
+        if (win_plat->back_bm) {
+            SelectObject(win_plat->back_dc, GetStockObject(NULL_BRUSH));
+            DeleteObject(win_plat->back_bm);
+            win_plat->back_bm = nullptr;
+        }
+        if (!win_plat->back_dc) {
+            win_plat->back_dc = CreateCompatibleDC(hdc);
+        }
+        win_plat->back_bm = CreateCompatibleBitmap(hdc, pw, ph);
+        SelectObject(win_plat->back_dc, win_plat->back_bm);
+        win_plat->back_w = pw;
+        win_plat->back_h = ph;
+    }
 
-    GDIPainter painter(mem_dc, scale, &win_plat->rasterizer_);
+    GDIPainter painter(win_plat->back_dc, scale, &win_plat->rasterizer_);
     win->handle_paint(painter);
 
-    BitBlt(hdc, 0, 0, pw, ph, mem_dc, 0, 0, SRCCOPY);
-    SelectObject(mem_dc, old_bm);
-    DeleteObject(hbm);
-    DeleteDC(mem_dc);
+    BitBlt(hdc, 0, 0, pw, ph, win_plat->back_dc, 0, 0, SRCCOPY);
     EndPaint(hwnd, &ps);
 }
 
@@ -882,6 +890,14 @@ Win32PlatformWindow::~Win32PlatformWindow() {
         EnableWindow(modal_parent_hwnd, TRUE);
         SetForegroundWindow(modal_parent_hwnd);
         modal_parent_hwnd = nullptr;
+    }
+    if (back_bm) {
+        DeleteObject(back_bm);
+        back_bm = nullptr;
+    }
+    if (back_dc) {
+        DeleteDC(back_dc);
+        back_dc = nullptr;
     }
     if (hwnd) {
         if (hglrc) {

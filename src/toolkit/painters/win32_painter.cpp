@@ -67,18 +67,90 @@ struct Win32TextRasterizer::Impl {
     std::optional<MetricsCache> cached_metrics;
     std::unordered_map<std::string, Size> measure_cache;
 
-    HFONT create_font(float font_size, float scale = 1.0f, FontFamily family = FontFamily::System,
-                      bool bold = false, bool italic = false) {
+    struct HFontKey {
+        std::string face;
+        int height = 0; // negative pixel height (font_size * scale)
+        bool bold = false;
+        bool italic = false;
+        bool operator==(HFontKey const &o) const {
+            return height == o.height && bold == o.bold && italic == o.italic && face == o.face;
+        }
+    };
+    struct HFontKeyHash {
+        size_t operator()(HFontKey const &k) const {
+            size_t h = std::hash<std::string>{}(k.face);
+            h ^= std::hash<int>{}(k.height) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<bool>{}(k.bold)   + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<bool>{}(k.italic) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            return h;
+        }
+    };
+    std::unordered_map<HFontKey, HFONT, HFontKeyHash> hfont_cache;
+
+    struct GdiFontKey {
+        std::string face;
+        float size = 0;
+        int style = 0; // Gdiplus::FontStyle int
+        bool operator==(GdiFontKey const &o) const {
+            return size == o.size && style == o.style && face == o.face;
+        }
+    };
+    struct GdiFontKeyHash {
+        size_t operator()(GdiFontKey const &k) const {
+            size_t h = std::hash<std::string>{}(k.face);
+            h ^= std::hash<float>{}(k.size)  + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<int>{}(k.style)   + 0x9e3779b9 + (h << 6) + (h >> 2);
+            return h;
+        }
+    };
+    // Gdiplus::FontFamily and Font are not copyable; store as unique_ptr pairs
+    struct GdiFontEntry {
+        std::unique_ptr<Gdiplus::FontFamily> family;
+        std::unique_ptr<Gdiplus::Font>       font;
+    };
+    std::unordered_map<GdiFontKey, GdiFontEntry, GdiFontKeyHash> gdi_font_cache;
+
+    ~Impl() {
+        for (auto &[k, hf] : hfont_cache) {
+            if (hf) DeleteObject(hf);
+        }
+        // gdi_font_cache entries are unique_ptr — cleaned up automatically
+        if (hdc) DeleteDC(hdc);
+    }
+
+    HFONT get_hfont(float font_size, float scale, FontFamily family, bool bold, bool italic) {
         auto const &t = Theme::current();
-        std::string face_name =
+        std::string face =
             (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
-        auto wface = to_wide(face_name);
         int height = -static_cast<int>(std::round(font_size * scale));
+        HFontKey key{face, height, bold, italic};
+        auto it = hfont_cache.find(key);
+        if (it != hfont_cache.end()) {
+            return it->second;
+        }
+        auto wface = to_wide(face);
         DWORD pitch =
             (family == FontFamily::Monospace) ? FIXED_PITCH | FF_MODERN : DEFAULT_PITCH | FF_SWISS;
-        return CreateFontW(height, 0, 0, 0, bold ? FW_BOLD : FW_NORMAL, italic ? TRUE : FALSE,
-                           FALSE, FALSE, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
-                           CLEARTYPE_QUALITY, pitch, wface.c_str());
+        HFONT hf = CreateFontW(height, 0, 0, 0, bold ? FW_BOLD : FW_NORMAL, italic ? TRUE : FALSE,
+                               FALSE, FALSE, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
+                               CLEARTYPE_QUALITY, pitch, wface.c_str());
+        hfont_cache.emplace(key, hf);
+        return hf;
+    }
+
+    Gdiplus::Font *get_gdi_font(std::string const &face, float font_size, int gdi_style) {
+        GdiFontKey key{face, font_size, gdi_style};
+        auto it = gdi_font_cache.find(key);
+        if (it != gdi_font_cache.end()) {
+            return it->second.font.get();
+        }
+        auto wface = to_wide(face);
+        auto ff = std::make_unique<Gdiplus::FontFamily>(wface.c_str());
+        auto font = std::make_unique<Gdiplus::Font>(ff.get(), font_size,
+                                                    gdi_style, Gdiplus::UnitPixel);
+        auto *ptr = font.get();
+        gdi_font_cache.emplace(key, GdiFontEntry{std::move(ff), std::move(font)});
+        return ptr;
     }
 };
 
@@ -87,11 +159,7 @@ Win32TextRasterizer::Win32TextRasterizer() : impl_(std::make_unique<Impl>()) {
     SetBkMode(impl_->hdc, TRANSPARENT);
 }
 
-Win32TextRasterizer::~Win32TextRasterizer() {
-    if (impl_->hdc) {
-        DeleteDC(impl_->hdc);
-    }
-}
+Win32TextRasterizer::~Win32TextRasterizer() = default;
 
 RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_size, float scale,
                                               Color const &color, FontFamily font, bool bold,
@@ -101,7 +169,7 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
         return {};
     }
 
-    HFONT hfont = impl_->create_font(font_size, scale, font, bold, italic);
+    HFONT hfont = impl_->get_hfont(font_size, scale, font, bold, italic);
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
     SIZE sz;
@@ -111,7 +179,6 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
     int h = sz.cy;
     if (w <= 0 || h <= 0) {
         SelectObject(impl_->hdc, old_font);
-        DeleteObject(hfont);
         return {};
     }
 
@@ -130,7 +197,6 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
     HBITMAP hbm = CreateDIBSection(impl_->hdc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
     if (!hbm || !bits) {
         SelectObject(impl_->hdc, old_font);
-        DeleteObject(hfont);
         return {};
     }
 
@@ -168,7 +234,6 @@ RasterizedText Win32TextRasterizer::rasterize(std::string_view text, float font_
     SelectObject(impl_->hdc, old_bm);
     DeleteObject(hbm);
     SelectObject(impl_->hdc, old_font);
-    DeleteObject(hfont);
 
     return result;
 }
@@ -188,14 +253,13 @@ Size Win32TextRasterizer::measure(std::string_view text, float font_size, FontFa
     }
 
     auto wtext = to_wide(text);
-    HFONT hfont = impl_->create_font(font_size, 1.0f, font, bold, italic);
+    HFONT hfont = impl_->get_hfont(font_size, 1.0f, font, bold, italic);
     HFONT old_font = static_cast<HFONT>(SelectObject(impl_->hdc, hfont));
 
     SIZE sz;
     GetTextExtentPoint32W(impl_->hdc, wtext.c_str(), static_cast<int>(wtext.size()), &sz);
 
     SelectObject(impl_->hdc, old_font);
-    DeleteObject(hfont);
 
     auto result = Size{static_cast<float>(sz.cx), static_cast<float>(sz.cy)};
     impl_->measure_cache.emplace(std::move(cache_key), result);
@@ -528,15 +592,10 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         auto const &t = Theme::current();
         auto const &face =
             (family == FontFamily::Monospace) ? t.palette.fonts.monospace : t.palette.fonts.system;
-        auto wface = to_wide(face);
 
         auto *graphics = static_cast<Gdiplus::Graphics *>(gp->graphics());
         auto scale = gp->scale();
 
-        // Build the GDI+ font at font_size logical pixels (UnitPixel).
-        // With ScaleTransform(scale) active, GDI+ renders this as font_size*scale physical pixels —
-        // identical to what the rasterizer produces, with no manual bitmap scaling needed.
-        Gdiplus::FontFamily ff(wface.c_str());
         int gdi_style = Gdiplus::FontStyleRegular;
         if (bold && italic) {
             gdi_style = Gdiplus::FontStyleBoldItalic;
@@ -545,7 +604,7 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         } else if (italic) {
             gdi_style = Gdiplus::FontStyleItalic;
         }
-        Gdiplus::Font font(&ff, font_size, gdi_style, Gdiplus::UnitPixel);
+        auto *font = impl_->get_gdi_font(face, font_size, gdi_style);
         Gdiplus::SolidBrush brush(to_gdiplus_color(c));
 
         // GenericTypographic removes GDI+'s default internal margins.
@@ -560,7 +619,7 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         // DrawString places the origin at the top-left of the layout box; pos.y is the baseline.
         if (orientation == Painter::TextOrientation::Horizontal) {
             Gdiplus::PointF draw_at(pos.x, pos.y - ascent);
-            graphics->DrawString(wtext.c_str(), -1, &font, draw_at, &format, &brush);
+            graphics->DrawString(wtext.c_str(), -1, font, draw_at, &format, &brush);
         } else {
             // Rotating the GDI+ context before DrawString disables ClearType (subpixel layout
             // is undefined after rotation), producing pixelated greyscale-AA text.
