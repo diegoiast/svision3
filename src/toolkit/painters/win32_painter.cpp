@@ -529,24 +529,42 @@ void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     float s = impl_->scale;
     float slw = std::max(1.0f, std::round(lw * s)) / s;
 
-    bool axis_aligned = (std::abs(a.x - b.x) < 0.001f || std::abs(a.y - b.y) < 0.001f);
+    bool horizontal = std::abs(a.y - b.y) < 0.001f;
+    bool vertical = std::abs(a.x - b.x) < 0.001f;
+    bool axis_aligned = horizontal || vertical;
+
+    if (axis_aligned && impl_->line_style == Painter::LineStyle::Solid) {
+        // Fill an exact pixel rect instead of stroking. DrawLine's pen-centered
+        // stroke covers the endpoint pixels only partially, and GDI+ drops the
+        // last pixel unpredictably — leaving gaps where frame corners meet.
+        // Both endpoints are inclusive here, matching classic Win32 bevel math.
+        float thickness = std::max(1.0f, std::round(lw * s));
+        Gdiplus::SolidBrush brush(to_gdiplus_color(c));
+        if (horizontal) {
+            float xs = std::floor(std::min(a.x, b.x) * s);
+            float xe = std::floor(std::max(a.x, b.x) * s) + 1.0f;
+            float ys = std::floor(a.y * s) - std::floor((thickness - 1.0f) / 2.0f);
+            impl_->graphics->FillRectangle(&brush, xs / s, ys / s, (xe - xs) / s,
+                                           thickness / s);
+        } else {
+            float ys = std::floor(std::min(a.y, b.y) * s);
+            float ye = std::floor(std::max(a.y, b.y) * s) + 1.0f;
+            float xs = std::floor(a.x * s) - std::floor((thickness - 1.0f) / 2.0f);
+            impl_->graphics->FillRectangle(&brush, xs / s, ys / s, thickness / s,
+                                           (ye - ys) / s);
+        }
+        return;
+    }
+
     Gdiplus::SmoothingMode old = impl_->graphics->GetSmoothingMode();
     if (axis_aligned) {
         impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
     }
 
-    float x1, y1, x2, y2;
-    if (axis_aligned) {
-        x1 = std::floor(a.x * s) / s;
-        y1 = std::floor(a.y * s) / s;
-        x2 = std::floor(b.x * s) / s;
-        y2 = std::floor(b.y * s) / s;
-    } else {
-        x1 = (std::floor(a.x * s) + 0.5f) / s;
-        y1 = (std::floor(a.y * s) + 0.5f) / s;
-        x2 = (std::floor(b.x * s) + 0.5f) / s;
-        y2 = (std::floor(b.y * s) + 0.5f) / s;
-    }
+    float x1 = (std::floor(a.x * s) + 0.5f) / s;
+    float y1 = (std::floor(a.y * s) + 0.5f) / s;
+    float x2 = (std::floor(b.x * s) + 0.5f) / s;
+    float y2 = (std::floor(b.y * s) + 0.5f) / s;
 
     Gdiplus::Pen pen(to_gdiplus_color(c), slw);
     apply_line_style(pen, impl_->line_style, slw);
@@ -558,23 +576,18 @@ void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
 }
 
 void GDIPainter::fill_circle(Point center, float radius, Color const &c) {
-    float s = impl_->scale;
-    float cx = std::round(center.x * s) / s;
-    float cy = std::round(center.y * s) / s;
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
-    impl_->graphics->FillEllipse(&brush, cx - radius, cy - radius, radius * 2, radius * 2);
+    impl_->graphics->FillEllipse(&brush, center.x - radius, center.y - radius,
+                                  radius * 2, radius * 2);
 }
 
 void GDIPainter::draw_circle(Point center, float radius, Color const &c, float lw) {
     float s = impl_->scale;
     float slw = std::max(1.0f, std::round(lw * s)) / s;
-
-    float cx = std::round(center.x * s) / s;
-    float cy = std::round(center.y * s) / s;
-
     Gdiplus::Pen pen(to_gdiplus_color(c), slw);
     apply_line_style(pen, impl_->line_style, slw);
-    impl_->graphics->DrawEllipse(&pen, cx - radius, cy - radius, radius * 2, radius * 2);
+    impl_->graphics->DrawEllipse(&pen, center.x - radius, center.y - radius,
+                                  radius * 2, radius * 2);
 }
 
 void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos, Color const &c,
