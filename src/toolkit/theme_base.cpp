@@ -780,14 +780,31 @@ void BaseTheme::draw_icon_grid_item(Painter &painter, Rect const &rect, std::str
     if (text_w > max_text_w) {
         auto suffix = std::string_view{"..."};
         auto sw = painter.measure_text(suffix, palette.fonts.size).width;
-        if (sw < max_text_w) {
-            while (!display_text.empty() && text_w + sw > max_text_w) {
+        auto target_w = max_text_w - sw;
+        if (sw < max_text_w && target_w > 0.0f) {
+            // Estimate cut point by byte-count ratio, then fine-tune (1-3 steps).
+            auto ratio = target_w / text_w;
+            auto approx = static_cast<size_t>(display_text.size() * ratio);
+            // Snap back to a valid UTF-8 start byte
+            while (approx > 0 && (static_cast<uint8_t>(display_text[approx]) & 0xC0) == 0x80) {
+                --approx;
+            }
+            display_text.resize(approx);
+            text_w = display_text.empty() ? 0.0f
+                                          : painter.measure_text(display_text, palette.fonts.size).width;
+            // Trim one char at a time until it fits (typically 0-2 iterations)
+            while (!display_text.empty() && text_w > target_w) {
                 size_t last_pos = Utf8Iterator::prev(display_text, display_text.size());
-                display_text.erase(last_pos);
-                text_w = painter.measure_text(display_text, palette.fonts.size).width;
+                display_text.resize(last_pos);
+                text_w = display_text.empty()
+                             ? 0.0f
+                             : painter.measure_text(display_text, palette.fonts.size).width;
             }
             display_text += suffix;
             text_w = painter.measure_text(display_text, palette.fonts.size).width;
+        } else {
+            display_text = "...";
+            text_w = sw;
         }
     }
 

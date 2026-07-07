@@ -49,6 +49,7 @@ class IconGrid : public ScrollableWidget, public Fluent<IconGrid> {
     void set_rect(Rect const &rect) override;
     Size size_hint() const override;
     Widget *widget_at(Point p) override;
+    void on_theme_changed() override;
 
   protected:
     void on_scroll(float x, float y) override;
@@ -77,6 +78,13 @@ class IconGrid : public ScrollableWidget, public Fluent<IconGrid> {
     bool rubber_add_ = false;
     Point rubber_start_;
     Point rubber_end_;
+
+    // Cached item dimensions — invalidated when rect_.width or icon size changes
+    mutable float cached_col_width_ = -1.0f;
+    mutable int cached_col_icon_size_ = -1;
+    mutable size_t cached_columns_ = 1;
+    mutable float cached_item_w_ = 0.0f;
+    mutable float cached_item_h_ = 0.0f;
 };
 
 } // namespace toolkit

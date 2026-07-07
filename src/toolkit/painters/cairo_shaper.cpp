@@ -20,6 +20,7 @@
 #include <cmath>
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace toolkit {
@@ -139,6 +140,24 @@ struct ShapeResult {
     std::vector<hb_glyph_position_t> positions;
 };
 
+struct ShapeCacheKey {
+    std::string text;
+    hb_script_t script;
+    hb_font_t *font; // stable ptr from face_cache
+    bool rtl;
+    bool operator==(ShapeCacheKey const &o) const {
+        return font == o.font && script == o.script && rtl == o.rtl && text == o.text;
+    }
+};
+struct ShapeCacheHash {
+    size_t operator()(ShapeCacheKey const &k) const {
+        auto h = std::hash<std::string>{}(k.text);
+        h ^= std::hash<uint32_t>{}(static_cast<uint32_t>(k.script)) * 0x9e3779b9u;
+        h ^= std::hash<uintptr_t>{}(reinterpret_cast<uintptr_t>(k.font)) * 0x517cc1b7u;
+        return h ^ (k.rtl ? 1u : 0u);
+    }
+};
+
 ShapeResult shape_one_span(hb_font_t *font, std::string_view span_utf8, hb_script_t script,
                            bool rtl) {
     ShapeResult out;
@@ -249,11 +268,41 @@ struct FaceKey {
     }
 };
 
+// Key for the unified face lookup cache.
+// ASCII text always resolves to the primary font, so we collapse all ASCII spans
+// to a single entry per (family, size, bold, italic) by using an empty span string.
+// Non-ASCII spans are script-segmented before reaching get(), so span is short.
+struct SpanFaceKey {
+    std::string span; // "" for all-ASCII, actual UTF-8 bytes for non-ASCII
+    std::string family;
+    int size;
+    bool bold;
+    bool italic;
+    bool operator==(SpanFaceKey const &o) const noexcept {
+        return size == o.size && bold == o.bold && italic == o.italic && family == o.family &&
+               span == o.span;
+    }
+};
+struct SpanFaceHash {
+    size_t operator()(SpanFaceKey const &k) const noexcept {
+        auto h = std::hash<std::string>{}(k.span);
+        h ^= std::hash<std::string>{}(k.family) * 0x9e3779b9u + (h << 6) + (h >> 2);
+        h ^= std::hash<int>{}(k.size) * 0x517cc1b7u;
+        return h ^ (static_cast<size_t>(k.bold) * 2u) ^ static_cast<size_t>(k.italic);
+    }
+};
+
 struct CairoShaper::Impl {
     FT_Library ft_library = nullptr;
     std::map<FaceKey, FaceEntry> face_cache;
+
     // FcFontSort result per family, lazily filled
-    std::map<std::string, FcFontSet *> fc_sets; 
+    std::map<std::string, FcFontSet *> fc_sets;
+    std::unordered_map<ShapeCacheKey, ShapeResult, ShapeCacheHash> shape_cache;
+
+    // Unified face lookup cache — covers both ASCII and non-ASCII spans.
+    // Eliminates repeated find_font_file() calls for the same span content.
+    std::unordered_map<SpanFaceKey, FaceEntry const *, SpanFaceHash> face_lookup_cache;
 
     Impl() {
         if (FT_Init_FreeType(&ft_library) != 0) {
@@ -359,6 +408,25 @@ struct CairoShaper::Impl {
             return false;
         }
 
+        // ASCII fast-path: the primary (first-ranked) font always covers ASCII.
+        // Skip FcCharSet construction and fallback iteration entirely.
+        auto all_ascii = true;
+        for (unsigned char c : span_utf8) {
+            if (c >= 128) {
+                all_ascii = false;
+                break;
+            }
+        }
+        if (all_ascii) {
+            FcChar8 *file = nullptr;
+            if (FcPatternGetString(fs->fonts[0], FC_FILE, 0, &file) == FcResultMatch && file) {
+                path_out = reinterpret_cast<char const *>(file);
+                FcPatternGetInteger(fs->fonts[0], FC_INDEX, 0, &index_out);
+                FcPatternGetInteger(fs->fonts[0], FC_SLANT, 0, &actual_slant_out);
+                return true;
+            }
+        }
+
         auto needed = FcCharSetCreate();
         auto pos = 0;
         while (pos < span_utf8.size()) {
@@ -417,10 +485,31 @@ struct CairoShaper::Impl {
             return nullptr;
         }
 
+        // Unified face lookup cache: ASCII text always maps to the primary font so all
+        // ASCII spans share one entry per (family, size, bold, italic). Non-ASCII spans
+        // are script-segmented before reaching here, so they are short and safe to use
+        // as cache keys. This eliminates find_font_file() calls on the hot repaint path.
+        auto all_ascii = true;
+        for (unsigned char c : span_utf8) {
+            if (c >= 128) {
+                all_ascii = false;
+                break;
+            }
+        }
+        auto fam_str = family_for(family);
+        auto lookup_key = SpanFaceKey{all_ascii ? std::string{} : std::string(span_utf8), fam_str,
+                                      static_cast<int>(std::round(font_size)), bold, italic};
+        {
+            auto it = face_lookup_cache.find(lookup_key);
+            if (it != face_lookup_cache.end()) {
+                return it->second;
+            }
+        }
+
         std::string path;
         auto face_index = 0;
         auto actual_slant = FC_SLANT_ROMAN;
-        if (!find_font_file(family_for(family), span_utf8, path, face_index, actual_slant, bold, italic)) {
+        if (!find_font_file(fam_str, span_utf8, path, face_index, actual_slant, bold, italic)) {
             return nullptr;
         }
 
@@ -433,7 +522,9 @@ struct CairoShaper::Impl {
 
         auto it = face_cache.find(key);
         if (it != face_cache.end()) {
-            return &it->second;
+            auto const *entry = &it->second;
+            face_lookup_cache.emplace(lookup_key, entry);
+            return entry;
         }
 
         FT_Face face_hb = nullptr;
@@ -477,7 +568,22 @@ struct CairoShaper::Impl {
             spdlog::warn("CairoShaper: no italic face for '{}' — applying synthetic oblique", path);
         }
         auto [inserted, ok] = face_cache.emplace(key, e);
-        return &inserted->second;
+        auto const *entry = &inserted->second;
+        face_lookup_cache.emplace(lookup_key, entry);
+        return entry;
+    }
+
+    // Returns the shaped result for (span_utf8, script, font, rtl), computing
+    // it once via HarfBuzz and caching it for subsequent calls with the same inputs.
+    ShapeResult const &cached_shape(hb_font_t *font, std::string_view span_utf8, hb_script_t script,
+                                    bool rtl) {
+        ShapeCacheKey key{std::string(span_utf8), script, font, rtl};
+        auto it = shape_cache.find(key);
+        if (it != shape_cache.end()) {
+            return it->second;
+        }
+        auto result = shape_one_span(font, span_utf8, script, rtl);
+        return shape_cache.emplace(std::move(key), std::move(result)).first->second;
     }
 };
 
@@ -512,6 +618,8 @@ void CairoShaper::release_fonts() {
         }
     }
     impl_->face_cache.clear();
+    impl_->shape_cache.clear();
+    impl_->face_lookup_cache.clear();
 }
 
 std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_utf8, bool rtl,
@@ -519,6 +627,26 @@ std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_ut
                                                          bool bold, bool italic) {
     std::vector<text::ClusterAdvance> result;
     if (run_utf8.empty()) {
+        return result;
+    }
+
+    // ASCII fast-path: treat the full run as a single COMMON span,
+    // skipping per-character HarfBuzz Unicode classification.
+    // Consistent with draw_run's ASCII fast-path so both hit the same shape cache entry.
+    auto all_ascii = true;
+    for (unsigned char c : run_utf8) {
+        if (c >= 128) {
+            all_ascii = false;
+            break;
+        }
+    }
+    if (all_ascii) {
+        auto entry = impl_->get(font, font_size, run_utf8, bold, italic);
+        if (entry) {
+            auto const &shaped =
+                impl_->cached_shape(entry->hb_font, run_utf8, HB_SCRIPT_COMMON, rtl);
+            result = advances_from_shape(shaped, 0);
+        }
         return result;
     }
 
@@ -533,8 +661,8 @@ std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_ut
             per_span.push_back({});
             continue;
         }
-        auto shaped = shape_one_span(entry->hb_font, run_utf8.substr(span.start, span.length),
-                                     span.script, rtl);
+        auto const &shaped = impl_->cached_shape(
+            entry->hb_font, run_utf8.substr(span.start, span.length), span.script, rtl);
         per_span.push_back(advances_from_shape(shaped, span.start));
     }
 
@@ -551,8 +679,8 @@ std::vector<text::ClusterAdvance> CairoShaper::shape_run(std::string_view run_ut
 }
 
 void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,
-                           Color const &color, float font_size, FontFamily font,
-                           bool bold, bool italic) {
+                           Color const &color, float font_size, FontFamily font, bool bold,
+                           bool italic) {
     if (run_utf8.empty()) {
         return;
     }
@@ -567,7 +695,6 @@ void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
 
     auto x = static_cast<double>(origin.x);
     auto y = static_cast<double>(origin.y);
-    auto spans = segment_by_script(run_utf8);
 
     auto draw_one_span = [&](ScriptSpan const &span) {
         auto span_text = run_utf8.substr(span.start, span.length);
@@ -593,8 +720,8 @@ void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
         }
         cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
 
-        auto shaped = shape_one_span(entry->hb_font, run_utf8.substr(span.start, span.length),
-                                     span.script, rtl);
+        auto const &shaped = impl_->cached_shape(
+            entry->hb_font, run_utf8.substr(span.start, span.length), span.script, rtl);
         auto const count = shaped.infos.size();
         if (count > 0) {
             std::vector<cairo_glyph_t> glyphs(count);
@@ -610,13 +737,28 @@ void CairoShaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
         }
     };
 
-    if (!rtl) {
-        for (auto const &span : spans) {
-            draw_one_span(span);
+    // ASCII fast-path: treat the whole run as a single COMMON span, skipping
+    // per-character HarfBuzz Unicode classification and script segmentation.
+    // Consistent with shape_run's ASCII fast-path so both hit the same shape cache entry.
+    auto all_ascii = true;
+    for (unsigned char c : run_utf8) {
+        if (c >= 128) {
+            all_ascii = false;
+            break;
         }
+    }
+    if (all_ascii) {
+        draw_one_span({0, run_utf8.size(), HB_SCRIPT_COMMON});
     } else {
-        for (auto it = spans.rbegin(); it != spans.rend(); ++it) {
-            draw_one_span(*it);
+        auto spans = segment_by_script(run_utf8);
+        if (!rtl) {
+            for (auto const &span : spans) {
+                draw_one_span(span);
+            }
+        } else {
+            for (auto it = spans.rbegin(); it != spans.rend(); ++it) {
+                draw_one_span(*it);
+            }
         }
     }
 

@@ -167,6 +167,13 @@ void CairoPainter::draw_circle(Point center, float radius, Color const &color, f
     cairo_stroke(cr_);
 }
 
+static bool is_all_ascii(std::string_view text) {
+    for (unsigned char c : text) {
+        if (c >= 128) return false;
+    }
+    return true;
+}
+
 void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point position,
                                     Color const &color, float font_size, FontFamily font,
                                     Painter::TextOrientation orientation, bool bold, bool italic) {
@@ -175,22 +182,25 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
         cairo_new_path(cr);
 
         if (orientation == Painter::TextOrientation::Horizontal) {
-            // Use the shaper for horizontal text: BIDI split + per-script font
-            // fallback so all Unicode scripts render with an appropriate font.
-            auto base = bidi::detect_base_direction(text);
-            auto bidi_line = bidi::BidiLine::analyze(text, base);
-            auto x = position.x;
-            for (auto const &run : bidi_line.runs_visual()) {
-                auto run_text = text.substr(run.start, run.length);
-                // Shape first to know the run width, then draw at the right x.
-                auto advances = shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic);
-                auto run_width = 0.0f;
-                for (auto const &ca : advances) {
-                    run_width += ca.advance;
+            if (is_all_ascii(text)) {
+                // Pure ASCII: guaranteed LTR, no BIDI analysis needed.
+                shaper_.draw_run(p, text, false, position, color, font_size, font, bold, italic);
+            } else {
+                // Full BIDI path for mixed/RTL text.
+                auto base = bidi::detect_base_direction(text);
+                auto bidi_line = bidi::BidiLine::analyze(text, base);
+                auto x = position.x;
+                for (auto const &run : bidi_line.runs_visual()) {
+                    auto run_text = text.substr(run.start, run.length);
+                    auto advances = shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic);
+                    auto run_width = 0.0f;
+                    for (auto const &ca : advances) {
+                        run_width += ca.advance;
+                    }
+                    shaper_.draw_run(p, run_text, run.rtl(), {x, position.y}, color, font_size, font,
+                                     bold, italic);
+                    x += run_width;
                 }
-                shaper_.draw_run(p, run_text, run.rtl(), {x, position.y}, color, font_size, font,
-                                 bold, italic);
-                x += run_width;
             }
         } else {
             // Rotated text: fall back to cairo toy API (no multi-script support).
@@ -403,16 +413,21 @@ Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFa
     if (text.empty()) {
         return {0, 0};
     }
-    // Use the shaper for accurate multi-script width: single-font
-    // cairo_text_extents returns advance=0 for glyphs the font lacks
-    // (CJK, Hebrew, etc.), causing labels to clip those characters.
-    auto base = bidi::detect_base_direction(text);
-    auto bidi_line = bidi::BidiLine::analyze(text, base);
     auto width = 0.0f;
-    for (auto const &run : bidi_line.runs_visual()) {
-        auto run_text = text.substr(run.start, run.length);
-        for (auto const &ca : shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic)) {
+    if (is_all_ascii(text)) {
+        // Pure ASCII: single LTR run, no BIDI analysis needed.
+        for (auto const &ca : shaper_.shape_run(text, false, font_size, font, bold, italic)) {
             width += ca.advance;
+        }
+    } else {
+        // Full BIDI path for multi-script / RTL text.
+        auto base = bidi::detect_base_direction(text);
+        auto bidi_line = bidi::BidiLine::analyze(text, base);
+        for (auto const &run : bidi_line.runs_visual()) {
+            auto run_text = text.substr(run.start, run.length);
+            for (auto const &ca : shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic)) {
+                width += ca.advance;
+            }
         }
     }
     auto fm = metrics(font_size, font);
@@ -420,6 +435,12 @@ Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFa
 }
 
 Painter::FontMetrics CairoTextRasterizer::metrics(float font_size, FontFamily font) {
+    auto key = (static_cast<uint32_t>(std::round(font_size)) << 1) | static_cast<uint32_t>(font);
+    auto it = metrics_cache_.find(key);
+    if (it != metrics_cache_.end()) {
+        return it->second;
+    }
+
     auto surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
     auto cr = cairo_create(surf);
     cairo_font_extents_t fe;
@@ -430,8 +451,11 @@ Painter::FontMetrics CairoTextRasterizer::metrics(float font_size, FontFamily fo
     cairo_font_extents(cr, &fe);
     cairo_destroy(cr);
     cairo_surface_destroy(surf);
-    return {static_cast<float>(fe.ascent), static_cast<float>(fe.descent),
-            static_cast<float>(fe.height)};
+
+    Painter::FontMetrics result{static_cast<float>(fe.ascent), static_cast<float>(fe.descent),
+                                static_cast<float>(fe.height)};
+    metrics_cache_[key] = result;
+    return result;
 }
 
 } // namespace toolkit

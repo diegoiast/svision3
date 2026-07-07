@@ -9,6 +9,7 @@
 #include "toolkit/text_rasterizer.hpp"
 
 #ifdef TOOLKIT_HAS_CAIRO
+#include <unordered_map>
 struct _cairo;
 using cairo_t = _cairo;
 
@@ -72,8 +73,11 @@ class CairoTextRasterizer : public TextRasterizer {
                    float font_size, FontFamily font, Painter::TextOrientation orientation,
                    bool bold, bool italic) override;
 
+    void invalidate_metrics_cache() { metrics_cache_.clear(); }
+
   private:
     CairoShaper shaper_;
+    mutable std::unordered_map<uint32_t, Painter::FontMetrics> metrics_cache_;
 };
 
 } // namespace toolkit

@@ -50,7 +50,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 37. [ ] Scroll size - detect at runtime.
 38. [ ] Natural scrolling - detect at runtime.
 39. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
-40. [ ] Implement font caching for measurements.
+40. [x] Implement font caching for measurements.
 41. [ ] Resource / asset management.
 42. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
 43. [x] Set window icon.

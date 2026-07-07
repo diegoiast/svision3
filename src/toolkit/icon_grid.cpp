@@ -523,22 +523,23 @@ void IconGrid::set_rect(Rect const &rect) {
 Size IconGrid::size_hint() const { return {200, 200}; }
 
 IconGrid::LayoutInfo IconGrid::compute_layout() const {
-    auto const &theme = Theme::current();
-    auto const &style = theme.style.iconGrid;
-    auto sample_size = theme.measure_icon_grid_item("W", display_icon_size());
-
-    auto item_w = sample_size.width;
-    auto item_h = sample_size.height;
-
-    auto available_w = rect_.width - style.padding.left - style.padding.right;
-    auto cols = std::max(
-        size_t{1}, static_cast<size_t>(std::floor(std::max(0.0f, available_w + style.spacing) /
-                                                  (item_w + style.spacing))));
-
+    auto disp = display_icon_size();
+    if (rect_.width != cached_col_width_ || disp != cached_col_icon_size_) {
+        auto const &theme = Theme::current();
+        auto const &style = theme.style.iconGrid;
+        auto sample_size = theme.measure_icon_grid_item("W", disp);
+        cached_item_w_ = sample_size.width;
+        cached_item_h_ = sample_size.height;
+        auto available_w = rect_.width - style.padding.left - style.padding.right;
+        cached_columns_ = std::max(
+            size_t{1}, static_cast<size_t>(std::floor(std::max(0.0f, available_w + style.spacing) /
+                                                      (cached_item_w_ + style.spacing))));
+        cached_col_width_ = rect_.width;
+        cached_col_icon_size_ = disp;
+    }
     auto count = model_ ? model_->row_count() : size_t{0};
-    auto rows = (count + cols - 1) / cols;
-
-    return {cols, rows, item_w, item_h};
+    auto rows = (count + cached_columns_ - 1) / cached_columns_;
+    return {cached_columns_, rows, cached_item_w_, cached_item_h_};
 }
 
 std::optional<size_t> IconGrid::item_at(Point p) const {
@@ -581,6 +582,11 @@ auto IconGrid::widget_at(Point p) -> Widget * {
         return nullptr;
     }
     return this;
+}
+
+void IconGrid::on_theme_changed() {
+    Widget::on_theme_changed();
+    cached_col_width_ = -1.0f; // force compute_layout() to remeasure with new theme fonts
 }
 
 void IconGrid::clamp_scroll() {
