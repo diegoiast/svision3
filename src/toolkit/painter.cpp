@@ -130,7 +130,7 @@ void Painter::draw_text(std::string_view text, Point position, Color const &colo
 }
 
 void Painter::draw_mnemonic_text(std::string_view raw_text, Point pos, Color const &color,
-                                  float font_size) {
+                                 float font_size) {
     auto amp_pos = raw_text.find('&');
     if (amp_pos == std::string_view::npos) {
         draw_text(raw_text, pos, color, font_size);
@@ -152,15 +152,15 @@ void Painter::draw_mnemonic_text(std::string_view raw_text, Point pos, Color con
             draw_line({pos.x + r.x, ul_y}, {pos.x + r.x + r.width, ul_y}, color, 1.0f);
         }
     } else {
-        auto before_w = amp_pos > 0 ? measure_text(display.substr(0, amp_pos), font_size).width
-                                    : 0.0f;
+        auto before_w =
+            amp_pos > 0 ? measure_text(display.substr(0, amp_pos), font_size).width : 0.0f;
         auto ch_w = measure_text(display.substr(amp_pos, 1), font_size).width;
         draw_line({pos.x + before_w, ul_y}, {pos.x + before_w + ch_w, ul_y}, color, 1.0f);
     }
 }
 
-Size Painter::measure_text(std::string_view text, float font_size, FontFamily family,
-                           bool bold, bool italic) {
+Size Painter::measure_text(std::string_view text, float font_size, FontFamily family, bool bold,
+                           bool italic) {
     if (!rasterizer_ || text.empty()) {
         return {0, 0};
     }

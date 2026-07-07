@@ -17,8 +17,8 @@
 #include <usp10.h>
 // clang-format on
 
-#include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/painters/win32_shaper.hpp"
+#include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/utf8.hpp"
 
@@ -61,7 +61,7 @@ WideRun to_wide_run(std::string_view run_utf8) {
         wchar_t buf[2];
         auto next = Utf8Iterator::next(run_utf8, pos);
         auto n = MultiByteToWideChar(CP_UTF8, 0, run_utf8.data() + pos,
-                                    static_cast<int>(next - pos), buf, 2);
+                                     static_cast<int>(next - pos), buf, 2);
         for (auto i = 0; i < n; ++i) {
             out.text.push_back(buf[i]);
             out.byte_offset.push_back(pos);
@@ -105,8 +105,8 @@ std::vector<ShapedItem> shape_items(HDC hdc, SCRIPT_CACHE *cache, std::wstring c
     auto max_items = static_cast<int>(wide.size()) + 2;
     auto items = std::vector<SCRIPT_ITEM>(static_cast<size_t>(max_items));
     auto num_items = 0;
-    auto hr = ScriptItemize(wide.c_str(), static_cast<int>(wide.size()), max_items - 1,
-                               &control, &state, items.data(), &num_items);
+    auto hr = ScriptItemize(wide.c_str(), static_cast<int>(wide.size()), max_items - 1, &control,
+                            &state, items.data(), &num_items);
     if (FAILED(hr)) {
         return result;
     }
@@ -152,7 +152,7 @@ std::vector<ShapedItem> shape_items(HDC hdc, SCRIPT_CACHE *cache, std::wstring c
         item.advances.resize(static_cast<size_t>(num_glyphs));
         item.goffsets.resize(static_cast<size_t>(num_glyphs));
         auto phr = ScriptPlace(hdc, cache, item.glyphs.data(), num_glyphs, item.visattrs.data(),
-                                  &item.sa, item.advances.data(), item.goffsets.data(), &abc);
+                               &item.sa, item.advances.data(), item.goffsets.data(), &abc);
         if (FAILED(phr)) {
             continue;
         }
@@ -169,11 +169,11 @@ std::vector<ShapedItem> shape_items(HDC hdc, SCRIPT_CACHE *cache, std::wstring c
 int char_width(ShapedItem const &item, int ci) {
     auto x0 = 0, x1 = 0;
     ScriptCPtoX(ci, FALSE, item.char_count, static_cast<int>(item.glyphs.size()),
-               item.log_clusters.data(), item.visattrs.data(), item.advances.data(), &item.sa,
-               &x0);
+                item.log_clusters.data(), item.visattrs.data(), item.advances.data(), &item.sa,
+                &x0);
     ScriptCPtoX(ci, TRUE, item.char_count, static_cast<int>(item.glyphs.size()),
-               item.log_clusters.data(), item.visattrs.data(), item.advances.data(), &item.sa,
-               &x1);
+                item.log_clusters.data(), item.visattrs.data(), item.advances.data(), &item.sa,
+                &x1);
     return x1 > x0 ? x1 - x0 : x0 - x1;
 }
 
@@ -188,7 +188,7 @@ std::vector<ClusterAdvance> item_to_scalars(ShapedItem const &item,
         auto off = byte_offset[static_cast<size_t>(item.char_start + ci)];
         auto next_ci = ci + 1;
         while (next_ci < item.char_count &&
-              byte_offset[static_cast<size_t>(item.char_start + next_ci)] == off) {
+               byte_offset[static_cast<size_t>(item.char_start + next_ci)] == off) {
             ++next_ci;
         }
         auto width = 0.0f;
@@ -287,8 +287,8 @@ Win32Shaper::~Win32Shaper() = default;
 void Win32Shaper::release_fonts() { impl_->release_fonts(); }
 
 std::vector<ClusterAdvance> Win32Shaper::shape_run(std::string_view run_utf8, bool rtl,
-                                                   float font_size, FontFamily font,
-                                                   bool /*bold*/, bool /*italic*/) {
+                                                   float font_size, FontFamily font, bool /*bold*/,
+                                                   bool /*italic*/) {
     std::vector<ClusterAdvance> result;
     if (run_utf8.empty()) {
         return result;
@@ -332,8 +332,8 @@ std::vector<ClusterAdvance> Win32Shaper::shape_run(std::string_view run_utf8, bo
 }
 
 void Win32Shaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl, Point origin,
-                           Color const &color, float font_size, FontFamily font,
-                           bool /*bold*/, bool /*italic*/) {
+                           Color const &color, float font_size, FontFamily font, bool /*bold*/,
+                           bool /*italic*/) {
     if (run_utf8.empty()) {
         return;
     }
@@ -392,9 +392,9 @@ void Win32Shaper::draw_run(Painter &painter, std::string_view run_utf8, bool rtl
 
     auto draw_item = [&](ShapedItem const &item) {
         ScriptTextOut(hdc, &entry.cache, static_cast<int>(std::round(device_origin.X)),
-                     static_cast<int>(std::round(device_origin.Y)), 0, nullptr, &item.sa, nullptr, 0,
-                     item.glyphs.data(), static_cast<int>(item.glyphs.size()),
-                     item.advances.data(), nullptr, item.goffsets.data());
+                      static_cast<int>(std::round(device_origin.Y)), 0, nullptr, &item.sa, nullptr,
+                      0, item.glyphs.data(), static_cast<int>(item.glyphs.size()),
+                      item.advances.data(), nullptr, item.goffsets.data());
         auto width = 0;
         for (auto a : item.advances) {
             width += a;

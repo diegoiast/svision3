@@ -151,7 +151,7 @@ class WaylandPlatformApplication : public PlatformApplication {
     void *egl_context = nullptr;
     bool opengl_requested = false;
 
-    CairoShaper           app_shaper_;
+    CairoShaper app_shaper_;
     std::unique_ptr<CairoTextRasterizer> app_rasterizer_;
 };
 

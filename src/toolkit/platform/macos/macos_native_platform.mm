@@ -46,23 +46,21 @@ class CoreGraphicsPainter : public Painter {
         CGContextStrokeRect(ctx_, CGRectMake(r.x, r.y, r.width, r.height));
     }
 
-    void fill_rounded_rect(Rect const &r, Color const &c,
-                           float radius) override {
+    void fill_rounded_rect(Rect const &r, Color const &c, float radius) override {
         CGContextSetLineDash(ctx_, 0, nullptr, 0);
         float rad = std::min({radius, r.width / 2.0f, r.height / 2.0f});
-        CGPathRef path = CGPathCreateWithRoundedRect(
-            CGRectMake(r.x, r.y, r.width, r.height), rad, rad, nullptr);
+        CGPathRef path =
+            CGPathCreateWithRoundedRect(CGRectMake(r.x, r.y, r.width, r.height), rad, rad, nullptr);
         CGContextAddPath(ctx_, path);
         CGContextSetRGBFillColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextFillPath(ctx_);
         CGPathRelease(path);
     }
 
-    void draw_rounded_rect(Rect const &r, Color const &c, float radius,
-                           float lw) override {
+    void draw_rounded_rect(Rect const &r, Color const &c, float radius, float lw) override {
         float rad = std::min({radius, r.width / 2.0f, r.height / 2.0f});
-        CGPathRef path = CGPathCreateWithRoundedRect(
-            CGRectMake(r.x, r.y, r.width, r.height), rad, rad, nullptr);
+        CGPathRef path =
+            CGPathCreateWithRoundedRect(CGRectMake(r.x, r.y, r.width, r.height), rad, rad, nullptr);
         CGContextAddPath(ctx_, path);
         CGContextSetRGBStrokeColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextSetLineWidth(ctx_, lw);
@@ -91,19 +89,15 @@ class CoreGraphicsPainter : public Painter {
         CGContextStrokePath(ctx_);
     }
 
-    void fill_circle(Point center, float radius,
-                     Color const &c) override {
+    void fill_circle(Point center, float radius, Color const &c) override {
         CGContextSetLineDash(ctx_, 0, nullptr, 0);
-        CGRect er = CGRectMake(center.x - radius, center.y - radius,
-                               radius * 2, radius * 2);
+        CGRect er = CGRectMake(center.x - radius, center.y - radius, radius * 2, radius * 2);
         CGContextSetRGBFillColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextFillEllipseInRect(ctx_, er);
     }
 
-    void draw_circle(Point center, float radius, Color const &c,
-                     float lw) override {
-        CGRect er = CGRectMake(center.x - radius, center.y - radius,
-                               radius * 2, radius * 2);
+    void draw_circle(Point center, float radius, Color const &c, float lw) override {
+        CGRect er = CGRectMake(center.x - radius, center.y - radius, radius * 2, radius * 2);
         CGContextSetRGBStrokeColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextSetLineWidth(ctx_, lw);
         apply_line_style(lw);
@@ -146,8 +140,9 @@ class CoreGraphicsPainter : public Painter {
 class CoreGraphicsTextRasterizer : public TextRasterizer {
   public:
     static NSFont *ns_font(float size, FontFamily family) {
-        if (family == FontFamily::Monospace)
+        if (family == FontFamily::Monospace) {
             return [NSFont monospacedSystemFontOfSize:size weight:NSFontWeightRegular];
+        }
         return [NSFont systemFontOfSize:size];
     }
 
@@ -170,41 +165,43 @@ class CoreGraphicsTextRasterizer : public TextRasterizer {
         NSString *str = [[NSString alloc] initWithBytes:text.data()
                                                  length:text.size()
                                                encoding:NSUTF8StringEncoding];
-        if (!str) return {0, 0};
+        if (!str) {
+            return {0, 0};
+        }
         NSDictionary *attrs = @{NSFontAttributeName : font};
         NSSize sz = [str sizeWithAttributes:attrs];
         return {static_cast<float>(sz.width), static_cast<float>(sz.height)};
     }
 
-    Painter::FontMetrics metrics(float font_size,
-                                 FontFamily family = FontFamily::System) override {
+    Painter::FontMetrics metrics(float font_size, FontFamily family = FontFamily::System) override {
         NSFont *font = ns_font(font_size, family);
         float ascent = static_cast<float>(font.ascender);
         float descent = static_cast<float>(-font.descender);
         return {ascent, descent, ascent + descent};
     }
 
-    void draw_text(Painter &p, std::string_view text, Point pos, Color const &c,
-                   float font_size, FontFamily family,
-                   Painter::TextOrientation orientation, bool bold, bool italic) override {
+    void draw_text(Painter &p, std::string_view text, Point pos, Color const &c, float font_size,
+                   FontFamily family, Painter::TextOrientation orientation, bool bold,
+                   bool italic) override {
         auto *cgp = dynamic_cast<CoreGraphicsPainter *>(&p);
-        if (!cgp) return;
+        if (!cgp) {
+            return;
+        }
 
         CGContextRef ctx = cgp->context();
         NSFont *font = ns_font(font_size, family);
         NSString *str = [[NSString alloc] initWithBytes:text.data()
                                                  length:text.size()
                                                encoding:NSUTF8StringEncoding];
-        if (!str) return;
+        if (!str) {
+            return;
+        }
         NSDictionary *attrs = @{
             NSFontAttributeName : font,
-            NSForegroundColorAttributeName :
-                [NSColor colorWithRed:c.r green:c.g blue:c.b alpha:c.a]
+            NSForegroundColorAttributeName : [NSColor colorWithRed:c.r green:c.g blue:c.b alpha:c.a]
         };
-        NSAttributedString *astr =
-            [[NSAttributedString alloc] initWithString:str attributes:attrs];
-        CTLineRef line =
-            CTLineCreateWithAttributedString((__bridge CFAttributedStringRef)astr);
+        NSAttributedString *astr = [[NSAttributedString alloc] initWithString:str attributes:attrs];
+        CTLineRef line = CTLineCreateWithAttributedString((__bridge CFAttributedStringRef)astr);
         CGContextSaveGState(ctx);
         CGContextTranslateCTM(ctx, pos.x, pos.y);
         if (orientation == Painter::TextOrientation::VerticalCCW) {
@@ -225,23 +222,36 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
 } // namespace toolkit
 
 @interface TKNWindowDelegate : NSObject <NSWindowDelegate>
-@property (nonatomic, assign) toolkit::Window *owner;
+@property(nonatomic, assign) toolkit::Window *owner;
 @end
 
 @implementation TKNWindowDelegate
 - (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)frameSize {
-    if (!self.owner) return frameSize;
-    NSRect cr = [sender contentRectForFrameRect:NSMakeRect(0, 0, frameSize.width, frameSize.height)];
+    if (!self.owner) {
+        return frameSize;
+    }
+    NSRect cr =
+        [sender contentRectForFrameRect:NSMakeRect(0, 0, frameSize.width, frameSize.height)];
     auto mn = self.owner->min_size();
     auto mx = self.owner->max_size();
-    if (mn.width > 0 && cr.size.width < mn.width) cr.size.width = mn.width;
-    if (mn.height > 0 && cr.size.height < mn.height) cr.size.height = mn.height;
-    if (mx.width > 0 && cr.size.width > mx.width) cr.size.width = mx.width;
-    if (mx.height > 0 && cr.size.height > mx.height) cr.size.height = mx.height;
+    if (mn.width > 0 && cr.size.width < mn.width) {
+        cr.size.width = mn.width;
+    }
+    if (mn.height > 0 && cr.size.height < mn.height) {
+        cr.size.height = mn.height;
+    }
+    if (mx.width > 0 && cr.size.width > mx.width) {
+        cr.size.width = mx.width;
+    }
+    if (mx.height > 0 && cr.size.height > mx.height) {
+        cr.size.height = mx.height;
+    }
     return [sender frameRectForContentRect:cr].size;
 }
 - (void)windowDidBecomeKey:(NSNotification *)notification {
-    if (self.owner) self.owner->handle_activate(true);
+    if (self.owner) {
+        self.owner->handle_activate(true);
+    }
 }
 - (void)windowDidResignKey:(NSNotification *)notification {
     if (self.owner) {
@@ -254,23 +264,29 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
 @interface TKNTooltipWindow : NSWindow
 @end
 @implementation TKNTooltipWindow
-- (BOOL)canBecomeKeyWindow { return NO; }
-- (BOOL)canBecomeMainWindow { return NO; }
+- (BOOL)canBecomeKeyWindow {
+    return NO;
+}
+- (BOOL)canBecomeMainWindow {
+    return NO;
+}
 @end
 
 @interface TKNTooltipView : NSView
-@property (nonatomic, copy) NSString *text;
-@property (nonatomic) float fontSize;
-@property (nonatomic) toolkit::Color bgColor;
-@property (nonatomic) toolkit::Color borderColor;
-@property (nonatomic) toolkit::Color textColor;
-@property (nonatomic) float cornerRadius;
-@property (nonatomic) float borderWidth;
-@property (nonatomic) float padding;
+@property(nonatomic, copy) NSString *text;
+@property(nonatomic) float fontSize;
+@property(nonatomic) toolkit::Color bgColor;
+@property(nonatomic) toolkit::Color borderColor;
+@property(nonatomic) toolkit::Color textColor;
+@property(nonatomic) float cornerRadius;
+@property(nonatomic) float borderWidth;
+@property(nonatomic) float padding;
 @end
 
 @implementation TKNTooltipView
-- (BOOL)isFlipped { return YES; }
+- (BOOL)isFlipped {
+    return YES;
+}
 - (void)drawRect:(NSRect)dirtyRect {
     NSRect bounds = [self bounds];
     CGContextRef ctx = [[NSGraphicsContext currentContext] CGContext];
@@ -280,23 +296,28 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
     painter.fill_rounded_rect(r, self.bgColor, self.cornerRadius);
     painter.draw_rounded_rect(r, self.borderColor, self.cornerRadius, self.borderWidth);
     auto fm = painter.font_metrics(self.fontSize);
-    painter.draw_text(std::string([self.text UTF8String]),
-                      {self.padding, self.padding + fm.ascent},
+    painter.draw_text(std::string([self.text UTF8String]), {self.padding, self.padding + fm.ascent},
                       self.textColor, self.fontSize);
 }
 @end
 
 @interface TKNView : NSView
-@property (nonatomic, assign) toolkit::Window *owner;
+@property(nonatomic, assign) toolkit::Window *owner;
 @end
 
 @implementation TKNView
 
-- (BOOL)isFlipped { return YES; }
-- (BOOL)acceptsFirstResponder { return YES; }
+- (BOOL)isFlipped {
+    return YES;
+}
+- (BOOL)acceptsFirstResponder {
+    return YES;
+}
 
 - (void)drawRect:(NSRect)dirtyRect {
-    if (!self.owner) return;
+    if (!self.owner) {
+        return;
+    }
     CGContextRef ctx = [[NSGraphicsContext currentContext] CGContext];
     toolkit::CoreGraphicsPainter painter(ctx, &s_mac_rasterizer);
     self.owner->handle_paint(painter);
@@ -305,8 +326,8 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
 - (void)setFrameSize:(NSSize)newSize {
     [super setFrameSize:newSize];
     if (self.owner) {
-        self.owner->handle_resize({static_cast<float>(newSize.width),
-                                   static_cast<float>(newSize.height)});
+        self.owner->handle_resize(
+            {static_cast<float>(newSize.width), static_cast<float>(newSize.height)});
         [self setNeedsDisplay:YES];
     }
 }
@@ -364,7 +385,8 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
 
 - (void)otherMouseUp:(NSEvent *)event {
     auto pos = [self convertMouseEvent:event];
-    toolkit::MouseEvent e{toolkit::MouseEvent::Type::Release, pos, static_cast<int>([event buttonNumber])};
+    toolkit::MouseEvent e{toolkit::MouseEvent::Type::Release, pos,
+                          static_cast<int>([event buttonNumber])};
     self.owner->handle_mouse(e);
 }
 
@@ -389,27 +411,40 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
     e.scroll_dx = static_cast<float>([event scrollingDeltaX]);
     e.scroll_dy = static_cast<float>([event scrollingDeltaY]);
     if ([event hasPreciseScrollingDeltas]) {
-        e.scroll_dy *= 0.5f; e.scroll_dx *= 0.5f;
+        e.scroll_dy *= 0.5f;
+        e.scroll_dx *= 0.5f;
     } else {
-        e.scroll_dy *= 20.0f; e.scroll_dx *= 20.0f;
+        e.scroll_dy *= 20.0f;
+        e.scroll_dx *= 20.0f;
     }
     self.owner->handle_mouse(e);
 }
 
 - (void)sendTabKey:(BOOL)shift {
-    if (!self.owner) return;
+    if (!self.owner) {
+        return;
+    }
     toolkit::KeyEvent ke;
     ke.type = toolkit::KeyEvent::Type::Press;
     ke.key = toolkit::Key::Tab;
     ke.shift = shift;
     self.owner->handle_key(ke);
 }
-- (void)insertTab:(id)sender { [self sendTabKey:NO]; }
-- (void)insertBacktab:(id)sender { [self sendTabKey:YES]; }
+- (void)insertTab:(id)sender {
+    [self sendTabKey:NO];
+}
+- (void)insertBacktab:(id)sender {
+    [self sendTabKey:YES];
+}
 
 - (void)keyDown:(NSEvent *)event {
-    if (!self.owner) return;
-    if ([event keyCode] == 48) { [self interpretKeyEvents:@[event]]; return; }
+    if (!self.owner) {
+        return;
+    }
+    if ([event keyCode] == 48) {
+        [self interpretKeyEvents:@[ event ]];
+        return;
+    }
     toolkit::KeyEvent ke;
     ke.type = toolkit::KeyEvent::Type::Press;
     NSEventModifierFlags mods = [event modifierFlags];
@@ -418,49 +453,107 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
     ke.alt = (mods & NSEventModifierFlagOption) != 0;
     ke.super = (mods & NSEventModifierFlagCommand) != 0;
     switch ([event keyCode]) {
-    case 51:  ke.key = toolkit::Key::Backspace; break;
-    case 117: ke.key = toolkit::Key::Delete;    break;
-    case 123: ke.key = toolkit::Key::Left;      break;
-    case 124: ke.key = toolkit::Key::Right;     break;
-    case 125: ke.key = toolkit::Key::Down;      break;
-    case 126: ke.key = toolkit::Key::Up;        break;
-    case 115: ke.key = toolkit::Key::Home;      break;
-    case 119: ke.key = toolkit::Key::End;       break;
-    case 116: ke.key = toolkit::Key::PageUp;    break;
-    case 121: ke.key = toolkit::Key::PageDown;  break;
-    case 36:  ke.key = toolkit::Key::Enter;     break;
-    case 53:  ke.key = toolkit::Key::Escape;    break;
-    case 122: ke.key = toolkit::Key::F1;        break;
-    case 120: ke.key = toolkit::Key::F2;        break;
-    case 99:  ke.key = toolkit::Key::F3;        break;
-    case 118: ke.key = toolkit::Key::F4;        break;
-    case 96:  ke.key = toolkit::Key::F5;        break;
-    case 97:  ke.key = toolkit::Key::F6;        break;
-    case 98:  ke.key = toolkit::Key::F7;        break;
-    case 100: ke.key = toolkit::Key::F8;        break;
-    case 101: ke.key = toolkit::Key::F9;        break;
-    case 109: ke.key = toolkit::Key::F10;       break;
-    case 103: ke.key = toolkit::Key::F11;       break;
-    case 111: ke.key = toolkit::Key::F12;       break;
+    case 51:
+        ke.key = toolkit::Key::Backspace;
+        break;
+    case 117:
+        ke.key = toolkit::Key::Delete;
+        break;
+    case 123:
+        ke.key = toolkit::Key::Left;
+        break;
+    case 124:
+        ke.key = toolkit::Key::Right;
+        break;
+    case 125:
+        ke.key = toolkit::Key::Down;
+        break;
+    case 126:
+        ke.key = toolkit::Key::Up;
+        break;
+    case 115:
+        ke.key = toolkit::Key::Home;
+        break;
+    case 119:
+        ke.key = toolkit::Key::End;
+        break;
+    case 116:
+        ke.key = toolkit::Key::PageUp;
+        break;
+    case 121:
+        ke.key = toolkit::Key::PageDown;
+        break;
+    case 36:
+        ke.key = toolkit::Key::Enter;
+        break;
+    case 53:
+        ke.key = toolkit::Key::Escape;
+        break;
+    case 122:
+        ke.key = toolkit::Key::F1;
+        break;
+    case 120:
+        ke.key = toolkit::Key::F2;
+        break;
+    case 99:
+        ke.key = toolkit::Key::F3;
+        break;
+    case 118:
+        ke.key = toolkit::Key::F4;
+        break;
+    case 96:
+        ke.key = toolkit::Key::F5;
+        break;
+    case 97:
+        ke.key = toolkit::Key::F6;
+        break;
+    case 98:
+        ke.key = toolkit::Key::F7;
+        break;
+    case 100:
+        ke.key = toolkit::Key::F8;
+        break;
+    case 101:
+        ke.key = toolkit::Key::F9;
+        break;
+    case 109:
+        ke.key = toolkit::Key::F10;
+        break;
+    case 103:
+        ke.key = toolkit::Key::F11;
+        break;
+    case 111:
+        ke.key = toolkit::Key::F12;
+        break;
     // FIXME: add missing keys
-    default:  break;
+    default:
+        break;
     }
     bool has_mod = ke.alt || ke.super || ke.ctrl;
     NSString *chars = has_mod ? [event charactersIgnoringModifiers] : [event characters];
     if (chars.length > 0 && ke.key == toolkit::Key::NoKey) {
         unichar c = [chars characterAtIndex:0];
-        if (c >= 32 && c < 127) ke.text = [chars UTF8String];
+        if (c >= 32 && c < 127) {
+            ke.text = [chars UTF8String];
+        }
     }
-    if (ke.super && ke.key == toolkit::Key::Left) ke.key = toolkit::Key::Home;
-    if (ke.super && ke.key == toolkit::Key::Right) ke.key = toolkit::Key::End;
+    if (ke.super && ke.key == toolkit::Key::Left) {
+        ke.key = toolkit::Key::Home;
+    }
+    if (ke.super && ke.key == toolkit::Key::Right) {
+        ke.key = toolkit::Key::End;
+    }
     self.owner->handle_key(ke);
 }
 
 - (BOOL)performKeyEquivalent:(NSEvent *)event {
-    if (!self.owner) return NO;
+    if (!self.owner) {
+        return NO;
+    }
     NSEventModifierFlags mods = [event modifierFlags];
     if ((mods & (NSEventModifierFlagCommand | NSEventModifierFlagControl))) {
-        [self keyDown:event]; return YES;
+        [self keyDown:event];
+        return YES;
     }
     return [super performKeyEquivalent:event];
 }
@@ -469,9 +562,9 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
 
 namespace toolkit {
 
-std::unique_ptr<PlatformWindow> MacOSNativePlatformApplication::create_window(std::string_view title,
-                                                                                Size size, Window *owner,
-                                                                                WindowOptions options) {
+std::unique_ptr<PlatformWindow>
+MacOSNativePlatformApplication::create_window(std::string_view title, Size size, Window *owner,
+                                              WindowOptions options) {
     return std::make_unique<MacOSNativePlatformWindow>(title, size, owner, options);
 }
 
@@ -488,10 +581,8 @@ struct MacOSNativePlatformWindow::Impl {
     TKNTooltipWindow *tooltip_window = nil;
 };
 
-MacOSNativePlatformWindow::MacOSNativePlatformWindow(std::string_view title,
-                                                     Size size,
-                                                     Window *owner,
-                                                     WindowOptions options)
+MacOSNativePlatformWindow::MacOSNativePlatformWindow(std::string_view title, Size size,
+                                                     Window *owner, WindowOptions options)
     : impl_(std::make_unique<Impl>()), owner_(owner) {
     NSRect frame = NSMakeRect(200, 200, size.width, size.height);
     NSWindowStyleMask style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
@@ -518,7 +609,9 @@ MacOSNativePlatformWindow::MacOSNativePlatformWindow(std::string_view title,
 }
 
 MacOSNativePlatformWindow::~MacOSNativePlatformWindow() {
-    for (NSTimer *t in impl_->timers.allValues) [t invalidate];
+    for (NSTimer *t in impl_->timers.allValues) {
+        [t invalidate];
+    }
     [impl_->timers removeAllObjects];
 }
 
@@ -533,17 +626,16 @@ void MacOSNativePlatformWindow::set_size(Size s) {
     [impl_->ns_window setContentSize:NSMakeSize(s.width, s.height)];
 }
 
-void MacOSNativePlatformWindow::request_redraw() {
-    [impl_->view setNeedsDisplay:YES];
-}
+void MacOSNativePlatformWindow::request_redraw() { [impl_->view setNeedsDisplay:YES]; }
 
 void MacOSNativePlatformWindow::set_min_size(Size s) {
     [impl_->ns_window setContentMinSize:NSMakeSize(s.width, s.height)];
 }
 
 void MacOSNativePlatformWindow::set_max_size(Size s) {
-    if (s.width > 0 && s.height > 0)
+    if (s.width > 0 && s.height > 0) {
         [impl_->ns_window setContentMaxSize:NSMakeSize(s.width, s.height)];
+    }
 }
 
 void MacOSNativePlatformWindow::minimize() {}
@@ -554,18 +646,19 @@ void MacOSNativePlatformWindow::start_system_move(uint32_t /*serial*/) {}
 void MacOSNativePlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/) {}
 
 void MacOSNativePlatformWindow::set_icon(Image const &icon) {
-    if (!icon || icon->pixels.empty()) return;
-    NSBitmapImageRep *rep = [[NSBitmapImageRep alloc]
-        initWithBitmapDataPlanes:nullptr
-                      pixelsWide:icon->width
-                      pixelsHigh:icon->height
-                   bitsPerSample:8
-                 samplesPerPixel:4
-                        hasAlpha:YES
-                        isPlanar:NO
-                  colorSpaceName:NSDeviceRGBColorSpace
-                     bytesPerRow:icon->width * 4
-                    bitsPerPixel:32];
+    if (!icon || icon->pixels.empty()) {
+        return;
+    }
+    NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:nullptr
+                                                                    pixelsWide:icon->width
+                                                                    pixelsHigh:icon->height
+                                                                 bitsPerSample:8
+                                                               samplesPerPixel:4
+                                                                      hasAlpha:YES
+                                                                      isPlanar:NO
+                                                                colorSpaceName:NSDeviceRGBColorSpace
+                                                                   bytesPerRow:icon->width * 4
+                                                                  bitsPerPixel:32];
 
     unsigned char *bitmapData = [rep bitmapData];
     std::memcpy(bitmapData, icon->pixels.data(), icon->pixels.size());
@@ -591,10 +684,12 @@ int MacOSNativePlatformWindow::start_timer(float interval_sec, std::function<voi
     NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:interval_sec
                                                      repeats:repeats
                                                        block:^(NSTimer *t) {
-        (*cb)();
-        [view setNeedsDisplay:YES];
-        if (!repeats) [timers removeObjectForKey:key];
-    }];
+                                                         (*cb)();
+                                                         [view setNeedsDisplay:YES];
+                                                         if (!repeats) {
+                                                             [timers removeObjectForKey:key];
+                                                         }
+                                                       }];
     [impl_->timers setObject:timer forKey:key];
     return tid;
 }
@@ -602,24 +697,38 @@ int MacOSNativePlatformWindow::start_timer(float interval_sec, std::function<voi
 void MacOSNativePlatformWindow::stop_timer(int timer_id) {
     NSNumber *key = @(timer_id);
     NSTimer *timer = [impl_->timers objectForKey:key];
-    if (timer) { [timer invalidate]; [impl_->timers removeObjectForKey:key]; }
+    if (timer) {
+        [timer invalidate];
+        [impl_->timers removeObjectForKey:key];
+    }
 }
 
 void MacOSNativePlatformWindow::set_cursor(CursorShape shape) {
     NSCursor *nc;
     switch (shape) {
-    case CursorShape::IBeam:      nc = [NSCursor IBeamCursor]; break;
-    case CursorShape::Hand:       nc = [NSCursor pointingHandCursor]; break;
-    case CursorShape::NotAllowed: nc = [NSCursor operationNotAllowedCursor]; break;
-    case CursorShape::ResizeEW:   nc = [NSCursor resizeLeftRightCursor]; break;
-    case CursorShape::ResizeNS:   nc = [NSCursor resizeUpDownCursor]; break;
-    default:                      nc = [NSCursor arrowCursor]; break;
+    case CursorShape::IBeam:
+        nc = [NSCursor IBeamCursor];
+        break;
+    case CursorShape::Hand:
+        nc = [NSCursor pointingHandCursor];
+        break;
+    case CursorShape::NotAllowed:
+        nc = [NSCursor operationNotAllowedCursor];
+        break;
+    case CursorShape::ResizeEW:
+        nc = [NSCursor resizeLeftRightCursor];
+        break;
+    case CursorShape::ResizeNS:
+        nc = [NSCursor resizeUpDownCursor];
+        break;
+    default:
+        nc = [NSCursor arrowCursor];
+        break;
     }
     [nc set];
 }
 
-void MacOSNativePlatformWindow::show_tooltip_window(std::string const &text,
-                                                    Point local_pos) {
+void MacOSNativePlatformWindow::show_tooltip_window(std::string const &text, Point local_pos) {
     auto const &style = Theme::current().tooltip;
     float pad = style.padding, fs = style.font_size;
     auto *r = detail::current_platform();
@@ -633,17 +742,22 @@ void MacOSNativePlatformWindow::show_tooltip_window(std::string const &text,
     float sy = static_cast<float>(sp.y) - h - 4.0f;
     NSScreen *scr = [impl_->ns_window screen] ?: [NSScreen mainScreen];
     NSRect vis = [scr visibleFrame];
-    if (sx + w > vis.origin.x + vis.size.width)
+    if (sx + w > vis.origin.x + vis.size.width) {
         sx = static_cast<float>(vis.origin.x + vis.size.width) - w - 2.0f;
-    if (sx < vis.origin.x) sx = static_cast<float>(vis.origin.x) + 2.0f;
-    if (sy < vis.origin.y) sy = static_cast<float>(sp.y) + 20.0f;
+    }
+    if (sx < vis.origin.x) {
+        sx = static_cast<float>(vis.origin.x) + 2.0f;
+    }
+    if (sy < vis.origin.y) {
+        sy = static_cast<float>(sp.y) + 20.0f;
+    }
     NSRect tipFrame = NSMakeRect(sx, sy, w, h);
     if (!impl_->tooltip_window) {
-        impl_->tooltip_window = [[TKNTooltipWindow alloc]
-            initWithContentRect:tipFrame
-                      styleMask:NSWindowStyleMaskBorderless
-                        backing:NSBackingStoreBuffered
-                          defer:YES];
+        impl_->tooltip_window =
+            [[TKNTooltipWindow alloc] initWithContentRect:tipFrame
+                                                styleMask:NSWindowStyleMaskBorderless
+                                                  backing:NSBackingStoreBuffered
+                                                    defer:YES];
         [impl_->tooltip_window setOpaque:NO];
         [impl_->tooltip_window setBackgroundColor:[NSColor clearColor]];
         [impl_->tooltip_window setLevel:NSStatusWindowLevel];
@@ -651,8 +765,7 @@ void MacOSNativePlatformWindow::show_tooltip_window(std::string const &text,
         [impl_->tooltip_window setHasShadow:YES];
     }
     [impl_->tooltip_window setFrame:tipFrame display:NO];
-    TKNTooltipView *tv = [[TKNTooltipView alloc]
-        initWithFrame:NSMakeRect(0, 0, w, h)];
+    TKNTooltipView *tv = [[TKNTooltipView alloc] initWithFrame:NSMakeRect(0, 0, w, h)];
     tv.text = [NSString stringWithUTF8String:text.c_str()];
     tv.fontSize = fs;
     tv.bgColor = style.background;
@@ -666,14 +779,18 @@ void MacOSNativePlatformWindow::show_tooltip_window(std::string const &text,
 }
 
 void MacOSNativePlatformWindow::hide_tooltip_window() {
-    if (impl_->tooltip_window) [impl_->tooltip_window orderOut:nil];
+    if (impl_->tooltip_window) {
+        [impl_->tooltip_window orderOut:nil];
+    }
 }
 
 Icon MacOSNativePlatformWindow::capture() {
     float scale = scale_factor();
     int lw = static_cast<int>(owner_->size().width);
     int lh = static_cast<int>(owner_->size().height);
-    if (lw <= 0 || lh <= 0) return nullptr;
+    if (lw <= 0 || lh <= 0) {
+        return nullptr;
+    }
     int pw = static_cast<int>(std::ceil(lw * scale));
     int ph = static_cast<int>(std::ceil(lh * scale));
 
@@ -688,7 +805,9 @@ Icon MacOSNativePlatformWindow::capture() {
         result->pixels.data(), pw, ph, 8, pw * 4, cs,
         kCGImageAlphaPremultipliedLast | static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Big));
     CGColorSpaceRelease(cs);
-    if (!ctx) return nullptr;
+    if (!ctx) {
+        return nullptr;
+    }
 
     CGContextScaleCTM(ctx, scale, scale);
     CGContextTranslateCTM(ctx, 0, lh);

@@ -7,9 +7,7 @@ std::unique_ptr<PlatformWindow> DummyPlatformApplication::create_window(std::str
                                                                         Window *, WindowOptions) {
     return std::make_unique<DummyPlatformWindow>();
 }
-std::shared_ptr<ImageLoaderInterface> DummyPlatformApplication::get_image_loader() {
-    return {};
-}
+std::shared_ptr<ImageLoaderInterface> DummyPlatformApplication::get_image_loader() { return {}; }
 
 std::shared_ptr<SVGLoaderInterface> DummyPlatformApplication::get_svg_loader() {
     if (!svg_loader_) {

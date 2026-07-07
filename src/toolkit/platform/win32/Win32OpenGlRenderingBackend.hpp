@@ -41,7 +41,8 @@ class Win32OpenGlRenderingBackend : public RenderingBackend {
         ReleaseDC(hwnd_, hdc);
     }
 
-    void paint(Window *win, PlatformWindow *window, PlatformApplication *, int lw, int lh) override {
+    void paint(Window *win, PlatformWindow *window, PlatformApplication *, int lw,
+               int lh) override {
         auto win_plat = static_cast<Win32PlatformWindow *>(window);
         auto scale = get_window_scale(win_plat->hwnd);
         auto pw = static_cast<int>(std::ceil(lw * scale));
@@ -111,7 +112,8 @@ class Win32GDIRenderingBackend : public RenderingBackend {
         ReleaseDC(nullptr, screen_dc);
     }
 
-    void paint(Window *win, PlatformWindow *window, PlatformApplication *, int lw, int lh) override {
+    void paint(Window *win, PlatformWindow *window, PlatformApplication *, int lw,
+               int lh) override {
         auto win_plat = static_cast<Win32PlatformWindow *>(window);
         auto scale = get_window_scale(win_plat->hwnd);
         PAINTSTRUCT ps;

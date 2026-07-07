@@ -93,9 +93,9 @@ nlohmann::json LineInput::to_json() const {
     j["read_only"] = read_only_;
     j["is_password"] = password_mode_;
     j["cursor"] = cursor_pos_;
-    j["direction"] = direction_mode_ == TextDirection::LTR
-                         ? "LTR"
-                         : direction_mode_ == TextDirection::RTL ? "RTL" : "Auto";
+    j["direction"] = direction_mode_ == TextDirection::LTR   ? "LTR"
+                     : direction_mode_ == TextDirection::RTL ? "RTL"
+                                                             : "Auto";
     return j;
 }
 
@@ -226,7 +226,8 @@ void LineInput::move_cursor(size_t pos, bool extend_selection) {
 // typed string, Left toward the end, mirroring the LTR mapping. `key_dir` is
 // the key that was pressed (-1 = Left, +1 = Right), not a screen direction.
 void LineInput::move_arrow(int key_dir, bool extend_selection) {
-    auto forward = (resolved_direction() == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
+    auto forward =
+        (resolved_direction() == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
     if (forward && cursor_pos_ < text_.size()) {
         move_cursor(Utf8Iterator::next(text_, cursor_pos_), extend_selection);
     } else if (!forward && cursor_pos_ > 0) {
@@ -238,7 +239,8 @@ void LineInput::move_arrow(int key_dir, bool extend_selection) {
 // Shift: the same forward/backward flip as move_arrow(), landing on
 // sel_end() when this key means "forward" and sel_start() otherwise.
 size_t LineInput::arrow_collapse_target(int key_dir) const {
-    auto forward = (resolved_direction() == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
+    auto forward =
+        (resolved_direction() == bidi::BaseDirection::RTL) ? (key_dir < 0) : (key_dir > 0);
     return forward ? sel_end() : sel_start();
 }
 
@@ -397,7 +399,8 @@ std::optional<text::TextLayout> LineInput::build_layout() const {
     if (!shaper) {
         return std::nullopt;
     }
-    return text::TextLayout(text_, resolved_direction(), *shaper, Theme::current().palette.fonts.size);
+    return text::TextLayout(text_, resolved_direction(), *shaper,
+                            Theme::current().palette.fonts.size);
 }
 
 size_t LineInput::pos_from_x(float x) const {
@@ -679,7 +682,8 @@ void LineInput::ensure_cursor_visible(Painter &painter, text::TextLayout const *
         auto const &palette = Theme::current().palette;
         auto before_str =
             password_mode_ ? get_masked_text(text_, cursor_pos_) : text_.substr(0, cursor_pos_);
-        return before_str.empty() ? 0.0f : painter.measure_text(before_str, palette.fonts.size).width;
+        return before_str.empty() ? 0.0f
+                                  : painter.measure_text(before_str, palette.fonts.size).width;
     }();
 
     if (cursor_x - scroll_offset_ > content_w) {

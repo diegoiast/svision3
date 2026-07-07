@@ -112,7 +112,7 @@ void ToastWidget::paint(Painter &painter) {
     float radius = Theme::current().style.corner_radius;
 
     auto bg = background_override_.value_or(palette.tooltip);
-    
+
     // Draw rounded top, squared bottom background
     painter.fill_rounded_rect(r, bg, radius);
     painter.fill_rect({r.x, r.y + r.height - radius, r.width, radius}, bg);
@@ -120,10 +120,12 @@ void ToastWidget::paint(Painter &painter) {
     // Draw rounded top, squared bottom border
     painter.draw_rounded_rect(r, palette.border, radius, 1);
     // Draw bottom line
-    painter.draw_line({r.x, r.y + r.height - 0.5f}, {r.x + r.width, r.y + r.height - 0.5f}, palette.border, 1.0f);
+    painter.draw_line({r.x, r.y + r.height - 0.5f}, {r.x + r.width, r.y + r.height - 0.5f},
+                      palette.border, 1.0f);
     // Overdraw the rounded side lines that extend too far down
     painter.draw_line({r.x, r.y + r.height - radius}, {r.x, r.y + r.height}, palette.border, 1.0f);
-    painter.draw_line({r.x + r.width - 1.0f, r.y + r.height - radius}, {r.x + r.width - 1.0f, r.y + r.height}, palette.border, 1.0f);
+    painter.draw_line({r.x + r.width - 1.0f, r.y + r.height - radius},
+                      {r.x + r.width - 1.0f, r.y + r.height}, palette.border, 1.0f);
 
     // Progress Bar
     auto progress_width = r.width - 20;

@@ -16,7 +16,8 @@ class MacOSOpenGLPlatformApplication : public MacOSPlatformApplicationBase {
 
 class MacOSOpenGLPlatformWindow : public PlatformWindow {
   public:
-    MacOSOpenGLPlatformWindow(std::string_view title, Size size, Window *owner, WindowOptions options);
+    MacOSOpenGLPlatformWindow(std::string_view title, Size size, Window *owner,
+                              WindowOptions options);
     ~MacOSOpenGLPlatformWindow() override;
     void show() override;
     void close() override;
@@ -27,8 +28,7 @@ class MacOSOpenGLPlatformWindow : public PlatformWindow {
     void request_redraw() override;
     void set_min_size(Size s) override;
     void set_max_size(Size s) override;
-    int start_timer(float interval_sec, std::function<void()> callback,
-                    bool repeats) override;
+    int start_timer(float interval_sec, std::function<void()> callback, bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
     void set_icon(Icon const &icon) override;

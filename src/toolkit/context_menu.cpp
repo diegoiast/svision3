@@ -139,8 +139,8 @@ void ContextMenu::paint(Painter &painter) {
         auto icon_data = item.command->icon_image();
         auto shortcut = item.command->printable_shortcut();
 
-        theme.draw_menu_item(painter, item_rect, item.command->name(), icon_data,
-                             shortcut, i == hovered_, enabled, false, false);
+        theme.draw_menu_item(painter, item_rect, item.command->name(), icon_data, shortcut,
+                             i == hovered_, enabled, false, false);
 
         if (item.type == MenuItem::Type::Submenu) {
             auto const &style = Theme::current().style.combo;

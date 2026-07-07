@@ -230,10 +230,14 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
     if (!dragging_) {
         // Returns true if the window's focused widget is inside `container`.
         auto focused_inside = [&](Widget *container) -> bool {
-            if (!window_) return false;
+            if (!window_) {
+                return false;
+            }
             auto *fw = window_->focused_widget();
             while (fw) {
-                if (fw == container) return true;
+                if (fw == container) {
+                    return true;
+                }
                 fw = fw->parent();
             }
             return false;
@@ -247,7 +251,9 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
             if (event.type == MouseEvent::Type::Press && focused_inside(first_.get()) &&
                 active_pane_ != 0) {
                 active_pane_ = 0;
-                if (window_) window_->request_redraw("splitter active pane");
+                if (window_) {
+                    window_->request_redraw("splitter active pane");
+                }
             }
             return result;
         }
@@ -259,7 +265,9 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
             if (event.type == MouseEvent::Type::Press && focused_inside(second_.get()) &&
                 active_pane_ != 1) {
                 active_pane_ = 1;
-                if (window_) window_->request_redraw("splitter active pane");
+                if (window_) {
+                    window_->request_redraw("splitter active pane");
+                }
             }
             return result;
         }

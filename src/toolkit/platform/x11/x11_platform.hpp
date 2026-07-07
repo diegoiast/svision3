@@ -38,7 +38,7 @@ class X11PlatformApplication : public PlatformApplication {
     std::unique_ptr<Impl> impl_;
     std::shared_ptr<ImageLoaderInterface> image_loader_;
     std::shared_ptr<SVGLoaderInterface> svg_loader_;
-    CairoShaper           app_shaper_;
+    CairoShaper app_shaper_;
     std::unique_ptr<CairoTextRasterizer> app_rasterizer_;
 };
 

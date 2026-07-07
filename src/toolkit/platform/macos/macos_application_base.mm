@@ -22,8 +22,7 @@ struct MacOSPlatformApplicationBase::Impl {
     TKAppDelegate *delegate = nil;
 };
 
-MacOSPlatformApplicationBase::MacOSPlatformApplicationBase()
-    : impl_(std::make_unique<Impl>()) {
+MacOSPlatformApplicationBase::MacOSPlatformApplicationBase() : impl_(std::make_unique<Impl>()) {
     [NSApplication sharedApplication];
     impl_->delegate = [[TKAppDelegate alloc] init];
     [NSApp setDelegate:impl_->delegate];
@@ -53,10 +52,11 @@ int MacOSPlatformApplicationBase::run() {
 
 void MacOSPlatformApplicationBase::quit() { [NSApp terminate:nil]; }
 
-void MacOSPlatformApplicationBase::post_to_main_thread(
-    std::function<void()> fn) {
+void MacOSPlatformApplicationBase::post_to_main_thread(std::function<void()> fn) {
     auto b = std::make_shared<std::function<void()>>(std::move(fn));
-    dispatch_async(dispatch_get_main_queue(), ^{ (*b)(); });
+    dispatch_async(dispatch_get_main_queue(), ^{
+      (*b)();
+    });
 }
 
 std::string MacOSPlatformApplicationBase::clipboard_get_text() {
@@ -65,20 +65,18 @@ std::string MacOSPlatformApplicationBase::clipboard_get_text() {
     return str ? std::string([str UTF8String]) : std::string{};
 }
 
-void MacOSPlatformApplicationBase::clipboard_set_text(
-    std::string const &text) {
+void MacOSPlatformApplicationBase::clipboard_set_text(std::string const &text) {
     NSPasteboard *pb = [NSPasteboard generalPasteboard];
     [pb clearContents];
-    [pb setString:[NSString stringWithUTF8String:text.c_str()]
-          forType:NSPasteboardTypeString];
+    [pb setString:[NSString stringWithUTF8String:text.c_str()] forType:NSPasteboardTypeString];
 }
 
 static NSFont *pick_font(float size, toolkit::FontFamily family) {
-    if (family == toolkit::FontFamily::Monospace)
+    if (family == toolkit::FontFamily::Monospace) {
         return [NSFont monospacedSystemFontOfSize:size weight:NSFontWeightRegular];
+    }
     return [NSFont systemFontOfSize:size];
 }
-
 
 std::string_view MacOSPlatformApplicationBase::name() const { return "macOS"; }
 std::string_view MacOSPlatformApplicationBase::painter_name() const { return "Native"; }
@@ -89,7 +87,8 @@ float MacOSPlatformApplicationBase::scale_factor() const {
 SystemFonts MacOSPlatformApplicationBase::system_fonts() const {
     NSFont *sys = [NSFont systemFontOfSize:0];
     NSFont *mono = [NSFont userFixedPitchFontOfSize:0];
-    return {[[sys familyName] UTF8String], [[mono familyName] UTF8String],
+    return {[[sys familyName] UTF8String],
+            [[mono familyName] UTF8String],
             static_cast<float>([sys pointSize])};
 }
 

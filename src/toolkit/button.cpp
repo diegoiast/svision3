@@ -303,8 +303,8 @@ bool Button::handle_mouse(MouseEvent const &event) {
         // Swallow presses/releases that land on a disabled button so they don't fall through to
         // a parent's fallback handling (e.g. WindowTitleBar's click-and-drag-to-move-window),
         // even though the button itself performs no action while disabled.
-        return inside && (event.type == MouseEvent::Type::Press ||
-                         event.type == MouseEvent::Type::Release);
+        return inside &&
+               (event.type == MouseEvent::Type::Press || event.type == MouseEvent::Type::Release);
     }
 
     switch (event.type) {

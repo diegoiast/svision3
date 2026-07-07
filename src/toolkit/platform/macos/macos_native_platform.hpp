@@ -15,7 +15,8 @@ class MacOSNativePlatformApplication : public MacOSPlatformApplicationBase {
 
 class MacOSNativePlatformWindow : public PlatformWindow {
   public:
-    MacOSNativePlatformWindow(std::string_view title, Size size, Window *owner, WindowOptions options);
+    MacOSNativePlatformWindow(std::string_view title, Size size, Window *owner,
+                              WindowOptions options);
     ~MacOSNativePlatformWindow() override;
     void show() override;
     void close() override;
@@ -26,8 +27,7 @@ class MacOSNativePlatformWindow : public PlatformWindow {
     void request_redraw() override;
     void set_min_size(Size s) override;
     void set_max_size(Size s) override;
-    int start_timer(float interval_sec, std::function<void()> callback,
-                    bool repeats) override;
+    int start_timer(float interval_sec, std::function<void()> callback, bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
     void set_icon(Icon const &) override {}

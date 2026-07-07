@@ -180,8 +180,8 @@ Size Win32TextRasterizer::measure(std::string_view text, float font_size, FontFa
     }
 
     auto cache_key = std::string(text) + '\0' + std::to_string(font_size) + '\0' +
-                     (font == FontFamily::Monospace ? '1' : '0') +
-                     (bold ? 'b' : '_') + (italic ? 'i' : '_');
+                     (font == FontFamily::Monospace ? '1' : '0') + (bold ? 'b' : '_') +
+                     (italic ? 'i' : '_');
     auto it = impl_->measure_cache.find(cache_key);
     if (it != impl_->measure_cache.end()) {
         return it->second;

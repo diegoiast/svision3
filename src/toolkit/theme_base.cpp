@@ -17,7 +17,6 @@
 
 namespace toolkit {
 
-
 BaseTheme::BaseTheme(ColorScheme scheme, std::optional<Palette> p) {
     if (p) {
         this->palette = std::move(*p);
@@ -313,7 +312,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
         auto sel_bg = Color::rgba(0.26f, 0.52f, 0.96f, 0.35f);
         if (layout && shaper) {
             for (auto const &r : layout->selection_rects(static_cast<size_t>(selection_start),
-                                                          static_cast<size_t>(selection_end))) {
+                                                         static_cast<size_t>(selection_end))) {
                 painter.fill_rect({tx + r.x, hy, r.width, fm.height + 2.0f}, sel_bg);
             }
         } else {
@@ -359,7 +358,8 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
                 return tx + layout->caret_x(static_cast<size_t>(cursor_pos));
             }
             auto before = text.substr(0, cursor_pos);
-            return before.empty() ? tx : tx + painter.measure_text(before, palette.fonts.size).width;
+            return before.empty() ? tx
+                                  : tx + painter.measure_text(before, palette.fonts.size).width;
         }();
         auto cy_top = rect.y + (rect.height - fm.height) / 2.0f - 1.0f;
         auto cy_bot = cy_top + fm.height + 2.0f;
@@ -790,8 +790,9 @@ void BaseTheme::draw_icon_grid_item(Painter &painter, Rect const &rect, std::str
                 --approx;
             }
             display_text.resize(approx);
-            text_w = display_text.empty() ? 0.0f
-                                          : painter.measure_text(display_text, palette.fonts.size).width;
+            text_w = display_text.empty()
+                         ? 0.0f
+                         : painter.measure_text(display_text, palette.fonts.size).width;
             // Trim one char at a time until it fits (typically 0-2 iterations)
             while (!display_text.empty() && text_w > target_w) {
                 size_t last_pos = Utf8Iterator::prev(display_text, display_text.size());

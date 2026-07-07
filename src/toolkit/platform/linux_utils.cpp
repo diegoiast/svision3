@@ -4,8 +4,8 @@
 #include "linux_utils.hpp"
 #include <algorithm>
 #include <cstdlib>
-#include <fstream>
 #include <fontconfig/fontconfig.h>
+#include <fstream>
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <toml++/toml.hpp>

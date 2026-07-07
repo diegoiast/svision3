@@ -199,8 +199,12 @@ void FileBrowserWidget::navigate_home() { set_current_path(home_path()); }
 void FileBrowserWidget::set_browser_mode(bool browser) {
     browser_mode_ = browser;
     auto page = browser ? 0 : 1;
-    if (toolbar_extras_) toolbar_extras_->set_current(page);
-    if (bottom_stack_) bottom_stack_->set_current(page);
+    if (toolbar_extras_) {
+        toolbar_extras_->set_current(page);
+    }
+    if (bottom_stack_) {
+        bottom_stack_->set_current(page);
+    }
 }
 
 void FileBrowserWidget::set_filename(std::string_view name) {
@@ -437,8 +441,8 @@ void FileBrowserWidget::setup_ui() {
         }
     };
     auto config_menu = std::make_shared<Menu>("");
-    config_menu->add_action("Icons",   [switch_view] { switch_view(ViewMode::Icons); });
-    config_menu->add_action("List",    [switch_view] { switch_view(ViewMode::List); });
+    config_menu->add_action("Icons", [switch_view] { switch_view(ViewMode::Icons); });
+    config_menu->add_action("List", [switch_view] { switch_view(ViewMode::List); });
     config_menu->add_action("Details", [switch_view] { switch_view(ViewMode::Details); });
     config_menu->add_separator();
     config_menu->add_action("Show Hidden Files", [this] { set_show_hidden(!show_hidden()); });
@@ -578,7 +582,7 @@ void FileBrowserWidget::setup_ui() {
     auto bottom_stack = std::make_unique<StackedLayout>();
     bottom_stack_ = bottom_stack.get();
     bottom_stack->add_widget(std::make_unique<HBoxLayout>()); // page 0: empty (browser mode)
-    bottom_stack->add_widget(std::move(bottom));          // page 1: dialog chrome
+    bottom_stack->add_widget(std::move(bottom));              // page 1: dialog chrome
     add_widget(std::move(bottom_stack));
 
     // Apply initial mode

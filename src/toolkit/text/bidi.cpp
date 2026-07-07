@@ -42,7 +42,8 @@ CharClass classify(char32_t cp) {
         return CharClass::S;
     }
     // Whitespace.
-    if (cp == U' ' || cp == 0x00A0 || cp == 0x202F || cp == 0x205F || cp == 0x3000 || cp == 0x000C) {
+    if (cp == U' ' || cp == 0x00A0 || cp == 0x202F || cp == 0x205F || cp == 0x3000 ||
+        cp == 0x000C) {
         return CharClass::WS;
     }
     if (cp >= 0x2000 && cp <= 0x200A) {
@@ -53,7 +54,8 @@ CharClass classify(char32_t cp) {
     if (cp >= 0x0591 && cp <= 0x05BD) {
         return CharClass::NSM;
     }
-    if (cp == 0x05BF || cp == 0x05C1 || cp == 0x05C2 || cp == 0x05C4 || cp == 0x05C5 || cp == 0x05C7) {
+    if (cp == 0x05BF || cp == 0x05C1 || cp == 0x05C2 || cp == 0x05C4 || cp == 0x05C5 ||
+        cp == 0x05C7) {
         return CharClass::NSM;
     }
     if (cp >= 0x0590 && cp <= 0x05FF) {
@@ -69,8 +71,8 @@ CharClass classify(char32_t cp) {
 
     // Arabic combining marks.
     if ((cp >= 0x0610 && cp <= 0x061A) || (cp >= 0x064B && cp <= 0x065F) || cp == 0x0670 ||
-        (cp >= 0x06D6 && cp <= 0x06DC) || (cp >= 0x06DF && cp <= 0x06E4) || cp == 0x06E7 || cp == 0x06E8 ||
-        (cp >= 0x06EA && cp <= 0x06ED)) {
+        (cp >= 0x06D6 && cp <= 0x06DC) || (cp >= 0x06DF && cp <= 0x06E4) || cp == 0x06E7 ||
+        cp == 0x06E8 || (cp >= 0x06EA && cp <= 0x06ED)) {
         return CharClass::NSM;
     }
     // Arabic-Indic digits (AN) vs extended Arabic-Indic digits (EN).
@@ -81,14 +83,15 @@ CharClass classify(char32_t cp) {
         return CharClass::EN;
     }
     // Arabic letters.
-    if ((cp >= 0x0600 && cp <= 0x06FF) || (cp >= 0x0750 && cp <= 0x077F) || (cp >= 0x08A0 && cp <= 0x08FF) ||
-        (cp >= 0xFB50 && cp <= 0xFDFF) || (cp >= 0xFE70 && cp <= 0xFEFF)) {
+    if ((cp >= 0x0600 && cp <= 0x06FF) || (cp >= 0x0750 && cp <= 0x077F) ||
+        (cp >= 0x08A0 && cp <= 0x08FF) || (cp >= 0xFB50 && cp <= 0xFDFF) ||
+        (cp >= 0xFE70 && cp <= 0xFEFF)) {
         return CharClass::AL;
     }
 
     // Combining diacritical marks (Latin/Cyrillic/Greek etc).
-    if ((cp >= 0x0300 && cp <= 0x036F) || (cp >= 0x1AB0 && cp <= 0x1AFF) || (cp >= 0x1DC0 && cp <= 0x1DFF) ||
-        (cp >= 0x20D0 && cp <= 0x20FF)) {
+    if ((cp >= 0x0300 && cp <= 0x036F) || (cp >= 0x1AB0 && cp <= 0x1AFF) ||
+        (cp >= 0x1DC0 && cp <= 0x1DFF) || (cp >= 0x20D0 && cp <= 0x20FF)) {
         return CharClass::NSM;
     }
 
@@ -176,14 +179,15 @@ Decoded decode(std::string_view s) {
         } else if ((c0 & 0xF0) == 0xE0 && pos + 2 < s.size()) {
             unsigned char c1 = static_cast<unsigned char>(s[pos + 1]);
             unsigned char c2 = static_cast<unsigned char>(s[pos + 2]);
-            cp = (static_cast<char32_t>(c0 & 0x0F) << 12) | (static_cast<char32_t>(c1 & 0x3F) << 6) |
-                 (c2 & 0x3F);
+            cp = (static_cast<char32_t>(c0 & 0x0F) << 12) |
+                 (static_cast<char32_t>(c1 & 0x3F) << 6) | (c2 & 0x3F);
             len = 3;
         } else if ((c0 & 0xF8) == 0xF0 && pos + 3 < s.size()) {
             unsigned char c1 = static_cast<unsigned char>(s[pos + 1]);
             unsigned char c2 = static_cast<unsigned char>(s[pos + 2]);
             unsigned char c3 = static_cast<unsigned char>(s[pos + 3]);
-            cp = (static_cast<char32_t>(c0 & 0x07) << 18) | (static_cast<char32_t>(c1 & 0x3F) << 12) |
+            cp = (static_cast<char32_t>(c0 & 0x07) << 18) |
+                 (static_cast<char32_t>(c1 & 0x3F) << 12) |
                  (static_cast<char32_t>(c2 & 0x3F) << 6) | (c3 & 0x3F);
             len = 4;
         } else {
@@ -267,7 +271,8 @@ BidiLine BidiLine::analyze(std::string_view utf8, BaseDirection base) {
 
     // ---- W4: ES between two EN -> EN; CS between two equal numbers -> that type ----
     for (size_t i = 1; i + 1 < n; ++i) {
-        if (types[i] == CharClass::ES && types[i - 1] == CharClass::EN && types[i + 1] == CharClass::EN) {
+        if (types[i] == CharClass::ES && types[i - 1] == CharClass::EN &&
+            types[i + 1] == CharClass::EN) {
             types[i] = CharClass::EN;
         } else if (types[i] == CharClass::CS && types[i - 1] == types[i + 1] &&
                    (types[i - 1] == CharClass::EN || types[i - 1] == CharClass::AN)) {
@@ -404,7 +409,8 @@ BidiLine BidiLine::analyze(std::string_view utf8, BaseDirection base) {
             while (run_end < n && levels[order[run_end]] >= level) {
                 ++run_end;
             }
-            std::reverse(order.begin() + static_cast<long>(k), order.begin() + static_cast<long>(run_end));
+            std::reverse(order.begin() + static_cast<long>(k),
+                         order.begin() + static_cast<long>(run_end));
             k = run_end;
         }
     }

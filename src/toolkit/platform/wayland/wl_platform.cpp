@@ -18,12 +18,12 @@
 
 #include <EGL/egl.h>
 #include <GL/gl.h>
-#include <cairo.h>
-#include <fontconfig/fontconfig.h>
 #include <algorithm>
+#include <cairo.h>
 #include <cerrno>
 #include <cmath>
 #include <fcntl.h>
+#include <fontconfig/fontconfig.h>
 #include <poll.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
@@ -124,8 +124,8 @@ static const wl_seat_listener seat_listener = {seat_capabilities, seat_name};
 static void data_offer_offer(void *data, wl_data_offer *offer, const char *mime_type);
 static void data_offer_source_actions(void *, wl_data_offer *, uint32_t) {}
 static void data_offer_action(void *, wl_data_offer *, uint32_t) {}
-static const wl_data_offer_listener data_offer_listener = {data_offer_offer, data_offer_source_actions,
-                                                           data_offer_action};
+static const wl_data_offer_listener data_offer_listener = {
+    data_offer_offer, data_offer_source_actions, data_offer_action};
 
 static void data_device_data_offer(void *data, wl_data_device *dev, wl_data_offer *offer);
 static void data_device_enter(void *data, wl_data_device *dev, uint32_t serial, wl_surface *surf,
@@ -145,8 +145,9 @@ static void data_source_dnd_drop_performed(void *, wl_data_source *) {}
 static void data_source_dnd_finished(void *, wl_data_source *) {}
 static void data_source_action(void *, wl_data_source *, uint32_t) {}
 static const wl_data_source_listener data_source_listener = {
-    data_source_target,           data_source_send,        data_source_cancelled,
-    data_source_dnd_drop_performed, data_source_dnd_finished, data_source_action};
+    data_source_target,       data_source_send,
+    data_source_cancelled,    data_source_dnd_drop_performed,
+    data_source_dnd_finished, data_source_action};
 
 static void frame_done(void *data, wl_callback *cb, uint32_t time);
 static const wl_callback_listener frame_listener = {frame_done};

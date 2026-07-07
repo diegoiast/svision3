@@ -1,10 +1,10 @@
 #include "win32_platform.hpp"
 #include "Win32OpenGlRenderingBackend.hpp"
-#include "toolkit/painters/win32_painter.hpp"
-#include "win32_image_loader.hpp"
 #include "toolkit/lunasvg_image_loader.hpp"
+#include "toolkit/painters/win32_painter.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
+#include "win32_image_loader.hpp"
 
 // clang-format off
 #ifndef NOMINMAX
@@ -23,10 +23,10 @@
 #include <GL/gl.h>
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <objidl.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
-#include <memory>
 
 namespace toolkit {
 

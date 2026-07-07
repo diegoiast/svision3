@@ -33,7 +33,6 @@
 #endif
 #endif
 
-
 namespace toolkit {
 
 bool is_wayland_session() { return std::getenv("WAYLAND_DISPLAY") != nullptr; }
@@ -199,8 +198,8 @@ bool Application::set_log_level(std::string_view name) {
     static constexpr std::string_view valid_names[] = {
         "trace", "debug", "info", "warning", "warn", "error", "err", "critical", "off",
     };
-    auto known = std::find(std::begin(valid_names), std::end(valid_names), name) !=
-                std::end(valid_names);
+    auto known =
+        std::find(std::begin(valid_names), std::end(valid_names), name) != std::end(valid_names);
     if (!known) {
         spdlog::warn("Application::set_log_level: unknown level '{}' (expected 0-6, or one of: "
                      "trace, debug, info, warning, error, critical, off)",

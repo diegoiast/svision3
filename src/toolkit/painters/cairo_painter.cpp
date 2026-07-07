@@ -169,7 +169,9 @@ void CairoPainter::draw_circle(Point center, float radius, Color const &color, f
 
 static bool is_all_ascii(std::string_view text) {
     for (unsigned char c : text) {
-        if (c >= 128) return false;
+        if (c >= 128) {
+            return false;
+        }
     }
     return true;
 }
@@ -192,13 +194,14 @@ void CairoTextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
                 auto x = position.x;
                 for (auto const &run : bidi_line.runs_visual()) {
                     auto run_text = text.substr(run.start, run.length);
-                    auto advances = shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic);
+                    auto advances =
+                        shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic);
                     auto run_width = 0.0f;
                     for (auto const &ca : advances) {
                         run_width += ca.advance;
                     }
-                    shaper_.draw_run(p, run_text, run.rtl(), {x, position.y}, color, font_size, font,
-                                     bold, italic);
+                    shaper_.draw_run(p, run_text, run.rtl(), {x, position.y}, color, font_size,
+                                     font, bold, italic);
                     x += run_width;
                 }
             }
@@ -350,7 +353,8 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     for (auto const &run : runs) {
         auto run_text = text.substr(run.start, run.length);
         auto run_width = 0.0f;
-        for (auto const &ca : shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic)) {
+        for (auto const &ca :
+             shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic)) {
             run_width += ca.advance;
         }
         run_widths.push_back(run_width);
@@ -425,7 +429,8 @@ Size CairoTextRasterizer::measure(std::string_view text, float font_size, FontFa
         auto bidi_line = bidi::BidiLine::analyze(text, base);
         for (auto const &run : bidi_line.runs_visual()) {
             auto run_text = text.substr(run.start, run.length);
-            for (auto const &ca : shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic)) {
+            for (auto const &ca :
+                 shaper_.shape_run(run_text, run.rtl(), font_size, font, bold, italic)) {
                 width += ca.advance;
             }
         }
