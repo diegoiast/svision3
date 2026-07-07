@@ -445,8 +445,8 @@ void TableView::paint(Painter &painter) {
             auto sep_x = hx + cw;
 
             if (sep_x > vr.x && hx < vr.x + vr.width) {
-                auto text_y = vr.y + (hh - painter.font_metrics(palette.fonts.size).height) / 2.0f +
-                              painter.font_metrics(palette.fonts.size).ascent;
+                auto fm = painter.font_metrics(palette.fonts.size);
+                auto text_y = vr.y + (hh - fm.height) / 2.0f + fm.ascent;
                 auto text = model_->header_text(c);
 
                 if (static_cast<int>(c) == sort_column_ && sort_order_ != SortOrder::None) {
