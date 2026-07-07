@@ -127,7 +127,7 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
         icon_h = static_cast<float>(icon->height);
     }
     auto total_w = text_w + (icon ? (icon_w + 4.0f) : 0.0f);
-    auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline_y = (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto text_x = (rect.width - total_w) / 2.0f + text_offset + (icon ? icon_w + 4.0f : 0.0f);
     auto text_pos = Point{text_x, baseline_y + text_offset};
     auto show_full_frame = !flat || hovered || pressed;
@@ -204,7 +204,7 @@ void BaseTheme::draw_checkbox(Painter &painter, Rect const &rect, std::string_vi
     }
 
     auto text_x = rect.x + box + style.toggle.spacing;
-    auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline_y = (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto text_c = enabled ? palette.text : palette.text_disabled;
     painter.draw_mnemonic_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 }
@@ -221,10 +221,10 @@ void BaseTheme::draw_radio_button(Painter &painter, Rect const &rect, std::strin
     // Use the full row height for the circle so it is 100 % of the widget height.
     // Center X accounts for the radius; center Y must include rect.y so the circle
     // stays correctly placed when the widget is not at the top of its parent.
-    auto r = rect.height / 2.0f;
-    auto center = Point{rect.x + r, rect.y + rect.height / 2.0f};
+    auto r = rect.height / 2.0f - 1.0f;
+    auto center = Point{rect.x + r + 1.0f, rect.y + rect.height / 2.0f};
     auto text_x = rect.x + rect.height + style.toggle.spacing;
-    auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline_y = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto border = focused ? palette.accent : palette.border;
     auto bg = palette.base;
     if (enabled) {
@@ -281,7 +281,7 @@ void BaseTheme::draw_line_input(Painter &painter, Rect const &rect, std::string_
     auto enabled = state.enabled;
     auto border = focused ? palette.accent : palette.border;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline_y = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto content_x = style.padding.left + button_inset_left;
     auto content_right_edge = rect.width - style.padding.right - button_inset_right;
     auto content_w = content_right_edge - content_x;
@@ -382,7 +382,7 @@ void BaseTheme::draw_menubar_item(Painter &painter, Rect const &rect, std::strin
         text_c = palette.highlighted_text;
     }
 
-    auto baseline = (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline = (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto pos = Point{rect.x + padding.left, baseline};
     if (show_mnemonics) {
         painter.draw_mnemonic_text(title, pos, text_c, palette.fonts.size);
@@ -418,7 +418,7 @@ void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_v
                                Icon const &icon, std::string_view shortcut, bool hovered,
                                bool enabled, bool checkable, bool checked) const {
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto text_col = palette.text;
 
     if (hovered && enabled) {
@@ -610,7 +610,7 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
     if (vertical) {
         if (orientation == TabOrientation::West || orientation == TabOrientation::East) {
             if (orientation == TabOrientation::West) {
-                text_x = effective_rect.x + (effective_rect.width - fm.height) / 2.0f + fm.ascent;
+                text_x = effective_rect.x + (effective_rect.width - fm.cell_height()) / 2.0f + fm.ascent;
                 baseline_y =
                     effective_rect.y + effective_rect.height - style.tabWidget.tab_padding_h;
             } else {
@@ -629,7 +629,7 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
                 // Bar on the left, content on the right. Button on the right.
                 text_x = effective_rect.x + style.tabWidget.tab_padding_h;
                 baseline_y =
-                    effective_rect.y + (effective_rect.height - fm.height) / 2.0f + fm.ascent;
+                    effective_rect.y + (effective_rect.height - fm.cell_height()) / 2.0f + fm.ascent;
                 close_cx = effective_rect.x + effective_rect.width - style.tabWidget.tab_padding_h -
                            close_btn_size / 2.0f;
                 close_cy = effective_rect.y + effective_rect.height / 2.0f;
@@ -644,13 +644,13 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
                     text_x = effective_rect.x + style.tabWidget.tab_padding_h;
                 }
                 baseline_y =
-                    effective_rect.y + (effective_rect.height - fm.height) / 2.0f + fm.ascent;
+                    effective_rect.y + (effective_rect.height - fm.cell_height()) / 2.0f + fm.ascent;
                 close_cy = effective_rect.y + effective_rect.height / 2.0f;
             }
         }
     } else {
         text_x = effective_rect.x + style.tabWidget.tab_padding_h;
-        baseline_y = effective_rect.y + (effective_rect.height - fm.height) / 2.0f + fm.ascent;
+        baseline_y = effective_rect.y + (effective_rect.height - fm.cell_height()) / 2.0f + fm.ascent;
         close_cx = effective_rect.x + style.tabWidget.tab_padding_h + text_w + close_btn_gap +
                    close_btn_size / 2.0f;
         close_cy = effective_rect.y + effective_rect.height / 2.0f;
@@ -737,7 +737,7 @@ void BaseTheme::draw_list_item(Painter &painter, Rect const &rect, std::string_v
         painter.draw_image(*icon, {text_x, icon_y});
         text_x += static_cast<float>(icon->width) + style.item_padding;
     }
-    auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline_y = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto text_c = selected ? palette.highlighted_text : palette.text;
     painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size);
 }
@@ -850,7 +850,7 @@ void BaseTheme::draw_tree_item(Painter &painter, Rect const &rect, std::string_v
     }
     x_offset += tree_style.indent + 4.0f;
 
-    auto text_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto text_y = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto text_col = selected ? palette.highlighted_text : palette.text;
     painter.draw_text(text, {x_offset, text_y}, text_col, palette.fonts.size);
 }
@@ -875,7 +875,7 @@ void BaseTheme::draw_combobox(Painter &painter, Rect const &rect, std::string_vi
     auto const &style = this->style.combo;
     auto border = state.focused ? palette.accent : palette.border;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto baseline_y = (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline_y = (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
 
     painter.draw_filled_frame(rect, palette.base, border, palette, true);
     if (!text.empty()) {
@@ -898,7 +898,7 @@ void BaseTheme::draw_combobox_item(Painter &painter, Rect const &rect, std::stri
                                    bool hovered) const {
     auto const &style = this->style.combo;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto baseline = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto tc = hovered ? palette.highlighted_text : palette.text;
 
     if (hovered) {
@@ -987,7 +987,7 @@ void BaseTheme::draw_spinbox(Painter &painter, Rect const &rect, std::string_vie
     auto content_x = field_rect.x + style.padding.left;
     auto content_w = field_rect.width - style.padding.left - style.padding.right;
     auto fm = painter.font_metrics(palette.fonts.size);
-    auto baseline_y = rect.y + (rect.height - fm.height) / 2.0f + fm.ascent;
+    auto baseline_y = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto clip_rect = Rect{content_x, rect.y, content_w, rect.height};
     painter.push_clip(clip_rect);
 

@@ -21,7 +21,8 @@ class Painter {
     struct FontMetrics {
         float ascent = 0;
         float descent = 0;
-        float height = 0;
+        float height = 0; // line_spacing: ascent + descent + line gap
+        float cell_height() const { return ascent + descent; }
     };
 
     enum class LineStyle { Solid, Dashed, Dotted };
