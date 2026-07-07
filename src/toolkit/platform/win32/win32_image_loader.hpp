@@ -1,10 +1,14 @@
 #pragma once
 #include "toolkit/image.hpp"
-#include <gdiplus.h>
+
+// clang-format off
+#include <windows.h>
 #include <objidl.h>
+#include <gdiplus.h>
+// clang-format on
+
 #include <string>
 #include <vector>
-#include <windows.h>
 
 namespace toolkit {
 
