@@ -109,7 +109,10 @@ void Menu::show(Window *win, Point position) {
     popup.on_paint = [this](Painter &p) { paint(p); };
     popup.on_mouse = [this](MouseEvent const &e) { return handle_mouse(e); };
     popup.on_key = [this](KeyEvent const &e) { return handle_key(e); };
+    // on_close is the single place that resets window_ and fires the callback,
+    // whether the popup is dismissed externally (close_all_popups) or via close().
     popup.on_close = [this] {
+        window_ = nullptr;
         if (on_close_callback) {
             on_close_callback();
         }
@@ -121,13 +124,9 @@ void Menu::close() {
     if (!window_) {
         return;
     }
-    if (on_close_callback) {
-        on_close_callback();
-    }
-    if (window_) {
-        window_->close_popup();
-    }
-    window_ = nullptr;
+    // Let close_popup() trigger popup.on_close, which resets window_ and fires
+    // the callback — same path as an external dismiss via close_all_popups().
+    window_->close_popup();
 }
 
 void Menu::select_first() {
@@ -206,13 +205,12 @@ bool Menu::handle_mouse(MouseEvent const &event) {
 
         if (hovered_ != -1 && previously_hovered != hovered_) {
             if (open_submenu_index_ != -1 && hovered_ != open_submenu_index_) {
-                // Clear the callback before closing so hovering away doesn't close this menu too
                 auto &submenu = items_[open_submenu_index_].submenu;
-                if (submenu) {
+                if (submenu && submenu->is_shown()) {
                     submenu->on_close_callback = nullptr;
-                }
-                if (window_) {
-                    window_->close_popup();
+                    if (window_) {
+                        window_->close_popup();
+                    }
                 }
                 open_submenu_index_ = -1;
             }
@@ -232,13 +230,28 @@ bool Menu::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Press) {
         auto idx = item_at(event.position);
+
+        // Close any open submenu when pressing on a different item
+        if (open_submenu_index_ != -1 && idx != open_submenu_index_) {
+            auto &existing = items_[open_submenu_index_].submenu;
+            if (existing && existing->is_shown()) {
+                existing->on_close_callback = nullptr;
+                if (window_) { window_->close_popup(); }
+            }
+            open_submenu_index_ = -1;
+        }
+
         if (idx >= 0 && items_[idx].command->is_enabled()) {
             if (items_[idx].is_action()) {
                 state_handler_.on_mouse_click(event);
                 pressed_item_ = idx;
                 return true;
             } else if (items_[idx].is_submenu()) {
-                open_submenu(idx);
+                // Don't re-open a submenu that's already shown (e.g. opened by hover).
+                // The window's cleanup code would close it if we added a duplicate popup.
+                if (!items_[idx].submenu->is_shown()) {
+                    open_submenu(idx);
+                }
                 return true;
             }
         }

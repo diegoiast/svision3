@@ -68,8 +68,10 @@ void Button::show_menu() {
         return;
     }
 
-    if (menu_->is_shown()) {
-        menu_->close();
+    if (menu_open_) {
+        // menu_open_ is still set because close_all_popups() ran before our handler —
+        // the popup is already gone but we haven't been through paint() yet. Treat
+        // this as "button clicked while open → toggle close, don't reopen."
         menu_open_ = false;
         return;
     }

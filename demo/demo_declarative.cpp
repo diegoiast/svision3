@@ -299,17 +299,26 @@ int main(int argc, char *argv[]) {
 
     auto open_icon = app.load_icon(XDG::IconActions::documentOpen, 16);
 
-    auto open_action = [editor = editor.get(), window]() {
-        toolkit::FileDialog(window).title("Open File").open().then([editor](auto path) {
-            if (path) {
-                std::ifstream f(*path);
-                if (f) {
-                    std::string contents((std::istreambuf_iterator<char>(f)),
-                                         std::istreambuf_iterator<char>());
-                    editor->set_text(contents);
+    // Pointer set after rootWidget is built; safe to capture by ref since both
+    // live in main(). The editor tab is always at index 6 in rootWidget.
+    static constexpr int editor_tab_index = 6;
+    toolkit::TabWidget *root_tab_ptr = nullptr;
+
+    auto open_action = [editor = editor.get(), window, &root_tab_ptr]() {
+        toolkit::FileDialog(window).title("Open File").open().then(
+            [editor, &root_tab_ptr](auto path) {
+                if (path) {
+                    std::ifstream f(*path);
+                    if (f) {
+                        std::string contents((std::istreambuf_iterator<char>(f)),
+                                             std::istreambuf_iterator<char>());
+                        editor->set_text(contents);
+                        if (root_tab_ptr) {
+                            root_tab_ptr->set_tab_tooltip(editor_tab_index, *path);
+                        }
+                    }
                 }
-            }
-        });
+            });
     };
 
     auto new_cmd = ui::command("New", [] { spdlog::info("Menu: New"); }).shortcut("Std+N");
@@ -653,7 +662,7 @@ int main(int argc, char *argv[]) {
                              .add(iconGrid, ui::expand);
                      }())
             .add_tab(
-                "Editor",
+                "Editor", "[none]",
                 ui::vbox()
                     .margins(ui::default_margins_no_bottom())
                     .add(ui::hbox()
@@ -776,6 +785,8 @@ int main(int argc, char *argv[]) {
                                       ui::label("South 5 Content")
                                           .alignment(toolkit::Alignment::Center)
                                           .background_color(toolkit::Color::rgb(1.0, 0.5, 0.5)))));
+
+    root_tab_ptr = rootWidget.get();
 
     window->set_root(
         ui::vbox()
