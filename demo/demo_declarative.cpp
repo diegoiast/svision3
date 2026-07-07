@@ -510,8 +510,9 @@ int main(int argc, char *argv[]) {
                     .add([&]() {
                         return ui::hbox()
                             .margins(ui::no_margins())
-                            .add(
-                                ui::button("Auto &repeat").auto_repeat(true).on_click(repeat_action))
+                            .add(ui::button("Auto &repeat")
+                                     .auto_repeat(true)
+                                     .on_click(repeat_action))
                             .add(ui::button("Open")
                                      .icon(open_icon)
                                      .on_click(open_action)
@@ -584,30 +585,29 @@ int main(int argc, char *argv[]) {
                                  ui::expand)
                             .add(val);
                     }()))
-            .add_tab(
-                "Songs",
-                ui::vbox()
-                    .margins(ui::default_margins_no_bottom())
-                    .add([filter_adapter]() {
-                        auto spin =
-                            ui::spin_box(10).on_change([filter_adapter](auto v, auto &) {
-                                filter_adapter->set_simulated_delay_ms(v);
-                            });
-                        auto *spin_ptr = spin.get();
-                        return ui::hbox()
-                            .margins(ui::no_margins())
-                            .add(ui::line_input("Filter songs...")
-                                     .on_change([filter_adapter](auto &text, auto &) {
-                                         filter_adapter->set_filter(text);
-                                     }),
-                                 ui::expand)
-                            .add(ui::label("Delay (ms):")
-                                     .tooltip("Simulated delay per item (ms)")
-                                     .buddy(spin_ptr))
-                            .add(std::move(spin));
-                    }())
-                    .add(filter_progress)
-                    .add(ui::list_view(filter_adapter).alternate_row_colors(true), ui::expand))
+            .add_tab("Songs",
+                     ui::vbox()
+                         .margins(ui::default_margins_no_bottom())
+                         .add([filter_adapter]() {
+                             auto spin =
+                                 ui::spin_box(10).on_change([filter_adapter](auto v, auto &) {
+                                     filter_adapter->set_simulated_delay_ms(v);
+                                 });
+                             auto *spin_ptr = spin.get();
+                             return ui::hbox()
+                                 .margins(ui::no_margins())
+                                 .add(ui::line_input("Filter songs...")
+                                          .on_change([filter_adapter](auto &text, auto &) {
+                                              filter_adapter->set_filter(text);
+                                          }),
+                                      ui::expand)
+                                 .add(ui::label("Delay (ms):")
+                                          .tooltip("Simulated delay per item (ms)")
+                                          .buddy(spin_ptr))
+                                 .add(std::move(spin));
+                         }())
+                         .add(filter_progress)
+                         .add(ui::list_view(filter_adapter).alternate_row_colors(true), ui::expand))
             .add_tab("Table",
                      ui::vbox()
                          .margins(ui::default_margins_no_bottom())

@@ -16,6 +16,7 @@
 #include "toolkit/spin_box.hpp"
 #include "toolkit/tab_widget.hpp"
 
+#include <toolkit/file_browser_widget.hpp>
 #include <toolkit/html_view.hpp>
 #include <toolkit/icon_grid.hpp>
 #include <toolkit/list_view.hpp>
@@ -385,6 +386,15 @@ template <typename T> struct Element {
         return std::move(*this);
     }
 
+    template <typename W>
+    Element add_tab(std::string_view title, std::string_view tooltip, Element<W> &&child,
+                    bool closable = true) {
+        auto index = static_cast<int>(w->tab_count());
+        w->add_tab(std::string(title), std::move(child.w), closable);
+        w->set_tab_tooltip(index, std::string(tooltip));
+        return std::move(*this);
+    }
+
     template <typename W> Element add_tab(std::string_view title, Element<W> &child) {
         return add_tab(title, std::move(child));
     }
@@ -425,6 +435,35 @@ template <typename T> struct Element {
             w->set_alternating_row_colors(value);
         } else {
             static_assert(std::is_same_v<T, void>, "Method not supported");
+        }
+        return std::move(*this);
+    }
+
+    Element browser_mode(bool b) {
+        if constexpr (std::is_same_v<T, toolkit::FileBrowserWidget>) {
+            w->set_browser_mode(b);
+        } else {
+            static_assert(std::is_same_v<T, void>, "browser_mode only works on FileBrowserWidget");
+        }
+        return std::move(*this);
+    }
+
+    Element on_file_activated(std::function<void(std::string const &)> f) {
+        if constexpr (std::is_same_v<T, toolkit::FileBrowserWidget>) {
+            w->on_file_activated = std::move(f);
+        } else {
+            static_assert(std::is_same_v<T, void>,
+                          "on_file_activated only works on FileBrowserWidget");
+        }
+        return std::move(*this);
+    }
+
+    Element on_path_changed(std::function<void(std::string const &)> f) {
+        if constexpr (std::is_same_v<T, toolkit::FileBrowserWidget>) {
+            w->on_path_changed = std::move(f);
+        } else {
+            static_assert(std::is_same_v<T, void>,
+                          "on_path_changed only works on FileBrowserWidget");
         }
         return std::move(*this);
     }
@@ -604,6 +643,10 @@ inline Element<toolkit::RadioButton> radio_button(std::string_view text,
 
 inline Element<toolkit::TextEdit> text_edit(std::string text = {}) {
     return Element<toolkit::TextEdit>(std::make_unique<toolkit::TextEdit>(text));
+}
+
+inline Element<toolkit::FileBrowserWidget> file_browser() {
+    return Element<toolkit::FileBrowserWidget>(std::make_unique<toolkit::FileBrowserWidget>());
 }
 
 // Tab widget - special handling for add_tab
