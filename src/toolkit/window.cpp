@@ -124,6 +124,9 @@ Window::Window(std::string_view title, Size size, WindowOptions options)
         size_.height += m.top + m.bottom;
     }
     impl_->platform = detail::current_platform()->create_window(title, size_, this, options);
+    // Seed the cached scale so handle_scale_changed() only fires on real changes,
+    // even if the window is born on a high-DPI display.
+    scale_ = impl_->platform->scale_factor();
 
     theme_observer_alive_ = std::make_shared<bool>(true);
     Theme::add_theme_observer([this, alive = theme_observer_alive_](const Theme &) {
@@ -1133,6 +1136,18 @@ void Window::handle_resize(Size new_size) {
         close_all_popups();
     }
     relayout();
+}
+
+void Window::handle_scale_changed(float new_scale) {
+    if (new_scale == scale_) {
+        return;
+    }
+    scale_ = new_scale;
+    relayout();
+    request_redraw("scale changed");
+    if (on_scale_changed) {
+        on_scale_changed(new_scale);
+    }
 }
 
 void Window::handle_activate(bool active) {

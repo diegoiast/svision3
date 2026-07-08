@@ -175,6 +175,9 @@ static void fractional_scale_preferred_scale(void *data, wp_fractional_scale_v1 
         win->scale = f;
         win->needs_redraw = true;
         win->request_redraw();
+        if (win->owner_) {
+            win->owner_->handle_scale_changed(f);
+        }
     }
 }
 

@@ -332,6 +332,13 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
     }
 }
 
+- (void)viewDidChangeBackingProperties {
+    [super viewDidChangeBackingProperties];
+    if (self.owner && self.window) {
+        self.owner->handle_scale_changed(static_cast<float>(self.window.backingScaleFactor));
+    }
+}
+
 - (toolkit::Point)convertMouseEvent:(NSEvent *)event {
     NSPoint loc = [self convertPoint:[event locationInWindow] fromView:nil];
     return {static_cast<float>(loc.x), static_cast<float>(loc.y)};

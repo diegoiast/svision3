@@ -68,12 +68,21 @@ class Window {
 
     std::function<bool(KeyEvent const &)> on_key;
 
+    // Fired when the window moves to a display with a different DPI/scale factor.
+    // The argument is the new scale (1.0 == 100%). Platforms deliver this from their
+    // native per-window DPI-change notification, so it is event-driven, not polled.
+    std::function<void(float)> on_scale_changed;
+
     void handle_paint(Painter &painter);
     void handle_mouse(MouseEvent const &event);
     void handle_key(KeyEvent const &event);
     void handle_resize(Size new_size);
     void handle_activate(bool active);
     void handle_maximized(bool maximized);
+
+    // Called by platform backends when the native window's scale factor changes.
+    // Deduplicates, relayouts, repaints, and fires on_scale_changed.
+    void handle_scale_changed(float new_scale);
     bool is_active() const { return is_active_; }
     bool is_maximized() const { return is_maximized_; }
     void relayout();
@@ -165,6 +174,7 @@ class Window {
     std::vector<Command::Ptr> global_commands_;
     bool is_active_ = true;
     bool is_maximized_ = false;
+    float scale_ = 1.0f;
     std::shared_ptr<bool> theme_observer_alive_ = std::make_shared<bool>(true);
     Widget *focused_widget_ = nullptr;
     Widget *saved_focus_ = nullptr;

@@ -528,7 +528,16 @@ int main(int argc, char *argv[]) {
                                 }))
                             .add(repeat_label);
                     }())
-                    .add(ui::label(platformText)))
+                    .add([&]() {
+                        auto l = ui::label(fmt::format("Platform: {} | Painter: {}",
+                                                       app.platform_name(), window->painter_name()));
+                        window->on_scale_changed = [&app, window, lp = l.get()](float scale) {
+                            lp->set_text(fmt::format("Platform: {} | Painter: {} | DPI scale: {:.3f}",
+                                                     app.platform_name(), window->painter_name(),
+                                                     scale));
+                        };
+                        return l;
+                    }()))
             .add_tab(
                 "Inputs",
                 ui::vbox()

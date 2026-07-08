@@ -244,6 +244,13 @@ class CoreTextRasterizer : public TextRasterizer {
     }
 }
 
+- (void)viewDidChangeBackingProperties {
+    [super viewDidChangeBackingProperties];
+    if (self.owner && self.window) {
+        self.owner->handle_scale_changed(static_cast<float>(self.window.backingScaleFactor));
+    }
+}
+
 - (void)drawRect:(NSRect)dirtyRect {
     if (!self.owner) {
         return;

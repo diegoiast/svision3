@@ -499,8 +499,16 @@ int main(int argc, char *argv[]) {
     tab_main->add_widget(std::move(scrollbar));
     tab_main->add_widget(std::move(scrollbar_label));
 
-    tab_main->add_widget(std::make_unique<toolkit::Label>(
-        fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name())));
+    auto platform_label = std::make_unique<toolkit::Label>(
+        fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name()));
+    // Capture the raw pointer while platform_label still owns the Label; the move
+    // into the layout must come AFTER, or .get() would return a moved-from pointer.
+    window->on_scale_changed = [&app, window, platform_label = platform_label.get()](float scale) {
+        auto text = fmt::format("Platform: {} | Painter: {} | DPI scale: {:.3f}",
+                                app.platform_name(), window->painter_name(), scale);
+        platform_label->set_text(text);
+    };
+    tab_main->add_widget(std::move(platform_label));
 
     tabs->add_tab("Main", std::move(tab_main));
 

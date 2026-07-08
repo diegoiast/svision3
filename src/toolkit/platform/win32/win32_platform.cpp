@@ -578,6 +578,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                      suggested->right - suggested->left, suggested->bottom - suggested->top,
                      SWP_NOZORDER | SWP_NOACTIVATE);
         InvalidateRect(hwnd, nullptr, FALSE);
+        win->handle_scale_changed(static_cast<float>(HIWORD(wp)) / 96.0f);
         return 0;
     }
     case WM_CLOSE:
