@@ -126,6 +126,9 @@ auto AbstractLayout::find_focusable_at(Point p) -> Widget * {
 }
 
 auto AbstractLayout::widget_at(Point p) -> Widget * {
+    if (!is_visible()) {
+        return nullptr;
+    }
     if (state.layout_dirty) {
         apply_layout();
         state.layout_dirty = false;
