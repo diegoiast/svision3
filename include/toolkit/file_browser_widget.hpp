@@ -46,7 +46,7 @@ class FileBrowserWidget : public VBoxLayout, public Fluent<FileBrowserWidget> {
     void set_ok_label(std::string_view label);
 
     // Hide the filename/filter/OK/Cancel bar — turns the widget into an embedded browser
-    void set_browser_mode(bool browser);
+    FileBrowserWidget &set_browser_mode(bool browser);
     bool browser_mode() const { return browser_mode_; }
 
     bool handle_key(KeyEvent const &event) override;
@@ -63,6 +63,10 @@ class FileBrowserWidget : public VBoxLayout, public Fluent<FileBrowserWidget> {
     FileBrowserWidget &set_file_must_exist(bool must_exist);
     bool file_must_exist() const { return file_must_exist_; }
 
+    enum class ViewMode { List, Icons, Details };
+    FileBrowserWidget &set_view_mode(ViewMode mode);
+    ViewMode view_mode() const { return view_mode_; }
+
     IconGrid *icon_grid() const { return icon_grid_; }
 
   private:
@@ -74,8 +78,6 @@ class FileBrowserWidget : public VBoxLayout, public Fluent<FileBrowserWidget> {
     void push_history(std::string path);
     void update_buttons();
     void on_activated(size_t index);
-
-    enum class ViewMode { List, Icons, Details };
     ViewMode view_mode_ = ViewMode::Icons;
 
     std::string current_path_;

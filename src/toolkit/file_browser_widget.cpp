@@ -76,7 +76,8 @@ class DirModel : public ItemModel {
         }
         auto icon_name =
             e.is_dir ? XDG::IconMimeTypes::inodeDirectory : XDG::IconMimeTypes::textXGeneric;
-        e.cached_icon = Application::instance().load_icon(icon_name, size);
+        e.cached_icon =
+            Application::instance().load_icon(icon_name, size, XDG::IconContexts::mimeTypes);
         e.cached_icon_size = size;
         return e.cached_icon;
     }
@@ -196,7 +197,20 @@ void FileBrowserWidget::navigate_to(std::string path) { set_current_path(std::mo
 
 void FileBrowserWidget::navigate_home() { set_current_path(home_path()); }
 
-void FileBrowserWidget::set_browser_mode(bool browser) {
+FileBrowserWidget &FileBrowserWidget::set_view_mode(ViewMode mode) {
+    view_mode_ = mode;
+    if (stacked_) {
+        auto *m = static_cast<DirModel *>(model_.get());
+        m->set_detail_mode(mode == ViewMode::Details);
+        stacked_->set_current(static_cast<int>(mode));
+        if (m->on_data_changed) {
+            m->on_data_changed();
+        }
+    }
+    return *this;
+}
+
+FileBrowserWidget &FileBrowserWidget::set_browser_mode(bool browser) {
     browser_mode_ = browser;
     auto page = browser ? 0 : 1;
     if (toolbar_extras_) {
@@ -205,6 +219,7 @@ void FileBrowserWidget::set_browser_mode(bool browser) {
     if (bottom_stack_) {
         bottom_stack_->set_current(page);
     }
+    return *this;
 }
 
 void FileBrowserWidget::set_filename(std::string_view name) {
