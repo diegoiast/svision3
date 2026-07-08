@@ -824,6 +824,7 @@ auto TabWidget::handle_tab_drag(MouseEvent const &event) -> bool {
                      orientation_ == TabOrientation::WestVertical);
 
     if (event.type == MouseEvent::Type::Drag) {
+        pending_collapse_tab_ = -1; // real drag → cancel collapse-on-release
         auto mouse_pos = vertical ? event.position.y : event.position.x;
         drag_offset_x_ = mouse_pos - drag_start_x_;
 
@@ -913,11 +914,23 @@ auto TabWidget::handle_tab_drag(MouseEvent const &event) -> bool {
     }
 
     if (event.type == MouseEvent::Type::Release) {
+        int collapse_tab = pending_collapse_tab_;
+        pending_collapse_tab_ = -1;
         dragging_ = false;
         drag_offset_x_ = 0;
         drag_tab_ = -1;
         if (window_) {
             window_->request_redraw("tab change");
+        }
+        if (collapse_tab >= 0) {
+            auto is_collapsible_orientation =
+                (orientation_ == TabOrientation::West || orientation_ == TabOrientation::East ||
+                 orientation_ == TabOrientation::WestVertical ||
+                 orientation_ == TabOrientation::EastVertical ||
+                 orientation_ == TabOrientation::South);
+            if (collapsible_ && is_collapsible_orientation) {
+                set_collapsed(!collapsed_);
+            }
         }
         return true;
     }
@@ -977,6 +990,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
     }
 
     if (event.type == MouseEvent::Type::Leave) {
+        pending_collapse_tab_ = -1;
         if (hovered_tab_ != -1 || hovered_close_ != -1) {
             hovered_tab_ = -1;
             hovered_close_ = -1;
@@ -1002,6 +1016,22 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
         }
     }
 
+    if (event.type == MouseEvent::Type::Release && pending_collapse_tab_ >= 0) {
+        int tab = pending_collapse_tab_;
+        pending_collapse_tab_ = -1;
+        if (in_bar && hr.tab == tab) {
+            auto is_collapsible_orientation =
+                (orientation_ == TabOrientation::West || orientation_ == TabOrientation::East ||
+                 orientation_ == TabOrientation::WestVertical ||
+                 orientation_ == TabOrientation::EastVertical ||
+                 orientation_ == TabOrientation::South);
+            if (collapsible_ && is_collapsible_orientation) {
+                set_collapsed(!collapsed_);
+            }
+        }
+        return true;
+    }
+
     if (event.type == MouseEvent::Type::Press && in_bar) {
         if (window_ && focus_on_tab_click_) {
             window_->set_focused_widget(this);
@@ -1020,9 +1050,20 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
                  orientation_ == TabOrientation::EastVertical ||
                  orientation_ == TabOrientation::South);
             if (collapsible_ && is_collapsible_orientation && hr.tab == current_) {
-                set_collapsed(!collapsed_);
+                pending_collapse_tab_ = hr.tab;
+                if (tabs_movable_) {
+                    dragging_ = true;
+                    drag_tab_ = hr.tab;
+                    auto v = (orientation_ == TabOrientation::East ||
+                              orientation_ == TabOrientation::West ||
+                              orientation_ == TabOrientation::EastVertical ||
+                              orientation_ == TabOrientation::WestVertical);
+                    drag_start_x_ = v ? event.position.y : event.position.x;
+                    drag_offset_x_ = 0;
+                }
                 return true;
             }
+            pending_collapse_tab_ = -1;
             if (hr.tab != current_) {
                 if (collapsed_) {
                     set_collapsed(false);
@@ -1206,7 +1247,7 @@ auto TabWidget::widget_at(Point p) -> Widget * {
             return w;
         }
     }
-    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
+    if (!collapsed_ && current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
         auto local_p = p;
         local_p.x -= tabs_[current_].content->rect().x;
         local_p.y -= tabs_[current_].content->rect().y;

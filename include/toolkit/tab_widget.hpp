@@ -141,6 +141,7 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     int drag_tab_ = -1;
     float drag_start_x_ = 0;
     float drag_offset_x_ = 0;
+    int pending_collapse_tab_ = -1; // tab pressed down for collapse; collapse fires on release
 };
 
 } // namespace toolkit
