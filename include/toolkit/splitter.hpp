@@ -6,6 +6,8 @@
 #include "toolkit/widget.hpp"
 #include <functional>
 #include <memory>
+#include <optional>
+#include <vector>
 
 namespace toolkit {
 
@@ -17,13 +19,32 @@ class Splitter : public Widget, public Fluent<Splitter> {
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;
 
+    // Add a child widget to the end. A new divider is created between the previous
+    // last child and this one with a default equal-distribution ratio. Call
+    // set_ratio() after adding all children to set exact positions.
+    Splitter &add_child(std::unique_ptr<Widget> w);
+    size_t child_count() const { return children_.size(); }
+    Widget *child_at(size_t index);
+
+    // Set/get the ratio (0..1) for divider i. Ratio is the centre of the handle
+    // as a fraction of the splitter's total extent.
+    Splitter &set_ratio(int divider, float r);
+    float ratio(int divider) const;
+
+    // Lock/unlock a single divider (hides its handle and prevents dragging).
+    Splitter &set_divider_locked(int divider, bool locked);
+    bool is_divider_locked(int divider) const;
+
+    // Backward-compat wrappers for existing 2-child code -----------------------
     Splitter &set_first(std::unique_ptr<Widget> w);
     Splitter &set_second(std::unique_ptr<Widget> w);
-    Splitter &set_ratio(float r);
-    float ratio() const { return ratio_; }
+    Splitter &set_ratio(float r) { return set_ratio(0, r); }
+    float ratio() const { return ratio(0); }
+    Splitter &set_locked(bool locked);  // lock/unlock all dividers
+    bool locked() const;                // true if any divider is locked
+    // --------------------------------------------------------------------------
+
     Orientation orientation() const { return orientation_; }
-    Splitter &set_locked(bool locked);
-    bool locked() const { return locked_; }
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
@@ -39,20 +60,20 @@ class Splitter : public Widget, public Fluent<Splitter> {
     void on_theme_changed() override;
 
   private:
-    std::unique_ptr<Widget> first_;
-    std::unique_ptr<Widget> second_;
-    float ratio_ = 0.5f;
+    std::vector<std::unique_ptr<Widget>> children_;
+    std::vector<float> ratios_;            // child_count()-1 values
+    std::vector<uint8_t> locked_dividers_; // child_count()-1 flags (0=free, 1=locked)
     Orientation orientation_;
     CursorShape cursor_ = CursorShape::Arrow;
-    bool dragging_ = false;
-    bool locked_ = false;
-    int active_pane_ = -1; // 0 = first, 1 = second, -1 = none
+    std::optional<int> dragging_divider_;
+    std::optional<int> hovered_divider_;
 
-    static constexpr float kHandleSize = 5.0f;
-    static constexpr float kBorderWidth = 2.0f;
+    static constexpr float kBorderWidth = 5.0f;
+    static constexpr float kHitRadius = 2.0f;
 
-    float split_pos() const; // clamped pixel position of the split
-    Rect handle_rect() const;
+    float effective_thickness(int divider) const;
+    std::vector<float> compute_positions() const;
+    Rect handle_rect(int divider, std::vector<float> const &positions) const;
     void layout_children();
 };
 

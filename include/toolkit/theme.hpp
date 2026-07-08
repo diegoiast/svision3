@@ -121,6 +121,13 @@ struct Style {
     } progressBar;
 
     struct {
+        float thickness = 6.0f;   // layout width of the drag area
+        int dot_count = 5;        // number of grip dots/grooves
+        float dot_size = 3.0f;    // diameter (or length) of each mark
+        float dot_spacing = 5.0f; // centre-to-centre spacing
+    } splitter;
+
+    struct {
         float margin = 5.0f;
         float corner_radius = 5.0f;
         Painter::LineStyle line_style = Painter::LineStyle::Dashed;
@@ -314,6 +321,8 @@ class Theme {
                                 int first_visible_line, float line_height, float gutter_width,
                                 float scroll_x, float scroll_y, WidgetState const &state,
                                 std::chrono::steady_clock::time_point cursor_blink_time) const = 0;
+    virtual void draw_splitter_handle(Painter &painter, float pos, Rect const &splitter_rect,
+                                      Orientation orientation, bool hovered) const = 0;
     virtual void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const = 0;
     virtual void draw_focus_ring_for_widget(Painter &painter, Widget const *widget) const;
     virtual Size measure_label(std::string_view text, float font_size) const = 0;

@@ -468,6 +468,31 @@ void BaseTheme::draw_menu_indicator(Painter &painter, Rect const &rect, bool ena
                           color);
 }
 
+void BaseTheme::draw_splitter_handle(Painter &painter, float pos, Rect const &splitter_rect,
+                                     Orientation orientation, bool hovered) const {
+    auto const &s = style.splitter;
+    auto color = hovered ? palette.accent : palette.border;
+
+    auto const total_len = (s.dot_count - 1) * s.dot_spacing;
+    auto const r = s.dot_size / 2.0f;
+
+    if (orientation == Orientation::Horizontal) {
+        auto const cx = pos;
+        auto const mid = splitter_rect.y + splitter_rect.height / 2.0f;
+        auto const start = mid - total_len / 2.0f;
+        for (int i = 0; i < s.dot_count; ++i) {
+            painter.fill_circle({cx, start + i * s.dot_spacing}, r, color);
+        }
+    } else {
+        auto const cy = pos;
+        auto const mid = splitter_rect.x + splitter_rect.width / 2.0f;
+        auto const start = mid - total_len / 2.0f;
+        for (int i = 0; i < s.dot_count; ++i) {
+            painter.fill_circle({start + i * s.dot_spacing, cy}, r, color);
+        }
+    }
+}
+
 void BaseTheme::draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                                   WidgetState const &state) const {
     auto enabled = state.enabled;

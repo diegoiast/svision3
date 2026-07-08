@@ -41,6 +41,9 @@ class BaseTheme : public Theme {
     void draw_menu_separator(Painter &painter, Rect const &rect) const override;
     void draw_menu_indicator(Painter &painter, Rect const &rect, bool enabled) const override;
 
+    void draw_splitter_handle(Painter &painter, float pos, Rect const &splitter_rect,
+                              Orientation orientation, bool hovered) const override;
+
     void draw_progress_bar(Painter &painter, Rect const &rect, float progress,
                            WidgetState const &state) const override;
 

@@ -207,6 +207,34 @@ Palette Win95Theme::default_palette(ColorScheme scheme) const {
     return p;
 }
 
+void Win95Theme::draw_splitter_handle(Painter &painter, float pos, Rect const &splitter_rect,
+                                      Orientation orientation, bool hovered) const {
+    // Win95 style: beveled grooves (pairs of shadow+highlight lines)
+    auto const &s = style.splitter;
+    auto const shadow = palette.window.darken(0.4f);
+    auto const highlight = palette.window.lighten(0.6f);
+    auto const total_len = (s.dot_count - 1) * s.dot_spacing;
+
+    if (orientation == Orientation::Horizontal) {
+        auto const mid = splitter_rect.y + splitter_rect.height / 2.0f;
+        auto const start = mid - total_len / 2.0f;
+        for (int i = 0; i < s.dot_count; ++i) {
+            auto y = start + i * s.dot_spacing;
+            // 2px shadow + 2px highlight = one bevel groove
+            painter.fill_rect({pos - 1.0f, y, 1.0f, s.dot_size}, shadow);
+            painter.fill_rect({pos,         y, 1.0f, s.dot_size}, highlight);
+        }
+    } else {
+        auto const mid = splitter_rect.x + splitter_rect.width / 2.0f;
+        auto const start = mid - total_len / 2.0f;
+        for (int i = 0; i < s.dot_count; ++i) {
+            auto x = start + i * s.dot_spacing;
+            painter.fill_rect({x, pos - 1.0f, s.dot_size, 1.0f}, shadow);
+            painter.fill_rect({x, pos,         s.dot_size, 1.0f}, highlight);
+        }
+    }
+}
+
 void Win95Theme::draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const {
     auto lw = 2.0f;
     auto dash_len = 2.0f;
