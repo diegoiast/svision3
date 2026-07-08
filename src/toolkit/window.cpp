@@ -1426,6 +1426,15 @@ void Window::draw_widget_inspector(Painter &painter) {
     if (!widget) {
         return;
     }
+    // hovered_widget_ is only recomputed on mouse move, so it can go stale when
+    // a dock is collapsed by keyboard/command while the pointer sits still. A
+    // widget's own visible flag stays true even when an ancestor is hidden, so
+    // walk the chain and skip the overlay if anything above it is invisible.
+    for (auto *w = widget; w; w = w->parent()) {
+        if (!w->is_visible()) {
+            return;
+        }
+    }
 
     using Line = std::pair<std::string, Color>;
     auto lines = std::vector<Line>{};
@@ -1473,8 +1482,8 @@ void Window::draw_widget_inspector(Painter &painter) {
     if (box_y < 0.0f) {
         box_y = origin.y + r.height + 4.0f;
     }
-    box_x = std::clamp(box_x, 0.0f, size_.width - box_w);
-    box_y = std::clamp(box_y, 0.0f, size_.height - box_h);
+    box_x = std::clamp(box_x, 0.0f, std::max(0.0f, size_.width - box_w));
+    box_y = std::clamp(box_y, 0.0f, std::max(0.0f, size_.height - box_h));
 
     auto const box = Rect{box_x, box_y, box_w, box_h};
     painter.fill_rounded_rect(box, kInspectorBackground, theme.style.corner_radius);
