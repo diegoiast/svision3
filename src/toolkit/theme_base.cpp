@@ -109,12 +109,6 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
     auto pressed = state.interaction == ButtonState::ClickedInside || state.checked;
     auto focused = state.focused;
     auto enabled = state.enabled;
-    auto border_c =
-        (focused || hovered || (pressed && !state.checked)) ? palette.accent : palette.border;
-    if (state.checked) {
-        border_c = palette.accent;
-    }
-    auto text_c = enabled ? palette.text : palette.text_disabled;
     auto text_offset = (style.beveled && pressed && enabled) ? 1.0f : 0.0f;
     auto fm = painter.font_metrics(palette.fonts.size);
     auto display = strip_mnemonic(text);
@@ -132,21 +126,43 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
     auto text_pos = Point{text_x, baseline_y + text_offset};
     auto show_full_frame = !flat || hovered || pressed;
 
-    auto defaultBg = palette.base;
-    if (flat && state.interaction != ButtonState::Hovered) {
-        defaultBg =
-            state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
+    // When a custom background is set, the button face and everything derived
+    // from it (interaction shades, border, text contrast) come from that color,
+    // never the palette.
+    auto bg = background.value_or(palette.base);
+    auto dark = bg.luma() < 0.5f;
+    if (!background && flat && state.interaction != ButtonState::Hovered) {
+        bg = state.window_active ? palette.window
+                                 : palette.window_inactive.value_or(palette.window);
     }
-    auto bg = background.value_or(defaultBg);
-    if (enabled && !background) {
-        if (pressed && palette.background_pressed) {
-            bg = *palette.background_pressed;
-        } else if (focused) {
+    if (enabled) {
+        if (pressed) {
+            bg = background ? (dark ? bg.lighten(0.15f) : bg.darken(0.15f))
+                            : palette.background_pressed.value_or(bg);
+        } else if (focused && !background) {
             // FIXME: do we need a focused color for Buttons?
             bg = palette.base;
-        } else if (hovered && palette.background_hovered) {
-            bg = *palette.background_hovered;
+        } else if (hovered) {
+            bg = background ? (dark ? bg.lighten(0.08f) : bg.darken(0.08f))
+                            : palette.background_hovered.value_or(bg);
         }
+    }
+
+    Color border_c;
+    Color text_c;
+    if (background) {
+        border_c = focused ? palette.accent : (dark ? bg.lighten(0.2f) : bg.darken(0.2f));
+        text_c = (bg.luma() < 0.5f) ? Color::rgb(1.0f, 1.0f, 1.0f) : Color::rgb(0.0f, 0.0f, 0.0f);
+        if (!enabled) {
+            text_c = text_c.with_alpha(0.5f);
+        }
+    } else {
+        border_c =
+            (focused || hovered || (pressed && !state.checked)) ? palette.accent : palette.border;
+        if (state.checked) {
+            border_c = palette.accent;
+        }
+        text_c = enabled ? palette.text : palette.text_disabled;
     }
     if (show_full_frame) {
         auto use_shadow = style.button.bottom_shadow && !hovered && !pressed;

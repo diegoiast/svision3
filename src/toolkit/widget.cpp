@@ -1,10 +1,10 @@
-#include <nlohmann/json.hpp>
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/platform.hpp"
 #include "toolkit/widget.hpp"
+#include "toolkit/platform.hpp"
 #include "toolkit/window.hpp"
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
@@ -100,7 +100,16 @@ Widget &Widget::set_on_top(bool v) {
 
 Widget &Widget::set_background_color(std::optional<Color> c) {
     background_color_ = c;
+    if (window_) {
+        window_->request_redraw("background color");
+    }
     return *this;
+}
+
+void Widget::paint_background(Painter &painter) {
+    if (background_color_) {
+        painter.fill_rect({0, 0, rect_.width, rect_.height}, *background_color_);
+    }
 }
 
 auto Widget::dispatch_mouse_event(Widget *w, MouseEvent const &event) -> bool {
@@ -133,9 +142,7 @@ void Widget::draw(Painter &painter) {
     // FIXME: this translation should be in calling parent, no?
     painter.push_clip(rect_);
     painter.push_translation({rect_.x, rect_.y});
-    if (background_color_) {
-        painter.fill_rect({0, 0, rect_.width, rect_.height}, *background_color_);
-    }
+    paint_background(painter);
     paint(painter);
     painter.pop_translation();
     painter.pop_clip();

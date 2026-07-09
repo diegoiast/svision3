@@ -141,8 +141,7 @@ class Widget {
     // FIXME: in practice Platform and Painter should have the same rasterizer
     //        - but in practice this may differ. We should choose the rasterizer
     //        from the painter.
-    Size measure_text(std::string_view text, float font_size,
-                      FontFamily font = FontFamily::System,
+    Size measure_text(std::string_view text, float font_size, FontFamily font = FontFamily::System,
                       bool bold = false, bool italic = false) const;
     Painter::FontMetrics font_metrics(float font_size, FontFamily font = FontFamily::System) const;
 
@@ -163,6 +162,8 @@ class Widget {
     virtual nlohmann::json to_json() const;
     virtual void from_json(nlohmann::json const &j);
     virtual std::string_view class_name() const { return "Widget"; }
+
+    virtual void paint_background(Painter &painter);
 
   protected:
     // Let window call this protected method
