@@ -183,6 +183,13 @@ int main(int, char *[]) {
     cmd_toggle_docks->set_shortcut("ctrl+e");
     win->add_command(cmd_toggle_docks);
 
+    auto cmd_inspector = Command::create("Toggle Inspector", [win]() {
+        Widget::debug_show_inspector = !Widget::debug_show_inspector;
+        win->request_redraw("inspector toggle");
+    });
+    cmd_inspector->set_shortcut("super+f12");
+    win->add_command(cmd_inspector);
+
     center_ptr->set_leading_widget(
         ui::button("Menu")
             //.flat(true)
