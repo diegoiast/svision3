@@ -5,6 +5,7 @@
 
 #include "toolkit/widget.hpp"
 #include <functional>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -60,9 +61,19 @@ class Splitter : public Widget, public Fluent<Splitter> {
     void on_theme_changed() override;
 
   private:
+    // A locked divider is hidden and not draggable. Its position is anchored in
+    // pixels to the nearest edge (captured on the first layout after locking),
+    // so a collapsed pane keeps its exact size when the splitter is resized —
+    // a stored ratio would drift and leave a gap.
+    struct DividerLock {
+        uint8_t locked = 0;
+        uint8_t from_end = 0; // anchor edge: 0 = start (left/top), 1 = end
+        float px = std::numeric_limits<float>::quiet_NaN(); // NaN = not captured yet
+    };
+
     std::vector<std::unique_ptr<Widget>> children_;
-    std::vector<float> ratios_;            // child_count()-1 values
-    std::vector<uint8_t> locked_dividers_; // child_count()-1 flags (0=free, 1=locked)
+    std::vector<float> ratios_;                 // child_count()-1 values
+    mutable std::vector<DividerLock> locked_dividers_; // child_count()-1 entries
     Orientation orientation_;
     CursorShape cursor_ = CursorShape::Arrow;
     std::optional<int> dragging_divider_;

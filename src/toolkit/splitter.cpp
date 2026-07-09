@@ -48,7 +48,7 @@ Splitter &Splitter::add_child(std::unique_ptr<Widget> w) {
     if (!children_.empty()) {
         auto N = children_.size();
         ratios_.push_back(static_cast<float>(N) / static_cast<float>(N + 1));
-        locked_dividers_.push_back(0u);
+        locked_dividers_.push_back({});
     }
     if (w) {
         w->set_parent(this);
@@ -71,6 +71,8 @@ Widget *Splitter::child_at(size_t index) {
 Splitter &Splitter::set_ratio(int divider, float r) {
     if (divider < 0 || divider >= (int)ratios_.size()) return *this;
     ratios_[divider] = std::clamp(r, 0.0f, 1.0f);
+    // Force a locked divider to re-anchor from the new ratio.
+    locked_dividers_[divider].px = std::numeric_limits<float>::quiet_NaN();
     layout_children();
     if (window_) window_->request_redraw("splitter ratio");
     return *this;
@@ -83,7 +85,8 @@ float Splitter::ratio(int divider) const {
 
 Splitter &Splitter::set_divider_locked(int divider, bool locked) {
     if (divider < 0 || divider >= (int)locked_dividers_.size()) return *this;
-    locked_dividers_[divider] = locked ? 1u : 0u;
+    locked_dividers_[divider].locked = locked ? 1u : 0u;
+    locked_dividers_[divider].px = std::numeric_limits<float>::quiet_NaN();
     if (locked && dragging_divider_ == divider) dragging_divider_.reset();
     cursor_ = CursorShape::Arrow;
     hovered_divider_.reset();
@@ -94,7 +97,7 @@ Splitter &Splitter::set_divider_locked(int divider, bool locked) {
 
 bool Splitter::is_divider_locked(int divider) const {
     if (divider < 0 || divider >= (int)locked_dividers_.size()) return false;
-    return locked_dividers_[divider] != 0;
+    return locked_dividers_[divider].locked != 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +131,10 @@ Splitter &Splitter::set_second(std::unique_ptr<Widget> w) {
 }
 
 Splitter &Splitter::set_locked(bool locked) {
-    for (auto &b : locked_dividers_) b = locked ? 1u : 0u;
+    for (auto &lk : locked_dividers_) {
+        lk.locked = locked ? 1u : 0u;
+        lk.px = std::numeric_limits<float>::quiet_NaN();
+    }
     if (locked) dragging_divider_.reset();
     cursor_ = CursorShape::Arrow;
     hovered_divider_.reset();
@@ -138,8 +144,8 @@ Splitter &Splitter::set_locked(bool locked) {
 }
 
 bool Splitter::locked() const {
-    for (auto b : locked_dividers_) {
-        if (b) return true;
+    for (auto const &lk : locked_dividers_) {
+        if (lk.locked) return true;
     }
     return false;
 }
@@ -172,20 +178,38 @@ std::vector<float> Splitter::compute_positions() const {
 
     for (int i = 0; i < M; i++) {
         float hs = effective_thickness(i);
-        float min_i = child_min(i);
-
-        float min_after = 0.0f;
-        for (int j = i + 1; j < N; j++) {
-            min_after += child_min(j);
-            if (j < N - 1) min_after += effective_thickness(j);
-        }
-
         float r = (i < (int)ratios_.size()) ? ratios_[i]
                                              : static_cast<float>(i + 1) / static_cast<float>(N);
         float raw = total * r - hs / 2.0f;
-        raw = std::max(raw, prev_end + min_i);
-        raw = std::min(raw, total - hs - min_after);
-        raw = std::max(raw, prev_end);
+
+        if (is_divider_locked(i)) {
+            // A locked divider is fixed by intent (used to collapse a pane).
+            // On the first layout after locking, capture its pixel distance
+            // from the nearest edge; later layouts keep that distance so the
+            // collapsed pane never drifts when the splitter is resized (a
+            // ratio would scale with the new total and leave a gap). Child
+            // minimums are ignored so a pane can shrink all the way to zero.
+            auto &lk = locked_dividers_[i];
+            if (std::isnan(lk.px) && total > 0.0f) {
+                auto p = std::clamp(raw, 0.0f, total);
+                lk.from_end = p > total / 2.0f ? 1u : 0u;
+                lk.px = lk.from_end ? total - p : p;
+            }
+            if (!std::isnan(lk.px)) {
+                raw = lk.from_end ? total - lk.px : lk.px;
+            }
+            raw = std::clamp(raw, prev_end, total);
+        } else {
+            float min_i = child_min(i);
+            float min_after = 0.0f;
+            for (int j = i + 1; j < N; j++) {
+                min_after += child_min(j);
+                if (j < N - 1) min_after += effective_thickness(j);
+            }
+            raw = std::max(raw, prev_end + min_i);
+            raw = std::min(raw, total - hs - min_after);
+            raw = std::max(raw, prev_end);
+        }
         pos[i] = std::round(raw);
         prev_end = pos[i] + hs;
     }
