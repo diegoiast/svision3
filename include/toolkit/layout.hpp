@@ -17,9 +17,15 @@ namespace toolkit {
 // Derived classes implement apply_layout(), size_hint(), and for_each_child().
 class AbstractLayout : public Widget, public Fluent<AbstractLayout> {
   public:
-    AbstractLayout &set_margins(Margins const &m) { margins_ = m; return *this; }
+    AbstractLayout &set_margins(Margins const &m) {
+        margins_ = m;
+        return *this;
+    }
     Margins const &get_margins() const { return margins_; }
-    AbstractLayout &set_spacing(float s) { spacing_ = s; return *this; }
+    AbstractLayout &set_spacing(float s) {
+        spacing_ = s;
+        return *this;
+    }
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
@@ -135,19 +141,34 @@ class GridLayout : public AbstractLayout {
                     Alignment v_align = Alignment::Fill);
 
     template <class T>
-    T &add(int row, int col, int rowspan = 1, int colspan = 1,
-           Alignment h_align = Alignment::Fill, Alignment v_align = Alignment::Fill) {
+    T &add(int row, int col, int rowspan = 1, int colspan = 1, Alignment h_align = Alignment::Fill,
+           Alignment v_align = Alignment::Fill) {
         auto ptr = std::make_unique<T>();
         T &ref = *ptr;
         add_widget(std::move(ptr), row, col, rowspan, colspan, h_align, v_align);
         return ref;
     }
 
-    GridLayout &set_column_stretch(int col, int stretch) { col_stretch_[col] = stretch; return *this; }
-    GridLayout &set_row_stretch(int row, int stretch) { row_stretch_[row] = stretch; return *this; }
-    GridLayout &set_spacing(float s) { col_spacing_ = row_spacing_ = s; return *this; }
-    GridLayout &set_column_spacing(float s) { col_spacing_ = s; return *this; }
-    GridLayout &set_row_spacing(float s) { row_spacing_ = s; return *this; }
+    GridLayout &set_column_stretch(int col, int stretch) {
+        col_stretch_[col] = stretch;
+        return *this;
+    }
+    GridLayout &set_row_stretch(int row, int stretch) {
+        row_stretch_[row] = stretch;
+        return *this;
+    }
+    GridLayout &set_spacing(float s) {
+        col_spacing_ = row_spacing_ = s;
+        return *this;
+    }
+    GridLayout &set_column_spacing(float s) {
+        col_spacing_ = s;
+        return *this;
+    }
+    GridLayout &set_row_spacing(float s) {
+        row_spacing_ = s;
+        return *this;
+    }
 
     Size size_hint() const override;
     void for_each_child(std::function<void(Widget *)> const &callback) override;
@@ -179,6 +200,8 @@ class StackedLayout : public AbstractLayout {
         add_widget(std::move(ptr));
         return ref;
     }
+    void remove_widget(int index);
+    void swap_widgets(int a, int b);
 
     StackedLayout &set_current(int index);
     int current() const { return current_; }
@@ -210,7 +233,10 @@ class FormLayout : public AbstractLayout {
     };
 
     void add_row(std::unique_ptr<Widget> label, std::unique_ptr<Widget> field);
-    FormLayout &set_label_spacing(float s) { label_spacing_ = s; return *this; }
+    FormLayout &set_label_spacing(float s) {
+        label_spacing_ = s;
+        return *this;
+    }
 
     Size size_hint() const override;
     void for_each_child(std::function<void(Widget *)> const &callback) override;

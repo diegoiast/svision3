@@ -97,7 +97,6 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     struct Tab {
         std::string title;
         std::string tooltip;
-        std::unique_ptr<Widget> content;
         bool closable = true;
     };
 
@@ -116,6 +115,7 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     };
     HitResult hit_test_tab(Point p) const;
 
+    std::unique_ptr<class StackedLayout> content_layout_;
     std::vector<Tab> tabs_;
     TabOrientation orientation_ = TabOrientation::North;
     int current_ = 0;

@@ -827,10 +827,6 @@ void GridLayout::from_json(nlohmann::json const &j) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// StackedLayout
-// ---------------------------------------------------------------------------
-
 StackedLayout::StackedLayout() {}
 
 void StackedLayout::for_each_child(std::function<void(Widget *)> const &callback) {
@@ -848,6 +844,40 @@ void StackedLayout::add_widget(std::unique_ptr<Widget> widget) {
     items_.push_back(std::move(widget));
     if (current_ < 0) {
         set_current(0);
+    }
+}
+
+void StackedLayout::remove_widget(int index) {
+    if (index < 0 || index >= static_cast<int>(items_.size())) {
+        return;
+    }
+    items_.erase(items_.begin() + index);
+    auto n = static_cast<int>(items_.size());
+    if (n == 0) {
+        current_ = -1;
+    } else if (current_ >= n) {
+        current_ = n - 1;
+        items_[current_]->set_visible(true);
+        apply_layout();
+    } else if (current_ == index) {
+        current_ = std::min(index, n - 1);
+        items_[current_]->set_visible(true);
+        apply_layout();
+    } else if (current_ > index) {
+        current_--;
+    }
+}
+
+void StackedLayout::swap_widgets(int a, int b) {
+    auto n = static_cast<int>(items_.size());
+    if (a < 0 || a >= n || b < 0 || b >= n || a == b) {
+        return;
+    }
+    std::swap(items_[a], items_[b]);
+    if (current_ == a) {
+        current_ = b;
+    } else if (current_ == b) {
+        current_ = a;
     }
 }
 
@@ -922,10 +952,6 @@ void StackedLayout::from_json(nlohmann::json const &j) {
         set_current(j["current"].get<int>());
     }
 }
-
-// ---------------------------------------------------------------------------
-// FormLayout
-// ---------------------------------------------------------------------------
 
 FormLayout::FormLayout() {}
 

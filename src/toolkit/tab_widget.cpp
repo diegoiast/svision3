@@ -3,6 +3,7 @@
 
 #include "toolkit/tab_widget.hpp"
 #include "toolkit/button.hpp"
+#include "toolkit/layout.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/widget_loader.hpp"
 #include "toolkit/window.hpp"
@@ -20,11 +21,14 @@ nlohmann::json TabWidget::to_json() const {
     j["tabs_movable"] = tabs_movable_;
     j["min_tab_width"] = min_tab_width_;
     nlohmann::json tabs = nlohmann::json::array();
-    for (auto const &tab : tabs_) {
+    auto const &items = content_layout_->items();
+    for (auto i = 0; i < static_cast<int>(tabs_.size()); i++) {
         nlohmann::json t;
-        t["title"] = tab.title;
-        t["content"] = tab.content->to_json();
-        t["closable"] = tab.closable;
+        t["title"] = tabs_[i].title;
+        t["closable"] = tabs_[i].closable;
+        if (i < static_cast<int>(items.size())) {
+            t["content"] = items[i]->to_json();
+        }
         tabs.push_back(t);
     }
     j["tabs"] = tabs;
@@ -77,6 +81,9 @@ TabWidget::TabWidget() {
     state.focusable = false;
     state.non_focus_input = true;
 
+    content_layout_ = std::make_unique<StackedLayout>();
+    content_layout_->set_parent(this);
+
     prev_button_ = std::make_unique<Button>("<");
     prev_button_->set_flat(true);
     prev_button_->on_click = [this]() { scroll_by(-100); };
@@ -89,12 +96,8 @@ TabWidget::TabWidget() {
 }
 
 TabWidget &TabWidget::add_tab(std::string title, std::unique_ptr<Widget> content, bool closable) {
-    content->set_parent(this);
-    if (window_) {
-        content->set_window(window_);
-    }
-    tabs_.push_back(
-        {.title = std::move(title), .content = std::move(content), .closable = closable});
+    content_layout_->add_widget(std::move(content));
+    tabs_.push_back({.title = std::move(title), .closable = closable});
     if (rect_.width > 0 || rect_.height > 0) {
         layout_content();
     }
@@ -106,21 +109,8 @@ TabWidget &TabWidget::remove_tab(int index) {
         return *this;
     }
     tabs_.erase(tabs_.begin() + index);
-
-    // Keep current_ in valid range.
-    auto n = static_cast<int>(tabs_.size());
-    if (n == 0) {
-        current_ = -1;
-    } else if (current_ >= n) {
-        current_ = n - 1;
-        tabs_[current_].content->set_visible(true);
-    } else if (current_ == index) {
-        // The current tab was removed; show the one now at that position (or the last).
-        current_ = std::min(index, n - 1);
-        tabs_[current_].content->set_visible(true);
-    } else if (current_ > index) {
-        current_--;
-    }
+    content_layout_->remove_widget(index);
+    current_ = content_layout_->current();
 
     layout_content();
     if (window_) {
@@ -169,6 +159,7 @@ TabWidget &TabWidget::set_min_tab_width(float width) {
 TabWidget &TabWidget::set_current(int index) {
     if (index >= 0 && index < static_cast<int>(tabs_.size())) {
         current_ = index;
+        content_layout_->set_current(index);
         scroll_to_tab(index);
         layout_content();
     }
@@ -483,12 +474,11 @@ void TabWidget::layout_content() {
 
     update_scroll_bounds();
 
-    for (auto i = 0; i < static_cast<int>(tabs_.size()); i++) {
-        bool is_current = (i == current_) && !collapsed_;
-        tabs_[i].content->set_visible(is_current);
-        if (is_current) {
-            tabs_[i].content->set_rect(content_rect);
-        }
+    if (collapsed_) {
+        content_layout_->set_visible(false);
+    } else {
+        content_layout_->set_visible(true);
+        content_layout_->set_rect(content_rect);
     }
 }
 
@@ -614,9 +604,7 @@ void TabWidget::set_rect(Rect const &rect) {
 
 void TabWidget::set_window(Window *w) {
     window_ = w;
-    for (auto &tab : tabs_) {
-        tab.content->set_window(w);
-    }
+    content_layout_->set_window(w);
     if (leading_widget_) {
         leading_widget_->set_window(w);
     }
@@ -791,30 +779,9 @@ void TabWidget::paint(Painter &painter) {
 
     painter.pop_clip();
 
-    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        auto &content = tabs_[current_].content;
-
-        // Calculate the content rect, taking orientation into account.
-        auto thickness = tab_bar_thickness();
-        auto vertical =
-            (orientation_ == TabOrientation::East || orientation_ == TabOrientation::West ||
-             orientation_ == TabOrientation::EastVertical ||
-             orientation_ == TabOrientation::WestVertical);
-        auto content_rect = Rect{0, 0, rect_.width, rect_.height};
-        if (orientation_ == TabOrientation::North) {
-            content_rect = {0, thickness, rect_.width, rect_.height - thickness};
-        } else if (orientation_ == TabOrientation::South) {
-            content_rect = {0, 0, rect_.width, rect_.height - thickness};
-        } else if (orientation_ == TabOrientation::West ||
-                   orientation_ == TabOrientation::WestVertical) {
-            content_rect = {thickness, 0, rect_.width - thickness, rect_.height};
-        } else if (orientation_ == TabOrientation::East ||
-                   orientation_ == TabOrientation::EastVertical) {
-            content_rect = {0, 0, rect_.width - thickness, rect_.height};
-        }
-
-        Theme::current().draw_tab_content_background(painter, content_rect);
-        content->draw(painter);
+    if (!collapsed_ && current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
+        Theme::current().draw_tab_content_background(painter, content_layout_->rect());
+        content_layout_->draw(painter);
     }
 }
 
@@ -877,6 +844,7 @@ auto TabWidget::handle_tab_drag(MouseEvent const &event) -> bool {
                 auto prev_mid = pos - prev_size / 2.0f;
                 if (dragged_center < prev_mid) {
                     std::swap(tabs_[drag_tab_], tabs_[drag_tab_ - 1]);
+                    content_layout_->swap_widgets(drag_tab_, drag_tab_ - 1);
                     if (current_ == drag_tab_) {
                         current_ = drag_tab_ - 1;
                     } else if (current_ == drag_tab_ - 1) {
@@ -894,6 +862,7 @@ auto TabWidget::handle_tab_drag(MouseEvent const &event) -> bool {
                 auto next_mid = pos + cur_size + next_size / 2.0f;
                 if (dragged_center > next_mid) {
                     std::swap(tabs_[drag_tab_], tabs_[drag_tab_ + 1]);
+                    content_layout_->swap_widgets(drag_tab_, drag_tab_ + 1);
                     if (current_ == drag_tab_) {
                         current_ = drag_tab_ + 1;
                     } else if (current_ == drag_tab_ + 1) {
@@ -983,10 +952,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
                 window_->request_redraw("tab hover");
             }
         }
-        if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-            return Widget::dispatch_mouse_event(tabs_[current_].content.get(), event);
-        }
-        return false;
+        return Widget::dispatch_mouse_event(content_layout_.get(), event);
     }
 
     if (event.type == MouseEvent::Type::Leave) {
@@ -1085,10 +1051,7 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
         return true;
     }
 
-    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        return Widget::dispatch_mouse_event(tabs_[current_].content.get(), event);
-    }
-    return false;
+    return Widget::dispatch_mouse_event(content_layout_.get(), event);
 }
 
 auto TabWidget::handle_key(KeyEvent const &event) -> bool {
@@ -1097,6 +1060,7 @@ auto TabWidget::handle_key(KeyEvent const &event) -> bool {
             if (event.shift) {
                 if (current_ > 0) {
                     std::swap(tabs_[current_], tabs_[current_ - 1]);
+                    content_layout_->swap_widgets(current_, current_ - 1);
                     set_current(current_ - 1);
                 }
             } else {
@@ -1109,6 +1073,7 @@ auto TabWidget::handle_key(KeyEvent const &event) -> bool {
             if (event.shift) {
                 if (current_ < static_cast<int>(tabs_.size()) - 1) {
                     std::swap(tabs_[current_], tabs_[current_ + 1]);
+                    content_layout_->swap_widgets(current_, current_ + 1);
                     set_current(current_ + 1);
                 }
             } else {
@@ -1119,8 +1084,9 @@ auto TabWidget::handle_key(KeyEvent const &event) -> bool {
         }
     }
 
-    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        return tabs_[current_].content->handle_key(event);
+    auto idx = content_layout_->current();
+    if (idx >= 0 && idx < content_layout_->count()) {
+        return content_layout_->items()[idx]->handle_key(event);
     }
     return false;
 }
@@ -1135,8 +1101,8 @@ auto TabWidget::size_hint() const -> Size {
     auto lead_size = 0.0f;
     auto trail_size = 0.0f;
 
-    for (auto const &tab : tabs_) {
-        auto hint = tab.content->size_hint();
+    for (auto const &item : content_layout_->items()) {
+        auto hint = item->size_hint();
         max_w = std::max(max_w, hint.width);
         max_h = std::max(max_h, hint.height);
     }
@@ -1204,13 +1170,10 @@ auto TabWidget::find_focusable_at(Point p) -> Widget * {
             return w;
         }
     }
-    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        auto local_p = p;
-        local_p.x -= tabs_[current_].content->rect().x;
-        local_p.y -= tabs_[current_].content->rect().y;
-        return tabs_[current_].content->find_focusable_at(local_p);
-    }
-    return nullptr;
+    auto local_p = p;
+    local_p.x -= content_layout_->rect().x;
+    local_p.y -= content_layout_->rect().y;
+    return content_layout_->find_focusable_at(local_p);
 }
 
 auto TabWidget::widget_at(Point p) -> Widget * {
@@ -1247,11 +1210,11 @@ auto TabWidget::widget_at(Point p) -> Widget * {
             return w;
         }
     }
-    if (!collapsed_ && current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
+    if (!collapsed_) {
         auto local_p = p;
-        local_p.x -= tabs_[current_].content->rect().x;
-        local_p.y -= tabs_[current_].content->rect().y;
-        if (auto *w = tabs_[current_].content->widget_at(local_p)) {
+        local_p.x -= content_layout_->rect().x;
+        local_p.y -= content_layout_->rect().y;
+        if (auto *w = content_layout_->widget_at(local_p)) {
             return w;
         }
     }
@@ -1272,9 +1235,7 @@ void TabWidget::collect_focusables(std::vector<Widget *> &out) {
         prev_button_->collect_focusables(out);
         next_button_->collect_focusables(out);
     }
-    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        tabs_[current_].content->collect_focusables(out);
-    }
+    content_layout_->collect_focusables(out);
 }
 
 void TabWidget::collect_mnemonics(std::vector<Widget *> &out) {
@@ -1288,25 +1249,19 @@ void TabWidget::collect_mnemonics(std::vector<Widget *> &out) {
         prev_button_->collect_mnemonics(out);
         next_button_->collect_mnemonics(out);
     }
-    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        tabs_[current_].content->collect_mnemonics(out);
-    }
+    content_layout_->collect_mnemonics(out);
 }
 
 void TabWidget::on_theme_changed() {
     Widget::on_theme_changed();
-    // for_each_child only visits the visible tab, so we must notify all tab
-    // contents explicitly here — otherwise a hidden tab's widgets (e.g. an
-    // HtmlView inside a ScrollArea) never see the theme change and keep
-    // rendering with the old colours until the user switches to that tab.
+    // Notify ALL tab contents — not just the visible one — so hidden tabs
+    // don't render stale colours when the user switches to them.
     auto recurse = [](Widget *w, auto &self) -> void {
         w->on_theme_changed();
         w->for_each_child([&self](Widget *child) { self(child, self); });
     };
-    for (auto &tab : tabs_) {
-        if (tab.content) {
-            recurse(tab.content.get(), recurse);
-        }
+    for (auto const &item : content_layout_->items()) {
+        recurse(item.get(), recurse);
     }
 }
 
@@ -1321,9 +1276,7 @@ void TabWidget::for_each_child(std::function<void(Widget *)> const &callback) {
         callback(prev_button_.get());
         callback(next_button_.get());
     }
-    if (current_ >= 0 && current_ < static_cast<int>(tabs_.size())) {
-        callback(tabs_[current_].content.get());
-    }
+    callback(content_layout_.get());
 }
 
 } // namespace toolkit

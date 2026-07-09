@@ -386,3 +386,49 @@ TEST_CASE("TabWidget leading/trailing widget via WidgetLoader", "[tabwidget][ser
     REQUIRE(j2["trailing_widget"]["type"] == "Button");
     REQUIRE(j2["trailing_widget"]["text"] == ">");
 }
+
+// for_each_child must expose the StackedLayout itself, not its contents, so that
+// recursive coordinate traversals in window.cpp (debug frames, on-top draw, hit tests)
+// correctly account for the tab-bar offset when stepping into content.
+TEST_CASE("TabWidget for_each_child exposes StackedLayout not content widgets directly",
+          "[tabwidget]") {
+    TabWidget tw;
+    auto lbl = std::make_unique<Label>("content");
+    auto *lbl_ptr = lbl.get();
+    tw.add_tab("Tab", std::move(lbl));
+
+    bool found_stacked = false;
+    bool found_label_directly = false;
+    tw.for_each_child([&](Widget *w) {
+        if (dynamic_cast<StackedLayout *>(w)) {
+            found_stacked = true;
+        }
+        if (w == lbl_ptr) {
+            found_label_directly = true;
+        }
+    });
+
+    REQUIRE(found_stacked);           // StackedLayout is a direct child
+    REQUIRE(!found_label_directly);   // The Label is NOT directly visible in the child list
+}
+
+TEST_CASE("TabWidget StackedLayout child rect is offset below tab bar", "[tabwidget]") {
+    TabWidget tw;
+    tw.add_tab("Tab", std::make_unique<Label>("content"));
+    tw.set_rect({0, 0, 400, 300});
+
+    Widget *stacked = nullptr;
+    tw.for_each_child([&](Widget *w) {
+        if (dynamic_cast<StackedLayout *>(w)) {
+            stacked = w;
+        }
+    });
+
+    REQUIRE(stacked != nullptr);
+    // StackedLayout rect is in TabWidget-local space: must start below the tab bar
+    REQUIRE(stacked->rect().y > 0.0f);
+    REQUIRE(stacked->rect().x == 0.0f);
+    REQUIRE(stacked->rect().width == 400.0f);
+    REQUIRE(stacked->rect().height < 300.0f);
+    REQUIRE(stacked->rect().y + stacked->rect().height == 300.0f);
+}
