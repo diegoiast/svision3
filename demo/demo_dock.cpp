@@ -7,6 +7,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/window.hpp"
+#include <array>
 #include <filesystem>
 #include <fstream>
 
@@ -162,12 +163,34 @@ int main(int, char *[]) {
         return [style, scheme] { Theme::set_current(ThemeFactory::create(style, scheme)); };
     };
 
+    auto cmd_toggle_docks = Command::create("Toggle Docks", [dock_ptr]() {
+        std::array positions = {DockPosition::Left, DockPosition::Right, DockPosition::Bottom};
+        bool any_open = false;
+        for (auto pos : positions) { 
+            auto *tab = dock_ptr->dock_tab_widget(pos);
+            if (tab && !tab->is_collapsed()) {
+                any_open = true;
+                break;
+            }
+        }
+        for (auto pos : positions) {
+            auto *tab = dock_ptr->dock_tab_widget(pos);
+            if (tab) {
+                tab->set_collapsed(any_open);
+            }
+        }
+    });
+    cmd_toggle_docks->set_shortcut("ctrl+e");
+    win->add_command(cmd_toggle_docks);
+
     center_ptr->set_leading_widget(
         ui::button("Menu")
             //.flat(true)
             .focusable(false)
+            .background_color(Color::from_rgb(0x41cd52))
             .menu(ui::menu()
                       .action("Vertical Tabs", toggle_vertical)
+                      .action(cmd_toggle_docks)
                       .separator()
                       .submenu("Theme",
                                ui::menu()
