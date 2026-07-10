@@ -107,8 +107,11 @@ static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
     window->request_redraw("theme apply");
 }
 
-static constexpr auto LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
-                   "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+static constexpr auto LOREM_IPSUM = "Hello שלום مرحبا  世界 — code 你好 नमस्ते "
+                                    "☆ ✓ ∑ ∞ ★ français Русский 日本語";
+static constexpr auto LOREM_IPSUM_MD =
+    "**Hello** _שלום_ [مرحبا](https://example.com) 世界 — `code` **你好** _नमस्ते_ "
+    "☆ ✓ ∑ ∞ ★ français Русский 日本語";
 
 int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
@@ -370,16 +373,12 @@ int main(int argc, char *argv[]) {
     tab_main->set_margins({20, 20, 20, 20});
     tab_main->set_spacing(12);
 
-    auto plain_label = std::make_unique<toolkit::Label>(
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
-        "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.");
+    auto plain_label = std::make_unique<toolkit::Label>(LOREM_IPSUM);
     plain_label->set_elide(true);
     plain_label->set_shrinkable(true);
     tab_main->add_widget(std::move(plain_label));
 
-    auto rich_label = std::make_unique<toolkit::RichLabel>(
-        "**Lorem** _ipsum_ dolor sit amet, [consectetur](https://example.com) adipiscing elit, "
-        "sed do eiusmodmarkdown `tempor incididunt ut labore` et dolore magna ***aliqua***.");
+    auto rich_label = std::make_unique<toolkit::RichLabel>(LOREM_IPSUM_MD);
     rich_label->set_markdown_tooltip(rich_label->text());
     tab_main->add_widget(std::move(rich_label));
 
@@ -510,8 +509,6 @@ int main(int argc, char *argv[]) {
     };
     tab_main->add_widget(std::move(platform_label));
 
-    tabs->add_tab("Main", std::move(tab_main));
-
     // ── Tab: Inputs ────────────────────────────────────────────────────
     auto tab_inputs = std::make_unique<toolkit::VBoxLayout>();
     tab_inputs->set_margins({20, 20, 20, 20});
@@ -608,8 +605,6 @@ int main(int argc, char *argv[]) {
     auto inputs_spacer = std::make_unique<toolkit::Label>("");
     tab_inputs->add_widget(std::move(inputs_spacer), 1);
 
-    tabs->add_tab("Inputs", std::move(tab_inputs));
-
     // ── Tab: Icon Grid ──────────────────────────────────────────────────
     auto tab_grid = std::make_unique<toolkit::VBoxLayout>();
     tab_grid->set_margins({20, 20, 20, 20});
@@ -617,28 +612,28 @@ int main(int argc, char *argv[]) {
 
     auto grid_model =
         std::make_shared<toolkit::StandardIconModel>(std::vector<toolkit::StandardIconItem>{
-        {.text = "Folder", .icon_name = XDG::IconMimeTypes::inodeDirectory},
-        {.text = "Document", .icon_name = XDG::IconMimeTypes::textXGeneric},
-        {.text = "Image", .icon_name = XDG::IconMimeTypes::imageXGeneric},
-        {.text = "Audio", .icon_name = XDG::IconMimeTypes::audioXGeneric},
-        {.text = "Video", .icon_name = XDG::IconMimeTypes::videoXGeneric},
-        {.text = "Archive", .icon_name = XDG::IconMimeTypes::applicationXArchive},
-        {.text = "Executable", .icon_name = XDG::IconMimeTypes::applicationXExecutable},
-        {.text = "Computer", .icon_name = XDG::IconDevices::computer},
-        {.text = "Harddisk", .icon_name = XDG::IconDevices::driveHarddisk},
-        {.text = "Removable", .icon_name = XDG::IconDevices::driveRemovableMedia},
-        {.text = "Keyboard", .icon_name = XDG::IconDevices::inputKeyboard},
-        {.text = "Mouse", .icon_name = XDG::IconDevices::inputMouse},
-        {.text = "Game", .icon_name = XDG::IconDevices::inputGaming},
-        {.text = "Calculator", .icon_name = XDG::IconApplications::accessoriesCalculator},
-        {.text = "Editor", .icon_name = XDG::IconApplications::accessoriesTextEditor},
-        {.text = "Terminal", .icon_name = XDG::IconApplications::utilitiesTerminal},
-        {.text = "Browser", .icon_name = XDG::IconApplications::internetWebBrowser},
-        {.text = "System", .icon_name = XDG::IconApplications::preferencesSystem},
-        {.text = "Error", .icon_name = XDG::IconStatus::dialogError},
-        {.text = "Warning", .icon_name = XDG::IconStatus::dialogWarning},
-        {.text = "Info", .icon_name = XDG::IconStatus::dialogInformation},
-        {.text = "Question", .icon_name = XDG::IconStatus::dialogQuestion},
+            {.text = "Folder", .icon_name = XDG::IconMimeTypes::inodeDirectory},
+            {.text = "Document", .icon_name = XDG::IconMimeTypes::textXGeneric},
+            {.text = "Image", .icon_name = XDG::IconMimeTypes::imageXGeneric},
+            {.text = "Audio", .icon_name = XDG::IconMimeTypes::audioXGeneric},
+            {.text = "Video", .icon_name = XDG::IconMimeTypes::videoXGeneric},
+            {.text = "Archive", .icon_name = XDG::IconMimeTypes::applicationXArchive},
+            {.text = "Executable", .icon_name = XDG::IconMimeTypes::applicationXExecutable},
+            {.text = "Computer", .icon_name = XDG::IconDevices::computer},
+            {.text = "Harddisk", .icon_name = XDG::IconDevices::driveHarddisk},
+            {.text = "Removable", .icon_name = XDG::IconDevices::driveRemovableMedia},
+            {.text = "Keyboard", .icon_name = XDG::IconDevices::inputKeyboard},
+            {.text = "Mouse", .icon_name = XDG::IconDevices::inputMouse},
+            {.text = "Game", .icon_name = XDG::IconDevices::inputGaming},
+            {.text = "Calculator", .icon_name = XDG::IconApplications::accessoriesCalculator},
+            {.text = "Editor", .icon_name = XDG::IconApplications::accessoriesTextEditor},
+            {.text = "Terminal", .icon_name = XDG::IconApplications::utilitiesTerminal},
+            {.text = "Browser", .icon_name = XDG::IconApplications::internetWebBrowser},
+            {.text = "System", .icon_name = XDG::IconApplications::preferencesSystem},
+            {.text = "Error", .icon_name = XDG::IconStatus::dialogError},
+            {.text = "Warning", .icon_name = XDG::IconStatus::dialogWarning},
+            {.text = "Info", .icon_name = XDG::IconStatus::dialogInformation},
+            {.text = "Question", .icon_name = XDG::IconStatus::dialogQuestion},
         });
 
     auto grid = std::make_unique<toolkit::IconGrid>(grid_model);
@@ -673,8 +668,6 @@ int main(int argc, char *argv[]) {
 
     tab_grid->add_widget(std::move(grid_controls));
     tab_grid->add_widget(std::move(grid), 1);
-
-    tabs->add_tab("Grid", std::move(tab_grid));
 
     // ── Tab: Songs ─────────────────────────────────────────────────────
     auto tab3 = std::make_unique<toolkit::VBoxLayout>();
@@ -735,8 +728,6 @@ int main(int argc, char *argv[]) {
     };
     tab3->add_widget(std::move(songs_list), 1);
 
-    tabs->add_tab("Songs", std::move(tab3));
-
     // ── Tab: Table ──────────────────────────────────────────────────────
     auto tab4 = std::make_unique<toolkit::VBoxLayout>();
     tab4->set_margins({20, 20, 20, 20});
@@ -768,8 +759,6 @@ int main(int argc, char *argv[]) {
     tab4->add_widget(std::move(table_toggle_row));
 
     tab4->add_widget(std::move(table), 1);
-
-    tabs->add_tab("Table", std::move(tab4));
 
     // ── Tab: Editor ─────────────────────────────────────────────────────
     auto tab5 = std::make_unique<toolkit::VBoxLayout>();
@@ -813,8 +802,6 @@ int main(int argc, char *argv[]) {
 
     tab5->add_widget(std::move(editor_toolbar));
     tab5->add_widget(std::unique_ptr<toolkit::TextEdit>(editor), 1);
-
-    tabs->add_tab("Editor", std::move(tab5));
 
     // ── Tab 6: Tree ───────────────────────────────────────────────────────
     auto tab_tree = std::make_unique<toolkit::VBoxLayout>();
@@ -894,8 +881,6 @@ int main(int argc, char *argv[]) {
     };
     tab_tree->add_widget(std::move(tree), 1);
 
-    tabs->add_tab("Tree", std::move(tab_tree));
-
     // ── Tab: Preview (Markdown / HTML live editor) ─────────────────────
     static constexpr float PREVIEW_DELAY_SEC = 5.0f;
 
@@ -914,8 +899,7 @@ int main(int argc, char *argv[]) {
     preview_editor->set_frame(false);
     preview_editor->set_text(PREVIEW_DEFAULT_MD);
 
-    auto preview_columns =
-        std::make_unique<toolkit::Splitter>(toolkit::Orientation::Horizontal);
+    auto preview_columns = std::make_unique<toolkit::Splitter>(toolkit::Orientation::Horizontal);
     preview_columns->set_first(std::unique_ptr<toolkit::TextEdit>(preview_editor));
     preview_columns->set_second(std::move(preview_scroll));
 
@@ -1000,8 +984,6 @@ int main(int argc, char *argv[]) {
     tab_preview->add_widget(std::move(preview_columns), 1);
     tab_preview->add_widget(std::unique_ptr<toolkit::ProgressBar>(preview_progress));
     tab_preview->add_widget(std::move(preview_bottom));
-    tabs->add_tab("Preview", std::move(tab_preview));
-
     // ── Tab: Tabs (Orientations) ────────────────────────────────────────
     auto tab6 = std::make_unique<toolkit::VBoxLayout>();
     tab6->set_margins({0, 0, 0, 0});
@@ -1065,8 +1047,6 @@ int main(int argc, char *argv[]) {
     tab6->add_widget(std::move(side_row), 1);
     tab6->add_widget(std::move(south_tabs), 0);
 
-    tabs->add_tab("Tabs", std::move(tab6));
-
     // ── Tab: Image ───────────────────────────────────────────────────────
     auto tab_image = std::make_unique<toolkit::VBoxLayout>();
     tab_image->set_margins({20, 20, 20, 20});
@@ -1094,7 +1074,17 @@ int main(int argc, char *argv[]) {
     scroll->set_content(std::move(img_widget));
     tab_image->add_widget(std::move(scroll), 1); // Expand to fill tab*/
     tab_image->add_widget(std::move(img_widget), 1);
+
+    tabs->add_tab("Main", std::move(tab_main));
+    tabs->add_tab("Inputs", std::move(tab_inputs));
+    tabs->add_tab("Songs", std::move(tab3));
+    tabs->add_tab("Table", std::move(tab4));
     tabs->add_tab("Image", std::move(tab_image));
+    tabs->add_tab("Grid", std::move(tab_grid));
+    tabs->add_tab("Editor", std::move(tab5));
+    tabs->add_tab("Tree", std::move(tab_tree));
+    tabs->add_tab("Preview", std::move(tab_preview));
+    tabs->add_tab("Tabs", std::move(tab6));
 
     root->add_widget(std::move(tabs), 1);
 
@@ -1103,39 +1093,35 @@ int main(int argc, char *argv[]) {
     button_bar->set_margins({20, 10, 20, 10});
     button_bar->set_spacing(10);
 
-    auto ok_btn = std::make_unique<toolkit::Button>("&ok");
-    ok_btn->on_click = [] { spdlog::info("Button clicked!"); };
-    ok_btn->set_tooltip("Log a message to the console");
-    button_bar->add_widget(std::move(ok_btn));
+    auto about_btn = std::make_unique<toolkit::Button>("About");
+    about_btn->set_enabled(false);
+    button_bar->add_widget(std::move(about_btn));
+
+    auto btn_spacer = std::make_unique<toolkit::Label>("");
+    button_bar->add_widget(std::move(btn_spacer), 1);
 
     auto toast_btn = std::make_unique<toolkit::Button>("Toast");
     toast_btn->on_click = [window] {
         static const std::optional<toolkit::Color> colors[] = {
-            toolkit::Color::rgb(1.0f, 0.85f, 0.85f),
-            toolkit::Color::rgb(0.85f, 1.0f, 0.85f),
-            toolkit::Color::rgb(0.85f, 0.85f, 1.0f),
-            toolkit::Color::rgb(1.0f, 1.0f, 0.85f),
-            toolkit::Color::rgb(1.0f, 0.85f, 1.0f),
-            std::nullopt,
+            toolkit::Color::rgb(1.0f, 0.85f, 0.85f), toolkit::Color::rgb(0.85f, 1.0f, 0.85f),
+            toolkit::Color::rgb(0.85f, 0.85f, 1.0f), toolkit::Color::rgb(1.0f, 1.0f, 0.85f),
+            toolkit::Color::rgb(1.0f, 0.85f, 1.0f),  std::nullopt,
         };
         static int count = 0;
         auto title = fmt::format("Toast #{}", count++);
-        auto builder = toolkit::ToastBuilder().title(title).timeout(7).text(LOREM_IPSUM);
+        auto builder = toolkit::ToastBuilder().title(title).timeout(7);
         auto bg = colors[count % 6];
+        if (count % 2 == 0) {
+            builder.text(LOREM_IPSUM);
+        } else {
+            builder.rich_text(LOREM_IPSUM_MD);
+        }
         if (bg) {
             builder.background(*bg);
         }
         window->show_toast(builder);
     };
     button_bar->add_widget(std::move(toast_btn));
-
-    auto disabled_btn = std::make_unique<toolkit::Button>("Disabled");
-    disabled_btn->set_enabled(false);
-    disabled_btn->set_tooltip("This button is disabled");
-    button_bar->add_widget(std::move(disabled_btn));
-
-    auto btn_spacer = std::make_unique<toolkit::Label>("");
-    button_bar->add_widget(std::move(btn_spacer), 1);
 
     auto export_btn = std::make_unique<toolkit::Button>("Export to JSON");
     export_btn->on_click = [window, use_native_cb] {

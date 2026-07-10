@@ -7,7 +7,6 @@
 
 #include "declarative.hpp"
 #include "github_markdown_css.hpp"
-// #include "nfd.h"
 #include "toolkit/application.hpp"
 #include "toolkit/directory_dialog.hpp"
 #include "toolkit/file_dialog.hpp"
@@ -305,8 +304,10 @@ int main(int argc, char *argv[]) {
     toolkit::TabWidget *root_tab_ptr = nullptr;
 
     auto open_action = [editor = editor.get(), window, &root_tab_ptr]() {
-        toolkit::FileDialog(window).title("Open File").open().then(
-            [editor, &root_tab_ptr](auto path) {
+        toolkit::FileDialog(window)
+            .title("Open File")
+            .open()
+            .then([editor, &root_tab_ptr](auto path) {
                 if (path) {
                     std::ifstream f(*path);
                     if (f) {
@@ -529,12 +530,13 @@ int main(int argc, char *argv[]) {
                             .add(repeat_label);
                     }())
                     .add([&]() {
-                        auto l = ui::label(fmt::format("Platform: {} | Painter: {}",
-                                                       app.platform_name(), window->painter_name()));
+                        auto l =
+                            ui::label(fmt::format("Platform: {} | Painter: {}", app.platform_name(),
+                                                  window->painter_name()));
                         window->on_scale_changed = [&app, window, lp = l.get()](float scale) {
-                            lp->set_text(fmt::format("Platform: {} | Painter: {} | DPI scale: {:.3f}",
-                                                     app.platform_name(), window->painter_name(),
-                                                     scale));
+                            lp->set_text(
+                                fmt::format("Platform: {} | Painter: {} | DPI scale: {:.3f}",
+                                            app.platform_name(), window->painter_name(), scale));
                         };
                         return l;
                     }()))
