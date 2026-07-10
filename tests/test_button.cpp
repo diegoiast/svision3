@@ -71,7 +71,9 @@ TEST_CASE("Button mouse does nothing when disabled", "[button]") {
     MouseEvent press{};
     press.type = MouseEvent::Type::Press;
     press.position = {50, 15};
-    REQUIRE(b.handle_mouse(press) == false);
+    // Disabled buttons still swallow presses inside their bounds so the event doesn't fall
+    // through to a parent's fallback handling (e.g. dragging a window via its title bar).
+    REQUIRE(b.handle_mouse(press) == true);
 
     MouseEvent release{};
     release.type = MouseEvent::Type::Release;
@@ -90,7 +92,7 @@ TEST_CASE("Button mouse does nothing when hidden", "[button]") {
     MouseEvent press{};
     press.type = MouseEvent::Type::Press;
     press.position = {50, 15};
-    REQUIRE(b.handle_mouse(press) == false);
+    REQUIRE(b.handle_mouse(press) == true);
 
     MouseEvent release{};
     release.type = MouseEvent::Type::Release;

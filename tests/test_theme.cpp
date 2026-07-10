@@ -78,11 +78,14 @@ TEST_CASE("ProgressBar style has Win95 chunked", "[theme]") {
 }
 
 TEST_CASE("Theme has correct inline_scrollbars defaults", "[theme]") {
-    // Regular scrollbars for Win95 and GNOME
+    // Regular scrollbars for Win95, GNOME and Plasma6 (persistent, Breeze-style scrollbar)
     REQUIRE(ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light)->style.inline_scrollbars ==
             false);
     REQUIRE(ThemeFactory::create(ThemeStyle::GNOME, ColorScheme::Light)->style.inline_scrollbars ==
             false);
+    REQUIRE(
+        ThemeFactory::create(ThemeStyle::Plasma6, ColorScheme::Light)->style.inline_scrollbars ==
+        false);
 
     // Inline scrollbars for others
     REQUIRE(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light)->style.inline_scrollbars ==
@@ -92,7 +95,4 @@ TEST_CASE("Theme has correct inline_scrollbars defaults", "[theme]") {
         true);
     REQUIRE(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light)->style.inline_scrollbars ==
             true);
-    REQUIRE(
-        ThemeFactory::create(ThemeStyle::Plasma6, ColorScheme::Light)->style.inline_scrollbars ==
-        true);
 }

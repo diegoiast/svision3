@@ -137,6 +137,7 @@ Palette MaterialTheme::default_palette(ColorScheme scheme) const {
     }
     return p;
 }
+
 GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p)
     : BaseTheme(scheme, std::move(p)) {
     if (!p) {
@@ -144,7 +145,6 @@ GnomeTheme::GnomeTheme(ColorScheme scheme, std::optional<Palette> p)
     }
     name = "GNOME";
 
-    style.beveled = true;
     style.chrome_lines = false;
     style.corner_radius = 10.0f;
     style.inline_scrollbars = false;
