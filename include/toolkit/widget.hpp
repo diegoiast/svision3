@@ -163,7 +163,13 @@ class Widget {
     virtual void from_json(nlohmann::json const &j);
     virtual std::string_view class_name() const { return "Widget"; }
 
+    // When enabled, Widget::paint_background() draws a standard bordered frame and
+    // Widget::draw() clips content to the rounded interior. Call in the constructor.
+    Widget &set_frame(bool enabled, bool sunken = false);
+    bool has_frame() const { return has_frame_; }
+
     virtual void paint_background(Painter &painter);
+    virtual float content_inset() const;
 
   protected:
     // Let window call this protected method
@@ -190,6 +196,8 @@ class Widget {
     Widget *parent_ = nullptr;
     std::vector<Command::Ptr> commands_;
     std::optional<Color> background_color_;
+    bool has_frame_ = false;
+    bool frame_sunken_ = false;
 };
 
 } // namespace toolkit

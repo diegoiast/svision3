@@ -900,6 +900,7 @@ int main(int argc, char *argv[]) {
     static constexpr float PREVIEW_DELAY_SEC = 5.0f;
 
     auto preview_html = new toolkit::HtmlView();
+    preview_html->set_draw_frame(false);
     preview_html->set_css(GITHUB_MARKDOWN_CSS_LIGHT, GITHUB_MARKDOWN_CSS_DARK);
     preview_html->set_markdown(PREVIEW_DEFAULT_MD);
     preview_html->on_link_click = [](std::string const &url) {
@@ -910,6 +911,7 @@ int main(int argc, char *argv[]) {
     preview_scroll->set_content(std::unique_ptr<toolkit::HtmlView>(preview_html));
 
     auto preview_editor = new toolkit::TextEdit();
+    preview_editor->set_frame(false);
     preview_editor->set_text(PREVIEW_DEFAULT_MD);
 
     auto preview_columns =

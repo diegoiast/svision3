@@ -22,9 +22,10 @@ void Label::from_json(nlohmann::json const &j) {
     }
 }
 
-Label::Label() {}
+Label::Label() { set_frame(false); }
 
 Label::Label(std::string text) {
+    set_frame(false);
     mnemonic_key_ = parse_mnemonic(text).key;
     text_ = std::move(text);
 }

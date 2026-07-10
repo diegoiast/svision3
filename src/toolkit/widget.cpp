@@ -3,6 +3,7 @@
 
 #include "toolkit/widget.hpp"
 #include "toolkit/platform.hpp"
+#include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -106,8 +107,23 @@ Widget &Widget::set_background_color(std::optional<Color> c) {
     return *this;
 }
 
+Widget &Widget::set_frame(bool enabled, bool sunken) {
+    has_frame_ = enabled;
+    frame_sunken_ = sunken;
+    return *this;
+}
+
+float Widget::content_inset() const {
+    return has_frame_ ? Theme::current().style.frame_inset() : 0.0f;
+}
+
 void Widget::paint_background(Painter &painter) {
-    if (background_color_) {
+    if (has_frame_) {
+        auto const &pal = Theme::current().palette;
+        auto local = Rect{0, 0, rect_.width, rect_.height};
+        auto border = state.focused ? pal.accent : pal.border;
+        painter.draw_filled_frame(local, pal.base, border, pal, frame_sunken_);
+    } else if (background_color_) {
         painter.fill_rect({0, 0, rect_.width, rect_.height}, *background_color_);
     }
 }
@@ -139,11 +155,27 @@ void Widget::draw(Painter &painter) {
     if (!is_visible()) {
         return;
     }
-    // FIXME: this translation should be in calling parent, no?
     painter.push_clip(rect_);
     painter.push_translation({rect_.x, rect_.y});
+
     paint_background(painter);
+
+    auto fi = content_inset();
+    auto cr = 0.0f;
+    if (has_frame_) {
+        auto max_r = std::min(rect_.width - 2.0f * fi, rect_.height - 2.0f * fi) / 2.0f;
+        cr = std::max(0.0f, std::min(Theme::current().style.corner_radius, max_r) - fi);
+    }
+    auto has_inner_clip = (fi > 0.0f || cr > 0.0f);
+    if (has_inner_clip) {
+        painter.push_clip({fi, fi, rect_.width - 2.0f * fi, rect_.height - 2.0f * fi}, cr);
+    }
+
     paint(painter);
+
+    if (has_inner_clip) {
+        painter.pop_clip();
+    }
     painter.pop_translation();
     painter.pop_clip();
 }

@@ -63,8 +63,6 @@ class BaseTheme : public Theme {
                         bool selected, bool hovered, bool alternate) const override;
     void draw_list_background(Painter &painter, Rect const &rect,
                               WidgetState const &state) const override;
-    void draw_table_background(Painter &painter, Rect const &rect,
-                               WidgetState const &state) const override;
     void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
                         bool has_children, bool expanded, bool selected, bool hovered,
                         bool alternate) const override;

@@ -37,6 +37,7 @@ void Button::from_json(nlohmann::json const &j) {
 
 Button::Button(std::string text) {
     auto const &style = Theme::current().style.button;
+    set_frame(false);
     state.focusable = true;
     mnemonic_key_ = parse_mnemonic(text).key;
     text_ = std::move(text);

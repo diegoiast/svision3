@@ -286,8 +286,6 @@ class Theme {
                                 bool alternate) const = 0;
     virtual void draw_list_background(Painter &painter, Rect const &rect,
                                       WidgetState const &state) const = 0;
-    virtual void draw_table_background(Painter &painter, Rect const &rect,
-                                       WidgetState const &state) const = 0;
     virtual void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text,
                                 int depth, bool has_children, bool expanded, bool selected,
                                 bool hovered, bool alternate) const = 0;

@@ -163,8 +163,13 @@ void Combobox::paint_dropdown(Painter &painter) {
     auto total = static_cast<int>(items_.size());
     auto scrollable = drop_max_visible_ < total;
 
-    painter.fill_rect(local_db, palette.base);
-    painter.push_clip(local_db);
+    auto cr = style.corner_radius;
+    if (cr > 0.0f) {
+        painter.fill_rounded_rect(local_db, palette.base, cr);
+    } else {
+        painter.fill_rect(local_db, palette.base);
+    }
+    painter.push_clip(local_db, cr);
 
     for (auto i = 0; i < total; i++) {
         auto iy = item_h * static_cast<float>(i) - drop_scroll_;
@@ -188,9 +193,8 @@ void Combobox::paint_dropdown(Painter &painter) {
 
     painter.pop_clip();
 
-    if (style.corner_radius > 0) {
-        painter.draw_rounded_rect(local_db, palette.border, style.corner_radius,
-                                  style.border_width);
+    if (cr > 0.0f) {
+        painter.draw_rounded_rect(local_db, palette.border, cr, style.border_width);
     } else {
         painter.draw_rect(local_db, palette.border, style.border_width);
     }

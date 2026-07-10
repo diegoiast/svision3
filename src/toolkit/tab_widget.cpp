@@ -195,9 +195,14 @@ void TabWidget::scroll_to_tab(int index) {
     if (show_scroll_buttons_) {
         auto sz_prev = prev_button_->size_hint();
         auto sz_next = next_button_->size_hint();
-        auto btn_size = vertical ? std::max(sz_prev.height, sz_next.height)
-                                 : std::max(sz_prev.width, sz_next.width);
-        available -= btn_size * 2;
+        auto btn_size_prev = vertical ? sz_prev.height : sz_prev.width;
+        auto btn_size_next = vertical ? sz_next.height : sz_next.width;
+        if (prev_button_->is_visible()) {
+            available -= btn_size_prev;
+        }
+        if (next_button_->is_visible()) {
+            available -= btn_size_next;
+        }
     }
 
     if (available <= 0) {
@@ -263,8 +268,10 @@ void TabWidget::update_scroll_bounds() {
     }
 
     auto available = base_available - (now_prev ? btn_size_prev : 0);
-    auto max_scroll_with_next = std::max(0.0f, total_tabs - (available - btn_size_next));
-    auto now_next = scroll_offset_ < max_scroll_with_next;
+    // Hide next_button when remaining content fits in the area that its absence frees:
+    // scroll_offset_ >= total_tabs - available means all remaining tabs are visible.
+    auto max_scroll_no_next = std::max(0.0f, total_tabs - available);
+    auto now_next = scroll_offset_ < max_scroll_no_next;
 
     if (now_next) {
         available -= btn_size_next;
@@ -274,7 +281,9 @@ void TabWidget::update_scroll_bounds() {
     scroll_offset_ = std::clamp(scroll_offset_, 0.0f, max_scroll);
 
     now_prev = scroll_offset_ > 0;
-    now_next = scroll_offset_ < max_scroll;
+    // Recompute max_scroll_no_next with the post-clamp now_prev to handle edge cases.
+    auto avail_no_next = base_available - (now_prev ? btn_size_prev : 0.0f);
+    now_next = scroll_offset_ < std::max(0.0f, total_tabs - avail_no_next);
 
     prev_button_->set_visible(now_prev);
     next_button_->set_visible(now_next);
@@ -920,10 +929,10 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
     }
 
     if (show_scroll_buttons_) {
-        if (Widget::dispatch_mouse_event(prev_button_.get(), event)) {
+        if (prev_button_->is_visible() && Widget::dispatch_mouse_event(prev_button_.get(), event)) {
             return true;
         }
-        if (Widget::dispatch_mouse_event(next_button_.get(), event)) {
+        if (next_button_->is_visible() && Widget::dispatch_mouse_event(next_button_.get(), event)) {
             return true;
         }
     }

@@ -32,7 +32,7 @@ class HtmlView : public Widget {
     std::function<void(std::string const &)> on_link_click;
 
     HtmlView &set_draw_frame(bool draw) {
-        draw_frame_ = draw;
+        set_frame(draw);
         return *this;
     }
 
@@ -52,7 +52,6 @@ class HtmlView : public Widget {
     std::string markdown_css_dark_;
     int content_margin_ = 16;
     int content_max_width_ = 0;
-    bool draw_frame_ = true;
     CursorShape cursor_shape_ = CursorShape::Arrow;
     std::unique_ptr<LitehtmlContainer> container_;
     std::shared_ptr<litehtml::document> document_;

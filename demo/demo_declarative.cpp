@@ -365,7 +365,7 @@ int main(int argc, char *argv[]) {
     // ── Preview tab setup ─────────────────────────────────────────────
     static constexpr float PREVIEW_DELAY_SEC = 5.0f;
 
-    auto preview_html_elem = ui::html_view();
+    auto preview_html_elem = ui::html_view().frame(false);
     auto *preview_html_ptr = preview_html_elem.get();
     preview_html_ptr->set_css(GITHUB_MARKDOWN_CSS_LIGHT, GITHUB_MARKDOWN_CSS_DARK);
     preview_html_ptr->set_markdown(PREVIEW_DEFAULT_MD);
@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
         spdlog::info("Preview link: {}", url);
     };
 
-    auto preview_editor_elem = ui::text_edit(PREVIEW_DEFAULT_MD);
+    auto preview_editor_elem = ui::text_edit(PREVIEW_DEFAULT_MD).frame(false);
     auto *preview_editor_ptr = preview_editor_elem.get();
 
     auto preview_progress_elem = ui::progress_bar();

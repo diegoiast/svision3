@@ -861,11 +861,6 @@ void BaseTheme::draw_list_background(Painter &painter, Rect const &rect,
     painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
 }
 
-void BaseTheme::draw_table_background(Painter &painter, Rect const &rect,
-                                      WidgetState const &state) const {
-    painter.draw_filled_frame(rect, palette.base, palette.border, palette, true);
-}
-
 void BaseTheme::draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
                                bool has_children, bool expanded, bool selected, bool hovered,
                                bool alternate) const {
@@ -1069,11 +1064,7 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
     auto focused = state.focused;
     auto enabled = state.enabled;
     auto fm = painter.font_metrics(palette.fonts.size, FontFamily::Monospace);
-    auto bg = palette.base;
-    auto border = focused ? palette.accent : palette.border;
     auto text_c = enabled ? palette.text : palette.text_disabled;
-
-    painter.draw_filled_frame(rect, bg, border, palette, true);
 
     auto last = std::min(static_cast<int>(lines.size()) - 1,
                          first_visible_line + static_cast<int>(rect.height / line_height));
@@ -1150,7 +1141,7 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
         }
     }
 
-    painter.pop_clip();
+    painter.pop_clip(); // text area
 }
 
 void BaseTheme::draw_scrollbar(Painter &painter, Rect const &rect, float value,

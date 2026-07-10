@@ -10,6 +10,7 @@
 namespace toolkit {
 
 ListView::ListView(std::shared_ptr<ItemModel> model) {
+    set_frame(true, true);
     model_ = std::move(model);
     state.focusable = true;
     if (model_) {
@@ -162,13 +163,6 @@ std::optional<size_t> ListView::item_at_y(float y) const {
 
 void ListView::paint(Painter &painter) {
     auto const &theme = Theme::current();
-    auto wstate = WidgetState{
-        .interaction = ButtonState::Normal,
-        .focused = is_focused(),
-        .enabled = is_enabled(),
-        .window_active = window_ ? window_->is_active() : true,
-    };
-    theme.draw_list_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
 
     if (!model_ || model_->row_count() == 0) {
         draw_scrollbars(painter);

@@ -64,7 +64,6 @@ void Painter::draw_filled_frame(Rect const &rect, Color bg, Color border, const 
                       {rect.x + rect.width - 1, rect.y + rect.height - 1}, bottom_right, 1.0f);
         }
     } else {
-        auto &style = Theme::current().style;
         auto bw = style.border_width;
         auto frame_rect = rect;
         if (bottom_shadow) {

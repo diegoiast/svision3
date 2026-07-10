@@ -87,6 +87,7 @@ class TextEditCommand : public UndoCommand {
 };
 
 TextEdit::TextEdit(std::string text) {
+    set_frame(true, true);
     set_focusable(true);
     cursor_blink_time_ = std::chrono::steady_clock::now();
 
@@ -116,6 +117,7 @@ TextEdit::TextEdit(std::string text) {
 
     set_text(text);
 }
+
 
 nlohmann::json TextEdit::to_json() const {
     auto j = Widget::to_json();
@@ -659,6 +661,17 @@ void TextEdit::sync_commands() {
         redo_cmd->set_tooltip("Redo " + undo_stack_.redo_text());
     } else {
         redo_cmd->set_tooltip("Redo");
+    }
+}
+
+void TextEdit::paint_background(Painter &painter) {
+    auto const &pal = Theme::current().palette;
+    auto local = Rect{0, 0, rect_.width, rect_.height};
+    if (has_frame()) {
+        auto border = state.focused ? pal.accent : pal.border;
+        painter.draw_filled_frame(local, pal.base, border, pal, true);
+    } else {
+        painter.fill_rect(local, pal.base);
     }
 }
 

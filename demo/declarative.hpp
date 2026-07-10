@@ -183,6 +183,10 @@ template <typename T> struct Element {
         w->set_focusable(f);
         return std::move(*this);
     }
+    Element frame(bool enabled, bool sunken = false) {
+        w->set_frame(enabled, sunken);
+        return std::move(*this);
+    }
     Element flat(bool f) {
         if constexpr (std::is_same_v<T, toolkit::Button>) {
             w->set_flat(f);

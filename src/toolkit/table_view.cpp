@@ -12,6 +12,7 @@
 namespace toolkit {
 
 TableView::TableView(std::shared_ptr<ItemModel> model) : model_(std::move(model)) {
+    set_frame(true, true);
     set_focusable(true);
     if (model_) {
         model_->on_data_changed = [this] {
@@ -400,13 +401,6 @@ void TableView::scroll_to_row(size_t row) {
 
 void TableView::paint(Painter &painter) {
     auto const &theme = Theme::current();
-    auto wstate = WidgetState{
-        .interaction = ButtonState::Normal,
-        .focused = is_focused(),
-        .enabled = is_enabled(),
-        .window_active = window_ ? window_->is_active() : true,
-    };
-    theme.draw_table_background(painter, {0, 0, rect_.width, rect_.height}, wstate);
 
     if (!model_) {
         draw_scrollbars(painter);
@@ -430,15 +424,7 @@ void TableView::paint(Painter &painter) {
         auto header_bg = is_dark ? palette.base : palette.alternate;
 
         painter.push_clip(header_rect);
-        if (Theme::current().style.corner_radius > 0) {
-            auto cr = std::max(0.0f, Theme::current().style.corner_radius -
-                                         Theme::current().style.border_width);
-            painter.fill_rounded_rect(
-                {header_rect.x, header_rect.y, header_rect.width, header_rect.height + cr},
-                header_bg, cr);
-        } else {
-            painter.fill_rect(header_rect, header_bg);
-        }
+        painter.fill_rect(header_rect, header_bg);
 
         for (auto c = size_t{0}; c < ncols; c++) {
             auto cw = column_widths_[c];
