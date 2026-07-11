@@ -97,47 +97,55 @@ void DockArea::build_splitter_tree() {
         };
     };
 
-    // Top: vertical splitter  [top | current]
+    // Top: vertical splitter  [top | current]. The center side (current)
+    // stretches on resize; top keeps its fixed pixel height.
     auto &top = sides_[int(DockPosition::Top)];
     if (top.tabs) {
         auto spl = std::make_unique<Splitter>(Orientation::Vertical);
+        spl->add_child(std::move(top.tabs));
+        spl->add_child(std::move(current));
         spl->set_ratio(content_h > 0 ? top.size / content_h : 0.25f);
+        spl->set_stretch(0, StretchSide::Second);
         wire_collapse(top, spl.get(), true);
-        spl->set_first(std::move(top.tabs));
-        spl->set_second(std::move(current));
         current = std::move(spl);
     }
 
-    // Bottom: vertical splitter  [current | bottom]
+    // Bottom: vertical splitter  [current | bottom]. The center side (current)
+    // stretches on resize; bottom keeps its fixed pixel height.
     auto &bot = sides_[int(DockPosition::Bottom)];
     if (bot.tabs) {
         auto spl = std::make_unique<Splitter>(Orientation::Vertical);
+        spl->add_child(std::move(current));
+        spl->add_child(std::move(bot.tabs));
         spl->set_ratio(content_h > 0 ? 1.0f - bot.size / content_h : 0.75f);
+        spl->set_stretch(0, StretchSide::First);
         wire_collapse(bot, spl.get(), false);
-        spl->set_first(std::move(current));
-        spl->set_second(std::move(bot.tabs));
         current = std::move(spl);
     }
 
-    // Left: horizontal splitter  [left | current]
+    // Left: horizontal splitter  [left | current]. The center side (current)
+    // stretches on resize; left keeps its fixed pixel width.
     auto &lft = sides_[int(DockPosition::Left)];
     if (lft.tabs) {
         auto spl = std::make_unique<Splitter>(Orientation::Horizontal);
+        spl->add_child(std::move(lft.tabs));
+        spl->add_child(std::move(current));
         spl->set_ratio(content_w > 0 ? lft.size / content_w : 0.25f);
+        spl->set_stretch(0, StretchSide::Second);
         wire_collapse(lft, spl.get(), true);
-        spl->set_first(std::move(lft.tabs));
-        spl->set_second(std::move(current));
         current = std::move(spl);
     }
 
-    // Right: horizontal splitter  [current | right]
+    // Right: horizontal splitter  [current | right]. The center side (current)
+    // stretches on resize; right keeps its fixed pixel width.
     auto &rgt = sides_[int(DockPosition::Right)];
     if (rgt.tabs) {
         auto spl = std::make_unique<Splitter>(Orientation::Horizontal);
+        spl->add_child(std::move(current));
+        spl->add_child(std::move(rgt.tabs));
         spl->set_ratio(content_w > 0 ? 1.0f - rgt.size / content_w : 0.75f);
+        spl->set_stretch(0, StretchSide::First);
         wire_collapse(rgt, spl.get(), false);
-        spl->set_first(std::move(current));
-        spl->set_second(std::move(rgt.tabs));
         current = std::move(spl);
     }
 

@@ -48,7 +48,7 @@ Splitter &Splitter::add_child(std::unique_ptr<Widget> w) {
     if (!children_.empty()) {
         auto N = children_.size();
         ratios_.push_back(static_cast<float>(N) / static_cast<float>(N + 1));
-        locked_dividers_.push_back({});
+        dividers_.push_back({});
     }
     if (w) {
         w->set_parent(this);
@@ -71,8 +71,8 @@ Widget *Splitter::child_at(size_t index) {
 Splitter &Splitter::set_ratio(int divider, float r) {
     if (divider < 0 || divider >= (int)ratios_.size()) return *this;
     ratios_[divider] = std::clamp(r, 0.0f, 1.0f);
-    // Force a locked divider to re-anchor from the new ratio.
-    locked_dividers_[divider].px = std::numeric_limits<float>::quiet_NaN();
+    // Force a locked or stretch-anchored divider to re-anchor from the new ratio.
+    dividers_[divider].px = std::numeric_limits<float>::quiet_NaN();
     layout_children();
     if (window_) window_->request_redraw("splitter ratio");
     return *this;
@@ -84,9 +84,9 @@ float Splitter::ratio(int divider) const {
 }
 
 Splitter &Splitter::set_divider_locked(int divider, bool locked) {
-    if (divider < 0 || divider >= (int)locked_dividers_.size()) return *this;
-    locked_dividers_[divider].locked = locked ? 1u : 0u;
-    locked_dividers_[divider].px = std::numeric_limits<float>::quiet_NaN();
+    if (divider < 0 || divider >= (int)dividers_.size()) return *this;
+    dividers_[divider].locked = locked ? 1u : 0u;
+    dividers_[divider].px = std::numeric_limits<float>::quiet_NaN();
     if (locked && dragging_divider_ == divider) dragging_divider_.reset();
     cursor_ = CursorShape::Arrow;
     hovered_divider_.reset();
@@ -96,42 +96,30 @@ Splitter &Splitter::set_divider_locked(int divider, bool locked) {
 }
 
 bool Splitter::is_divider_locked(int divider) const {
-    if (divider < 0 || divider >= (int)locked_dividers_.size()) return false;
-    return locked_dividers_[divider].locked != 0;
+    if (divider < 0 || divider >= (int)dividers_.size()) return false;
+    return dividers_[divider].locked != 0;
 }
 
-// ---------------------------------------------------------------------------
-// Backward-compat wrappers
-// ---------------------------------------------------------------------------
-
-Splitter &Splitter::set_first(std::unique_ptr<Widget> w) {
-    if (children_.empty()) {
-        return add_child(std::move(w));
-    }
-    if (w) {
-        w->set_parent(this);
-        w->set_window(window_);
-    }
-    children_[0] = std::move(w);
+Splitter &Splitter::set_stretch(int divider, StretchSide which) {
+    if (divider < 0 || divider >= (int)dividers_.size()) return *this;
+    dividers_[divider].stretch = which;
+    dividers_[divider].px = std::numeric_limits<float>::quiet_NaN();
     layout_children();
+    if (window_) window_->request_redraw("splitter stretch");
     return *this;
 }
 
-Splitter &Splitter::set_second(std::unique_ptr<Widget> w) {
-    if (children_.size() < 2) {
-        return add_child(std::move(w));
-    }
-    if (w) {
-        w->set_parent(this);
-        w->set_window(window_);
-    }
-    children_[1] = std::move(w);
-    layout_children();
-    return *this;
+StretchSide Splitter::stretch(int divider) const {
+    if (divider < 0 || divider >= (int)dividers_.size()) return StretchSide::Both;
+    return dividers_[divider].stretch;
 }
+
+// ---------------------------------------------------------------------------
+// Single-divider convenience
+// ---------------------------------------------------------------------------
 
 Splitter &Splitter::set_locked(bool locked) {
-    for (auto &lk : locked_dividers_) {
+    for (auto &lk : dividers_) {
         lk.locked = locked ? 1u : 0u;
         lk.px = std::numeric_limits<float>::quiet_NaN();
     }
@@ -144,7 +132,7 @@ Splitter &Splitter::set_locked(bool locked) {
 }
 
 bool Splitter::locked() const {
-    for (auto const &lk : locked_dividers_) {
+    for (auto const &lk : dividers_) {
         if (lk.locked) return true;
     }
     return false;
@@ -189,7 +177,7 @@ std::vector<float> Splitter::compute_positions() const {
             // collapsed pane never drifts when the splitter is resized (a
             // ratio would scale with the new total and leave a gap). Child
             // minimums are ignored so a pane can shrink all the way to zero.
-            auto &lk = locked_dividers_[i];
+            auto &lk = dividers_[i];
             if (std::isnan(lk.px) && total > 0.0f) {
                 auto p = std::clamp(raw, 0.0f, total);
                 lk.from_end = p > total / 2.0f ? 1u : 0u;
@@ -200,6 +188,21 @@ std::vector<float> Splitter::compute_positions() const {
             }
             raw = std::clamp(raw, prev_end, total);
         } else {
+            auto const side = (i < (int)dividers_.size()) ? dividers_[i].stretch : StretchSide::Both;
+            if (side != StretchSide::Both) {
+                // One side of this divider keeps a fixed pixel size while the
+                // other absorbs the resize delta. Anchor from the fixed
+                // side's edge, capturing its pixel distance the first time
+                // (or right after a drag/set_ratio call resets it).
+                auto &lk = dividers_[i];
+                lk.from_end = (side == StretchSide::First) ? 1u : 0u;
+                if (std::isnan(lk.px) && total > 0.0f) {
+                    lk.px = lk.from_end ? total - raw : raw;
+                }
+                if (!std::isnan(lk.px)) {
+                    raw = lk.from_end ? total - lk.px : lk.px;
+                }
+            }
             float min_i = child_min(i);
             float min_after = 0.0f;
             for (int j = i + 1; j < N; j++) {
@@ -347,6 +350,8 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
             if (total > 0.0f) {
                 ratios_[*dragging_divider_] = std::clamp(centre / total, 0.05f, 0.95f);
             }
+            // Re-anchor a stretch-fixed side to the newly dragged position.
+            dividers_[*dragging_divider_].px = std::numeric_limits<float>::quiet_NaN();
             layout_children();
             if (window_) window_->request_redraw("splitter drag");
             return true;

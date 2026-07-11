@@ -900,8 +900,8 @@ int main(int argc, char *argv[]) {
     preview_editor->set_text(PREVIEW_DEFAULT_MD);
 
     auto preview_columns = std::make_unique<toolkit::Splitter>(toolkit::Orientation::Horizontal);
-    preview_columns->set_first(std::unique_ptr<toolkit::TextEdit>(preview_editor));
-    preview_columns->set_second(std::move(preview_scroll));
+    preview_columns->add_child(std::unique_ptr<toolkit::TextEdit>(preview_editor));
+    preview_columns->add_child(std::move(preview_scroll));
 
     auto preview_progress = new toolkit::ProgressBar();
     preview_progress->set_visible(false);

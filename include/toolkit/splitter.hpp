@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/widget.hpp"
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -11,6 +12,12 @@
 #include <vector>
 
 namespace toolkit {
+
+// Which side of a divider absorbs space gained/lost when the splitter is
+// resized. The other side keeps its last on-screen size in pixels. Dragging
+// the divider (or calling set_ratio()) re-anchors the fixed side to the new
+// position. Both == proportional (default): every child scales with its ratio.
+enum class StretchSide : uint8_t { Both, First, Second };
 
 class Splitter : public Widget, public Fluent<Splitter> {
     DECLARE_WIDGET(Splitter)
@@ -36,14 +43,17 @@ class Splitter : public Widget, public Fluent<Splitter> {
     Splitter &set_divider_locked(int divider, bool locked);
     bool is_divider_locked(int divider) const;
 
-    // Backward-compat wrappers for existing 2-child code -----------------------
-    Splitter &set_first(std::unique_ptr<Widget> w);
-    Splitter &set_second(std::unique_ptr<Widget> w);
+    // Which side of divider i keeps growing/shrinking with the splitter,
+    // while the other side keeps a fixed pixel size. Ignored while the
+    // divider is locked (locked always pins both sides).
+    Splitter &set_stretch(int divider, StretchSide which);
+    StretchSide stretch(int divider) const;
+
+    // Single-divider convenience, for the common 2-child splitter case.
     Splitter &set_ratio(float r) { return set_ratio(0, r); }
     float ratio() const { return ratio(0); }
     Splitter &set_locked(bool locked);  // lock/unlock all dividers
     bool locked() const;                // true if any divider is locked
-    // --------------------------------------------------------------------------
 
     Orientation orientation() const { return orientation_; }
 
@@ -61,19 +71,22 @@ class Splitter : public Widget, public Fluent<Splitter> {
     void on_theme_changed() override;
 
   private:
-    // A locked divider is hidden and not draggable. Its position is anchored in
-    // pixels to the nearest edge (captured on the first layout after locking),
-    // so a collapsed pane keeps its exact size when the splitter is resized —
-    // a stored ratio would drift and leave a gap.
-    struct DividerLock {
+    // A locked divider is hidden and not draggable; a stretch-fixed divider is
+    // still draggable but one side of it keeps a fixed pixel size across
+    // resizes. Both cases anchor the divider's position in pixels from the
+    // nearest edge (captured on the first layout after the state changes), so
+    // the fixed side never drifts when the splitter is resized — a stored
+    // ratio would scale with the new total and leave a gap.
+    struct DividerState {
         uint8_t locked = 0;
+        StretchSide stretch = StretchSide::Both;
         uint8_t from_end = 0; // anchor edge: 0 = start (left/top), 1 = end
         float px = std::numeric_limits<float>::quiet_NaN(); // NaN = not captured yet
     };
 
     std::vector<std::unique_ptr<Widget>> children_;
     std::vector<float> ratios_;                 // child_count()-1 values
-    mutable std::vector<DividerLock> locked_dividers_; // child_count()-1 entries
+    mutable std::vector<DividerState> dividers_; // child_count()-1 entries
     Orientation orientation_;
     CursorShape cursor_ = CursorShape::Arrow;
     std::optional<int> dragging_divider_;

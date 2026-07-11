@@ -567,6 +567,7 @@ add_executable(tests
     tests/test_radio_button.cpp
     tests/test_slider.cpp
     tests/test_spin_box.cpp
+    tests/test_splitter.cpp
     tests/test_tab_widget.cpp
     tests/test_table_view.cpp
     tests/test_text_edit.cpp
