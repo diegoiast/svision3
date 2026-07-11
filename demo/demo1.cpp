@@ -458,15 +458,24 @@ int main(int argc, char *argv[]) {
 
     auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
     auto icon = app.load_icon(XDG::IconActions::documentOpen, 16);
+    auto directory_icon = app.load_icon(XDG::IconMimeTypes::inodeDirectory, 16);
     if (icon) {
         open_icon_btn->set_icon(icon);
     }
     open_icon_btn->set_tooltip("Open file");
 
     auto open_menu = std::make_shared<toolkit::Menu>();
-    open_menu->add_action("Open File", open_action);
-    open_menu->add_action("Open Document", [] { spdlog::info("Menu: Open Document"); });
-    open_menu->add_action("Open Image", [] { spdlog::info("Menu: Open Image"); });
+    auto open_file_cmd = toolkit::Command::create("Open File", open_action);
+    open_file_cmd->set_icon(XDG::IconActions::documentOpen);
+    open_menu->add_action(open_file_cmd);
+    auto open_document_cmd =
+        toolkit::Command::create("Open Document", [] { spdlog::info("Menu: Open Document"); });
+    open_document_cmd->set_icon(XDG::IconActions::documentOpen);
+    open_menu->add_action(open_document_cmd);
+    auto open_image_cmd =
+        toolkit::Command::create("Open Image", [] { spdlog::info("Menu: Open Image"); });
+    open_image_cmd->set_icon(XDG::IconMimeTypes::imageXGeneric);
+    open_menu->add_action(open_image_cmd);
     open_icon_btn->set_menu(open_menu);
 
     auto toggle_btn = std::make_unique<toolkit::Button>("Toggle me");
@@ -779,6 +788,9 @@ int main(int argc, char *argv[]) {
     editor_toolbar->add_widget(std::move(save_btn));
 
     auto choose_dir_btn = std::make_unique<toolkit::Button>("Choose Directory...");
+    if (directory_icon) {
+        choose_dir_btn->set_icon(directory_icon);
+    }
     choose_dir_btn->set_tooltip("Choose a directory");
     choose_dir_btn->on_click = [use_native_cb, window] {
         toolkit::DirectoryDialog(window)
@@ -1057,6 +1069,9 @@ int main(int argc, char *argv[]) {
     auto *img_widget_ptr = img_widget.get();
 
     auto load_btn = std::make_unique<toolkit::Button>("Load Image...");
+    if (icon) {
+        load_btn->set_icon(icon);
+    }
     load_btn->on_click = [img_widget_ptr, window, use_native_cb] {
         toolkit::FileDialog(window)
             .title("Load Image")

@@ -91,11 +91,18 @@ static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
 int main(int argc, char *argv[]) {
     toolkit::Application app;
     app.set_force_csd(true);
+
+#if 1
+    if (!app.use_xdg_icons()) {
+        auto loader = std::make_unique<toolkit::XdgImageLoader>();
+        loader->set_theme_path("./themes/Faenza");
+        app.set_icon_provider(std::move(loader));
+    }
+#else
     app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("Faenza"));
     // app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("breeze-icons-6.4.0/icons"));
-    // app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>(
-    //"WinXPSVG-plasma5up-scalable-icontheme-blackysgate.de"));
-
+    // app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("WinXPSVG-plasma5up-scalable-icontheme-blackysgate.de"));
+#endif
     current_style = toolkit::Theme::detect_system_style();
 
     auto style_names = std::vector<std::string>{};
@@ -297,6 +304,7 @@ int main(int argc, char *argv[]) {
     };
 
     auto open_icon = app.load_icon(XDG::IconActions::documentOpen, 16);
+    auto directory_icon = app.load_icon(XDG::IconMimeTypes::inodeDirectory, 16);
 
     // Pointer set after rootWidget is built; safe to capture by ref since both
     // live in main(). The editor tab is always at index 6 in rootWidget.
@@ -323,7 +331,8 @@ int main(int argc, char *argv[]) {
     };
 
     auto new_cmd = ui::command("New", [] { spdlog::info("Menu: New"); }).shortcut("Std+N");
-    auto open_cmd = ui::command("Open...", open_action).shortcut("F3");
+    auto open_cmd =
+        ui::command("Open...", open_action).shortcut("F3").icon(XDG::IconActions::documentOpen);
     auto save_cmd = ui::command("Save", [] { spdlog::info("Menu: Save"); }).shortcut("Std+S");
     auto exit_cmd =
         ui::command("Exit", [&window] { window->close(); }).icon(XDG::IconActions::applicationExit);
@@ -517,12 +526,17 @@ int main(int argc, char *argv[]) {
                             .add(ui::button("Open")
                                      .icon(open_icon)
                                      .on_click(open_action)
-                                     .menu(ui::menu()
-                                               .action("Open File", open_action)
-                                               .action("Open Document",
-                                                       [] { spdlog::info("Open Document"); })
-                                               .action("Open Image",
-                                                       [] { spdlog::info("Open Image"); })))
+                                     .menu(
+                                         ui::menu()
+                                             .action(ui::command("Open File", open_action)
+                                                         .icon(XDG::IconActions::documentOpen))
+                                             .action(
+                                                 ui::command("Open Document",
+                                                             [] { spdlog::info("Open Document"); })
+                                                     .icon(XDG::IconActions::documentOpen))
+                                             .action(ui::command("Open Image",
+                                                                 [] { spdlog::info("Open Image"); })
+                                                         .icon(XDG::IconMimeTypes::imageXGeneric))))
                             .add(
                                 ui::button("Toggle me").checkable(true).on_toggle([](bool checked) {
                                     spdlog::info("Button toggled (declarative): {}", checked);
@@ -629,23 +643,25 @@ int main(int argc, char *argv[]) {
                          auto *iw_ptr = iw.get();
                          return ui::vbox()
                              .margins(ui::default_margins_no_bottom())
-                             .add(ui::button("Open Image").on_click([window, iw_ptr]() {
-                                 toolkit::FileDialog(window)
-                                     .title("Open Image")
-                                     .open()
-                                     .then([iw_ptr, window](auto path) {
-                                         if (path) {
-                                             iw_ptr->load(*path);
-                                             window->start_timer(
-                                                 0.01f,
-                                                 [iw_ptr, window] {
-                                                     iw_ptr->fit_to_widget();
-                                                     window->request_redraw("fit");
-                                                 },
-                                                 false);
-                                         }
-                                     });
-                             }))
+                             .add(ui::button("Open Image")
+                                      .icon(open_icon)
+                                      .on_click([window, iw_ptr]() {
+                                          toolkit::FileDialog(window)
+                                              .title("Open Image")
+                                              .open()
+                                              .then([iw_ptr, window](auto path) {
+                                                  if (path) {
+                                                      iw_ptr->load(*path);
+                                                      window->start_timer(
+                                                          0.01f,
+                                                          [iw_ptr, window] {
+                                                              iw_ptr->fit_to_widget();
+                                                              window->request_redraw("fit");
+                                                          },
+                                                          false);
+                                                  }
+                                              });
+                                      }))
                              .add(std::move(iw), ui::expand);
                      }())
             .add_tab("Grid",
@@ -678,7 +694,7 @@ int main(int argc, char *argv[]) {
                     .margins(ui::default_margins_no_bottom())
                     .add(ui::hbox()
                              .spacing(8)
-                             .add(ui::button("Open...").on_click(open_action))
+                             .add(ui::button("Open...").icon(open_icon).on_click(open_action))
                              .add(ui::button("Save As...")
                                       .on_click([&window, editor_ptr = editor.get(),
                                                  use_native_cb_ptr]() {
@@ -696,6 +712,7 @@ int main(int argc, char *argv[]) {
                                               });
                                       }))
                              .add(ui::button("Choose Directory...")
+                                      .icon(directory_icon)
                                       .on_click([&window, use_native_cb_ptr]() {
                                           toolkit::DirectoryDialog(window)
                                               .title("Choose Directory")
