@@ -50,6 +50,7 @@ Splitter &Splitter::add_child(std::unique_ptr<Widget> w) {
         ratios_.push_back(static_cast<float>(N) / static_cast<float>(N + 1));
         locked_dividers_.push_back({});
     }
+    stretch_factors_.push_back(1.0f);
     if (w) {
         w->set_parent(this);
         w->set_window(window_);
@@ -100,35 +101,20 @@ bool Splitter::is_divider_locked(int divider) const {
     return locked_dividers_[divider].locked != 0;
 }
 
-// ---------------------------------------------------------------------------
-// Backward-compat wrappers
-// ---------------------------------------------------------------------------
-
-Splitter &Splitter::set_first(std::unique_ptr<Widget> w) {
-    if (children_.empty()) {
-        return add_child(std::move(w));
-    }
-    if (w) {
-        w->set_parent(this);
-        w->set_window(window_);
-    }
-    children_[0] = std::move(w);
-    layout_children();
+Splitter &Splitter::set_stretch_factor(int child, float factor) {
+    if (child < 0 || child >= (int)stretch_factors_.size()) return *this;
+    stretch_factors_[child] = std::max(0.0f, factor);
     return *this;
 }
 
-Splitter &Splitter::set_second(std::unique_ptr<Widget> w) {
-    if (children_.size() < 2) {
-        return add_child(std::move(w));
-    }
-    if (w) {
-        w->set_parent(this);
-        w->set_window(window_);
-    }
-    children_[1] = std::move(w);
-    layout_children();
-    return *this;
+float Splitter::stretch_factor(int child) const {
+    if (child < 0 || child >= (int)stretch_factors_.size()) return 1.0f;
+    return stretch_factors_[child];
 }
+
+// ---------------------------------------------------------------------------
+// Single-divider convenience
+// ---------------------------------------------------------------------------
 
 Splitter &Splitter::set_locked(bool locked) {
     for (auto &lk : locked_dividers_) {
@@ -227,9 +213,64 @@ Rect Splitter::handle_rect(int divider, std::vector<float> const &positions) con
     }
 }
 
+void Splitter::redistribute_stretch(float new_total) {
+    auto const N = (int)children_.size();
+    auto const M = N - 1;
+    if (M <= 0 || last_total_ <= 0.0f) return;
+
+    // Reconstruct each child's current pixel size from ratios_ + the old total.
+    std::vector<float> old_size(N, 0.0f);
+    float prev_end = 0.0f;
+    for (int i = 0; i < M; i++) {
+        float hs = effective_thickness(i);
+        float r = (i < (int)ratios_.size()) ? ratios_[i]
+                                             : static_cast<float>(i + 1) / static_cast<float>(N);
+        float pos = last_total_ * r - hs / 2.0f;
+        old_size[i] = pos - prev_end;
+        prev_end = pos + hs;
+    }
+    old_size[N - 1] = last_total_ - prev_end;
+
+    float delta = new_total - last_total_;
+    float sum_factors = 0.0f;
+    for (int i = 0; i < N; i++) {
+        sum_factors += (i < (int)stretch_factors_.size()) ? stretch_factors_[i] : 1.0f;
+    }
+
+    std::vector<float> new_size(N);
+    if (sum_factors > 0.0f) {
+        for (int i = 0; i < N; i++) {
+            float factor = (i < (int)stretch_factors_.size()) ? stretch_factors_[i] : 1.0f;
+            new_size[i] = std::max(0.0f, old_size[i] + delta * (factor / sum_factors));
+        }
+    } else {
+        // No child can grow: scale everyone proportionally so there's no gap.
+        float scale = new_total / last_total_;
+        for (int i = 0; i < N; i++) {
+            new_size[i] = std::max(0.0f, old_size[i] * scale);
+        }
+    }
+
+    float pos = 0.0f;
+    for (int i = 0; i < M; i++) {
+        float hs = effective_thickness(i);
+        pos += new_size[i];
+        ratios_[i] = std::clamp((pos + hs / 2.0f) / new_total, 0.0f, 1.0f);
+        pos += hs;
+    }
+}
+
 void Splitter::layout_children() {
     auto const N = (int)children_.size();
     if (N == 0) return;
+
+    auto const total = (orientation_ == Orientation::Horizontal) ? rect_.width : rect_.height;
+    if (total > 0.0f) {
+        if (last_total_ >= 0.0f && std::abs(total - last_total_) > 0.5f) {
+            redistribute_stretch(total);
+        }
+        last_total_ = total;
+    }
 
     auto const positions = compute_positions();
 

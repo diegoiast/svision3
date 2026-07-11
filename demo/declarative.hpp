@@ -131,6 +131,17 @@ template <typename T> struct Element {
         w->set_margins(m);
         return std::move(*this);
     }
+    Element ratio(int divider, float r) {
+        static_assert(std::is_same_v<T, toolkit::Splitter>, "ratio(divider, r) only works on Splitter");
+        w->set_ratio(divider, r);
+        return std::move(*this);
+    }
+    Element stretch(int child, float factor) {
+        static_assert(std::is_same_v<T, toolkit::Splitter>,
+                      "stretch(child, factor) only works on Splitter");
+        w->set_stretch_factor(child, factor);
+        return std::move(*this);
+    }
 
     Element on_click(std::function<void()> f) {
         w->on_click = std::move(f);
@@ -697,21 +708,21 @@ template <typename W> inline Element<toolkit::ScrollArea> scroll_area(Element<W>
     return Element<toolkit::ScrollArea>(std::move(sa));
 }
 
-template <typename A, typename B>
-inline Element<toolkit::Splitter> hsplit(Element<A> first, Element<B> second, float ratio = 0.5f) {
+// Splitter takes an arbitrary number of children, so these accept any number
+// of elements (2 or more). Use .ratio(divider, r) to position a divider, and
+// .stretch(child, factor) to control how much of a resize that child
+// absorbs (default 1 for every child, so all children grow/shrink equally).
+template <typename... Ts> inline Element<toolkit::Splitter> hsplit(Element<Ts>... elems) {
+    static_assert(sizeof...(Ts) >= 2, "hsplit() needs at least two elements");
     auto sp = std::make_unique<toolkit::Splitter>(toolkit::Orientation::Horizontal);
-    sp->set_first(std::move(first.w));
-    sp->set_second(std::move(second.w));
-    sp->set_ratio(ratio);
+    (sp->add_child(std::move(elems.w)), ...);
     return Element<toolkit::Splitter>(std::move(sp));
 }
 
-template <typename A, typename B>
-inline Element<toolkit::Splitter> vsplit(Element<A> first, Element<B> second, float ratio = 0.5f) {
+template <typename... Ts> inline Element<toolkit::Splitter> vsplit(Element<Ts>... elems) {
+    static_assert(sizeof...(Ts) >= 2, "vsplit() needs at least two elements");
     auto sp = std::make_unique<toolkit::Splitter>(toolkit::Orientation::Vertical);
-    sp->set_first(std::move(first.w));
-    sp->set_second(std::move(second.w));
-    sp->set_ratio(ratio);
+    (sp->add_child(std::move(elems.w)), ...);
     return Element<toolkit::Splitter>(std::move(sp));
 }
 

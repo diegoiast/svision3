@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/widget.hpp"
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -36,14 +37,20 @@ class Splitter : public Widget, public Fluent<Splitter> {
     Splitter &set_divider_locked(int divider, bool locked);
     bool is_divider_locked(int divider) const;
 
-    // Backward-compat wrappers for existing 2-child code -----------------------
-    Splitter &set_first(std::unique_ptr<Widget> w);
-    Splitter &set_second(std::unique_ptr<Widget> w);
+    // How much of a splitter resize (not user dragging, which always stays
+    // local to the dragged divider) child i absorbs, relative to the other
+    // children. Every child defaults to 1, so by default all children
+    // grow/shrink equally when the splitter is resized. A factor of 0 means
+    // the child keeps its pixel size on resize; it only changes via dragging
+    // or set_ratio().
+    Splitter &set_stretch_factor(int child, float factor);
+    float stretch_factor(int child) const;
+
+    // Single-divider convenience, for the common 2-child splitter case.
     Splitter &set_ratio(float r) { return set_ratio(0, r); }
     float ratio() const { return ratio(0); }
     Splitter &set_locked(bool locked);  // lock/unlock all dividers
     bool locked() const;                // true if any divider is locked
-    // --------------------------------------------------------------------------
 
     Orientation orientation() const { return orientation_; }
 
@@ -72,8 +79,10 @@ class Splitter : public Widget, public Fluent<Splitter> {
     };
 
     std::vector<std::unique_ptr<Widget>> children_;
-    std::vector<float> ratios_;                 // child_count()-1 values
+    std::vector<float> ratios_;                        // child_count()-1 values
     mutable std::vector<DividerLock> locked_dividers_; // child_count()-1 entries
+    std::vector<float> stretch_factors_;               // child_count() values
+    float last_total_ = -1.0f; // total extent at the last real layout; -1 = none yet
     Orientation orientation_;
     CursorShape cursor_ = CursorShape::Arrow;
     std::optional<int> dragging_divider_;
@@ -86,6 +95,10 @@ class Splitter : public Widget, public Fluent<Splitter> {
     std::vector<float> compute_positions() const;
     Rect handle_rect(int divider, std::vector<float> const &positions) const;
     void layout_children();
+    // Redistributes the (new_total - last_total_) delta across children by
+    // stretch factor, rewriting ratios_ so the rest of the layout logic below
+    // sees it as if the user had repositioned every divider explicitly.
+    void redistribute_stretch(float new_total);
 };
 
 } // namespace toolkit
