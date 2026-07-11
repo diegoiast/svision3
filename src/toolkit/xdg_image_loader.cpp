@@ -46,20 +46,48 @@ auto XdgImageLoader::set_theme(std::string_view theme_name) -> void {
     }
 }
 
+auto XdgImageLoader::set_theme_path(std::filesystem::path const &dir) -> void {
+    auto index_path = dir / "index.theme";
+    auto t = parse_index_theme(index_path.string());
+    if (t) {
+        t->name = dir.filename().string();
+        t->base_dir = dir;
+        current_theme = t->name;
+        theme = std::make_unique<IconTheme>(std::move(*t));
+        spdlog::info("XdgImageLoader: loading theme '{}' from {}", current_theme,
+                     std::filesystem::absolute(index_path).string());
+    } else {
+        current_theme.clear();
+        theme.reset();
+        spdlog::warn("XdgImageLoader: could not load theme from {}",
+                     std::filesystem::absolute(index_path).string());
+    }
+}
+
 auto XdgImageLoader::theme_name() const -> std::string_view { return current_theme; }
 
 auto XdgImageLoader::load_theme(std::string_view theme_name) -> std::optional<IconTheme> {
     for (const auto &base_dir : xdg_dirs) {
-        auto theme_path = base_dir / "icons" / std::filesystem::path(theme_name) / "index.theme";
+        auto theme_dir = base_dir / "icons" / std::filesystem::path(theme_name);
+        auto theme_path = theme_dir / "index.theme";
         if (std::filesystem::exists(theme_path)) {
-            return parse_index_theme(theme_path.string());
+            spdlog::info("XdgImageLoader: loading theme '{}' from {}", theme_name,
+                         theme_path.string());
+            auto t = parse_index_theme(theme_path.string());
+            if (t) {
+                t->base_dir = theme_dir;
+                return t;
+            }
         }
-        auto local_path =
-            std::filesystem::path("themes") / std::filesystem::path(theme_name) / "index.theme";
+        auto local_dir = std::filesystem::path("themes") / std::filesystem::path(theme_name);
+        auto local_path = local_dir / "index.theme";
         if (std::filesystem::exists(local_path)) {
             auto t = parse_index_theme(local_path.string());
             if (t) {
                 t->name = theme_name;
+                t->base_dir = local_dir;
+                spdlog::info("XdgImageLoader: loading theme '{}' from {}", theme_name,
+                             std::filesystem::absolute(local_path).string());
                 return t;
             }
         }
@@ -179,7 +207,7 @@ auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::s
         return std::nullopt;
     }
 
-    auto search_theme = [&](const IconTheme &t) -> std::optional<std::string> {
+    auto search_theme = [&](const IconTheme &t, std::string_view name) -> std::optional<std::string> {
         std::string best_path;
         int best_score = std::numeric_limits<int>::max();
 
@@ -221,12 +249,12 @@ auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::s
 
             if (score < best_score ||
                 (score == best_score && dir.type != "scalable" && !best_path.empty())) {
-                auto base = std::filesystem::path("themes") / t.name / dir.path;
+                auto base = t.base_dir / dir.path;
                 static const std::vector<std::string> extensions = {".svg", ".png"};
 
                 std::string current_path;
                 for (const auto &ext : extensions) {
-                    auto icon_path = base / (std::string(icon_name) + ext);
+                    auto icon_path = base / (std::string(name) + ext);
                     if (std::filesystem::exists(icon_path)) {
                         current_path = icon_path.string();
                         break;
@@ -246,18 +274,31 @@ auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::s
         return best_path.empty() ? std::nullopt : std::make_optional(best_path);
     };
 
-    auto result = search_theme(*theme);
-    if (result) {
+    // Try `name` across this theme and its inheritance chain.
+    auto search_name = [&](std::string_view name) -> std::optional<std::string> {
+        if (auto result = search_theme(*theme, name)) {
+            return result;
+        }
+        for (const auto &inherit_name : theme->inherits) {
+            auto inherit_theme = load_theme(inherit_name);
+            if (inherit_theme) {
+                if (auto result = search_theme(*inherit_theme, name)) {
+                    return result;
+                }
+            }
+        }
+        return std::nullopt;
+    };
+
+    if (auto result = search_name(icon_name)) {
         return result;
     }
 
-    for (const auto &inherit_name : theme->inherits) {
-        auto inherit_theme = load_theme(inherit_name);
-        if (inherit_theme) {
-            result = search_theme(*inherit_theme);
-            if (result) {
-                return result;
-            }
+    // Many modern themes (e.g. Adwaita) only ship "-symbolic" variants of
+    // action/status icons, dropping the plain full-color name entirely.
+    if (!icon_name.ends_with("-symbolic")) {
+        if (auto result = search_name(std::string(icon_name) + "-symbolic")) {
+            return result;
         }
     }
 

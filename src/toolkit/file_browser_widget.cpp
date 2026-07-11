@@ -74,10 +74,14 @@ class DirModel : public ItemModel {
         if (e.cached_icon && e.cached_icon_size == size) {
             return e.cached_icon;
         }
+        // inode-directory's context is inconsistent across themes -- the spec
+        // (and Adwaita) puts it under "mimetypes", but some themes (e.g. the
+        // bundled Faenza) only ship it under "places". Search all contexts for
+        // it; text-x-generic is reliably "mimetypes" everywhere.
         auto icon_name =
             e.is_dir ? XDG::IconMimeTypes::inodeDirectory : XDG::IconMimeTypes::textXGeneric;
-        e.cached_icon =
-            Application::instance().load_icon(icon_name, size, XDG::IconContexts::mimeTypes);
+        auto context = e.is_dir ? "" : XDG::IconContexts::mimeTypes;
+        e.cached_icon = Application::instance().load_icon(icon_name, size, context);
         e.cached_icon_size = size;
         return e.cached_icon;
     }
@@ -362,9 +366,10 @@ void FileBrowserWidget::setup_ui() {
     toolbar->set_margins({});
     toolbar->set_spacing(5);
 
-    auto make_icon_btn = [&](std::string_view icon_name, std::string_view fallback) {
+    auto make_icon_btn = [&](std::string_view icon_name, std::string_view fallback,
+                              std::string_view context = XDG::IconContexts::actions) {
         auto btn = std::make_unique<Button>(std::string(fallback));
-        auto icon = app.load_icon(icon_name, 16);
+        auto icon = app.load_icon(icon_name, 16, context);
         if (icon) {
             btn->set_icon(icon);
             btn->set_text("");
@@ -462,7 +467,8 @@ void FileBrowserWidget::setup_ui() {
     config_menu->add_separator();
     config_menu->add_action("Show Hidden Files", [this] { set_show_hidden(!show_hidden()); });
 
-    auto config_btn = make_icon_btn("configure", "☰");
+    auto config_btn =
+        make_icon_btn(XDG::IconCategories::preferencesSystem, "☰", XDG::IconContexts::categories);
     config_btn_ = config_btn.get();
     config_btn_->set_tooltip("View Options");
     config_btn_->set_menu(config_menu);

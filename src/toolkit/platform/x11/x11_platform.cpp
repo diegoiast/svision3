@@ -1693,4 +1693,8 @@ SystemFonts X11PlatformApplication::system_fonts() const {
     return linux_utils::detect_system_fonts();
 }
 
+std::string X11PlatformApplication::system_icon_theme() const {
+    return linux_utils::detect_system_icon_theme();
+}
+
 } // namespace toolkit

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "toolkit/window.hpp"
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -56,6 +57,19 @@ class Application {
     void set_icon_provider(std::unique_ptr<IconProvider> provider);
     IconProvider *icon_provider() const;
     Icon load_icon(std::string_view icon_name, int size, std::string_view context = "actions");
+
+    // Tries to configure the icon provider from the desktop's configured XDG
+    // icon theme (read from GTK's gtk-icon-theme-name setting, falling back
+    // to a desktop-environment heuristic from XDG_CURRENT_DESKTOP). Returns
+    // true and installs it if one was found and loaded successfully; returns
+    // false (and installs nothing) otherwise, leaving the caller to decide
+    // what to fall back to, e.g.:
+    //   if (!app.use_xdg_icons()) {
+    //       app.set_icon_provider(std::make_unique<XdgImageLoader>("hicolor"));
+    //   }
+    // To always use a specific theme regardless of the system (no detection
+    // at all), skip this and call set_icon_provider() directly instead.
+    bool use_xdg_icons();
 
     static void post_to_main_thread(std::function<void()> fn);
 

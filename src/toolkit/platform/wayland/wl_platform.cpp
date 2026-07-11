@@ -1914,4 +1914,8 @@ SystemFonts WaylandPlatformApplication::system_fonts() const {
     return linux_utils::detect_system_fonts();
 }
 
+std::string WaylandPlatformApplication::system_icon_theme() const {
+    return linux_utils::detect_system_icon_theme();
+}
+
 } // namespace toolkit

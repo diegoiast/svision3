@@ -24,6 +24,15 @@ class Window;
 class PlatformApplication;
 class PlatformWindow;
 
+// The running desktop environment / OS shell, used to pick sensible defaults
+// (widget theme style, icon theme, ...) without each call site re-parsing
+// XDG_CURRENT_DESKTOP or re-checking __APPLE__/_WIN32 itself.
+enum class DesktopEnvironment { Unknown, GNOME, Plasma, Windows11, MacOS };
+
+// Best-effort, synchronous detection: __APPLE__/_WIN32 short-circuit to
+// MacOS/Windows11; everywhere else this reads XDG_CURRENT_DESKTOP.
+DesktopEnvironment detect_desktop_environment();
+
 class RenderingBackend {
   public:
     virtual ~RenderingBackend() = default;
@@ -111,6 +120,11 @@ class PlatformApplication {
     virtual std::string_view name() const = 0;
     virtual float scale_factor() const = 0;
     virtual SystemFonts system_fonts() const = 0;
+
+    // Best-effort name of the desktop's configured XDG icon theme (e.g.
+    // "Adwaita", "breeze"), or empty if unknown/not applicable on this
+    // platform. Empty by default; Linux backends override this.
+    virtual std::string system_icon_theme() const { return {}; }
 
     // True only when we know for a fact the WM/compositor cannot decorate a plain top-level
     // window itself (e.g. a Wayland compositor that doesn't implement the xdg-decoration

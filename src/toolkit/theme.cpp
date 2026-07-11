@@ -76,25 +76,19 @@ const char *Theme::style_name(ThemeStyle style) {
 }
 
 ThemeStyle Theme::detect_system_style() {
-#if defined(__APPLE__)
-    return ThemeStyle::MacOS;
-#elif defined(_WIN32)
-    return ThemeStyle::Win11;
-#else
-    const char *xdg = std::getenv("XDG_CURRENT_DESKTOP");
-    if (xdg) {
-        std::string s(xdg);
-        std::transform(s.begin(), s.end(), s.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
-        if (s.find("gnome") != std::string::npos) {
-            return ThemeStyle::GNOME;
-        }
-        if (s.find("kde") != std::string::npos || s.find("plasma") != std::string::npos) {
-            return ThemeStyle::Plasma6;
-        }
+    switch (detect_desktop_environment()) {
+    case DesktopEnvironment::MacOS:
+        return ThemeStyle::MacOS;
+    case DesktopEnvironment::Windows11:
+        return ThemeStyle::Win11;
+    case DesktopEnvironment::GNOME:
+        return ThemeStyle::GNOME;
+    case DesktopEnvironment::Plasma:
+        return ThemeStyle::Plasma6;
+    case DesktopEnvironment::Unknown:
+        return ThemeStyle::Material;
     }
     return ThemeStyle::Material;
-#endif
 }
 
 void Theme::set_current(std::unique_ptr<Theme> theme) {

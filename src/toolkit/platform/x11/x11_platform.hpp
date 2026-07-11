@@ -28,6 +28,7 @@ class X11PlatformApplication : public PlatformApplication {
     std::string_view name() const override { return "X11"; }
     float scale_factor() const override;
     SystemFonts system_fonts() const override;
+    std::string system_icon_theme() const override;
 
     // Forward to get X11 handles, without X11 includes
     void *get_display() const;

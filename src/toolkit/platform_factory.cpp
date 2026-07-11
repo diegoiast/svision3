@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cstdlib>
+#include <filesystem>
 #include <map>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -36,6 +37,28 @@
 namespace toolkit {
 
 bool is_wayland_session() { return std::getenv("WAYLAND_DISPLAY") != nullptr; }
+
+DesktopEnvironment detect_desktop_environment() {
+#if defined(__APPLE__)
+    return DesktopEnvironment::MacOS;
+#elif defined(_WIN32)
+    return DesktopEnvironment::Windows11;
+#else
+    const char *xdg = std::getenv("XDG_CURRENT_DESKTOP");
+    if (xdg) {
+        std::string s(xdg);
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+        if (s.find("gnome") != std::string::npos) {
+            return DesktopEnvironment::GNOME;
+        }
+        if (s.find("kde") != std::string::npos || s.find("plasma") != std::string::npos) {
+            return DesktopEnvironment::Plasma;
+        }
+    }
+    return DesktopEnvironment::Unknown;
+#endif
+}
 
 class DummyIconProvider : public IconProvider {
   public:
@@ -158,6 +181,32 @@ static std::string get_executable_name() {
 #endif
 }
 
+// Directory containing the running executable, for locating resources shipped
+// next to it (e.g. a bundled icon theme) regardless of the process's current
+// working directory.
+static std::filesystem::path get_executable_dir() {
+#if defined(_WIN32)
+    wchar_t buffer[MAX_PATH];
+    GetModuleFileNameW(NULL, buffer, MAX_PATH);
+    return std::filesystem::path(buffer).parent_path();
+#elif defined(__APPLE__)
+    char buffer[1024];
+    uint32_t size = sizeof(buffer);
+    if (_NSGetExecutablePath(buffer, &size) == 0) {
+        return std::filesystem::path(buffer).parent_path();
+    }
+    return std::filesystem::current_path();
+#else
+    char buffer[1024];
+    ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (len != -1) {
+        buffer[len] = '\0';
+        return std::filesystem::path(buffer).parent_path();
+    }
+    return std::filesystem::current_path();
+#endif
+}
+
 Application::Application() : impl_(std::make_unique<Impl>()) {
     if (const char *env_level = std::getenv("SVISION_LOG_LEVEL")) {
         set_log_level(env_level);
@@ -272,6 +321,28 @@ Icon Application::load_icon(std::string_view icon_name, int size, std::string_vi
     }
 
     return icon;
+}
+
+bool Application::use_xdg_icons() {
+    std::string name;
+    if (s_platform) {
+        name = s_platform->system_icon_theme();
+    }
+
+    if (name.empty()) {
+        spdlog::info("No system icon theme detected");
+        return false;
+    }
+
+    auto loader = std::make_unique<XdgImageLoader>(name);
+    if (!loader->theme_loaded()) {
+        spdlog::warn("System icon theme '{}' could not be loaded", name);
+        return false;
+    }
+
+    spdlog::info("Using icon theme: {}", loader->theme_name());
+    set_icon_provider(std::move(loader));
+    return true;
 }
 
 void Application::post_to_main_thread(std::function<void()> fn) {
