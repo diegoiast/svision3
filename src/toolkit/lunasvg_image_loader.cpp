@@ -2,10 +2,92 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/lunasvg_image_loader.hpp"
+#include "toolkit/theme.hpp"
+#include <algorithm>
 #include <lunasvg/lunasvg.h>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
+
+namespace {
+
+auto to_hex(Color const &c) -> std::string {
+    auto channel = [](float v) {
+        return static_cast<int>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f);
+    };
+    return fmt::format("#{:02x}{:02x}{:02x}", channel(c.r), channel(c.g), channel(c.b));
+}
+
+// Many icon themes (Breeze and its derivatives) ship "-symbolic" SVGs that don't hardcode a
+// fill color: paths use `fill="currentColor"` + `class="ColorScheme-X"`, resolved via a
+// `.ColorScheme-X { color: ... }` rule in a `<style id="current-color-scheme">` block baked in
+// by the theme author for their intended panel background (e.g. breeze-dark bakes in a near-
+// white #fcfcfc, meant for a dark panel -- invisible on a light one). Overriding that rule via
+// Document::applyStyleSheet() after load wins the CSS cascade over the icon's own embedded
+// style, so we can recolor these icons to match svision3's live theme instead. This is a no-op
+// for icons that don't reference these classes.
+auto color_scheme_stylesheet() -> std::string {
+    auto const &p = Theme::current().palette;
+    return fmt::format(".ColorScheme-Text {{ color: {0}; }}"
+                       ".ColorScheme-Background {{ color: {1}; }}"
+                       ".ColorScheme-Highlight {{ color: {2}; }}"
+                       ".ColorScheme-HighlightText {{ color: {3}; }}"
+                       ".ColorScheme-ButtonText {{ color: {0}; }}"
+                       ".ColorScheme-ButtonBackground {{ color: {4}; }}"
+                       ".ColorScheme-ViewText {{ color: {0}; }}"
+                       ".ColorScheme-ViewBackground {{ color: {4}; }}"
+                       ".ColorScheme-PositiveText {{ color: {5}; }}"
+                       ".ColorScheme-NeutralText {{ color: {6}; }}"
+                       ".ColorScheme-NegativeText {{ color: {7}; }}",
+                       to_hex(p.text), to_hex(p.window), to_hex(p.highlight),
+                       to_hex(p.highlighted_text), to_hex(p.base), to_hex(p.success),
+                       to_hex(p.warning), to_hex(p.error));
+}
+
+auto render_document(lunasvg::Document &document, int width, int height) -> lunasvg::Bitmap {
+    document.applyStyleSheet(color_scheme_stylesheet());
+    document.forceLayout();
+
+    if (width <= 0) {
+        width = -1;
+    }
+    if (height <= 0) {
+        height = -1;
+    }
+    return document.renderToBitmap(width, height);
+}
+
+// lunasvg renders to ARGB32_Premultiplied, which in memory (little-endian) is byte order
+// B,G,R,A. The rest of the toolkit's ImageData::pixels convention (see stb_image_loader.cpp and
+// CairoPainter::rgba_to_argb32) is straight-alpha R,G,B,A. Converting here -- rather than
+// leaving it to callers -- keeps every LunasvgImageLoader caller consistent with that
+// convention instead of silently swapping red and blue.
+auto pixels_from_bitmap(lunasvg::Bitmap const &bitmap) -> std::vector<uint8_t> {
+    auto width = bitmap.width();
+    auto height = bitmap.height();
+    auto *src = bitmap.data();
+
+    std::vector<uint8_t> out(static_cast<size_t>(width) * height * 4);
+    for (int i = 0; i < width * height; i++) {
+        auto b = src[i * 4 + 0];
+        auto g = src[i * 4 + 1];
+        auto r = src[i * 4 + 2];
+        auto a = src[i * 4 + 3];
+        if (a != 0 && a != 255) {
+            r = static_cast<uint8_t>(std::min(255, (r * 255) / a));
+            g = static_cast<uint8_t>(std::min(255, (g * 255) / a));
+            b = static_cast<uint8_t>(std::min(255, (b * 255) / a));
+        }
+        out[i * 4 + 0] = r;
+        out[i * 4 + 1] = g;
+        out[i * 4 + 2] = b;
+        out[i * 4 + 3] = a;
+    }
+    return out;
+}
+
+} // namespace
 
 auto LunasvgImageLoader::load(std::string_view path) -> Icon { return load_svg(path, 0, 0); }
 
@@ -20,13 +102,7 @@ auto LunasvgImageLoader::load_svg(std::string_view path, int width, int height) 
         return nullptr;
     }
 
-    if (width <= 0) {
-        width = -1;
-    }
-    if (height <= 0) {
-        height = -1;
-    }
-    auto bitmap = document->renderToBitmap(width, height);
+    auto bitmap = render_document(*document, width, height);
     if (bitmap.isNull()) {
         spdlog::error("lunasvg: failed to render SVG to bitmap: {}", path);
         return nullptr;
@@ -36,9 +112,7 @@ auto LunasvgImageLoader::load_svg(std::string_view path, int width, int height) 
     img->width = static_cast<int>(bitmap.width());
     img->height = static_cast<int>(bitmap.height());
     img->channels = 4;
-
-    size_t data_size = static_cast<size_t>(img->width) * img->height * 4;
-    img->pixels.assign(bitmap.data(), bitmap.data() + data_size);
+    img->pixels = pixels_from_bitmap(bitmap);
 
     return img;
 }
@@ -51,13 +125,7 @@ auto LunasvgImageLoader::load_svg_from_memory(const uint8_t *data, size_t size, 
         return nullptr;
     }
 
-    if (width <= 0) {
-        width = -1;
-    }
-    if (height <= 0) {
-        height = -1;
-    }
-    auto bitmap = document->renderToBitmap(width, height);
+    auto bitmap = render_document(*document, width, height);
     if (bitmap.isNull()) {
         spdlog::error("lunasvg: failed to render SVG to bitmap from memory");
         return nullptr;
@@ -67,9 +135,7 @@ auto LunasvgImageLoader::load_svg_from_memory(const uint8_t *data, size_t size, 
     img->width = static_cast<int>(bitmap.width());
     img->height = static_cast<int>(bitmap.height());
     img->channels = 4;
-
-    size_t pixel_size = static_cast<size_t>(img->width) * img->height * 4;
-    img->pixels.assign(bitmap.data(), bitmap.data() + pixel_size);
+    img->pixels = pixels_from_bitmap(bitmap);
 
     return img;
 }
