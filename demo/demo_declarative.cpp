@@ -92,6 +92,14 @@ int main(int argc, char *argv[]) {
     toolkit::Application app;
     app.set_force_csd(true);
 
+    std::string screenshot_path;
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg.starts_with("--screenshot=")) {
+            screenshot_path = arg.substr(13);
+        }
+    }
+
 #if 1
     if (!app.use_xdg_icons()) {
         auto loader = std::make_unique<toolkit::XdgImageLoader>();
@@ -897,6 +905,14 @@ int main(int argc, char *argv[]) {
             .add(std::move(status_bar_elem)));
 
     window->resize_to_fit();
+    window->relayout();
+
+    if (!screenshot_path.empty()) {
+        bool ok = window->save_to_png(screenshot_path);
+        spdlog::info("Screenshot saved to '{}': {}", screenshot_path, ok ? "success" : "failed");
+        return ok ? 0 : 1;
+    }
+
     window->show();
     return app.run();
 }
