@@ -7,6 +7,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/window.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 #include <array>
 #include <filesystem>
 #include <fstream>
@@ -89,6 +90,11 @@ static auto make_center_editor() {
 int main(int, char *[]) {
     auto app = Application{};
     app.set_force_csd(true);
+    if (!app.use_xdg_icons()) {
+        auto loader = std::make_unique<XdgImageLoader>();
+        loader->set_theme_path("./themes/Faenza");
+        app.set_icon_provider(std::move(loader));
+    }
 
     auto style = Theme::detect_system_style();
     Theme::set_current(ThemeFactory::create(style));
@@ -166,7 +172,7 @@ int main(int, char *[]) {
     auto cmd_toggle_docks = Command::create("Toggle Docks", [dock_ptr]() {
         std::array positions = {DockPosition::Left, DockPosition::Right, DockPosition::Bottom};
         bool any_open = false;
-        for (auto pos : positions) { 
+        for (auto pos : positions) {
             auto *tab = dock_ptr->dock_tab_widget(pos);
             if (tab && !tab->is_collapsed()) {
                 any_open = true;
