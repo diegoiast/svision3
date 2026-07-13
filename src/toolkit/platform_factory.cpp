@@ -62,7 +62,9 @@ DesktopEnvironment detect_desktop_environment() {
 
 class DummyIconProvider : public IconProvider {
   public:
-    auto load(std::string_view, int, std::string_view) -> Icon override { return nullptr; }
+    auto load(std::string_view, int, std::string_view, PixelFormat) -> Icon override {
+        return nullptr;
+    }
 };
 
 static PlatformApplication *s_platform = nullptr;
@@ -74,6 +76,10 @@ PlatformApplication *current_platform() { return s_platform; }
 void set_current_platform(PlatformApplication *p) { s_platform = p; }
 Application *current_application() { return s_application; }
 void set_current_application(Application *a) { s_application = a; }
+
+PixelFormat default_pixel_format() {
+    return s_platform ? s_platform->native_pixel_format() : PixelFormat::BGRA;
+}
 } // namespace detail
 
 bool Application::has_instance() { return s_application != nullptr; }

@@ -40,6 +40,8 @@ class DummyPlatformApplication : public PlatformApplication {
                                                   WindowOptions options) override;
     std::shared_ptr<ImageLoaderInterface> get_image_loader() override;
     std::shared_ptr<SVGLoaderInterface> get_svg_loader() override;
+    // Doesn't actually render anything -- BGRA to match the majority/default convention.
+    PixelFormat native_pixel_format() const override { return PixelFormat::BGRA; }
     int run() override { return 0; }
     void run_until(std::function<bool()>) override {}
     void quit() override {}

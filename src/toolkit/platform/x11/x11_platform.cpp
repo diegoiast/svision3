@@ -1278,11 +1278,12 @@ void X11PlatformWindow::set_icon(Icon const &icon) {
     data.push_back(width);
     data.push_back(height);
 
+    // ImageData::pixels is B,G,R,A; _NET_WM_ICON packs each pixel as 0xAARRGGBB (EWMH spec).
     const uint8_t *src = icon->pixels.data();
     for (int i = 0; i < width * height; i++) {
-        unsigned long r = src[i * 4 + 0];
+        unsigned long b = src[i * 4 + 0];
         unsigned long g = src[i * 4 + 1];
-        unsigned long b = src[i * 4 + 2];
+        unsigned long r = src[i * 4 + 2];
         unsigned long a = src[i * 4 + 3];
         data.push_back((a << 24) | (r << 16) | (g << 8) | b);
     }
@@ -1343,11 +1344,13 @@ Icon X11PlatformWindow::get_icon() {
             img_data->channels = 4;
             img_data->pixels.resize(width * height * 4);
 
+            // _NET_WM_ICON packs each pixel as 0xAARRGGBB (EWMH spec); ImageData::pixels is
+            // B,G,R,A.
             for (int i = 0; i < width * height; i++) {
                 unsigned long pixel = data[2 + i];
-                img_data->pixels[i * 4 + 0] = (pixel >> 16) & 0xFF; // R
+                img_data->pixels[i * 4 + 0] = pixel & 0xFF;         // B
                 img_data->pixels[i * 4 + 1] = (pixel >> 8) & 0xFF;  // G
-                img_data->pixels[i * 4 + 2] = pixel & 0xFF;         // B
+                img_data->pixels[i * 4 + 2] = (pixel >> 16) & 0xFF; // R
                 img_data->pixels[i * 4 + 3] = (pixel >> 24) & 0xFF; // A
             }
             icon_ = img_data;
@@ -1359,7 +1362,9 @@ Icon X11PlatformWindow::get_icon() {
     }
 
     if (!icon_) {
-        icon_ = parse_xpm(default_x11_icon_xpm);
+        // set_icon()/get_icon() pack directly to/from _NET_WM_ICON's B,G,R,A convention,
+        // independent of whichever painter (Cairo/GL) is drawing the window contents.
+        icon_ = parse_xpm(default_x11_icon_xpm, PixelFormat::BGRA);
     }
 
     return icon_;
@@ -1688,6 +1693,13 @@ float X11PlatformWindow::scale_factor() const { return app_->impl_->scale; }
 std::string_view X11PlatformWindow::painter_name() const { return impl_->backend->name(); }
 
 float X11PlatformApplication::scale_factor() const { return impl_->scale; }
+
+PixelFormat X11PlatformApplication::native_pixel_format() const {
+    // Both backends want B,G,R,A here: Cairo natively, and GLPainter because its texture
+    // uploads use GL_BGRA (see gl_painter.cpp) -- desktop GL supports it as a zero-cost native
+    // upload format, so there's nothing to branch on.
+    return PixelFormat::BGRA;
+}
 
 SystemFonts X11PlatformApplication::system_fonts() const {
     return linux_utils::detect_system_fonts();

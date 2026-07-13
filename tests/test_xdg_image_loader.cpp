@@ -1,9 +1,11 @@
 #include "toolkit/lunasvg_image_loader.hpp"
+#include "toolkit/stb_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/xdg_image_loader.hpp"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <filesystem>
 
 using namespace toolkit;
 
@@ -28,9 +30,7 @@ constexpr auto PLAIN_SVG = R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0
 
 // Mirrors the real Breeze/KDE status icon (e.g. /usr/share/icons/breeze/status/16/dialog-error.svg):
 // a solid ColorScheme-NegativeText background rect with a hardcoded white glyph on top. Guards
-// against the R/B channel swap bug where LunasvgImageLoader copied lunasvg's native
-// ARGB32_Premultiplied bytes (B,G,R,A in memory) straight into ImageData::pixels without
-// converting to the toolkit's R,G,B,A convention -- red icons like this one rendered blue.
+// against red/blue channel mixups at the ImageData::pixels (B,G,R,A) boundary.
 constexpr auto STATUS_SVG = R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
   <style type="text/css" id="current-color-scheme">.ColorScheme-NegativeText { color:#da4453; }</style>
   <rect class="ColorScheme-NegativeText" x="2" y="2" width="12" height="12" fill="currentColor"/>
@@ -42,7 +42,61 @@ auto center_pixel(ImageData const &img) -> std::array<uint8_t, 4> {
     return {img.pixels[idx], img.pixels[idx + 1], img.pixels[idx + 2], img.pixels[idx + 3]};
 }
 
+// A minimal 2x2 PNG, one solid color per pixel (top-left=red, top-right=green,
+// bottom-left=blue, bottom-right=white), embedded so this test has no filesystem dependency and
+// no reliance on any real icon theme being installed. Exercises all three channels independently
+// so a channel permutation bug (e.g. R and B swapped, or G accidentally swapped with something)
+// can't hide behind a single-color test. Generated with:
+//
+//   from PIL import Image
+//   import io
+//   img = Image.new('RGBA', (2, 2))
+//   img.putpixel((0, 0), (255, 0, 0, 255))    # top-left: red
+//   img.putpixel((1, 0), (0, 255, 0, 255))    # top-right: green
+//   img.putpixel((0, 1), (0, 0, 255, 255))    # bottom-left: blue
+//   img.putpixel((1, 1), (255, 255, 255, 255))  # bottom-right: white
+//   buf = io.BytesIO()
+//   img.save(buf, format='PNG')
+//   print(', '.join(f'0x{b:02x}' for b in buf.getvalue()))
+constexpr uint8_t RGBW_PNG[] = {
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x08, 0x06, 0x00, 0x00, 0x00, 0x72, 0xb6, 0x0d,
+    0x24, 0x00, 0x00, 0x00, 0x19, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x05, 0xc1, 0x01, 0x0d, 0x00,
+    0x00, 0x0c, 0xc3, 0x20, 0x96, 0xdc, 0xbf, 0xe5, 0x1e, 0x44, 0xd2, 0x4d, 0xc2, 0x03, 0x3e, 0xff,
+    0x06, 0x00, 0x85, 0xd0, 0x93, 0x9c, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42,
+    0x60, 0x82,
+};
+
+auto pixel_at(ImageData const &img, int x, int y) -> std::array<uint8_t, 4> {
+    auto idx = static_cast<size_t>(y * img.width + x) * 4;
+    return {img.pixels[idx], img.pixels[idx + 1], img.pixels[idx + 2], img.pixels[idx + 3]};
+}
+
 } // namespace
+
+TEST_CASE("StbImageLoader loads a PNG as B,G,R,A and round-trips through save", "[image]") {
+    StbImageLoader loader;
+    auto img = loader.load_from_memory(RGBW_PNG, sizeof(RGBW_PNG), PixelFormat::BGRA);
+    REQUIRE(img);
+    REQUIRE(img->width == 2);
+    REQUIRE(img->height == 2);
+
+    REQUIRE(pixel_at(*img, 0, 0) == std::array<uint8_t, 4>{0x00, 0x00, 0xff, 0xff}); // red
+    REQUIRE(pixel_at(*img, 1, 0) == std::array<uint8_t, 4>{0x00, 0xff, 0x00, 0xff}); // green
+    REQUIRE(pixel_at(*img, 0, 1) == std::array<uint8_t, 4>{0xff, 0x00, 0x00, 0xff}); // blue
+    REQUIRE(pixel_at(*img, 1, 1) == std::array<uint8_t, 4>{0xff, 0xff, 0xff, 0xff}); // white
+
+    auto tmp_path = std::filesystem::temp_directory_path() / "svision3_rgbw_roundtrip_test.png";
+    REQUIRE(loader.save(*img, tmp_path.string()));
+
+    auto roundtrip = loader.load(tmp_path.string(), PixelFormat::BGRA);
+    std::filesystem::remove(tmp_path);
+    REQUIRE(roundtrip);
+    REQUIRE(pixel_at(*roundtrip, 0, 0) == std::array<uint8_t, 4>{0x00, 0x00, 0xff, 0xff});
+    REQUIRE(pixel_at(*roundtrip, 1, 0) == std::array<uint8_t, 4>{0x00, 0xff, 0x00, 0xff});
+    REQUIRE(pixel_at(*roundtrip, 0, 1) == std::array<uint8_t, 4>{0xff, 0x00, 0x00, 0xff});
+    REQUIRE(pixel_at(*roundtrip, 1, 1) == std::array<uint8_t, 4>{0xff, 0xff, 0xff, 0xff});
+}
 
 TEST_CASE("LunasvgImageLoader recolors ColorScheme-* symbolic icons to the active theme",
          "[image]") {
@@ -51,13 +105,15 @@ TEST_CASE("LunasvgImageLoader recolors ColorScheme-* symbolic icons to the activ
 
     LunasvgImageLoader loader;
     auto img = loader.load_svg_from_memory(reinterpret_cast<const uint8_t *>(SYMBOLIC_SVG),
-                                           std::char_traits<char>::length(SYMBOLIC_SVG), 16, 16);
+                                           std::char_traits<char>::length(SYMBOLIC_SVG), 16, 16,
+                                           PixelFormat::BGRA);
     REQUIRE(img);
 
+    // ImageData::pixels is B,G,R,A.
     auto px = center_pixel(*img);
-    REQUIRE(px[0] == static_cast<uint8_t>(text.r * 255.0f + 0.5f));
+    REQUIRE(px[0] == static_cast<uint8_t>(text.b * 255.0f + 0.5f));
     REQUIRE(px[1] == static_cast<uint8_t>(text.g * 255.0f + 0.5f));
-    REQUIRE(px[2] == static_cast<uint8_t>(text.b * 255.0f + 0.5f));
+    REQUIRE(px[2] == static_cast<uint8_t>(text.r * 255.0f + 0.5f));
     // Must not still be the theme file's own baked-in default (#fcfcfc).
     REQUIRE_FALSE((px[0] == 0xfc && px[1] == 0xfc && px[2] == 0xfc));
 }
@@ -68,14 +124,16 @@ TEST_CASE("LunasvgImageLoader does not swap red and blue on a colored status ico
 
     LunasvgImageLoader loader;
     auto img = loader.load_svg_from_memory(reinterpret_cast<const uint8_t *>(STATUS_SVG),
-                                           std::char_traits<char>::length(STATUS_SVG), 16, 16);
+                                           std::char_traits<char>::length(STATUS_SVG), 16, 16,
+                                           PixelFormat::BGRA);
     REQUIRE(img);
 
     // Sample a corner of the background rect, away from the white glyph in the center.
+    // ImageData::pixels is B,G,R,A.
     auto idx = static_cast<size_t>(4 * img->width + 4) * 4;
-    REQUIRE(img->pixels[idx + 0] == static_cast<uint8_t>(err.r * 255.0f + 0.5f));
+    REQUIRE(img->pixels[idx + 0] == static_cast<uint8_t>(err.b * 255.0f + 0.5f));
     REQUIRE(img->pixels[idx + 1] == static_cast<uint8_t>(err.g * 255.0f + 0.5f));
-    REQUIRE(img->pixels[idx + 2] == static_cast<uint8_t>(err.b * 255.0f + 0.5f));
+    REQUIRE(img->pixels[idx + 2] == static_cast<uint8_t>(err.r * 255.0f + 0.5f));
 }
 
 TEST_CASE("LunasvgImageLoader leaves icons without ColorScheme classes unchanged", "[image]") {
@@ -83,19 +141,23 @@ TEST_CASE("LunasvgImageLoader leaves icons without ColorScheme classes unchanged
 
     LunasvgImageLoader loader;
     auto img = loader.load_svg_from_memory(reinterpret_cast<const uint8_t *>(PLAIN_SVG),
-                                           std::char_traits<char>::length(PLAIN_SVG), 16, 16);
+                                           std::char_traits<char>::length(PLAIN_SVG), 16, 16,
+                                           PixelFormat::BGRA);
     REQUIRE(img);
 
+    // ImageData::pixels is B,G,R,A.
     auto px = center_pixel(*img);
-    REQUIRE(px[0] == 0x12);
+    REQUIRE(px[0] == 0x56);
     REQUIRE(px[1] == 0x34);
-    REQUIRE(px[2] == 0x56);
+    REQUIRE(px[2] == 0x12);
 }
 
 TEST_CASE("LunasvgImageLoader::load returns image data", "[image]") {
     LunasvgImageLoader loader;
 
-    auto img = loader.load("themes/Faenza/actions/scalable/add-files-to-archive.svg");
+    // Self-authored fixture, not a real theme's copyrighted artwork -- reuses PLAIN_SVG above.
+    auto img = loader.load_from_memory(reinterpret_cast<const uint8_t *>(PLAIN_SVG),
+                                       std::char_traits<char>::length(PLAIN_SVG));
     REQUIRE(img);
     REQUIRE(img->width > 0);
     REQUIRE(img->height > 0);

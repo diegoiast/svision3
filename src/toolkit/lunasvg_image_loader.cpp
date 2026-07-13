@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/lunasvg_image_loader.hpp"
+#include "toolkit/pixel_format.hpp"
 #include "toolkit/theme.hpp"
 #include <algorithm>
 #include <lunasvg/lunasvg.h>
@@ -59,43 +60,35 @@ auto render_document(lunasvg::Document &document, int width, int height) -> luna
 }
 
 // lunasvg renders to ARGB32_Premultiplied, which in memory (little-endian) is byte order
-// B,G,R,A. The rest of the toolkit's ImageData::pixels convention (see stb_image_loader.cpp and
-// CairoPainter::rgba_to_argb32) is straight-alpha R,G,B,A. Converting here -- rather than
-// leaving it to callers -- keeps every LunasvgImageLoader caller consistent with that
-// convention instead of silently swapping red and blue.
-auto pixels_from_bitmap(lunasvg::Bitmap const &bitmap) -> std::vector<uint8_t> {
+// B,G,R,A -- lunasvg's native format. Only swaps if a different format was requested; always
+// un-premultiplies, since that's independent of channel order.
+auto pixels_from_bitmap(lunasvg::Bitmap const &bitmap, PixelFormat format) -> std::vector<uint8_t> {
     auto width = bitmap.width();
     auto height = bitmap.height();
     auto *src = bitmap.data();
 
-    std::vector<uint8_t> out(static_cast<size_t>(width) * height * 4);
-    for (int i = 0; i < width * height; i++) {
-        auto b = src[i * 4 + 0];
-        auto g = src[i * 4 + 1];
-        auto r = src[i * 4 + 2];
-        auto a = src[i * 4 + 3];
-        if (a != 0 && a != 255) {
-            r = static_cast<uint8_t>(std::min(255, (r * 255) / a));
-            g = static_cast<uint8_t>(std::min(255, (g * 255) / a));
-            b = static_cast<uint8_t>(std::min(255, (b * 255) / a));
-        }
-        out[i * 4 + 0] = r;
-        out[i * 4 + 1] = g;
-        out[i * 4 + 2] = b;
-        out[i * 4 + 3] = a;
+    auto pixel_count = static_cast<size_t>(width) * height;
+    std::vector<uint8_t> out(src, src + pixel_count * 4);
+    pixel::unpremultiply(out.data(), pixel_count);
+    if (format == PixelFormat::RGBA) {
+        pixel::swap_rb(out.data(), pixel_count);
     }
     return out;
 }
 
 } // namespace
 
-auto LunasvgImageLoader::load(std::string_view path) -> Icon { return load_svg(path, 0, 0); }
-
-auto LunasvgImageLoader::load_from_memory(const uint8_t *data, size_t size) -> Icon {
-    return load_svg_from_memory(data, size, 0, 0);
+auto LunasvgImageLoader::load(std::string_view path, PixelFormat format) -> Icon {
+    return load_svg(path, 0, 0, format);
 }
 
-auto LunasvgImageLoader::load_svg(std::string_view path, int width, int height) -> Icon {
+auto LunasvgImageLoader::load_from_memory(const uint8_t *data, size_t size, PixelFormat format)
+    -> Icon {
+    return load_svg_from_memory(data, size, 0, 0, format);
+}
+
+auto LunasvgImageLoader::load_svg(std::string_view path, int width, int height,
+                                  PixelFormat format) -> Icon {
     auto document = lunasvg::Document::loadFromFile(std::string(path));
     if (!document) {
         spdlog::error("lunasvg: failed to load SVG from file: {}", path);
@@ -112,13 +105,14 @@ auto LunasvgImageLoader::load_svg(std::string_view path, int width, int height) 
     img->width = static_cast<int>(bitmap.width());
     img->height = static_cast<int>(bitmap.height());
     img->channels = 4;
-    img->pixels = pixels_from_bitmap(bitmap);
+    img->format = format;
+    img->pixels = pixels_from_bitmap(bitmap, format);
 
     return img;
 }
 
 auto LunasvgImageLoader::load_svg_from_memory(const uint8_t *data, size_t size, int width,
-                                              int height) -> Icon {
+                                              int height, PixelFormat format) -> Icon {
     auto document = lunasvg::Document::loadFromData(reinterpret_cast<const char *>(data), size);
     if (!document) {
         spdlog::error("lunasvg: failed to load SVG from memory");
@@ -135,7 +129,8 @@ auto LunasvgImageLoader::load_svg_from_memory(const uint8_t *data, size_t size, 
     img->width = static_cast<int>(bitmap.width());
     img->height = static_cast<int>(bitmap.height());
     img->channels = 4;
-    img->pixels = pixels_from_bitmap(bitmap);
+    img->format = format;
+    img->pixels = pixels_from_bitmap(bitmap, format);
 
     return img;
 }

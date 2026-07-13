@@ -72,6 +72,38 @@ struct Color {
             static_cast<float>((argb >> 24) & 0xff) / 255.0f,
         };
     }
+
+    // from_bgra/to_bgra32 are the BGRA-packed-literal counterpart to from_argb/to_argb32: the
+    // hex digits read B,G,R,A left-to-right (0xBBGGRRAA) instead of A,R,G,B (0xAARRGGBB). This
+    // is a bit-position convention for a literal *value*, unrelated to how bytes happen to sit
+    // in memory when reading a pixel buffer (endianness only matters for the latter) -- see
+    // ImageData in image.hpp for that boundary, and pixel_format.hpp for the buffer-oriented
+    // conversions the loaders/painters actually use at that boundary.
+    static constexpr Color from_bgra(uint32_t bgra) {
+        return {
+            static_cast<float>((bgra >> 8) & 0xff) / 255.0f,
+            static_cast<float>((bgra >> 16) & 0xff) / 255.0f,
+            static_cast<float>((bgra >> 24) & 0xff) / 255.0f,
+            static_cast<float>(bgra & 0xff) / 255.0f,
+        };
+    }
+
+    // Inverse of from_argb: pack into 0xAARRGGBB.
+    constexpr uint32_t to_argb32() const {
+        return (static_cast<uint32_t>(a * 255.0f + 0.5f) << 24) |
+              (static_cast<uint32_t>(r * 255.0f + 0.5f) << 16) |
+              (static_cast<uint32_t>(g * 255.0f + 0.5f) << 8) |
+              static_cast<uint32_t>(b * 255.0f + 0.5f);
+    }
+
+    // Inverse of from_bgra: pack into 0xBBGGRRAA.
+    constexpr uint32_t to_bgra32() const {
+        return (static_cast<uint32_t>(b * 255.0f + 0.5f) << 24) |
+              (static_cast<uint32_t>(g * 255.0f + 0.5f) << 16) |
+              (static_cast<uint32_t>(r * 255.0f + 0.5f) << 8) |
+              static_cast<uint32_t>(a * 255.0f + 0.5f);
+    }
+
     static constexpr Color mid(Color a, Color b) { return Color::lerp(a, b, 0.5); }
     static constexpr Color with_gray(float v) { return Color::rgb(v, v, v); }
 

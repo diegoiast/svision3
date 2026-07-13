@@ -40,7 +40,11 @@ class XdgImageLoader : public IconProvider {
     explicit XdgImageLoader();
     explicit XdgImageLoader(std::string_view theme_name);
 
-    auto load(std::string_view icon_name, int size, std::string_view context = "") -> Icon override;
+    // Defaults repeated from the interface (see image.hpp) since virtual default arguments bind
+    // to the static type of the call, so calls through a concrete XdgImageLoader need it here
+    // too.
+    auto load(std::string_view icon_name, int size, std::string_view context = "",
+             PixelFormat format = detail::default_pixel_format()) -> Icon override;
     // Load a theme by name: searches XDG_DATA_DIRS/icons/<name> (system
     // themes), then the bundled themes/<name> (relative to the current
     // working directory).

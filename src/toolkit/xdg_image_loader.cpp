@@ -305,7 +305,8 @@ auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::s
     return std::nullopt;
 }
 
-auto XdgImageLoader::load(std::string_view icon_name, int size, std::string_view context) -> Icon {
+auto XdgImageLoader::load(std::string_view icon_name, int size, std::string_view context,
+                          PixelFormat format) -> Icon {
     auto path_opt = find_icon_path(icon_name, size, context);
     if (!path_opt) {
         return nullptr;
@@ -314,11 +315,11 @@ auto XdgImageLoader::load(std::string_view icon_name, int size, std::string_view
     std::string path = *path_opt;
     // SVG is XML-based. Use the SVG loader for all SVG files.
     if (path.ends_with(".svg")) {
-        return detail::current_platform()->get_svg_loader()->load_svg(path, size, size);
+        return detail::current_platform()->get_svg_loader()->load_svg(path, size, size, format);
     }
     // Fallback to raster loader (STB) for everything else (PNG, etc.)
     auto loader = detail::current_platform()->get_image_loader();
-    return loader->load(path);
+    return loader->load(path, format);
 }
 
 } // namespace toolkit

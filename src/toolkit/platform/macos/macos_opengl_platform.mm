@@ -1,6 +1,7 @@
 #include "macos_opengl_platform.hpp"
 #include "toolkit/painters/gl_offscreen.hpp"
 #include "toolkit/painters/gl_painter.hpp"
+#include "toolkit/pixel_format.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
@@ -549,8 +550,13 @@ void MacOSOpenGLPlatformWindow::set_icon(Image const &icon) {
                                                                    bytesPerRow:icon->width * 4
                                                                   bitsPerPixel:32];
 
+    // UNVERIFIED: not compile-checked on macOS, please build-check before trusting.
+    // NSBitmapImageRep has no byte-order flag (unlike CGImage) -- for NSDeviceRGBColorSpace with
+    // 4 samples/pixel it always expects R,G,B,A order, but ImageData::pixels is B,G,R,A (see
+    // image.hpp), so swap into a scratch copy first.
     unsigned char *bitmapData = [rep bitmapData];
     std::memcpy(bitmapData, icon->pixels.data(), icon->pixels.size());
+    pixel::swap_rb(bitmapData, static_cast<size_t>(icon->width) * icon->height);
 
     NSImage *image = [[NSImage alloc] initWithSize:NSMakeSize(icon->width, icon->height)];
     [image addRepresentation:rep];

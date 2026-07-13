@@ -1,5 +1,6 @@
 #ifdef TOOLKIT_HAS_CAIRO
 #include "toolkit/painters/cairo_painter.hpp"
+#include "toolkit/pixel_format.hpp"
 #include "toolkit/text/bidi.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
@@ -12,25 +13,24 @@
 
 namespace toolkit {
 
-static void rgba_to_argb32(uint8_t *dst, std::vector<uint8_t> const &src) {
-    auto size = src.size() / 4;
-    for (auto i = 0; i < size; ++i) {
+// ImageData::pixels (straight alpha) and CAIRO_FORMAT_ARGB32 (premultiplied) already share the
+// same B,G,R,A byte order on little-endian -- no channel swap needed here, only the
+// premultiplication conversion.
+static void straight_to_premultiplied(uint8_t *dst, std::vector<uint8_t> const &src) {
+    auto pixel_count = src.size() / 4;
+    for (size_t i = 0; i < pixel_count; ++i) {
         auto alpha = src[i * 4 + 3] / 255.0f;
-        dst[i * 4 + 0] = static_cast<uint8_t>(src[i * 4 + 2] * alpha);
+        dst[i * 4 + 0] = static_cast<uint8_t>(src[i * 4 + 0] * alpha);
         dst[i * 4 + 1] = static_cast<uint8_t>(src[i * 4 + 1] * alpha);
-        dst[i * 4 + 2] = static_cast<uint8_t>(src[i * 4 + 0] * alpha);
+        dst[i * 4 + 2] = static_cast<uint8_t>(src[i * 4 + 2] * alpha);
         dst[i * 4 + 3] = src[i * 4 + 3];
     }
 }
 
-static void argb32_to_rgba(std::vector<uint8_t> &dst, uint8_t const *src, int pixel_count) {
-    dst.resize(static_cast<size_t>(pixel_count) * 4);
-    for (auto i = 0; i < pixel_count * 4; i += 4) {
-        dst[i + 0] = src[i + 2];
-        dst[i + 1] = src[i + 1];
-        dst[i + 2] = src[i + 0];
-        dst[i + 3] = src[i + 3];
-    }
+static void premultiplied_to_straight(std::vector<uint8_t> &dst, uint8_t const *src,
+                                      int pixel_count) {
+    dst.assign(src, src + static_cast<size_t>(pixel_count) * 4);
+    pixel::unpremultiply(dst.data(), static_cast<size_t>(pixel_count));
 }
 
 static std::string font_name_for(FontFamily f) {
@@ -263,7 +263,7 @@ void CairoPainter::draw_image(ImageData const &image, Point position) {
         return;
     }
     auto *data = cairo_image_surface_get_data(surface);
-    rgba_to_argb32(data, image.pixels);
+    straight_to_premultiplied(data, image.pixels);
     cairo_surface_mark_dirty(surface);
 
     cairo_save(cr_);
@@ -285,7 +285,7 @@ void CairoPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
         return;
     }
     auto *data = cairo_image_surface_get_data(surface);
-    rgba_to_argb32(data, image.pixels);
+    straight_to_premultiplied(data, image.pixels);
     cairo_surface_mark_dirty(surface);
 
     cairo_save(cr_);
@@ -324,7 +324,7 @@ Icon cairo_capture(Window *window) {
     result->width = pw;
     result->height = ph;
     result->channels = 4;
-    argb32_to_rgba(result->pixels, data, pw * ph);
+    premultiplied_to_straight(result->pixels, data, pw * ph);
 
     cairo_destroy(cr);
     cairo_surface_destroy(surf);
@@ -405,7 +405,7 @@ RasterizedText CairoTextRasterizer::rasterize(std::string_view text, float font_
     result.height = ph;
     result.ascent = fm.ascent;
     result.x_offset = 0.0f;
-    argb32_to_rgba(result.pixels, data, pw * ph);
+    premultiplied_to_straight(result.pixels, data, pw * ph);
 
     cairo_destroy(cr);
     cairo_surface_destroy(surf);

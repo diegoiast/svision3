@@ -89,6 +89,11 @@ class PlatformApplication {
                                                           Window *owner, WindowOptions options) = 0;
     virtual std::shared_ptr<ImageLoaderInterface> get_image_loader() = 0;
     virtual std::shared_ptr<SVGLoaderInterface> get_svg_loader() = 0;
+    // The pixel format this platform's active painter draws natively -- callers loading images
+    // (icons, PNGs, ...) should request this format from the loader to avoid a conversion. Can
+    // vary at runtime on backends that support a SVISION_PAINT=opengl override (X11, Wayland,
+    // Win32), which is why this is a method rather than a compile-time constant.
+    virtual PixelFormat native_pixel_format() const = 0;
     virtual int run() = 0;
     virtual void run_until(std::function<bool()> should_exit) = 0;
     virtual void quit() = 0;

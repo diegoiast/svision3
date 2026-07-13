@@ -683,13 +683,14 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             return;
         }
 
-        // Colorize
+        // Colorize. ImageData::pixels is B,G,R,A (see image.hpp) -- UNVERIFIED: not
+        // compile-checked on Windows, please build-check before trusting.
         auto pixels = std::move(rast.pixels);
         for (int i = 0; i < rast.width * rast.height; ++i) {
             float a = pixels[i * 4 + 3] / 255.0f;
-            pixels[i * 4 + 0] = static_cast<uint8_t>(c.r * 255 * a);
+            pixels[i * 4 + 0] = static_cast<uint8_t>(c.b * 255 * a);
             pixels[i * 4 + 1] = static_cast<uint8_t>(c.g * 255 * a);
-            pixels[i * 4 + 2] = static_cast<uint8_t>(c.b * 255 * a);
+            pixels[i * 4 + 2] = static_cast<uint8_t>(c.r * 255 * a);
             pixels[i * 4 + 3] = static_cast<uint8_t>(c.a * 255 * a);
         }
 
@@ -698,6 +699,9 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
     }
 }
 
+// UNVERIFIED: not compile-checked on Windows, please build-check before trusting. ImageData's
+// B,G,R,A now matches GDI+'s native PixelFormat32bppARGB directly, so the ColorMatrix R<->B swap
+// this used to need is gone.
 void GDIPainter::draw_image(ImageData const &image, Point position) {
     if (image.width <= 0 || image.height <= 0) {
         return;
@@ -715,22 +719,13 @@ void GDIPainter::draw_image(ImageData const &image, Point position) {
         return;
     }
 
-    Gdiplus::ColorMatrix swapRB = {{
-        {0, 0, 1, 0, 0}, // Red output comes from Blue input
-        {0, 1, 0, 0, 0}, // Green remains Green
-        {1, 0, 0, 0, 0}, // Blue output comes from Red input
-        {0, 0, 0, 1, 0}, // Alpha remains Alpha
-        {0, 0, 0, 0, 1}  // Dummy
-    }};
-
-    Gdiplus::ImageAttributes attrs;
-    attrs.SetColorMatrix(&swapRB, Gdiplus::ColorMatrixFlagsDefault, Gdiplus::ColorAdjustTypeBitmap);
-
     impl_->graphics->DrawImage(&bmp, Gdiplus::RectF(x, y, (float)image.width, (float)image.height),
                                0, 0, (float)image.width, (float)image.height, Gdiplus::UnitPixel,
-                               &attrs);
+                               nullptr);
 }
 
+// UNVERIFIED: not compile-checked on Windows, please build-check before trusting. See draw_image
+// above -- no ColorMatrix swap needed anymore.
 void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     if (image.width <= 0 || image.height <= 0 || dest.width <= 0 || dest.height <= 0) {
         return;
@@ -750,24 +745,13 @@ void GDIPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
         return;
     }
 
-    Gdiplus::ColorMatrix swapRB = {{
-        {0, 0, 1, 0, 0}, // Red output comes from Blue input
-        {0, 1, 0, 0, 0}, // Green remains Green
-        {1, 0, 0, 0, 0}, // Blue output comes from Red input
-        {0, 0, 0, 1, 0}, // Alpha remains Alpha
-        {0, 0, 0, 0, 1}  // Dummy
-    }};
-
-    Gdiplus::ImageAttributes attrs;
-    attrs.SetColorMatrix(&swapRB, Gdiplus::ColorMatrixFlagsDefault, Gdiplus::ColorAdjustTypeBitmap);
-
     Gdiplus::SmoothingMode old_s = impl_->graphics->GetSmoothingMode();
     Gdiplus::InterpolationMode old_i = impl_->graphics->GetInterpolationMode();
     impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
     impl_->graphics->SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
 
     impl_->graphics->DrawImage(&bmp, Gdiplus::RectF(x, y, w, h), 0, 0, (float)image.width,
-                               (float)image.height, Gdiplus::UnitPixel, &attrs);
+                               (float)image.height, Gdiplus::UnitPixel, nullptr);
 
     impl_->graphics->SetSmoothingMode(old_s);
     impl_->graphics->SetInterpolationMode(old_i);
@@ -797,19 +781,15 @@ Icon GDIPainter::capture(Window *window) {
     result->channels = 4;
     result->pixels.resize(pw * ph * 4);
 
+    // UNVERIFIED: not compile-checked on Windows, please build-check before trusting. GDI+
+    // PixelFormat32bppARGB is B,G,R,A in memory, which now matches ImageData::pixels directly
+    // (see image.hpp) -- straight copy, no channel swap.
     Gdiplus::BitmapData data;
     Gdiplus::Rect rect(0, 0, pw, ph);
     if (bitmap.LockBits(&rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &data) ==
         Gdiplus::Ok) {
         uint8_t *src = static_cast<uint8_t *>(data.Scan0);
-        for (int i = 0; i < pw * ph; ++i) {
-            // GDI+ PixelFormat32bppARGB is BGRA
-            // ImageData is RGBA
-            result->pixels[i * 4 + 0] = src[i * 4 + 2]; // R
-            result->pixels[i * 4 + 1] = src[i * 4 + 1]; // G
-            result->pixels[i * 4 + 2] = src[i * 4 + 0]; // B
-            result->pixels[i * 4 + 3] = src[i * 4 + 3]; // A
-        }
+        std::memcpy(result->pixels.data(), src, static_cast<size_t>(pw) * ph * 4);
         bitmap.UnlockBits(&data);
         return result;
     }

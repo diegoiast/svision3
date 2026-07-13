@@ -19,6 +19,12 @@
 #include <algorithm>
 #include <cmath>
 
+// ImageData::pixels is B,G,R,A (see image.hpp); GL_BGRA is core-equivalent on desktop GL since
+// 1.2 (EXT_bgra) but not always in older platform headers.
+#ifndef GL_BGRA
+#define GL_BGRA 0x80E1
+#endif
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -266,7 +272,7 @@ void GLPainter::draw_image(ImageData const &image, Point position) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_BGRA, GL_UNSIGNED_BYTE,
                  image.pixels.data());
 
     glEnable(GL_TEXTURE_2D);
@@ -307,7 +313,7 @@ void GLPainter::draw_image_scaled(ImageData const &image, Rect const &dest) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_BGRA, GL_UNSIGNED_BYTE,
                  image.pixels.data());
 
     glEnable(GL_TEXTURE_2D);

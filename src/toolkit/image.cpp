@@ -1,4 +1,5 @@
 #include "toolkit/image.hpp"
+#include "toolkit/pixel_format.hpp"
 
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -22,9 +23,10 @@ static uint32_t parse_color(std::string_view color_str) {
     return 0xFF00FFFF;
 }
 
-std::shared_ptr<ImageData> parse_xpm(std::string_view xpm_data) {
+std::shared_ptr<ImageData> parse_xpm(std::string_view xpm_data, PixelFormat format) {
     auto img = std::make_shared<ImageData>();
     img->channels = 4;
+    img->format = format;
 
     std::stringstream ss{std::string(xpm_data)};
     std::string line;
@@ -92,12 +94,18 @@ std::shared_ptr<ImageData> parse_xpm(std::string_view xpm_data) {
             std::string key = row.substr(x * cpp, cpp);
             uint32_t color = color_map[key];
 
+            // parse_color() packs 0xRRGGBBAA; write out B,G,R,A and swap once below if RGBA
+            // was requested instead.
             size_t idx = (y * width + x) * 4;
-            img->pixels[idx + 0] = (color >> 24) & 0xFF; // R
+            img->pixels[idx + 0] = (color >> 8) & 0xFF;  // B
             img->pixels[idx + 1] = (color >> 16) & 0xFF; // G
-            img->pixels[idx + 2] = (color >> 8) & 0xFF;  // B
+            img->pixels[idx + 2] = (color >> 24) & 0xFF; // R
             img->pixels[idx + 3] = color & 0xFF;         // A
         }
+    }
+
+    if (format == PixelFormat::RGBA) {
+        pixel::swap_rb(img->pixels.data(), static_cast<size_t>(width) * height);
     }
 
     return img;

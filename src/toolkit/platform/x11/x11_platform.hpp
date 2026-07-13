@@ -19,6 +19,7 @@ class X11PlatformApplication : public PlatformApplication {
                                                   WindowOptions options) override;
     std::shared_ptr<ImageLoaderInterface> get_image_loader() override;
     std::shared_ptr<SVGLoaderInterface> get_svg_loader() override;
+    PixelFormat native_pixel_format() const override;
     int run() override;
     void run_until(std::function<bool()> should_exit) override;
     void quit() override;

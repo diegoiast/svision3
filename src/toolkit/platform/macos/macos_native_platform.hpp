@@ -11,6 +11,8 @@ class MacOSNativePlatformApplication : public MacOSPlatformApplicationBase {
 
     std::string_view name() const override { return "macOS"; }
     std::string_view painter_name() const override { return "Native"; }
+    // CoreGraphics' native layout here is R,G,B,A (see capture()'s CGBitmapInfo flags).
+    PixelFormat native_pixel_format() const override { return PixelFormat::RGBA; }
 };
 
 class MacOSNativePlatformWindow : public PlatformWindow {

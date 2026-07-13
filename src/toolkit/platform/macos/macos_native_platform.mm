@@ -1,4 +1,5 @@
 #include "macos_native_platform.hpp"
+#include "toolkit/pixel_format.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
@@ -667,8 +668,13 @@ void MacOSNativePlatformWindow::set_icon(Image const &icon) {
                                                                    bytesPerRow:icon->width * 4
                                                                   bitsPerPixel:32];
 
+    // UNVERIFIED: not compile-checked on macOS, please build-check before trusting.
+    // NSBitmapImageRep has no byte-order flag (unlike CGImage) -- for NSDeviceRGBColorSpace with
+    // 4 samples/pixel it always expects R,G,B,A order, but ImageData::pixels is B,G,R,A (see
+    // image.hpp), so swap into a scratch copy first.
     unsigned char *bitmapData = [rep bitmapData];
     std::memcpy(bitmapData, icon->pixels.data(), icon->pixels.size());
+    pixel::swap_rb(bitmapData, static_cast<size_t>(icon->width) * icon->height);
 
     NSImage *image = [[NSImage alloc] initWithSize:NSMakeSize(icon->width, icon->height)];
     [image addRepresentation:rep];
@@ -791,6 +797,14 @@ void MacOSNativePlatformWindow::hide_tooltip_window() {
     }
 }
 
+// UNVERIFIED: not compile-checked on macOS, please build-check before trusting. ImageData::pixels
+// is now B,G,R,A straight alpha (see image.hpp). kCGBitmapByteOrder32Little |
+// kCGImageAlphaPremultipliedFirst is the same "BGRA, premultiplied, little-endian" combination
+// already used successfully elsewhere in this codebase for a *source* CGImage (see the tooltip
+// rendering path in macos_opengl_platform.mm); CGBitmapContextCreate additionally accepts
+// PremultipliedFirst/Last for a *destination* context (unlike plain, non-premultiplied
+// First/Last, which it rejects), so this should be valid here too. Only the final unpremultiply
+// step is new.
 Icon MacOSNativePlatformWindow::capture() {
     float scale = scale_factor();
     int lw = static_cast<int>(owner_->size().width);
@@ -810,7 +824,7 @@ Icon MacOSNativePlatformWindow::capture() {
 
     CGContextRef ctx = CGBitmapContextCreate(
         result->pixels.data(), pw, ph, 8, pw * 4, cs,
-        kCGImageAlphaPremultipliedLast | static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Big));
+        kCGImageAlphaPremultipliedFirst | static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Little));
     CGColorSpaceRelease(cs);
     if (!ctx) {
         return nullptr;
@@ -824,6 +838,7 @@ Icon MacOSNativePlatformWindow::capture() {
     owner_->handle_paint(painter);
     CGContextRelease(ctx);
 
+    pixel::unpremultiply(result->pixels.data(), static_cast<size_t>(pw) * ph);
     return result;
 }
 

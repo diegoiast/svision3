@@ -1910,6 +1910,13 @@ float WaylandPlatformWindow::scale_factor() const { return static_cast<float>(ap
 
 float WaylandPlatformApplication::scale_factor() const { return output_scale; }
 
+PixelFormat WaylandPlatformApplication::native_pixel_format() const {
+    // Both backends want B,G,R,A here: Cairo natively, and GLPainter because its texture
+    // uploads use GL_BGRA (see gl_painter.cpp) -- desktop GL supports it as a zero-cost native
+    // upload format, so there's nothing to branch on.
+    return PixelFormat::BGRA;
+}
+
 SystemFonts WaylandPlatformApplication::system_fonts() const {
     return linux_utils::detect_system_fonts();
 }

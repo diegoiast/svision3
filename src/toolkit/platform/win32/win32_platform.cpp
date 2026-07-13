@@ -23,6 +23,7 @@
 #include <GL/gl.h>
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <memory>
 #include <objidl.h>
 #include <spdlog/spdlog.h>
@@ -657,6 +658,13 @@ float Win32PlatformApplication::scale_factor() const {
     return static_cast<float>(get_system_dpi()) / 96.0f;
 }
 
+PixelFormat Win32PlatformApplication::native_pixel_format() const {
+    // Both backends want B,G,R,A here: GDI+ natively, and GLPainter because its texture uploads
+    // use GL_BGRA (see gl_painter.cpp) -- desktop GL supports it as a zero-cost native upload
+    // format, so there's nothing to branch on. UNVERIFIED: not compile-checked on Windows.
+    return PixelFormat::BGRA;
+}
+
 SystemFonts Win32PlatformApplication::system_fonts() const {
     NONCLIENTMETRICSW ncm = {sizeof(NONCLIENTMETRICSW)};
     if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0)) {
@@ -1049,14 +1057,9 @@ void Win32PlatformWindow::set_icon(Icon const &icon) {
         return;
     }
 
-    uint8_t *dest = static_cast<uint8_t *>(bits);
-    const uint8_t *src = icon->pixels.data();
-    for (int i = 0; i < width * height; i++) {
-        dest[i * 4 + 0] = src[i * 4 + 2]; // B
-        dest[i * 4 + 1] = src[i * 4 + 1]; // G
-        dest[i * 4 + 2] = src[i * 4 + 0]; // R
-        dest[i * 4 + 3] = src[i * 4 + 3]; // A
-    }
+    // UNVERIFIED: not compile-checked on Windows, please build-check before trusting. Win32 DIBs
+    // are natively B,G,R,A, which now matches ImageData::pixels directly (see image.hpp).
+    std::memcpy(bits, icon->pixels.data(), static_cast<size_t>(width) * height * 4);
 
     // Create a zeroed-out AND mask
     HBITMAP hMonoBitmap = CreateBitmap(width, height, 1, 1, nullptr);
@@ -1141,10 +1144,11 @@ static std::shared_ptr<ImageData> hicon_to_image(HICON hicon) {
     }
     ReleaseDC(nullptr, hdc);
 
-    // Convert BGRA to RGBA and check if alpha is all zeros
+    // UNVERIFIED: not compile-checked on Windows, please build-check before trusting. Win32 DIBs
+    // are natively B,G,R,A, which now matches ImageData::pixels directly (see image.hpp) -- no
+    // channel swap needed, just the alpha-all-zero check.
     bool all_alpha_zero = true;
     for (size_t i = 0; i < img->pixels.size(); i += 4) {
-        std::swap(img->pixels[i], img->pixels[i + 2]);
         if (img->pixels[i + 3] != 0) {
             all_alpha_zero = false;
         }
@@ -1204,7 +1208,10 @@ Icon Win32PlatformWindow::get_icon() {
             return icon_;
         }
     }
-    icon_ = parse_xpm(default_windows_icon_xpm);
+    // UNVERIFIED: not compile-checked on Windows, please build-check before trusting. set_icon()
+    // packs directly to the Win32 DIB's native B,G,R,A layout, independent of whichever painter
+    // (GDI+/GL) is drawing the window contents.
+    icon_ = parse_xpm(default_windows_icon_xpm, PixelFormat::BGRA);
     return icon_;
 }
 

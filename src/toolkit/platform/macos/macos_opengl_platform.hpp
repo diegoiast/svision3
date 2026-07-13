@@ -12,6 +12,7 @@ class MacOSOpenGLPlatformApplication : public MacOSPlatformApplicationBase {
 
     std::string_view name() const override { return "macOS"; }
     std::string_view painter_name() const override { return "OpenGL"; }
+    PixelFormat native_pixel_format() const override { return PixelFormat::RGBA; }
 };
 
 class MacOSOpenGLPlatformWindow : public PlatformWindow {
