@@ -21,6 +21,7 @@ class Button : public Widget, public Fluent<Button> {
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;
 
+    void paint_background(Painter &) override {}
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
