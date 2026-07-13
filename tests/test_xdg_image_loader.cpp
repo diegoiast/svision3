@@ -1,5 +1,4 @@
 #include "toolkit/lunasvg_image_loader.hpp"
-#include "toolkit/stb_image_loader.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/theme_factory.hpp"
 #include "toolkit/xdg_image_loader.hpp"
@@ -7,7 +6,25 @@
 #include <catch2/catch_test_macros.hpp>
 #include <filesystem>
 
+// Test the raster loader that the target platform actually ships: WIC/GDI+ on Windows,
+// stb elsewhere. Both produce B,G,R,A when asked, so the round-trip assertions hold.
+#ifdef _WIN32
+#include "toolkit/platform/win32/win32_image_loader.hpp"
+// clang-format off
+#include <windows.h>
+#include <gdiplus.h>
+// clang-format on
+#else
+#include "toolkit/stb_image_loader.hpp"
+#endif
+
 using namespace toolkit;
+
+#ifdef _WIN32
+using RasterLoader = Win32ImageLoader;
+#else
+using RasterLoader = StbImageLoader;
+#endif
 
 namespace {
 
@@ -74,8 +91,14 @@ auto pixel_at(ImageData const &img, int x, int y) -> std::array<uint8_t, 4> {
 
 } // namespace
 
-TEST_CASE("StbImageLoader loads a PNG as B,G,R,A and round-trips through save", "[image]") {
-    StbImageLoader loader;
+TEST_CASE("Raster loader loads a PNG as B,G,R,A and round-trips through save", "[image]") {
+#ifdef _WIN32
+    // Win32ImageLoader uses GDI+, which the real app inits in its ctor; do it here.
+    ULONG_PTR gdiplus_token = 0;
+    Gdiplus::GdiplusStartupInput gdiplus_input;
+    Gdiplus::GdiplusStartup(&gdiplus_token, &gdiplus_input, nullptr);
+#endif
+    RasterLoader loader;
     auto img = loader.load_from_memory(RGBW_PNG, sizeof(RGBW_PNG), PixelFormat::BGRA);
     REQUIRE(img);
     REQUIRE(img->width == 2);
@@ -96,6 +119,9 @@ TEST_CASE("StbImageLoader loads a PNG as B,G,R,A and round-trips through save", 
     REQUIRE(pixel_at(*roundtrip, 1, 0) == std::array<uint8_t, 4>{0x00, 0xff, 0x00, 0xff});
     REQUIRE(pixel_at(*roundtrip, 0, 1) == std::array<uint8_t, 4>{0xff, 0x00, 0x00, 0xff});
     REQUIRE(pixel_at(*roundtrip, 1, 1) == std::array<uint8_t, 4>{0xff, 0xff, 0xff, 0xff});
+#ifdef _WIN32
+    Gdiplus::GdiplusShutdown(gdiplus_token);
+#endif
 }
 
 TEST_CASE("LunasvgImageLoader recolors ColorScheme-* symbolic icons to the active theme",

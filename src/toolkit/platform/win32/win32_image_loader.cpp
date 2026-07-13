@@ -1,23 +1,27 @@
 #include "win32_image_loader.hpp"
+#include "win32_utils.hpp"
 #include "toolkit/pixel_format.hpp"
-#include <algorithm>
-#include <cstring>
+
+// clang-format off
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <objidl.h>
 #include <gdiplus.h>
 #include <shlwapi.h>
+// clang-format on
+
+#include <algorithm>
+#include <cstring>
 
 namespace toolkit {
+namespace {
 
-std::wstring Win32ImageLoader::utf8_to_wide(std::string_view s) {
-    if (s.empty()) {
-        return {};
-    }
-    int len = MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), nullptr, 0);
-    std::wstring result(len, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), result.data(), len);
-    return result;
-}
-
-bool Win32ImageLoader::GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
+bool GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
     UINT num = 0, size = 0;
     Gdiplus::GetImageEncodersSize(&num, &size);
     if (size == 0) {
@@ -35,6 +39,8 @@ bool Win32ImageLoader::GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
     free(pImageCodecInfo);
     return false;
 }
+
+} // namespace
 
 auto Win32ImageLoader::load(std::string_view path, PixelFormat pixel_format) -> Icon {
     Gdiplus::Bitmap bitmap(utf8_to_wide(path).c_str());

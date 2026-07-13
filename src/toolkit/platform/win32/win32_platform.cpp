@@ -5,6 +5,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include "win32_image_loader.hpp"
+#include "win32_utils.hpp"
 
 // clang-format off
 #ifndef NOMINMAX
@@ -85,7 +86,10 @@ static float get_window_scale(HWND hwnd) {
 
 // --- Helpers ---
 
-static std::wstring utf8_to_wide(std::string_view s) {
+// Declared in win32_utils.hpp and given external linkage (not static) so other win32
+// TUs (e.g. the image loader) share this one implementation without pulling <windows.h>
+// into their headers.
+std::wstring utf8_to_wide(std::string_view s) {
     if (s.empty()) {
         return {};
     }
@@ -95,7 +99,7 @@ static std::wstring utf8_to_wide(std::string_view s) {
     return result;
 }
 
-static std::string wide_to_utf8(std::wstring_view w) {
+std::string wide_to_utf8(std::wstring_view w) {
     if (w.empty()) {
         return {};
     }
