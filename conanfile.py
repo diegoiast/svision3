@@ -66,8 +66,6 @@ class SvisionRecipe(ConanFile):
 
         if self.settings.os == "Linux":
             self.requires("stb/cci.20240213")
-            self.requires("harfbuzz/12.3.0", options={"with_glib": False})
-            self.requires("freetype/2.13.3")
 
     def build_requirements(self):
         self.test_requires("catch2/3.7.1")

@@ -18,6 +18,7 @@ painters:
   for image loading and rasterizing text.
 
 This should lead to relatively small binaries on Windows and macOS.
+On linux the demos are about 4.6MB after stripping.
 
 ## Features
 
@@ -74,9 +75,20 @@ Managed via [Conan 2](https://conan.io/):
 
 ### System dependencies (Linux only)
 
-## Debian
+`harfbuzz` and `freetype` are **required on every Linux distro, regardless of
+windowing backend**. They are resolved from your system's package manager
+(dynamically linked) rather than built by Conan, to keep resulting binaries
+smaller — see
+[docs/binary-size-analysis-2026-07-23.md](docs/binary-size-analysis-2026-07-23.md)
+for why. If they aren't installed, `cmake --preset conan-release` will fail
+to configure with a "could not find harfbuzz/freetype2" error.
 
-```text
+## Debian / Ubuntu
+
+```bash
+# Always required
+sudo apt install libharfbuzz-dev libfreetype-dev
+
 # For X11
 sudo apt install libx11-dev
 
@@ -84,10 +96,24 @@ sudo apt install libx11-dev
 sudo apt install libwayland-dev wayland-protocols libxkbcommon-dev
 ```
 
+## Arch Linux
+
+```bash
+# Always required (Arch doesn't split headers into separate -dev packages)
+sudo pacman -S harfbuzz freetype2
+
+# For X11
+sudo pacman -S libx11
+
+# For Wayland
+sudo pacman -S wayland wayland-protocols libxkbcommon
+```
+
 ## Fedora
 
 ```bash
 sudo dnf install brotli-devel xorg-x11-proto-devel bzip2-devel \
+    harfbuzz-devel \
     wayland-devel wayland-protocols-devel libxkbcommon-devel mesa-libEGL-devel mesa-libGL-devel libepoxy-devel \
     cairo-devel fontconfig-devel freetype-devel glib2-devel pixman-devel \
     xz-devel libfontenc-devel libXaw-devel libXcomposite-devel \
@@ -97,6 +123,17 @@ sudo dnf install brotli-devel xorg-x11-proto-devel bzip2-devel \
     xcb-util-renderutil-devel libXdamage-devel libXxf86vm-devel \
     libXv-devel xcb-util-devel libuuid-devel xcb-util-cursor-devel
 ```
+
+## Other Linux distributions
+
+Any distro works as long as `pkg-config` and/or CMake's own `find_package` can
+locate `harfbuzz` and `freetype2`, plus your windowing system's development
+headers. Install the equivalent `-dev`/`-devel` packages for:
+
+- `harfbuzz`
+- `freetype2`
+- `libx11` (X11) and/or `wayland` + `wayland-protocols` + `libxkbcommon` (Wayland)
+- `cairo`, `fontconfig`
 
 ## Building
 

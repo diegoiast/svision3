@@ -341,6 +341,12 @@ add_library(toolkit STATIC ${TOOLKIT_SOURCES})
 target_include_directories(toolkit PUBLIC include PRIVATE src src/nfd)
 target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus litehtml md4c::md4c-html nlohmann_json::nlohmann_json lunasvg::lunasvg)
 
+if(NOT MSVC)
+    # One function/variable per section, so --gc-sections (enabled per-executable
+    # below) can drop unused code instead of only unreferenced whole object files.
+    target_compile_options(toolkit PRIVATE -ffunction-sections -fdata-sections)
+endif()
+
 if(TOOLKIT_WITH_CAIRO)
     target_link_libraries(toolkit PUBLIC cairo::cairo)
     if(TARGET fontconfig::fontconfig)
@@ -493,6 +499,14 @@ if(TOOLKIT_BUILD_DEMOS)
         set_target_properties(demo_declarative PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
     endif()
     target_link_libraries(demo_declarative PRIVATE toolkit)
+
+    if(NOT MSVC)
+        # Drop unreferenced sections from libtoolkit.a (and any statically-linked
+        # deps) at link time -- the library itself stays complete, this only
+        # trims what each demo doesn't actually use.
+        target_link_options(demo PRIVATE -Wl,--gc-sections)
+        target_link_options(demo_declarative PRIVATE -Wl,--gc-sections)
+    endif()
 endif()
 
 # ── nfd (Native File Dialog) ──────────────────────────────────────────────────
