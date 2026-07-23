@@ -297,6 +297,7 @@ class CoreTextRasterizer : public TextRasterizer {
     e.click_count = static_cast<int>([event clickCount]);
     e.shift = (m & NSEventModifierFlagShift) != 0;
     e.ctrl = (m & NSEventModifierFlagControl) != 0;
+    e.alt = (m & NSEventModifierFlagOption) != 0;
     e.super = (m & NSEventModifierFlagCommand) != 0;
     self.owner->handle_mouse(e);
 }

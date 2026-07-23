@@ -375,6 +375,7 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
         e.click_count = detect_click_count(data, btn);
         e.shift = (btn.state & ShiftMask) != 0;
         e.ctrl = (btn.state & ControlMask) != 0;
+        e.alt = (btn.state & Mod1Mask) != 0;
         e.super = (btn.state & Mod4Mask) != 0;
         win->handle_mouse(e);
         break;

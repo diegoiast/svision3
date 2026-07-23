@@ -355,6 +355,7 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
     e.click_count = static_cast<int>([event clickCount]);
     e.shift = (mods & NSEventModifierFlagShift) != 0;
     e.ctrl = (mods & NSEventModifierFlagControl) != 0;
+    e.alt = (mods & NSEventModifierFlagOption) != 0;
     e.super = (mods & NSEventModifierFlagCommand) != 0;
     self.owner->handle_mouse(e);
 }

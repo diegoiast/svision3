@@ -434,6 +434,7 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         e.click_count = clicks;
         e.shift = (wp & MK_SHIFT) != 0;
         e.ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+        e.alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
         e.super = (GetKeyState(VK_LWIN) & 0x8000) != 0 || (GetKeyState(VK_RWIN) & 0x8000) != 0;
         win->handle_mouse(e);
         SetCapture(hwnd);

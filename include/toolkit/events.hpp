@@ -18,6 +18,7 @@ struct MouseEvent {
     int click_count = 1;
     bool shift = false;
     bool ctrl = false;
+    bool alt = false;
     bool super = false;
     float scroll_dx = 0;
     float scroll_dy = 0;

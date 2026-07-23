@@ -516,7 +516,8 @@ static void pointer_motion(void *data, wl_pointer *, uint32_t, wl_fixed_t sx, wl
     e.position = {app->pointer_x, app->pointer_y};
     e.shift = app->mod_shift;
     e.ctrl = app->mod_ctrl;
-    e.super = app->mod_ctrl;
+    e.alt = app->mod_alt;
+    e.super = app->mod_super;
     app->pointer_focus->owner_->handle_mouse(e);
 }
 
@@ -538,6 +539,7 @@ static void pointer_button(void *data, wl_pointer *, uint32_t serial, uint32_t t
     e.position = {app->pointer_x, app->pointer_y};
     e.shift = app->mod_shift;
     e.ctrl = app->mod_ctrl;
+    e.alt = app->mod_alt;
     e.super = app->mod_super;
 
     int btn = 0;
