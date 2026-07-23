@@ -91,9 +91,9 @@ Plasma6Theme::Plasma6Theme(ColorScheme scheme, std::optional<Palette> p)
     style.tabWidget.indicator_weight = -2.0f;
 
     style.scrollbar.show_buttons = false;
-    style.scrollbar.thickness = 34.0f;
+    style.scrollbar.thickness = 16.0f;
     style.scrollbar.show_frame = false;
-    style.scrollbar.padding = {0, 4, 0, 4};
+    style.scrollbar.padding = {4, 4, 4, 4};
 
     style.inline_scrollbars = false;
     style.corner_radius = 6.0f;

@@ -108,7 +108,7 @@ void ScrollableWidget::update_scrollbars(Size content_size) {
 void ScrollableWidget::layout_scrollbars() {
     auto const &palette = Theme::current().palette;
     auto bw = Theme::current().style.border_width;
-    float sw = 16.0f;
+    float sw = Theme::current().style.scrollbar.thickness;
 
     if (Theme::current().style.inline_scrollbars) {
         vscroll_->set_visible(false);
