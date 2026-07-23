@@ -59,8 +59,21 @@ auto AbstractLayout::handle_mouse(MouseEvent const &event) -> bool {
         state.layout_dirty = false;
     }
 
+    // Press/Release/Scroll are single-target events: only offer them to a child whose
+    // rect actually contains the point. Without this, a click in dead space (e.g. below
+    // the last widget in a VBoxLayout) would be forwarded to every child in order and
+    // rely on each one to reject it — a widget that doesn't self-guard (like Scrollbar's
+    // "click on track" fallback) would misinterpret it. Move/Drag are left unguarded:
+    // widgets rely on receiving those even when out of bounds to clear local hover state.
+    auto const bounded = event.type == MouseEvent::Type::Press ||
+                        event.type == MouseEvent::Type::Release ||
+                        event.type == MouseEvent::Type::Scroll;
+
     for_each_child([&](Widget *child) {
         if (stop || !child->is_visible()) {
+            return;
+        }
+        if (bounded && !child->rect().contains(event.position)) {
             return;
         }
         if (Widget::dispatch_mouse_event(child, event)) {

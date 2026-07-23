@@ -492,6 +492,9 @@ Widget *Splitter::find_focusable_at(Point p) {
 }
 
 Widget *Splitter::widget_at(Point p) {
+    if (!is_visible() || !hit_test(p)) {
+        return nullptr;
+    }
     auto const positions = compute_positions();
     auto const M = (int)positions.size();
     for (int i = 0; i < M; i++) {

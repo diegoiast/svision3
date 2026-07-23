@@ -951,19 +951,38 @@ void Window::handle_mouse(MouseEvent const &event) {
             request_redraw("event (captured)");
         }
         return;
-    } else {
-        // Normal dispatch — overlay widgets (toasts) first
-        for (auto &widget : widgets_) {
-            if (Widget::dispatch_mouse_event(widget.get(), event)) {
-                needs_redraw = true;
+    } else if (event.type == MouseEvent::Type::Press || event.type == MouseEvent::Type::Release ||
+               event.type == MouseEvent::Type::Scroll) {
+        // Press/Release/Scroll are single-target events. Resolve the exact widget under
+        // the pointer with widget_at() (bounds-checked at every level — the same resolver
+        // used for hover below) and dispatch to it directly, instead of broadcasting the
+        // event to every top-level widget/layout and trusting each one to reject it if it
+        // isn't actually theirs. That broadcast-and-self-reject model is what let a click
+        // land on an unrelated sibling and be misinterpreted by it (e.g. a Scrollbar's
+        // "click on track" fallback firing for a click that never touched the scrollbar).
+        auto under = static_cast<Widget *>(nullptr);
+        for (auto &w : widgets_) {
+            auto p = event.position;
+            p.x -= w->rect().x;
+            p.y -= w->rect().y;
+            under = w->widget_at(p);
+            if (under) {
+                break;
             }
         }
-        if (root_) {
-            // FIXME: what is the difference between these 2? This triggers clicking 2 times
-            if (dispatch_to_on_top(root_.get(), event)) {
-                needs_redraw = true;
-            }
-            if (Widget::dispatch_mouse_event(root_.get(), event)) {
+        if (!under && root_) {
+            under = widget_at_on_top(root_.get(), event.position);
+        }
+        if (!under && root_) {
+            auto p = event.position;
+            p.x -= root_->rect().x;
+            p.y -= root_->rect().y;
+            under = root_->widget_at(p);
+        }
+        if (under) {
+            auto local_ev = event;
+            local_ev.position = under->map_from_window(event.position);
+            if (under->handle_mouse(local_ev)) {
                 needs_redraw = true;
             }
         }
@@ -1011,6 +1030,20 @@ void Window::handle_mouse(MouseEvent const &event) {
                 needs_redraw = true;
             }
         }
+
+        // This block is only reached when there is no captured widget (the captured-widget
+        // branch above returns early), so deliver the Move/Drag itself to whatever is under
+        // the pointer — otherwise widgets never see hover-only Move events and can't update
+        // their own internal hover state (e.g. Splitter's divider cursor, Scrollbar's
+        // button/thumb hover, TabWidget's hovered tab).
+        if (under) {
+            auto local_ev = event;
+            local_ev.position = under->map_from_window(event.position);
+            if (under->handle_mouse(local_ev)) {
+                needs_redraw = true;
+            }
+        }
+
         update_tooltip(under, event.position);
     }
 
@@ -1450,8 +1483,7 @@ void Window::draw_widget_inspector(Painter &painter) {
 
     if (hint.width > 0.0f || hint.height > 0.0f) {
         auto const hint_col = guide_color_for(hint, r);
-        lines.push_back(
-            {fmt::format("min: {:.0f}x{:.0f}", hint.width, hint.height), hint_col});
+        lines.push_back({fmt::format("min: {:.0f}x{:.0f}", hint.width, hint.height), hint_col});
     }
 
     for (auto const &[key, value] : j.items()) {

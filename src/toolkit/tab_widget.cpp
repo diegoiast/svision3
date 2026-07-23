@@ -961,7 +961,10 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
                 window_->request_redraw("tab hover");
             }
         }
-        return Widget::dispatch_mouse_event(content_layout_.get(), event);
+        if (!collapsed_ && content_layout_->rect().contains(event.position)) {
+            return Widget::dispatch_mouse_event(content_layout_.get(), event);
+        }
+        return false;
     }
 
     if (event.type == MouseEvent::Type::Leave) {
@@ -1060,7 +1063,14 @@ auto TabWidget::handle_mouse(MouseEvent const &event) -> bool {
         return true;
     }
 
-    return Widget::dispatch_mouse_event(content_layout_.get(), event);
+    // Not on the bar: only forward into the content area if the point is actually
+    // inside it. Without this check, a click on the tab widget's own dead space
+    // (e.g. bar background below the last tab) would be forwarded blindly and
+    // could be misinterpreted by an unrelated descendant deep in content_layout_.
+    if (!collapsed_ && content_layout_->rect().contains(event.position)) {
+        return Widget::dispatch_mouse_event(content_layout_.get(), event);
+    }
+    return true;
 }
 
 auto TabWidget::handle_key(KeyEvent const &event) -> bool {

@@ -8,6 +8,10 @@
 //        without any way to customize. Its a start, but not something
 //        that can be used in production.
 
+// WARNING: here be dragons, this is vibe-coded to the max. I am unsure if this
+//          can be properly fixed. I am currently dumping more LLMs calls into this.
+//          But I expect for a full re-write eventually.
+
 #include "toolkit/text_edit.hpp"
 #include "toolkit/clipboard.hpp"
 #include "toolkit/theme.hpp"
@@ -117,7 +121,6 @@ TextEdit::TextEdit(std::string text) {
 
     set_text(text);
 }
-
 
 nlohmann::json TextEdit::to_json() const {
     auto j = Widget::to_json();
@@ -501,6 +504,10 @@ void TextEdit::insert_text(std::string_view t) {
             }
         }
     }
+    // Widening a single line (e.g. pasting) doesn't set max_line_w_dirty_ or
+    // change lines_.size(), so paint()'s update_scroll_state() gate would
+    // otherwise miss it and the horizontal scrollbar would stay hidden.
+    update_scroll_state();
 
     sync_commands();
     ensure_cursor_visible();
