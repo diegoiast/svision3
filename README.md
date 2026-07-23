@@ -3,19 +3,44 @@
 A C++20 GUI toolkit with Cairo-based rendering and native platform backends for
 macOS, Windows, and Linux (X11 and Wayland).
 
+![SVision3](svision3-demo.png)
+
+The main goal is to make a toolkit comparable to Qt-Widgets, in C+++20. Trying
+to make as many 3rd parties as possible, trying to avoid the NIH syndrome. It uses
+STL, and smart pointers everythwere. There are platform abstractions to use "native"
+painters:
+
+- on Windows, `Painter` is a `GDIPainter` and `TextRasterizer` is
+  `Win32TextRasterizer`.
+- on Windows image loader is `Win32ImageLoader` which uses Windows APIS, to load
+  pngs, jpg etc.
+- You as a developer can still opt out, and use [STB](https://github.com/nothings/stb)
+  for image loading and rasterizing text.
+
+This should lead to relatively small binaries on Windows and macOS.
+
 ## Features
 
-- Immediate-style widget painting via Cairo
 - Layouts: `HBoxLayout`, `VBoxLayout` with margins, spacing, and stretch factors
 - Widgets: `Button`, `Label`, `Checkbox`, `RadioButton`, `Combobox`, `LineInput`,
   `SpinBox`, `ProgressBar`, `TabWidget`, `ListView`, `ContextMenu`
 - Keyboard navigation (Tab/Shift-Tab), mnemonics (`&ok` renders as underlined `o`),
   focus management
+- Menus, toolbars. popups and dialogs (including using native file dialogs, or
+  toolkit dialogs on request).
 - Clipboard (copy/paste), timers, tooltips, cursor shapes
-- Multiple theme styles (macOS, Windows, Linux) and color schemes (Light, Dark, Pink)
-- Filterable list adapter with async progress reporting
-- Thread-safe `Application::post_to_main_thread()` for background work
-- Runtime backend selection on Linux via environment variables
+- Markdown support, using [litethtml](https://github.com/litehtml/litehtml), meaning
+  you can also display simple HTML documents.
+- Filterable list adapter with async progress reporting.
+- Thread-safe `Application::post_to_main_thread()` for background work.
+- Client side decorations on all platforms.
+- Multiple theme styles (macOS, Windows, Linux) and color schemes (Light, Dark).
+- Runtime backend selection via environment variables.
+- Widget instrospoection on runtime (view properties, or layouts).
+- XDG icon support (even on Windows and macOS - you just need to provide a theme).
+- SQLite support. API is flixible to support other DBMS.
+- Ability to dump the UI state into JSON and reload it later on.
+- Available on connan.io (soon).
 
 ## Platform & Rendering Matrix
 
@@ -30,14 +55,14 @@ macOS, Windows, and Linux (X11 and Wayland).
 | **Linux**| Wayland          | Cairo             | `SVISION_PAINT=cairo` (Default) |
 | **Linux**| Wayland          | OpenGL 2.1        | `SVISION_PAINT=opengl` |
 
-### Backend Selection
-
 On Linux, the windowing system is selected automatically based on the environment, but can be forced:
+
 1. `SVISION_BACKEND` environment variable (`x11` or `wayland`)
 2. Presence of `WAYLAND_DISPLAY` (prefers Wayland)
 3. Presence of `DISPLAY` (falls back to X11)
 
 The rendering backend (Painter) is selected via the `SVISION_PAINT` environment variable on supported platforms.
+OpenGL is currently "not ideal", but it will become usable eventually.
 
 ## Dependencies
 
@@ -50,7 +75,8 @@ Managed via [Conan 2](https://conan.io/):
 ### System dependencies (Linux only)
 
 ## Debian
-```
+
+```text
 # For X11
 sudo apt install libx11-dev
 
@@ -59,6 +85,7 @@ sudo apt install libwayland-dev wayland-protocols libxkbcommon-dev
 ```
 
 ## Fedora
+
 ```bash
 sudo dnf install brotli-devel xorg-x11-proto-devel bzip2-devel \
     wayland-devel wayland-protocols-devel libxkbcommon-devel mesa-libEGL-devel mesa-libGL-devel libepoxy-devel \
@@ -70,9 +97,6 @@ sudo dnf install brotli-devel xorg-x11-proto-devel bzip2-devel \
     xcb-util-renderutil-devel libXdamage-devel libXxf86vm-devel \
     libXv-devel xcb-util-devel libuuid-devel xcb-util-cursor-devel
 ```
-
-Both can be installed side-by-side. CMake detects what's available and compiles
-the corresponding backends.
 
 ## Building
 
@@ -111,7 +135,7 @@ cmake --build --preset conan-debug
 # If on Linux/macOS (Ninja/Make):
 conan install . -s build_type=Debug --build=missing
 cmake --preset conan-debug -G Ninja
-cmake --build --preset conan-debug 
+cmake --build --preset conan-debug
 ```
 
 ### Run
@@ -128,7 +152,7 @@ cmake --build --preset conan-debug
 
 ## Project structure
 
-```
+```text
 include/toolkit/         Public headers
   application.hpp        Application lifecycle, window creation
   window.hpp             Window: widget tree, events, timers, tooltips
@@ -173,7 +197,7 @@ tests/                   Catch2 test suite
 work to virtual interfaces (`PlatformApplication`, `PlatformWindow`). Each
 backend provides concrete implementations:
 
-```
+```text
 Application  -->  PlatformApplication  -->  MacOSCairoPlatformApplication
                                             MacOSNativePlatformApplication
                                             MacOSOpenGLPlatformApplication
@@ -194,6 +218,7 @@ instantiates the correct backend. On Linux, this happens at runtime based on
 environment detection. On macOS and Windows, it's a compile-time decision.
 
 All rendering goes through the abstract `Painter` interface. The toolkit provides two main implementations:
+
 - `CairoPainter`: Uses the Cairo graphics library for high-quality 2D vector graphics.
 - `GLPainter`: A hardware-accelerated OpenGL 2.1 implementation.
 
