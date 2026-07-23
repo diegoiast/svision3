@@ -5,14 +5,18 @@
 1. C++ 20 code.
 2. Build system is conan+cmake (note that presets might change between systems).
 3. Configure:
-```
+
+```text
 conan install . -s build_type=Debug --build=missing
 cmake --preset conan-debug -G Ninja
 ```
+
 3. Build:
-```
+
+```text
 cmake --preset conan-debug -G Ninja
 ```
+
 4. LLMs should only deal with debug builds.
 
 ## Coding standards
@@ -25,15 +29,15 @@ cmake --preset conan-debug -G Ninja
     1. Avoid excesive comments. Code should be clear enough.
     1. Comments before statment, not aside it.
     1. Do not abuse with icons on comments.
-    1. File names are *.cpp, *.hpp (*.mm where needed)
-    1. First 2 lines will be: `// SPDX-License-Identifier: MIT` and `// SPDX-FileCopyrightText: `
+    1. File names are *.cpp,*.hpp (*.mm where needed)
+    1. First 2 lines will be: `// SPDX-License-Identifier: MIT` and `// SPDX-FileCopyrightText:`
     1. Includes will be guarded by `#pragma once`.
     1. Do not modify `todo.txt`
     1. When working on a widget, do not modify platform code - keep modifications
        inside the widget code. If platform changes are needed - prompt developer
        to modify those things.
     1. Painting new widgets, should be done by drawing widgets primities for this
-       widget. (`theme->draw_button_background()`
+       widget (`theme->draw_button_background()`).
 1. Variables
     1. Variable names are `snake_case`.
     2. Macros (`#define`) are always UPPER_CASE.
@@ -53,7 +57,8 @@ cmake --preset conan-debug -G Ninja
     1. Class names are `PascalNotation`.
     2. Methods are `camelCase`.
 
-## Classes for  Windows/Widgets
+## Classes for Windows/Widgets
+
 1. Widgets
     1. All widgets will have a default empty constrctor.
     1. All setters for the widget (`set_text()`, `set_icon()` etc), will
