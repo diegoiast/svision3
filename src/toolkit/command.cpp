@@ -76,6 +76,8 @@ Shortcut Shortcut::parse(std::string_view s) {
             result.key = Key::Escape;
         } else if (low == "tab") {
             result.key = Key::Tab;
+        } else if (low == "space") {
+            result.key = Key::Space;
         } else if (low == "f1") {
             result.key = Key::F1;
         } else if (low == "f2") {

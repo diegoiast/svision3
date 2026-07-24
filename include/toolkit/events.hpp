@@ -39,6 +39,7 @@ enum class Key {
     Enter,
     Escape,
     Tab,
+    Space,
     LeftAlt,
     RightAlt,
     LeftShift,

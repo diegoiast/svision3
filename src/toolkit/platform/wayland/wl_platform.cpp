@@ -238,6 +238,8 @@ static Key xkb_to_key(xkb_keysym_t sym) {
     case XKB_KEY_Tab:
     case XKB_KEY_ISO_Left_Tab:
         return Key::Tab;
+    case XKB_KEY_space:
+        return Key::Space;
     case XKB_KEY_F1:
         return Key::F1;
     case XKB_KEY_F2:

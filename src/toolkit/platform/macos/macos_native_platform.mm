@@ -462,6 +462,9 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
     ke.alt = (mods & NSEventModifierFlagOption) != 0;
     ke.super = (mods & NSEventModifierFlagCommand) != 0;
     switch ([event keyCode]) {
+    case 49:
+        ke.key = toolkit::Key::Space;
+        break;
     case 51:
         ke.key = toolkit::Key::Backspace;
         break;

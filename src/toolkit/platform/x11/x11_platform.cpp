@@ -203,6 +203,8 @@ static Key keysym_to_key(KeySym ks) {
     case XK_Tab:
     case XK_ISO_Left_Tab:
         return Key::Tab;
+    case XK_space:
+        return Key::Space;
     case XK_F1:
         return Key::F1;
     case XK_F2:
