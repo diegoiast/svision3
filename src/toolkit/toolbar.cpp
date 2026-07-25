@@ -86,6 +86,33 @@ void Toolbar::add_widget(std::unique_ptr<Widget> w, float stretch) {
 
 void Toolbar::add_separator() { layout_->add_widget(std::make_unique<ToolbarSeparator>()); }
 
+void Toolbar::insert_command(int index, Command::Ptr cmd) {
+    layout_->insert_widget(index, std::make_unique<ToolButton>(std::move(cmd)));
+    if (window_) {
+        window_->request_redraw("toolbar command inserted");
+    }
+}
+
+void Toolbar::insert_separator(int index) {
+    layout_->insert_widget(index, std::make_unique<ToolbarSeparator>());
+    if (window_) {
+        window_->request_redraw("toolbar separator inserted");
+    }
+}
+
+void Toolbar::remove_range(int index, int count) {
+    for (auto i = 0; i < count; ++i) {
+        layout_->release_item(index);
+    }
+    if (count > 0 && window_) {
+        window_->request_redraw("toolbar items removed");
+    }
+}
+
+int Toolbar::item_count() const { return static_cast<int>(layout_->items().size()); }
+
+void Toolbar::clear() { layout_->clear_items(); }
+
 void Toolbar::paint(Painter &painter) {
     auto rect = Rect{0, 0, rect_.width, rect_.height};
     auto wstate = WidgetState{

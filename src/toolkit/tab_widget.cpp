@@ -108,6 +108,7 @@ TabWidget &TabWidget::remove_tab(int index) {
     if (index < 0 || index >= static_cast<int>(tabs_.size())) {
         return *this;
     }
+    auto old_current = current_;
     tabs_.erase(tabs_.begin() + index);
     content_layout_->remove_widget(index);
     current_ = content_layout_->current();
@@ -115,6 +116,9 @@ TabWidget &TabWidget::remove_tab(int index) {
     layout_content();
     if (window_) {
         window_->request_redraw("tab removed");
+    }
+    if (current_ != old_current && on_current_changed) {
+        on_current_changed(current_);
     }
     return *this;
 }
@@ -124,6 +128,14 @@ std::string TabWidget::tab_title(int index) const {
         return {};
     }
     return tabs_[index].title;
+}
+
+Widget *TabWidget::widget(int index) const {
+    auto const &items = content_layout_->items();
+    if (index < 0 || index >= static_cast<int>(items.size())) {
+        return nullptr;
+    }
+    return items[index].get();
 }
 
 TabWidget &TabWidget::set_tab_tooltip(int index, std::string tooltip) {

@@ -23,6 +23,13 @@ class Toolbar : public Widget, public Fluent<Toolbar> {
     void add_widget(std::unique_ptr<Widget> w, float stretch = 0);
     void add_separator();
 
+    void insert_command(int index, Command::Ptr cmd);
+    void insert_separator(int index);
+    void remove_range(int index, int count);
+    int item_count() const;
+
+    void clear();
+
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;

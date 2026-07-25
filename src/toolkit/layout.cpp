@@ -377,6 +377,19 @@ void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
     }
 }
 
+void HBoxLayout::insert_widget(int index, std::unique_ptr<Widget> widget, int stretch,
+                               Alignment v_align) {
+    widget->set_parent(this);
+    if (window_) {
+        widget->set_window(window_);
+    }
+    index = std::clamp(index, 0, static_cast<int>(items_.size()));
+    items_.insert(items_.begin() + index, {std::move(widget), stretch, v_align});
+    if (rect_.width > 0 || rect_.height > 0) {
+        apply_layout();
+    }
+}
+
 void HBoxLayout::apply_layout() {
     auto content_x = margins_.left;
     auto content_y = margins_.top;

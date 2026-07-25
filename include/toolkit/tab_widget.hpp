@@ -28,6 +28,9 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     std::string tab_title(int index) const;
     TabWidget &set_tab_tooltip(int index, std::string tooltip);
 
+    Widget *widget(int index) const;
+    Widget *current_widget() const { return widget(current_); }
+
     TabWidget &set_tabs_closable(bool closable);
     bool tabs_closable() const { return tabs_closable_; }
 
@@ -76,6 +79,10 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     TabWidget &set_trailing_widget(std::unique_ptr<Widget> widget);
 
     std::function<void(int index, std::string const &title)> on_tab_close;
+
+    // Fired whenever the active tab changes, whether via a click, keyboard
+    // navigation, set_current(), or a tab close that shifts the current index.
+    std::function<void(int index)> on_current_changed;
 
     void scroll_to_tab(int index);
     void scroll_by(float delta);
