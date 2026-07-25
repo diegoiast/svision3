@@ -3,29 +3,28 @@
 
 // Declarative UI API
 
-#include "toolkit/button.hpp"
-#include "toolkit/checkbox.hpp"
-#include "toolkit/combobox.hpp"
-#include "toolkit/image_widget.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/layout.hpp"
-#include "toolkit/line_input.hpp"
-#include "toolkit/progress_bar.hpp"
-#include "toolkit/radio_button.hpp"
-#include "toolkit/slider.hpp"
-#include "toolkit/spin_box.hpp"
-#include "toolkit/tab_widget.hpp"
-
+#include <toolkit/button.hpp>
+#include <toolkit/checkbox.hpp>
+#include <toolkit/combobox.hpp>
 #include <toolkit/file_browser_widget.hpp>
 #include <toolkit/html_view.hpp>
 #include <toolkit/icon_grid.hpp>
+#include <toolkit/image_widget.hpp>
+#include <toolkit/label.hpp>
+#include <toolkit/layout.hpp>
+#include <toolkit/line_input.hpp>
 #include <toolkit/list_view.hpp>
 #include <toolkit/menu.hpp>
 #include <toolkit/menubar.hpp>
+#include <toolkit/progress_bar.hpp>
+#include <toolkit/radio_button.hpp>
 #include <toolkit/rich_label.hpp>
 #include <toolkit/scroll_area.hpp>
+#include <toolkit/slider.hpp>
+#include <toolkit/spin_box.hpp>
 #include <toolkit/splitter.hpp>
 #include <toolkit/status_bar.hpp>
+#include <toolkit/tab_widget.hpp>
 #include <toolkit/table_view.hpp>
 #include <toolkit/text_edit.hpp>
 #include <toolkit/toast_widget.hpp>
@@ -140,7 +139,8 @@ template <typename T> struct Element {
         return std::move(*this);
     }
     Element ratio(int divider, float r) {
-        static_assert(std::is_same_v<T, toolkit::Splitter>, "ratio(divider, r) only works on Splitter");
+        static_assert(std::is_same_v<T, toolkit::Splitter>,
+                      "ratio(divider, r) only works on Splitter");
         w->set_ratio(divider, r);
         return std::move(*this);
     }
@@ -412,7 +412,7 @@ template <typename T> struct Element {
     template <typename W>
     Element add_tab(std::string_view title, std::string_view tooltip, Element<W> &&child,
                     bool closable = true) {
-        auto index = static_cast<int>(w->tab_count());
+        auto index = static_cast<int>(w->get_tab_count());
         w->add_tab(std::string(title), std::move(child.w), closable);
         w->set_tab_tooltip(index, std::string(tooltip));
         return std::move(*this);

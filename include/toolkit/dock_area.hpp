@@ -23,6 +23,9 @@ class DockArea : public AbstractLayout {
     DockArea();
 
     DockArea &set_center(std::unique_ptr<Widget> widget);
+    Widget *get_center() const { return center_.get(); }
+
+    // FIXME: what is this method?
     template <class T> T &set_center() {
         auto ptr = std::make_unique<T>();
         T &ref = *ptr;
@@ -59,7 +62,7 @@ class DockArea : public AbstractLayout {
     struct DockSide {
         std::unique_ptr<TabWidget> tabs; // owned until tree is built
         TabWidget *ptr = nullptr;        // always valid once add_dock is called
-        Splitter *splitter = nullptr;    // the Splitter that directly contains this dock's TabWidget
+        Splitter *splitter = nullptr; // the Splitter that directly contains this dock's TabWidget
         float size = default_dock_size;
     };
 

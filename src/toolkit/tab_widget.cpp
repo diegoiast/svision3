@@ -123,14 +123,14 @@ TabWidget &TabWidget::remove_tab(int index) {
     return *this;
 }
 
-std::string TabWidget::tab_title(int index) const {
+std::string TabWidget::get_tab_title(int index) const {
     if (index < 0 || index >= static_cast<int>(tabs_.size())) {
         return {};
     }
     return tabs_[index].title;
 }
 
-Widget *TabWidget::widget(int index) const {
+Widget *TabWidget::get_widget(int index) const {
     auto const &items = content_layout_->items();
     if (index < 0 || index >= static_cast<int>(items.size())) {
         return nullptr;
@@ -310,6 +310,8 @@ TabWidget &TabWidget::set_orientation(TabOrientation o) {
         return *this;
     }
     orientation_ = o;
+
+    // FIXME: those buttons are too large, we need to make them small.
     if (orientation_ == TabOrientation::North || orientation_ == TabOrientation::South) {
         prev_button_->set_text("<");
         next_button_->set_text(">");
