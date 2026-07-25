@@ -23,15 +23,15 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
                                   bool closable = true);
     TabWidget &remove_tab(int index);
 
-    int current_index() const { return current_; }
+    int get_current_index() const { return current_; }
     TabWidget &set_current(int index);
 
-    size_t tab_count() const { return tabs_.size(); }
-    std::string tab_title(int index) const;
+    size_t get_tab_count() const { return tabs_.size(); }
+    std::string get_tab_title(int index) const;
     TabWidget &set_tab_tooltip(int index, std::string tooltip);
 
-    Widget *widget(int index) const;
-    Widget *current_widget() const { return widget(current_); }
+    Widget *get_widget(int index) const;
+    Widget *get_current_widget() const { return get_widget(current_); }
 
     TabWidget &set_tabs_closable(bool closable);
     bool tabs_closable() const { return tabs_closable_; }

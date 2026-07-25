@@ -10,26 +10,26 @@ using namespace toolkit;
 
 TEST_CASE("TabWidget default state", "[tabwidget]") {
     TabWidget tw;
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
 }
 
 TEST_CASE("TabWidget add_tab and current_index", "[tabwidget]") {
     TabWidget tw;
     tw.add_tab("Tab 1", std::make_unique<Label>("Content 1"));
     tw.add_tab("Tab 2", std::make_unique<Label>("Content 2"));
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
 
     tw.set_current(1);
-    REQUIRE(tw.current_index() == 1);
+    REQUIRE(tw.get_current_index() == 1);
 }
 
 TEST_CASE("TabWidget set_current out of range ignored", "[tabwidget]") {
     TabWidget tw;
     tw.add_tab("Tab 1", std::make_unique<Label>("A"));
     tw.set_current(5);
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
     tw.set_current(-1);
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
 }
 
 TEST_CASE("TabWidget on_tab_close callback", "[tabwidget]") {
@@ -99,12 +99,12 @@ TEST_CASE("TabWidget scrolling with interaction", "[tabwidget]") {
     }
 
     // Tab 0 should be current
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
 
     // Click on Tab 9 (at the end), it should scroll and become current
     // We don't know exact positions, but clicking far right should hit something or scroll
     tw.set_current(9);
-    REQUIRE(tw.current_index() == 9);
+    REQUIRE(tw.get_current_index() == 9);
 
     // Simulate mouse wheel scroll
     MouseEvent scroll_ev;
@@ -132,7 +132,7 @@ TEST_CASE("TabWidget with leading widget and scrolling", "[tabwidget]") {
     // This should definitely trigger scroll buttons.
     // The layout should be: [Leading][Prev][Tabs...][Next]
     // We verify it doesn't crash and respects basic properties.
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
 }
 
 TEST_CASE("TabWidget hidden scroll buttons hit test", "[tabwidget]") {
@@ -150,7 +150,7 @@ TEST_CASE("TabWidget hidden scroll buttons hit test", "[tabwidget]") {
     // scroll buttons WILL be shown.
 
     // This is more of a behavioral test, ensuring no crashes and current logic
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
 }
 
 TEST_CASE("TabWidget scroll back to first tab", "[tabwidget]") {
@@ -163,11 +163,11 @@ TEST_CASE("TabWidget scroll back to first tab", "[tabwidget]") {
 
     // Scroll to the end
     tw.set_current(9);
-    REQUIRE(tw.current_index() == 9);
+    REQUIRE(tw.get_current_index() == 9);
 
     // Scroll back to the first
     tw.set_current(0);
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
 
     // Verify Tab 0 is hit-testable at its expected position
     // Tab 0 should be at x=0 (relative to bar_start, which is start_pos since scroll_offset is 0)
@@ -219,7 +219,7 @@ TEST_CASE("TabWidget different orientations selection", "[tabwidget]") {
         tw.add_tab("Tab 0", std::make_unique<Label>("C0"));
         tw.add_tab("Tab 1", std::make_unique<Label>("C1"));
 
-        REQUIRE(tw.current_index() == 0);
+        REQUIRE(tw.get_current_index() == 0);
 
         // Find a point that should hit Tab 1
         // We don't know exact sizes, but we can guess
@@ -250,7 +250,7 @@ TEST_CASE("TabWidget keyboard shortcuts", "[tabwidget]") {
     tw.add_tab("Tab 1", std::make_unique<Label>("C1"));
     tw.add_tab("Tab 2", std::make_unique<Label>("C2"));
 
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
 
     // Ctrl+PageDown to next tab
     KeyEvent ev;
@@ -258,18 +258,18 @@ TEST_CASE("TabWidget keyboard shortcuts", "[tabwidget]") {
     ev.ctrl = true;
     ev.key = Key::PageDown;
     tw.handle_key(ev);
-    REQUIRE(tw.current_index() == 1);
+    REQUIRE(tw.get_current_index() == 1);
 
     // Ctrl+PageUp back to first tab
     ev.key = Key::PageUp;
     tw.handle_key(ev);
-    REQUIRE(tw.current_index() == 0);
+    REQUIRE(tw.get_current_index() == 0);
 
     // Ctrl+Shift+PageDown to move Tab 0 to index 1
     ev.key = Key::PageDown;
     ev.shift = true;
     tw.handle_key(ev);
-    REQUIRE(tw.current_index() == 1);
+    REQUIRE(tw.get_current_index() == 1);
     // After moving, Tab 0 should be at index 1
     // We can't easily check titles without making more methods public,
     // but we've verified it doesn't crash and index is updated.
@@ -408,8 +408,8 @@ TEST_CASE("TabWidget for_each_child exposes StackedLayout not content widgets di
         }
     });
 
-    REQUIRE(found_stacked);           // StackedLayout is a direct child
-    REQUIRE(!found_label_directly);   // The Label is NOT directly visible in the child list
+    REQUIRE(found_stacked);         // StackedLayout is a direct child
+    REQUIRE(!found_label_directly); // The Label is NOT directly visible in the child list
 }
 
 // find_focusable_at must agree with widget_at about what's reachable: while
