@@ -710,9 +710,11 @@ void Window::handle_paint(Painter &painter) {
 
     for (auto const &popup : popups_) {
         if (popup.on_paint) {
+            painter.push_clip(popup.bounds, style.corner_radius);
             painter.push_translation({popup.bounds.x, popup.bounds.y});
             popup.on_paint(painter);
             painter.pop_translation();
+            painter.pop_clip();
         }
     }
 

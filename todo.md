@@ -253,7 +253,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 1. [ ] If any command has an icon - all text should be shifted.
        now - only commands with icons are shifted.
-2. [ ] Text can be drawed outside a popup.
+2. [x] Text can be drawed outside a popup.
+3. [ ] Popups should not be overlays, but proper windows
 
 ## Event Handling [11/12]
 

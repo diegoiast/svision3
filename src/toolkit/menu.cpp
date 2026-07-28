@@ -62,6 +62,7 @@ void Menu::show(Window *win, Point position) {
     auto const &style = Theme::current().style.menu;
     auto max_name_w = 0.0f;
     auto max_shortcut_w = 0.0f;
+    auto max_icon_w = 0.0f;
 
     item_height_ = detail::current_platform()->font_metrics(palette.fonts.size).height +
                    style.item_padding * 2.0f + 4.0f;
@@ -72,18 +73,28 @@ void Menu::show(Window *win, Point position) {
         auto name_w = detail::current_platform()
                           ->measure_text(item.command->name(), palette.fonts.size)
                           .width;
-
+        if (item.is_submenu()) {
+            // Room for the ">" indicator drawn at the right edge of the item.
+            name_w += Theme::current().style.button.menu_indicator_width + 8.0f;
+        }
         max_name_w = std::max(max_name_w, name_w);
-        if (!item.command->shortcut_string().empty()) {
+
+        if (auto const &icon = item.command->icon_image()) {
+            max_icon_w = std::max(max_icon_w, static_cast<float>(icon->width));
+        }
+
+        auto shortcut = item.command->printable_shortcut();
+        if (!shortcut.empty()) {
             auto shortcut_w =
-                detail::current_platform()
-                    ->measure_text(item.command->shortcut_string(), palette.fonts.size)
-                    .width;
+                detail::current_platform()->measure_text(shortcut, palette.fonts.size).width;
             max_shortcut_w = std::max(max_shortcut_w, shortcut_w);
         }
     }
 
     auto width = max_name_w + style.padding.left + style.padding.right + 20.0f;
+    if (max_icon_w > 0) {
+        width += max_icon_w + 4.0f; // Icon plus the gap before the text
+    }
     auto height = menu_total_height(items_, item_height_, separator_height_) + 4.0f;
     auto win_size = window_->size();
     auto x = position.x;

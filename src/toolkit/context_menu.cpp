@@ -39,6 +39,7 @@ void ContextMenu::show(Window *win, Point position) {
     auto const &palette = theme.palette;
     auto max_name_w = 0.0f;
     auto max_shortcut_w = 0.0f;
+    auto max_icon_w = 0.0f;
 
     item_height_ = detail::current_platform()->font_metrics(palette.fonts.size).height +
                    style.item_padding * 2.0f;
@@ -49,7 +50,15 @@ void ContextMenu::show(Window *win, Point position) {
         auto name_w = detail::current_platform()
                           ->measure_text(item.command->name(), palette.fonts.size)
                           .width;
+        if (item.is_submenu()) {
+            // Room for the ">" indicator drawn at the right edge of the item.
+            name_w += Theme::current().style.button.menu_indicator_width + 8.0f;
+        }
         max_name_w = std::max(max_name_w, name_w);
+
+        if (auto const &icon = item.command->icon_image()) {
+            max_icon_w = std::max(max_icon_w, static_cast<float>(icon->width));
+        }
 
         auto shortcut = item.command->printable_shortcut();
         if (!shortcut.empty()) {
@@ -61,6 +70,9 @@ void ContextMenu::show(Window *win, Point position) {
 
     // FIXME: what is this extra 20.0f padding?
     auto width = max_name_w + style.padding.left + style.padding.right + 20.0f;
+    if (max_icon_w > 0) {
+        width += max_icon_w + 4.0f; // Icon plus the gap before the text
+    }
     if (max_shortcut_w > 0) {
         width += max_shortcut_w + 20.0f; // Add gap and shortcut width
     }
