@@ -180,7 +180,7 @@ void Widget::draw(Painter &painter) {
     painter.pop_clip();
 }
 
-bool Widget::handle_key_impl(KeyEvent const &event) {
+bool Widget::dispatch_key_event(KeyEvent const &event) {
     for (auto const &cmd : commands_) {
         if (cmd->matches_key_event(event)) {
             cmd->execute();

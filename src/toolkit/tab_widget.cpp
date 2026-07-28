@@ -1117,7 +1117,7 @@ auto TabWidget::handle_key(KeyEvent const &event) -> bool {
 
     auto idx = content_layout_->current();
     if (idx >= 0 && idx < content_layout_->count()) {
-        return content_layout_->items()[idx]->handle_key(event);
+        return content_layout_->items()[idx]->dispatch_key_event(event);
     }
     return false;
 }

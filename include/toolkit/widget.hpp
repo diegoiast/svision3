@@ -179,12 +179,15 @@ class Widget {
     virtual void paint_background(Painter &painter);
     virtual float content_inset() const;
 
+    // Delivers a key event to this widget, honoring its focus gate: matches
+    // registered command shortcuts first (regardless of focus), then calls
+    // handle_key() only if the widget is focused or accepts non-focus input.
+    // Containers forwarding key events to a child (e.g. TabWidget to its
+    // current tab) should call this instead of handle_key() directly, so the
+    // child's own focus state is respected rather than bypassed.
+    bool dispatch_key_event(KeyEvent const &event);
+
   protected:
-    // Let window call this protected method
-    friend class Window;
-
-    bool handle_key_impl(KeyEvent const &event);
-
     struct {
         bool layout_dirty = true;
         bool focused = false;

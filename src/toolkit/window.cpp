@@ -1073,7 +1073,7 @@ void Window::handle_key(KeyEvent const &event) {
     }
 
     if (event.type == KeyEvent::Type::Press && event.key == Key::Tab) {
-        if (focused_widget_ && focused_widget_->handle_key_impl(event)) {
+        if (focused_widget_ && focused_widget_->dispatch_key_event(event)) {
             return;
         }
         focus_next(event.shift);
@@ -1104,7 +1104,7 @@ void Window::handle_key(KeyEvent const &event) {
     if (focused_widget_) {
         auto w = focused_widget_;
         while (w) {
-            if (w->handle_key_impl(event)) {
+            if (w->dispatch_key_event(event)) {
                 return;
             }
             w = w->parent();
@@ -1148,7 +1148,7 @@ bool Window::dispatch_key_event_recursive(Widget *w, KeyEvent const &event) {
     if (handled) {
         return true;
     }
-    return w->handle_key_impl(event);
+    return w->dispatch_key_event(event);
 }
 
 auto Window::content_min_size() const -> Size {
