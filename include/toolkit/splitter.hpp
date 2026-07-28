@@ -25,8 +25,21 @@ class Splitter : public Widget, public Fluent<Splitter> {
     // last child and this one with a default equal-distribution ratio. Call
     // set_ratio() after adding all children to set exact positions.
     Splitter &add_child(std::unique_ptr<Widget> w);
+
+    // Insert a child widget at index, shifting later children (and their
+    // dividers) up by one. index is clamped to [0, child_count()], so
+    // insert_child(child_count(), w) is equivalent to add_child(w). Like
+    // add_child(), the new divider gets a default equal-distribution ratio;
+    // call set_ratio() afterwards for exact positions.
+    Splitter &insert_child(size_t index, std::unique_ptr<Widget> w);
+
     size_t child_count() const { return children_.size(); }
-    Widget *child_at(size_t index);
+    WeakRefWidget<Widget> child_at(size_t index) const;
+
+    // Remove and destroy the child at index, along with the divider adjacent to it.
+    // Any in-progress drag/hover on a divider is cleared, since divider indices
+    // shift after removal.
+    Splitter &remove_child(size_t index);
 
     // Set/get the ratio (0..1) for divider i. Ratio is the centre of the handle
     // as a fraction of the splitter's total extent.

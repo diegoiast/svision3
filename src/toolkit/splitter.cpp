@@ -45,24 +45,59 @@ void Splitter::from_json(nlohmann::json const &j) {
 // ---------------------------------------------------------------------------
 
 Splitter &Splitter::add_child(std::unique_ptr<Widget> w) {
-    if (!children_.empty()) {
-        auto N = children_.size();
-        ratios_.push_back(static_cast<float>(N) / static_cast<float>(N + 1));
-        locked_dividers_.push_back({});
+    return insert_child(children_.size(), std::move(w));
+}
+
+Splitter &Splitter::insert_child(size_t index, std::unique_ptr<Widget> w) {
+    auto count = children_.size();
+    index = std::min(index, count);
+
+    if (count > 0) {
+        auto divider = index == 0 ? size_t{0} : index - 1;
+        auto numerator = static_cast<float>(index == 0 ? 1 : index);
+        ratios_.insert(ratios_.begin() + divider, numerator / static_cast<float>(count + 1));
+        locked_dividers_.insert(locked_dividers_.begin() + divider, DividerLock{});
     }
-    stretch_factors_.push_back(1.0f);
+    stretch_factors_.insert(stretch_factors_.begin() + index, 1.0f);
     if (w) {
         w->set_parent(this);
         w->set_window(window_);
     }
-    children_.push_back(std::move(w));
+    children_.insert(children_.begin() + index, std::move(w));
+
+    // Divider indices shift after insertion; any in-progress interaction is stale.
+    dragging_divider_.reset();
+    hovered_divider_.reset();
+    cursor_ = CursorShape::Arrow;
+
     layout_children();
     return *this;
 }
 
-Widget *Splitter::child_at(size_t index) {
-    if (index >= children_.size()) return nullptr;
-    return children_[index].get();
+WeakRefWidget<Widget> Splitter::child_at(size_t index) const {
+    if (index >= children_.size()) return {};
+    return weak_ref(children_[index].get());
+}
+
+Splitter &Splitter::remove_child(size_t index) {
+    if (index >= children_.size()) return *this;
+
+    if (!ratios_.empty()) {
+        auto divider = index == 0 ? size_t{0} : index - 1;
+        ratios_.erase(ratios_.begin() + divider);
+        locked_dividers_.erase(locked_dividers_.begin() + divider);
+    }
+    stretch_factors_.erase(stretch_factors_.begin() + index);
+    children_.erase(children_.begin() + index);
+
+    // Divider indices shift after removal; any in-progress interaction is stale.
+    dragging_divider_.reset();
+    hovered_divider_.reset();
+    cursor_ = CursorShape::Arrow;
+
+    layout_children();
+    if (window_) window_->request_redraw("splitter child removed");
+    return *this;
 }
 
 // ---------------------------------------------------------------------------

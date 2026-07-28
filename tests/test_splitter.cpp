@@ -106,3 +106,104 @@ TEST_CASE("Splitter stretch: dragging repositions locally, later resizes still r
     sp.set_rect({0, 0, 1400, 500});
     REQUIRE(sp.child_at(0)->rect().width == w1_dragged);
 }
+
+TEST_CASE("Splitter child_at: out-of-range index returns an empty reference", "[splitter]") {
+    Splitter sp(Orientation::Horizontal);
+    sp.add_child(std::make_unique<Label>("A"));
+
+    REQUIRE(sp.child_at(0));
+    REQUIRE(sp.child_at(0).get() != nullptr);
+    REQUIRE_FALSE(sp.child_at(1));
+    REQUIRE(sp.child_at(1).get() == nullptr);
+}
+
+TEST_CASE("Splitter remove_child: destroys the child and shifts later children down",
+          "[splitter]") {
+    Splitter sp(Orientation::Horizontal);
+    sp.add_child(std::make_unique<Label>("A"));
+    sp.add_child(std::make_unique<Label>("B"));
+    sp.add_child(std::make_unique<Label>("C"));
+
+    sp.remove_child(1);
+
+    REQUIRE(sp.child_count() == 2);
+    REQUIRE(static_cast<Label *>(sp.child_at(0).get())->text() == "A");
+    REQUIRE(static_cast<Label *>(sp.child_at(1).get())->text() == "C");
+}
+
+TEST_CASE("Splitter remove_child: a reference held before removal goes empty, not dangling",
+          "[splitter]") {
+    Splitter sp(Orientation::Horizontal);
+    sp.add_child(std::make_unique<Label>("A"));
+    sp.add_child(std::make_unique<Label>("B"));
+
+    auto ref = sp.child_at(0);
+    REQUIRE(ref);
+
+    sp.remove_child(0);
+    REQUIRE_FALSE(ref);
+    REQUIRE(ref.get() == nullptr);
+}
+
+TEST_CASE("Splitter remove_child: out-of-range index is a no-op", "[splitter]") {
+    Splitter sp(Orientation::Horizontal);
+    sp.add_child(std::make_unique<Label>("A"));
+
+    sp.remove_child(5);
+    REQUIRE(sp.child_count() == 1);
+}
+
+TEST_CASE("Splitter insert_child: inserting at the front shifts existing children back",
+          "[splitter]") {
+    Splitter sp(Orientation::Horizontal);
+    sp.add_child(std::make_unique<Label>("B"));
+    sp.add_child(std::make_unique<Label>("C"));
+
+    sp.insert_child(0, std::make_unique<Label>("A"));
+
+    REQUIRE(sp.child_count() == 3);
+    REQUIRE(static_cast<Label *>(sp.child_at(0).get())->text() == "A");
+    REQUIRE(static_cast<Label *>(sp.child_at(1).get())->text() == "B");
+    REQUIRE(static_cast<Label *>(sp.child_at(2).get())->text() == "C");
+}
+
+TEST_CASE("Splitter insert_child: inserting in the middle preserves order on both sides",
+          "[splitter]") {
+    Splitter sp(Orientation::Horizontal);
+    sp.add_child(std::make_unique<Label>("A"));
+    sp.add_child(std::make_unique<Label>("C"));
+
+    sp.insert_child(1, std::make_unique<Label>("B"));
+
+    REQUIRE(sp.child_count() == 3);
+    REQUIRE(static_cast<Label *>(sp.child_at(0).get())->text() == "A");
+    REQUIRE(static_cast<Label *>(sp.child_at(1).get())->text() == "B");
+    REQUIRE(static_cast<Label *>(sp.child_at(2).get())->text() == "C");
+}
+
+TEST_CASE("Splitter insert_child: an index beyond child_count() clamps to append", "[splitter]") {
+    Splitter sp(Orientation::Horizontal);
+    sp.add_child(std::make_unique<Label>("A"));
+
+    sp.insert_child(50, std::make_unique<Label>("B"));
+
+    REQUIRE(sp.child_count() == 2);
+    REQUIRE(static_cast<Label *>(sp.child_at(1).get())->text() == "B");
+}
+
+TEST_CASE("Splitter insert_child: the new divider produces a valid, in-bounds layout",
+          "[splitter]") {
+    Splitter sp(Orientation::Horizontal);
+    sp.add_child(std::make_unique<Label>("A"));
+    sp.add_child(std::make_unique<Label>("C"));
+    sp.set_rect({0, 0, 900, 500});
+
+    sp.insert_child(1, std::make_unique<Label>("B"));
+
+    REQUIRE(sp.child_at(0)->rect().width >= 0);
+    REQUIRE(sp.child_at(1)->rect().width >= 0);
+    REQUIRE(sp.child_at(2)->rect().width >= 0);
+    auto total = sp.child_at(0)->rect().width + sp.child_at(1)->rect().width +
+                 sp.child_at(2)->rect().width;
+    REQUIRE(total <= 900);
+}
