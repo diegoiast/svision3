@@ -412,6 +412,35 @@ TEST_CASE("TabWidget for_each_child exposes StackedLayout not content widgets di
     REQUIRE(!found_label_directly);   // The Label is NOT directly visible in the child list
 }
 
+// find_focusable_at must agree with widget_at about what's reachable: while
+// collapsed, content_layout_ isn't shown (widget_at already skips it), so
+// find_focusable_at must not resolve into it either -- otherwise a Press
+// event lands on hidden content instead of the tab bar. Regression test for
+// a bug where un-collapsing a dock via a real click was impossible.
+TEST_CASE("TabWidget find_focusable_at returns nullptr while collapsed", "[tabwidget]") {
+    TabWidget tw;
+    tw.set_orientation(TabOrientation::South);
+    tw.set_collapsible(true);
+    tw.add_tab("Tab 1", std::make_unique<Button>("Focusable"));
+    tw.set_rect({0, 0, 400, 200});
+
+    // Expanded: the button inside content is focusable and reachable.
+    REQUIRE(tw.find_focusable_at({10, 100}) != nullptr);
+
+    tw.set_collapsed(true);
+    // Collapsed: same point must resolve to nothing, not the hidden button.
+    REQUIRE(tw.find_focusable_at({10, 100}) == nullptr);
+}
+
+TEST_CASE("TabWidget find_focusable_at returns nullptr outside its bounds", "[tabwidget]") {
+    TabWidget tw;
+    tw.add_tab("Tab 1", std::make_unique<Button>("Focusable"));
+    tw.set_rect({0, 0, 400, 200});
+
+    REQUIRE(tw.find_focusable_at({-10, -10}) == nullptr);
+    REQUIRE(tw.find_focusable_at({1000, 1000}) == nullptr);
+}
+
 TEST_CASE("TabWidget StackedLayout child rect is offset below tab bar", "[tabwidget]") {
     TabWidget tw;
     tw.add_tab("Tab", std::make_unique<Label>("content"));

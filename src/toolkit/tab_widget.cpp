@@ -1170,6 +1170,9 @@ auto TabWidget::size_hint() const -> Size {
 }
 
 auto TabWidget::find_focusable_at(Point p) -> Widget * {
+    if (!is_visible() || !hit_test(p)) {
+        return nullptr;
+    }
     if (leading_widget_) {
         auto local_p = p;
         local_p.x -= leading_widget_->rect().x;
@@ -1200,6 +1203,9 @@ auto TabWidget::find_focusable_at(Point p) -> Widget * {
         if (auto *w = next_button_->find_focusable_at(n_local)) {
             return w;
         }
+    }
+    if (collapsed_) {
+        return nullptr;
     }
     auto local_p = p;
     local_p.x -= content_layout_->rect().x;
