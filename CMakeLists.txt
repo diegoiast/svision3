@@ -563,6 +563,7 @@ add_executable(tests
     tests/test_label.cpp
     tests/test_checkbox.cpp
     tests/test_combobox.cpp
+    tests/test_dock_area.cpp
     tests/test_filter_adapter.cpp
     tests/test_html_view.cpp
     tests/test_icon_grid.cpp

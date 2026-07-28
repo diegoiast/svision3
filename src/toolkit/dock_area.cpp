@@ -9,198 +9,136 @@
 
 namespace toolkit {
 
-DockArea::DockArea() {}
+DockArea::DockArea() {
+    auto west = std::make_unique<TabWidget>();
+    west->set_tabs_closable(false)
+        .set_focus_on_tab_click(false)
+        .set_orientation(TabOrientation::East)
+        .set_collapsible(true)
+        .set_tabs_movable(true);
+    westDocks = weak_ref(west.get());
 
-DockArea &DockArea::set_center(std::unique_ptr<Widget> widget) {
-    center_ = std::move(widget);
-    center_ref_ = weak_ref(center_.get());
-    if (center_) {
-        center_->set_parent(this);
-        if (window_) {
-            center_->set_window(window_);
-        }
+    auto east = std::make_unique<TabWidget>();
+    east->set_tabs_closable(false)
+        .set_focus_on_tab_click(false)
+        .set_orientation(TabOrientation::West)
+        .set_collapsible(true)
+        .set_tabs_movable(true);
+    eastDocks = weak_ref(east.get());
+
+    auto south = std::make_unique<TabWidget>();
+    south->set_tabs_closable(false)
+        .set_focus_on_tab_click(false)
+        .set_orientation(TabOrientation::South)
+        .set_collapsible(true)
+        .set_tabs_movable(true);
+    southDocks = weak_ref(south.get());
+
+    auto vsplit = std::make_unique<Splitter>(Orientation::Vertical);
+    vsplit->add_child(std::move(south));
+    vsplit->set_stretch_factor(0, 0.0f);
+    verticalSplitter = weak_ref(vsplit.get());
+
+    add_child(std::move(east)).add_child(std::move(vsplit)).add_child(std::move(west));
+    set_stretch_factor(0, 0.0f);
+    set_stretch_factor(2, 0.0f);
+
+    dock_slots_[int(DockPosition::East)] = {eastDocks, this, 0, true};
+    dock_slots_[int(DockPosition::West)] = {westDocks, this, 1, false};
+    dock_slots_[int(DockPosition::South)] = {southDocks, verticalSplitter.get(), 0, false};
+
+    for (auto pos : {DockPosition::East, DockPosition::West, DockPosition::South}) {
+        auto *tab = dock_slots_[int(pos)].tab.get();
+        tab->on_collapsed = [this, pos](bool collapsed) { apply_dock_size(pos, collapsed); };
     }
-    return *this;
 }
 
-TabWidget &DockArea::add_dock(DockPosition pos, std::string title,
-                              std::unique_ptr<Widget> content) {
-    auto &side = sides_[int(pos)];
-    if (!side.tabs) {
-        side.tabs = std::make_unique<TabWidget>();
-        side.ref = weak_ref(side.tabs.get());
-        side.tabs->set_parent(this);
-        if (window_) {
-            side.tabs->set_window(window_);
-        }
-        side.tabs->set_tabs_closable(false);
-        side.tabs->set_focus_on_tab_click(false);
+void DockArea::set_rect(Rect const &rect) {
+    Splitter::set_rect(rect);
+
+    if (!sizes_applied_ && rect.width > 0.0f && rect.height > 0.0f) {
+        sizes_applied_ = true;
+        apply_dock_size(DockPosition::East, false);
+        apply_dock_size(DockPosition::West, false);
+        apply_dock_size(DockPosition::South, false);
     }
-    auto *tab_widget = side.ref.get();
-    tab_widget->add_tab(std::move(title), std::move(content), false);
-    return *tab_widget;
+}
+
+void DockArea::apply_dock_size(DockPosition pos, bool collapsed) {
+    auto const &slot = dock_slots_[int(pos)];
+    auto *tab = slot.tab.get();
+    auto *host = slot.host;
+
+    if (!tab || !host) {
+        return;
+    }
+
+    auto r = host->rect();
+    auto total = (host->orientation() == Orientation::Horizontal) ? r.width : r.height;
+
+    if (total <= 0.0f) {
+        return;
+    }
+    auto size = collapsed ? tab->tab_bar_size() : dock_sizes_[int(pos)];
+    auto ratio = slot.near_start ? size / total : 1.0f - size / total;
+    host->set_ratio(slot.divider, ratio);
+    host->set_divider_locked(slot.divider, collapsed);
+}
+
+Widget &DockArea::set_center(std::unique_ptr<Widget> widget) {
+    auto *vs = verticalSplitter.get();
+    if (vs->child_count() == 2) {
+        vs->remove_child(0);
+    }
+
+    auto *widget_ptr = widget.get();
+    vs->insert_child(0, std::move(widget));
+    central = weak_ref(widget_ptr);
+    return *widget_ptr;
+}
+
+Widget &DockArea::add_dock(DockPosition pos, const std::string &title,
+                           std::unique_ptr<Widget> content) {
+    auto tab = WeakRefWidget<TabWidget>{};
+
+    switch (pos) {
+    case DockPosition::West:
+        tab = westDocks;
+        break;
+    case DockPosition::South:
+        tab = southDocks;
+        break;
+    case DockPosition::East:
+        tab = eastDocks;
+        break;
+    }
+
+    return tab->add_tab(title, std::move(content), false);
 }
 
 DockArea &DockArea::set_dock_size(DockPosition pos, float size) {
-    sides_[int(pos)].size = std::max(50.0f, size);
+    dock_sizes_[int(pos)] = std::max(50.0f, size);
+
+    auto *tab = dock_slots_[int(pos)].tab.get();
+    if (tab && !tab->is_collapsed()) {
+        apply_dock_size(pos, false);
+    }
     return *this;
 }
 
-void DockArea::for_each_child(std::function<void(Widget *)> const &callback) {
-    if (root_) {
-        callback(root_.get());
-    } else {
-        for (auto &side : sides_) {
-            if (side.tabs) {
-                callback(side.tabs.get());
-            }
-        }
-        if (center_) {
-            callback(center_.get());
-        }
-    }
-}
+float DockArea::dock_size(DockPosition pos) const { return dock_sizes_[int(pos)]; }
 
-void DockArea::build_splitter_tree() {
-    // Build a nested Splitter tree from the active docks. All docks are assumed
-    // to have been added before first layout. After this call the TabWidgets are
-    // owned by the Splitter tree; sides_[i].tabs is null but sides_[i].ref stays valid.
-    //
-    // Build order: top/bottom around center first, then left/right around that
-    // column. This makes the left and right sidebars span the full window height
-    // (including over the top/bottom dock areas).
-
-    auto content_w = rect_.width - margins_.left - margins_.right;
-    auto content_h = rect_.height - margins_.top - margins_.bottom;
-
-    std::unique_ptr<Widget> current = std::move(center_);
-
-    auto wire_collapse = [](DockSide &side, Splitter *spl, bool first_slot) {
-        side.splitter_ref = weak_ref(spl);
-        auto *tab_widget = side.ref.get();
-        tab_widget->set_collapsible(true);
-        tab_widget->on_collapsed = [&side, first_slot](bool collapsed) {
-            auto *spl = side.splitter_ref.get();
-            if (!spl) {
-                return;
-            }
-            auto r = spl->rect();
-            auto total = (spl->orientation() == Orientation::Horizontal) ? r.width : r.height;
-            if (total <= 0) {
-                return;
-            }
-            if (collapsed) {
-                auto bar = side.ref.get()->tab_bar_size();
-                spl->set_ratio(first_slot ? bar / total : 1.0f - bar / total);
-                spl->set_locked(true);
-            } else {
-                spl->set_ratio(first_slot ? side.size / total : 1.0f - side.size / total);
-                spl->set_locked(false);
-            }
-        };
-    };
-
-    // Top: vertical splitter  [top | current]. top has stretch factor 0, so
-    // it keeps its fixed pixel height on resize; current absorbs the rest
-    // (its factor stays at the default of 1).
-    auto &top = sides_[int(DockPosition::Top)];
-    if (top.tabs) {
-        auto spl = std::make_unique<Splitter>(Orientation::Vertical);
-        spl->add_child(std::move(top.tabs));
-        spl->add_child(std::move(current));
-        spl->set_ratio(content_h > 0 ? top.size / content_h : 0.25f);
-        spl->set_stretch_factor(0, 0.0f);
-        wire_collapse(top, spl.get(), true);
-        current = std::move(spl);
+WeakRefWidget<TabWidget> DockArea::dock_tab_widget(DockPosition pos) const {
+    switch (pos) {
+    case DockPosition::West:
+        return westDocks;
+    case DockPosition::South:
+        return southDocks;
+    case DockPosition::East:
+        return eastDocks;
     }
 
-    // Bottom: vertical splitter  [current | bottom]. bottom has stretch
-    // factor 0, so it keeps its fixed pixel height on resize.
-    auto &bot = sides_[int(DockPosition::Bottom)];
-    if (bot.tabs) {
-        auto spl = std::make_unique<Splitter>(Orientation::Vertical);
-        spl->add_child(std::move(current));
-        spl->add_child(std::move(bot.tabs));
-        spl->set_ratio(content_h > 0 ? 1.0f - bot.size / content_h : 0.75f);
-        spl->set_stretch_factor(1, 0.0f);
-        wire_collapse(bot, spl.get(), false);
-        current = std::move(spl);
-    }
-
-    // Left: horizontal splitter  [left | current]. left has stretch factor 0,
-    // so it keeps its fixed pixel width on resize.
-    auto &lft = sides_[int(DockPosition::Left)];
-    if (lft.tabs) {
-        auto spl = std::make_unique<Splitter>(Orientation::Horizontal);
-        spl->add_child(std::move(lft.tabs));
-        spl->add_child(std::move(current));
-        spl->set_ratio(content_w > 0 ? lft.size / content_w : 0.25f);
-        spl->set_stretch_factor(0, 0.0f);
-        wire_collapse(lft, spl.get(), true);
-        current = std::move(spl);
-    }
-
-    // Right: horizontal splitter  [current | right]. right has stretch
-    // factor 0, so it keeps its fixed pixel width on resize.
-    auto &rgt = sides_[int(DockPosition::Right)];
-    if (rgt.tabs) {
-        auto spl = std::make_unique<Splitter>(Orientation::Horizontal);
-        spl->add_child(std::move(current));
-        spl->add_child(std::move(rgt.tabs));
-        spl->set_ratio(content_w > 0 ? 1.0f - rgt.size / content_w : 0.75f);
-        spl->set_stretch_factor(1, 0.0f);
-        wire_collapse(rgt, spl.get(), false);
-        current = std::move(spl);
-    }
-
-    root_ = std::move(current);
-    if (root_) {
-        root_->set_parent(this);
-        if (window_) {
-            root_->set_window(window_);
-        }
-    }
-}
-
-void DockArea::apply_layout() {
-    if (!root_) {
-        build_splitter_tree();
-    }
-    auto x = margins_.left;
-    auto y = margins_.top;
-    auto w = rect_.width - margins_.left - margins_.right;
-    auto h = rect_.height - margins_.top - margins_.bottom;
-    if (root_) {
-        root_->set_rect({x, y, w, h});
-    } else if (center_) {
-        center_->set_rect({x, y, w, h});
-    }
-}
-
-auto DockArea::size_hint() const -> Size {
-    // Once the splitter tree is built it knows the real minimums (including
-    // collapsed/shaded docks), so delegate to it directly.
-    if (root_) {
-        auto s = root_->size_hint();
-        return {s.width + margins_.left + margins_.right,
-                s.height + margins_.top + margins_.bottom};
-    }
-    // Pre-build fallback: sum up the requested dock sizes.
-    auto w = center_ ? center_->size_hint().width : 200.0f;
-    auto h = center_ ? center_->size_hint().height : 200.0f;
-    if (sides_[int(DockPosition::Left)].ref) {
-        w += sides_[int(DockPosition::Left)].size;
-    }
-    if (sides_[int(DockPosition::Right)].ref) {
-        w += sides_[int(DockPosition::Right)].size;
-    }
-    if (sides_[int(DockPosition::Top)].ref) {
-        h += sides_[int(DockPosition::Top)].size;
-    }
-    if (sides_[int(DockPosition::Bottom)].ref) {
-        h += sides_[int(DockPosition::Bottom)].size;
-    }
-    return {w + margins_.left + margins_.right, h + margins_.top + margins_.bottom};
+    return {};
 }
 
 } // namespace toolkit

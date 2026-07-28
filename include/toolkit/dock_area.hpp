@@ -10,74 +10,67 @@
 
 namespace toolkit {
 
-enum class DockPosition { Left = 0, Right = 1, Top = 2, Bottom = 3 };
+enum class DockPosition {
+    West = 0,
+    South = 1,
+    East = 2,
+};
 
 // DockArea manages a center widget and up to four docked TabWidget panels
 // (left, right, top, bottom). On first layout it builds a nested Splitter
 // tree so every dock boundary is drag-resizable. All docks must be added
 // before the DockArea is first given a non-zero rect (i.e., before the
 // window is shown).
-class DockArea : public AbstractLayout {
+class DockArea : public Splitter {
     DECLARE_WIDGET(DockArea)
   public:
     DockArea();
 
-    DockArea &set_center(std::unique_ptr<Widget> widget);
-    // Valid before and after the splitter tree is built: center_ itself is
-    // moved into the tree on first layout, so the center widget is tracked
-    // separately via a weak ref (see DockSide::ref below for the same
-    // pattern applied to docked sides).
-    WeakRefWidget<Widget> get_center() const { return center_ref_; }
+    WeakRefWidget<Widget> get_center() const { return central; }
+    Widget &set_center(std::unique_ptr<Widget> widget);
+    Widget &add_dock(DockPosition pos, const std::string &title, std::unique_ptr<Widget> content);
 
-    // FIXME: what is this method?
-    template <class T> T &set_center() {
-        auto ptr = std::make_unique<T>();
-        T &ref = *ptr;
-        set_center(std::move(ptr));
-        return ref;
-    }
-
-    // Add a panel to a docked side. Returns the TabWidget for that side so
-    // callers can configure orientation, etc.
-    TabWidget &add_dock(DockPosition pos, std::string title, std::unique_ptr<Widget> content);
-    template <class T> T &add_dock(DockPosition pos, std::string_view title) {
-        auto ptr = std::make_unique<T>();
-        T &ref = *ptr;
-        add_dock(pos, std::string(title), std::move(ptr));
-        return ref;
-    }
-
-    // Initial size for a side before the splitter tree is built.
+    // The pixel size of a dock along its splitter's axis. Applied immediately
+    // if the dock is currently visible; otherwise remembered for the next
+    // time it's uncollapsed. This is a soft request, not a guarantee: like
+    // any Splitter child, the dock's content minimum size can still force it
+    // larger, or the window can force it smaller.
     DockArea &set_dock_size(DockPosition pos, float size);
-    float dock_size(DockPosition pos) const { return sides_[int(pos)].size; }
+    float dock_size(DockPosition pos) const;
 
-    // Access the TabWidget for a side (valid before and after tree build).
-    WeakRefWidget<TabWidget> dock_tab_widget(DockPosition pos) const {
-        return sides_[int(pos)].ref;
-    }
+    WeakRefWidget<TabWidget> dock_tab_widget(DockPosition pos) const;
 
-    void for_each_child(std::function<void(Widget *)> const &callback) override;
-    Size size_hint() const override;
+    void set_rect(Rect const &rect) override;
 
     static constexpr float default_dock_size = 220.0f;
 
-  protected:
-    void apply_layout() override;
-
   private:
-    struct DockSide {
-        std::unique_ptr<TabWidget> tabs; // owned until tree is built
-        WeakRefWidget<TabWidget> ref;    // always valid once add_dock is called
-        WeakRefWidget<Splitter> splitter_ref; // the Splitter directly containing this dock's TabWidget
-        float size = default_dock_size;
+    // Where a dock's TabWidget lives: which Splitter it's a direct child of,
+    // which divider of that splitter controls its size, and whether it sits
+    // on the near (start) or far (end) side of that divider. Built once in
+    // the constructor; shared by the collapse wiring and set_dock_size so
+    // both agree on the same divider math.
+    struct DockSlot {
+        WeakRefWidget<TabWidget> tab;
+        Splitter *host = nullptr;
+        int divider = 0;
+        bool near_start = false;
     };
+    std::array<DockSlot, 3> dock_slots_;
+    std::array<float, 3> dock_sizes_{default_dock_size, default_dock_size, default_dock_size};
 
-    void build_splitter_tree();
+    void apply_dock_size(DockPosition pos, bool collapsed);
 
-    std::unique_ptr<Widget> center_;
-    WeakRefWidget<Widget> center_ref_; // survives center_ being moved into the splitter tree
-    std::array<DockSide, 4> sides_;
-    std::unique_ptr<Widget> root_; // Splitter tree root; null until first layout
+    // Docks are usually configured via set_dock_size() before the window is
+    // ever shown, i.e. before this DockArea has a real rect and set_ratio()
+    // is a no-op. Applied once, the first time set_rect() sees a non-zero size.
+    bool sizes_applied_ = false;
+
+    WeakRefWidget<Splitter> verticalSplitter;
+    WeakRefWidget<TabWidget> westDocks;
+    WeakRefWidget<TabWidget> eastDocks;
+    WeakRefWidget<TabWidget> southDocks;
+    WeakRefWidget<Widget> central;
 };
 
 } // namespace toolkit
