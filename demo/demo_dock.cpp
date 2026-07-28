@@ -2,15 +2,18 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "declarative.hpp"
-#include "toolkit/application.hpp"
-#include "toolkit/dock_area.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
-#include "toolkit/window.hpp"
-#include "toolkit/xdg_image_loader.hpp"
+
 #include <array>
 #include <filesystem>
 #include <fstream>
+
+#include <spdlog/spdlog.h>
+#include <toolkit/application.hpp>
+#include <toolkit/dock_area.hpp>
+#include <toolkit/theme.hpp>
+#include <toolkit/theme_factory.hpp>
+#include <toolkit/window.hpp>
+#include <toolkit/xdg_image_loader.hpp>
 
 using namespace toolkit;
 
@@ -107,34 +110,41 @@ int main(int, char *[]) {
     // Center: TabWidget with one initial editor tab
     auto center = ui::tab_widget().tabs_closable(true).add_tab("Welcome", make_center_editor());
     auto *center_ptr = center.get();
-    center->on_tab_close = [center_ptr](int index, std::string const &) {
-        if (center_ptr->tab_count() > 1) {
+    center->on_tab_close = [center_ref = weak_ref(center_ptr)](int index, std::string const &) {
+        auto *center_ptr = center_ref.get();
+        if (center_ptr && center_ptr->get_tab_count() > 1) {
             center_ptr->remove_tab(index);
         }
     };
     dock->set_center(std::move(center.w));
 
     // Left dock: file browser + outline — vertical rotated tabs (West)
-    dock->add_dock(DockPosition::Left, "Files",
-                   ui::file_browser().on_file_activated([center_ptr](std::string const &path) {
-                       auto name = std::filesystem::path(path).filename().string();
-                       for (int i = 0; i < static_cast<int>(center_ptr->tab_count()); ++i) {
-                           if (center_ptr->tab_title(i) == name) {
-                               center_ptr->set_current(i);
-                               return;
-                           }
-                       }
-                       auto editor = ui::text_edit();
-                       std::ifstream f(path);
-                       if (f) {
-                           editor->set_text(std::string(std::istreambuf_iterator<char>(f), {}));
-                       }
-                       auto canonical = std::filesystem::weakly_canonical(path).string();
-                       auto tab_index = static_cast<int>(center_ptr->tab_count());
-                       center_ptr->add_tab(name, std::move(editor.w));
-                       center_ptr->set_tab_tooltip(tab_index, canonical);
-                       center_ptr->set_current(tab_index);
-                   }));
+    dock->add_dock(
+        DockPosition::Left, "Files",
+        ui::file_browser().on_file_activated([center_ref = weak_ref(center_ptr)](
+                                                  std::string const &path) {
+            auto *center_ptr = center_ref.get();
+            if (!center_ptr) {
+                return;
+            }
+            auto name = std::filesystem::path(path).filename().string();
+            for (int i = 0; i < static_cast<int>(center_ptr->get_tab_count()); ++i) {
+                if (center_ptr->get_tab_title(i) == name) {
+                    center_ptr->set_current(i);
+                    return;
+                }
+            }
+            auto editor = ui::text_edit();
+            std::ifstream f(path);
+            if (f) {
+                editor->set_text(std::string(std::istreambuf_iterator<char>(f), {}));
+            }
+            auto canonical = std::filesystem::weakly_canonical(path).string();
+            auto tab_index = static_cast<int>(center_ptr->get_tab_count());
+            center_ptr->add_tab(name, std::move(editor.w));
+            center_ptr->set_tab_tooltip(tab_index, canonical);
+            center_ptr->set_current(tab_index);
+        }));
     dock->add_dock(DockPosition::Left, "Outline", make_outline());
     dock->dock_tab_widget(DockPosition::Left)->set_orientation(TabOrientation::West);
 
@@ -153,7 +163,11 @@ int main(int, char *[]) {
     auto *dock_ptr = dock.get();
 
     auto vertical = std::make_shared<bool>(true);
-    auto toggle_vertical = [dock_ptr, vertical]() {
+    auto toggle_vertical = [dock_ref = weak_ref(dock_ptr), vertical]() {
+        auto *dock_ptr = dock_ref.get();
+        if (!dock_ptr) {
+            return;
+        }
         *vertical = !*vertical;
         auto *left = dock_ptr->dock_tab_widget(DockPosition::Left);
         if (left) {
@@ -169,7 +183,11 @@ int main(int, char *[]) {
         return [style, scheme] { Theme::set_current(ThemeFactory::create(style, scheme)); };
     };
 
-    auto cmd_toggle_docks = Command::create("Toggle Docks", [dock_ptr]() {
+    auto cmd_toggle_docks = Command::create("Toggle Docks", [dock_ref = weak_ref(dock_ptr)]() {
+        auto *dock_ptr = dock_ref.get();
+        if (!dock_ptr) {
+            return;
+        }
         std::array positions = {DockPosition::Left, DockPosition::Right, DockPosition::Bottom};
         bool any_open = false;
         for (auto pos : positions) {
@@ -234,8 +252,30 @@ int main(int, char *[]) {
             .w);
 
     auto root = ui::vbox().margins({0, 0, 0, 0}).spacing(0).add(std::move(dock), 1);
-
     win->set_root(std::move(root.w));
+    // win->set_root(dock);
+
+    win->on_key = [win, dock_ref = weak_ref(dock_ptr),
+                  center_ref = weak_ref(center_ptr)](KeyEvent const &e) {
+        if (e.key == Key::Escape) {
+            auto *dock_ptr = dock_ref.get();
+            auto *center_ptr = center_ref.get();
+            if (!dock_ptr || !center_ptr) {
+                return false;
+            }
+            win->set_focused_widget(center_ptr);
+            auto *t = static_cast<TabWidget *>(dock_ptr->get_center());
+            if (t) {
+                spdlog::info("Focusing main widget");
+                t->get_current_widget()->set_focused(true);
+                win->set_focused_widget(t->get_current_widget());
+                return true;
+            } else {
+                spdlog::error("Focusing main widget FAILED");
+            }
+        }
+        return false;
+    };
     win->show();
     return app.run();
 }
