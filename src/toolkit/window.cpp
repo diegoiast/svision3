@@ -222,22 +222,22 @@ void Window::set_statistics_logging_enabled(bool enabled) {
 bool Window::is_statistics_logging_enabled() const { return impl_->logging_enabled; }
 
 auto Window::save_to_png(std::string const &path) -> bool {
-    if (impl_->platform) {
-        auto icon = impl_->platform->capture();
-        if (!icon) {
-            return false;
-        }
-        auto app = detail::current_platform();
-        if (!app) {
-            return false;
-        }
-        auto loader = app->get_image_loader();
-        if (!loader) {
-            return false;
-        }
-        return loader->save(*icon, path);
+    if (!impl_->platform) {
+        return false;
     }
-    return false;
+    auto icon = impl_->platform->capture();
+    if (!icon) {
+        return false;
+    }
+    auto app = detail::current_platform();
+    if (!app) {
+        return false;
+    }
+    auto loader = app->get_image_loader();
+    if (!loader) {
+        return false;
+    }
+    return loader->save(*icon, path);
 }
 
 auto Window::scale_factor() const -> float {
