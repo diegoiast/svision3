@@ -169,11 +169,11 @@ int main(int, char *[]) {
             return;
         }
         *vertical = !*vertical;
-        auto *left = dock_ptr->dock_tab_widget(DockPosition::Left);
+        auto left = dock_ptr->dock_tab_widget(DockPosition::Left);
         if (left) {
             left->set_orientation(*vertical ? TabOrientation::West : TabOrientation::North);
         }
-        auto *right = dock_ptr->dock_tab_widget(DockPosition::Right);
+        auto right = dock_ptr->dock_tab_widget(DockPosition::Right);
         if (right) {
             right->set_orientation(*vertical ? TabOrientation::East : TabOrientation::North);
         }
@@ -191,14 +191,14 @@ int main(int, char *[]) {
         std::array positions = {DockPosition::Left, DockPosition::Right, DockPosition::Bottom};
         bool any_open = false;
         for (auto pos : positions) {
-            auto *tab = dock_ptr->dock_tab_widget(pos);
+            auto tab = dock_ptr->dock_tab_widget(pos);
             if (tab && !tab->is_collapsed()) {
                 any_open = true;
                 break;
             }
         }
         for (auto pos : positions) {
-            auto *tab = dock_ptr->dock_tab_widget(pos);
+            auto tab = dock_ptr->dock_tab_widget(pos);
             if (tab) {
                 tab->set_collapsed(any_open);
             }
@@ -255,18 +255,16 @@ int main(int, char *[]) {
     win->set_root(std::move(root.w));
     // win->set_root(dock);
 
-    win->on_key = [win, dock_ref = weak_ref(dock_ptr),
-                  center_ref = weak_ref(center_ptr)](KeyEvent const &e) {
+    win->on_key = [win, dock_ref = weak_ref(dock_ptr)](KeyEvent const &e) {
         if (e.key == Key::Escape) {
             auto *dock_ptr = dock_ref.get();
-            auto *center_ptr = center_ref.get();
-            if (!dock_ptr || !center_ptr) {
+            if (!dock_ptr) {
                 return false;
             }
-            win->set_focused_widget(center_ptr);
-            auto *t = static_cast<TabWidget *>(dock_ptr->get_center());
+            auto *t = static_cast<TabWidget *>(dock_ptr->get_center().get());
             if (t) {
                 spdlog::info("Focusing main widget");
+                win->set_focused_widget(t);
                 t->get_current_widget()->set_focused(true);
                 win->set_focused_widget(t->get_current_widget());
                 return true;

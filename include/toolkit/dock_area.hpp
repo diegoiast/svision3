@@ -23,7 +23,11 @@ class DockArea : public AbstractLayout {
     DockArea();
 
     DockArea &set_center(std::unique_ptr<Widget> widget);
-    Widget *get_center() const { return center_.get(); }
+    // Valid before and after the splitter tree is built: center_ itself is
+    // moved into the tree on first layout, so the center widget is tracked
+    // separately via a weak ref (see DockSide::ref below for the same
+    // pattern applied to docked sides).
+    WeakRefWidget<Widget> get_center() const { return center_ref_; }
 
     // FIXME: what is this method?
     template <class T> T &set_center() {
@@ -48,7 +52,9 @@ class DockArea : public AbstractLayout {
     float dock_size(DockPosition pos) const { return sides_[int(pos)].size; }
 
     // Access the TabWidget for a side (valid before and after tree build).
-    TabWidget *dock_tab_widget(DockPosition pos) const { return sides_[int(pos)].ptr; }
+    WeakRefWidget<TabWidget> dock_tab_widget(DockPosition pos) const {
+        return sides_[int(pos)].ref;
+    }
 
     void for_each_child(std::function<void(Widget *)> const &callback) override;
     Size size_hint() const override;
@@ -61,14 +67,15 @@ class DockArea : public AbstractLayout {
   private:
     struct DockSide {
         std::unique_ptr<TabWidget> tabs; // owned until tree is built
-        TabWidget *ptr = nullptr;        // always valid once add_dock is called
-        Splitter *splitter = nullptr; // the Splitter that directly contains this dock's TabWidget
+        WeakRefWidget<TabWidget> ref;    // always valid once add_dock is called
+        WeakRefWidget<Splitter> splitter_ref; // the Splitter directly containing this dock's TabWidget
         float size = default_dock_size;
     };
 
     void build_splitter_tree();
 
     std::unique_ptr<Widget> center_;
+    WeakRefWidget<Widget> center_ref_; // survives center_ being moved into the splitter tree
     std::array<DockSide, 4> sides_;
     std::unique_ptr<Widget> root_; // Splitter tree root; null until first layout
 };
