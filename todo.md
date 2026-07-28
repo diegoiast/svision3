@@ -224,6 +224,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
     2. [ ] Hoever - border should be slightly tinted.
 5. Button
     1. [ ] Hoever should have tinted border, but no background.
+    2. [ ] Double lower border is missing.
 6. Radio button
     1. [ ] When selected - use tint background, black center
 7. Window
@@ -247,6 +248,12 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## Windows 95 theme
 
 1. Fix
+
+## Menus
+
+1. [ ] If any command has an icon - all text should be shifted.
+       now - only commands with icons are shifted.
+2. [ ] Text can be drawed outside a popup.
 
 ## Event Handling [11/12]
 
@@ -323,6 +330,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 10. [x] Tab bar overflow (scroll when too many tabs).
 11. [x] When tab bar is selected, it has a ring around it.
 12. [ ] Tabs can have several icons at the title
+13. [ ] If you add an editor to a tab widget, focus another widget and then
+        window->set_foused_widget(tab) - tab becomes active, and text arrives to
+        the editor, but it will have not cursor and not be "focused".
 
 ## ListView Features [15/18]
 
@@ -363,7 +373,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## Combobox Features [0/2]
 
 1. [ ] Editable / searchable mode
-1. [ ] Grouped items / separators
+2. [ ] Grouped items / separators
+3. [ ] When clicking the main widget and sub menu is opened - close the menu.
 
 ## HTML View
 
