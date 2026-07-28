@@ -293,8 +293,14 @@ int main(int argc, char *argv[]) {
     theme_toggle->set_checked(toolkit::Theme::current().palette.window.luma() > 0.5f);
 
     // UI sync function
-    auto sync_theme_ui = [theme_combo = theme_combo.get(),
-                          theme_toggle = theme_toggle.get()](const toolkit::Theme &theme) {
+    auto sync_theme_ui = [combo_ref = toolkit::weak_ref(theme_combo),
+                          toggle_ref = toolkit::weak_ref(theme_toggle)](const toolkit::Theme &theme) {
+        auto *theme_combo = combo_ref.get();
+        auto *theme_toggle = toggle_ref.get();
+        if (!theme_combo || !theme_toggle) {
+            return;
+        }
+
         int selected = -1;
         for (int i = 0; i < toolkit::theme_style_count; i++) {
             if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
@@ -406,20 +412,25 @@ int main(int argc, char *argv[]) {
         current_style = static_cast<toolkit::ThemeStyle>(index);
         apply_theme(app, window);
     };
-    toolkit::Theme::add_theme_observer([combo = combo.get()](const toolkit::Theme &theme) {
-        int selected = -1;
-        for (int i = 0; i < toolkit::theme_style_count; i++) {
-            if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
-                selected = i;
-                break;
+    toolkit::Theme::add_theme_observer(
+        [combo_ref = toolkit::weak_ref(combo)](const toolkit::Theme &theme) {
+            auto *combo = combo_ref.get();
+            if (!combo) {
+                return;
             }
-        }
-        if (selected != -1) {
-            combo->set_selected(selected);
-        } else {
-            combo->set_selected(toolkit::theme_style_count); // "Other"
-        }
-    });
+            int selected = -1;
+            for (int i = 0; i < toolkit::theme_style_count; i++) {
+                if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
+                    selected = i;
+                    break;
+                }
+            }
+            if (selected != -1) {
+                combo->set_selected(selected);
+            } else {
+                combo->set_selected(toolkit::theme_style_count); // "Other"
+            }
+        });
     tab_main->add_widget(std::move(combo));
 
     auto rb_light = std::make_unique<toolkit::RadioButton>("&Light", scheme_group);

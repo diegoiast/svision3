@@ -160,8 +160,20 @@ int main(int argc, char *argv[]) {
     auto *m_combo_ptr = main_theme_combo.get();
 
     // Initial state and observer
-    auto sync_ui = [t_combo_ptr, t_toggle_ptr, m_combo_ptr, group, rb_light_ptr,
-                    rb_dark_ptr](const toolkit::Theme &theme) {
+    auto sync_ui = [t_combo_ref = toolkit::weak_ref(t_combo_ptr),
+                    t_toggle_ref = toolkit::weak_ref(t_toggle_ptr),
+                    m_combo_ref = toolkit::weak_ref(m_combo_ptr), group,
+                    rb_light_ref = toolkit::weak_ref(rb_light_ptr),
+                    rb_dark_ref = toolkit::weak_ref(rb_dark_ptr)](const toolkit::Theme &theme) {
+        auto *t_combo_ptr = t_combo_ref.get();
+        auto *t_toggle_ptr = t_toggle_ref.get();
+        auto *m_combo_ptr = m_combo_ref.get();
+        auto *rb_light_ptr = rb_light_ref.get();
+        auto *rb_dark_ptr = rb_dark_ref.get();
+        if (!t_combo_ptr || !t_toggle_ptr || !m_combo_ptr || !rb_light_ptr || !rb_dark_ptr) {
+            return;
+        }
+
         int selected = -1;
         for (int i = 0; i < toolkit::theme_style_count; i++) {
             if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {

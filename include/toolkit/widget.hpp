@@ -9,6 +9,7 @@
 #include "toolkit/types.hpp"
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
@@ -27,7 +28,14 @@ template <typename Derived> struct Fluent {
 
 class Widget {
   public:
-    virtual ~Widget() = default;
+    virtual ~Widget() { *alive_ = false; }
+
+    // Non-owning liveness check for code that captures a raw Widget* into a
+    // callback that may outlive it (see toolkit/weak_ref_widget.hpp). Not
+    // tied to ownership -- widgets are still owned by a unique_ptr in their
+    // parent; this is only a side-channel flag, same idiom as
+    // Window::theme_observer_alive_.
+    std::weak_ptr<bool> alive_token() const { return alive_; }
 
     // This is a global flag, which will force all widgets to draw a red
     // dashed-border around the perimiters and dotted red border around
@@ -198,6 +206,35 @@ class Widget {
     std::optional<Color> background_color_;
     bool has_frame_ = false;
     bool frame_sunken_ = false;
+    std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };
+
+// Non-owning reference to a Widget-derived T that can be captured by value
+// into a long-lived callback (e.g. Theme::add_theme_observer) without
+// risking a dangling pointer. Does not affect ownership: the real owner is
+// still whatever unique_ptr holds the widget; get() just returns nullptr
+// once that widget has been destroyed instead of a stale pointer.
+template <typename T> class WeakRefWidget {
+  public:
+    WeakRefWidget() = default;
+    explicit WeakRefWidget(T *widget)
+        : ptr_(widget), alive_(widget ? widget->alive_token() : std::weak_ptr<bool>{}) {}
+
+    T *get() const {
+        auto locked = alive_.lock();
+        return (locked && *locked) ? ptr_ : nullptr;
+    }
+    explicit operator bool() const { return get() != nullptr; }
+    T *operator->() const { return get(); }
+
+  private:
+    T *ptr_ = nullptr;
+    std::weak_ptr<bool> alive_;
+};
+
+template <typename T> WeakRefWidget<T> weak_ref(T *ptr) { return WeakRefWidget<T>(ptr); }
+template <typename T> WeakRefWidget<T> weak_ref(std::unique_ptr<T> const &ptr) {
+    return WeakRefWidget<T>(ptr.get());
+}
 
 } // namespace toolkit
