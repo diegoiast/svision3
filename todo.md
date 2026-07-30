@@ -22,41 +22,41 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 10. [x] High DPI / fractional scaling (all platforms)
 11. [x] OpenGL rendering backend on Linux/Windows blurry fonts.
 12. [x] OpenGL artifacts - specially on buttons on Plasma.
-13. [ ] OpenGL uses cairo for painting text. Should use stb_ttf or something.
-14. [x] Cairo has blurry fonts.
-15. [x] Command interfaces for menus/toolbars and app shortcuts.
-16. [x] Backends have open/cairo/whatevre backed in. We need to separate them.
-17. [x] Paintings inside widgets should start at (0,0) not position at window.
-18. [x] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
-19. [ ] API to read keyboard shortcuts per platform on runtime.
-20. [x] Generic timer system (start_timer / stop_timer)
-21. [x] Popup/overlay mechanism (used by Combobox)
-22. [x] Painter helpers (draw_frame, draw_focus_ring, fill_circle, etc.)
-23. [x] Font metrics for consistent text positioning
-24. [x] Clipping (push_clip / pop_clip).
-25. [x] Screenshot / save_to_png.
-26. [x] Clipboard (copy/paste, all platforms).
-27. [ ] Drag and drop.
-28. [ ] Font selection / custom fonts.
-29. [x] Image loading - using platform APIs.
-30. [ ] Animation framework (transitions, easing).
-31. [x] Undo/redo framework.
-32. [ ] Declarative UI support. - WIP.
-33. [x] All setters should return a reference to self - for chainability.
-34. [x] Winwodws should have a `Window::add<T>` template that
+13. [x] Cairo has blurry fonts.
+14. [x] Command interfaces for menus/toolbars and app shortcuts.
+15. [x] Backends have open/cairo/whatevre backed in. We need to separate them.
+16. [x] Paintings inside widgets should start at (0,0) not position at window.
+17. [x] Widget has 2 naked pointers `parent` and `window`. Understand when this will fail.
+18. [x] Generic timer system (start_timer / stop_timer)
+19. [x] Popup/overlay mechanism (used by Combobox)
+20. [x] Painter helpers (draw_frame, draw_focus_ring, fill_circle, etc.)
+21. [x] Font metrics for consistent text positioning
+22. [x] Clipping (push_clip / pop_clip).
+23. [x] Screenshot / save_to_png.
+24. [x] Clipboard (copy/paste, all platforms).
+25. [x] Image loading - using platform APIs.
+26. [x] Undo/redo framework.
+27. [x] Declarative UI support. - WIP.
+28. [x] All setters should return a reference to self - for chainability.
+29. [x] Windows should have a `Window::add<T>` template that
         internally creates the shared ptr, and returns a reference.
-35. [ ] Signals/slots (beyond single std::function) - or alternative.
-36. [x] Logging levels configurable at runtime.
-37. [ ] Scroll size - detect at runtime.
-38. [ ] Natural scrolling - detect at runtime.
-39. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
-40. [x] Implement font caching for measurements.
-41. [ ] Resource / asset management.
-42. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
-43. [x] Set window icon.
-44. [ ] Rounded frame clip. When drawing a frame, cliping with a radius would be
+30. [x] Set window icon.
+31. [x] Logging levels configurable at runtime.
+32. [x] Implement font caching for measurements.
+33. [x] Toast support
+34. [x] Rounded frame clip. When drawing a frame, cliping with a radius would be
         nice. However, I am unsure how to clean the clipping at the egnd of function call.
-45. [x] Toast support
+35. [ ] OpenGL uses cairo for painting text. Should use stb_ttf or something.
+36. [ ] Drag and drop.
+37. [ ] Font selection / custom fonts.
+38. [ ] API to read keyboard shortcuts per platform on runtime.
+39. [ ] Signals/slots (beyond single std::function) - or alternative.
+40. [ ] Animation framework (transitions, easing).
+41. [ ] Scroll size - detect at runtime.
+42. [ ] Natural scrolling - detect at runtime.
+43. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
+44. [ ] Resource / asset management.
+45. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
 
 ## Platform
 

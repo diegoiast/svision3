@@ -1060,7 +1060,8 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
                                int selection_end_line, int selection_end_col,
                                int first_visible_line, float line_height, float gutter_width,
                                float scroll_x, float scroll_y, WidgetState const &state,
-                               std::chrono::steady_clock::time_point cursor_blink_time) const {
+                               std::chrono::steady_clock::time_point cursor_blink_time,
+                               bool highlight_current_line) const {
     auto focused = state.focused;
     auto enabled = state.enabled;
     auto fm = painter.font_metrics(palette.fonts.size, FontFamily::Monospace);
@@ -1092,6 +1093,10 @@ void BaseTheme::draw_text_edit(Painter &painter, Rect const &rect,
          (selection_start_line == selection_end_line && selection_start_col < selection_end_col));
 
     painter.push_clip(area);
+    if (highlight_current_line && cursor_line >= first_visible_line && cursor_line <= last) {
+        auto cy = rect.y + line_height * static_cast<float>(cursor_line - first_visible_line);
+        painter.fill_rect({area.x, cy, area.width, line_height}, palette.alternate);
+    }
     for (auto i = first_visible_line; i <= last; i++) {
         auto y = rect.y + line_height * static_cast<float>(i - first_visible_line);
         auto baseline = y + (line_height - fm.height) / 2.0f + fm.ascent;

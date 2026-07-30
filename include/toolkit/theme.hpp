@@ -318,7 +318,8 @@ class Theme {
                                 int selection_end_line, int selection_end_col,
                                 int first_visible_line, float line_height, float gutter_width,
                                 float scroll_x, float scroll_y, WidgetState const &state,
-                                std::chrono::steady_clock::time_point cursor_blink_time) const = 0;
+                                std::chrono::steady_clock::time_point cursor_blink_time,
+                                bool highlight_current_line) const = 0;
     virtual void draw_splitter_handle(Painter &painter, float pos, Rect const &splitter_rect,
                                       Orientation orientation, bool hovered) const = 0;
     virtual void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const = 0;

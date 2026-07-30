@@ -183,6 +183,17 @@ void TextEdit::set_text(std::string const &text) {
     }
 }
 
+TextEdit &TextEdit::set_highlight_current_line(bool enabled) {
+    if (highlight_current_line_ == enabled) {
+        return *this;
+    }
+    highlight_current_line_ = enabled;
+    if (window_) {
+        window_->request_redraw("property change (highlight_current_line)");
+    }
+    return *this;
+}
+
 TextEdit &TextEdit::set_focused(bool focused) {
     Widget::set_focused(focused);
     if (!focused) {
@@ -334,8 +345,11 @@ void TextEdit::ensure_cursor_visible() {
     if (cx < scroll_x_ + gw) {
         scroll_x_ = cx - gw;
     }
-    // Scrollbar range is updated lazily in paint() to avoid rescanning all
-    // lines on every keystroke/delete. scroll_x_/scroll_y_ are already correct.
+    // content_size_ itself is updated lazily in paint() to avoid rescanning
+    // all lines on every keystroke/delete, but the scrollbar thumbs still
+    // need to reflect the scroll_x_/scroll_y_ set above, so sync them against
+    // the last-known content size instead of a full update_scroll_state().
+    update_scrollbars(content_size_);
 }
 
 void TextEdit::move_cursor(Position p, bool extend_selection) {
@@ -726,7 +740,7 @@ void TextEdit::paint(Painter &painter) {
     theme.draw_text_edit(painter, local_rect, lines_, static_cast<int>(cursor_.line),
                          static_cast<int>(cursor_.col), sel_start_line, sel_start_col, sel_end_line,
                          sel_end_col, first, lh, gw, scroll_x_, scroll_y_, wstate,
-                         cursor_blink_time_);
+                         cursor_blink_time_, highlight_current_line_);
 
     draw_scrollbars(painter);
 }

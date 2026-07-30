@@ -50,6 +50,9 @@ class TextEdit : public ScrollableWidget {
     // FIXME add API to read using different encodings
     void set_text(std::string const &text);
 
+    TextEdit &set_highlight_current_line(bool enabled);
+    bool highlight_current_line() const { return highlight_current_line_; }
+
     Command::Ptr select_all_cmd;
     Command::Ptr cut_cmd;
     Command::Ptr copy_cmd;
@@ -111,6 +114,7 @@ class TextEdit : public ScrollableWidget {
     mutable bool max_line_w_dirty_ = true;
     mutable size_t last_lines_count_ = 0;
     bool paste_available_ = false;
+    bool highlight_current_line_ = false;
 };
 
 } // namespace toolkit

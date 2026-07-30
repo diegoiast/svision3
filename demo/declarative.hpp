@@ -122,6 +122,14 @@ template <typename T> struct Element {
         }
         return std::move(*this);
     }
+    Element highlight_current_line(bool h = true) {
+        if constexpr (std::is_same_v<T, toolkit::TextEdit>) {
+            w->set_highlight_current_line(h);
+        } else {
+            static_assert(std::is_same_v<T, void>, "highlight_current_line only works on TextEdit");
+        }
+        return std::move(*this);
+    }
 
     Element spacing(float s) {
         w->set_spacing(s);

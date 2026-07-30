@@ -93,7 +93,8 @@ class BaseTheme : public Theme {
                         int selection_start_col, int selection_end_line, int selection_end_col,
                         int first_visible_line, float line_height, float gutter_width,
                         float scroll_x, float scroll_y, WidgetState const &state,
-                        std::chrono::steady_clock::time_point cursor_blink_time) const override;
+                        std::chrono::steady_clock::time_point cursor_blink_time,
+                        bool highlight_current_line) const override;
 
     void draw_focus_ring(Painter &painter, Rect const &rect, float corner_radius) const override;
 
