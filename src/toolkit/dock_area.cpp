@@ -58,9 +58,10 @@ void DockArea::set_rect(Rect const &rect) {
 
     if (!sizes_applied_ && rect.width > 0.0f && rect.height > 0.0f) {
         sizes_applied_ = true;
-        apply_dock_size(DockPosition::East, false);
-        apply_dock_size(DockPosition::West, false);
-        apply_dock_size(DockPosition::South, false);
+        for (auto pos : {DockPosition::East, DockPosition::West, DockPosition::South}) {
+            auto *tab = dock_slots_[int(pos)].tab.get();
+            apply_dock_size(pos, tab && tab->is_collapsed());
+        }
     }
 }
 
@@ -79,10 +80,14 @@ void DockArea::apply_dock_size(DockPosition pos, bool collapsed) {
     if (total <= 0.0f) {
         return;
     }
-    auto size = collapsed ? tab->tab_bar_size() : dock_sizes_[int(pos)];
+    // An empty dock (no tabs added yet) takes no space at all, regardless of
+    // its own collapsed state -- collapsing to a tab bar only makes sense
+    // once there's actually a tab bar to show.
+    auto hidden = tab->get_tab_count() == 0;
+    auto size = hidden ? 0.0f : (collapsed ? tab->tab_bar_size() : dock_sizes_[int(pos)]);
     auto ratio = slot.near_start ? size / total : 1.0f - size / total;
     host->set_ratio(slot.divider, ratio);
-    host->set_divider_locked(slot.divider, collapsed);
+    host->set_divider_locked(slot.divider, hidden || collapsed);
 }
 
 Widget &DockArea::set_center(std::unique_ptr<Widget> widget) {
@@ -113,7 +118,17 @@ Widget &DockArea::add_dock(DockPosition pos, const std::string &title,
         break;
     }
 
-    return tab->add_tab(title, std::move(content), false);
+    auto was_empty = tab->get_tab_count() == 0;
+    auto &result = tab->add_tab(title, std::move(content), false);
+    if (was_empty) {
+        // Reveal the dock now that it actually has something to show. This
+        // goes through apply_dock_size() directly rather than set_collapsed(),
+        // since the dock was never "collapsed" in the TabWidget's own sense --
+        // it was hidden by the divider lock while empty, independent of
+        // TabWidget::collapsed_.
+        apply_dock_size(pos, false);
+    }
+    return result;
 }
 
 DockArea &DockArea::set_dock_size(DockPosition pos, float size) {
