@@ -222,6 +222,11 @@ FileBrowserWidget &FileBrowserWidget::set_browser_mode(bool browser) {
     }
     if (bottom_stack_) {
         bottom_stack_->set_current(page);
+        // In browser mode the current page is an empty placeholder, but the
+        // StackedLayout itself is still a visible VBoxLayout child, so it
+        // still claims a spacing gap below the main view. Hide it outright
+        // instead of just switching to the empty page.
+        bottom_stack_->set_visible(!browser);
     }
     return *this;
 }
@@ -607,9 +612,7 @@ void FileBrowserWidget::setup_ui() {
     add_widget(std::move(bottom_stack));
 
     // Apply initial mode
-    auto initial_page = browser_mode_ ? 0 : 1;
-    toolbar_extras_->set_current(initial_page);
-    bottom_stack_->set_current(initial_page);
+    set_browser_mode(browser_mode_);
 
     load_directory();
 }
