@@ -58,7 +58,8 @@ static auto make_console() {
         "[build] Building CXX object CMakeFiles/toolkit.dir/src/toolkit/dock_area.cpp.o\n"
         "[build] Linking CXX static library libtoolkit.a\n"
         "[build] Building CXX executable demo_dock\n"
-        "[build] Build finished successfully.\n");
+        "[build] Build finished successfully.\n")
+        .highlight_current_line();
 }
 
 static auto make_problems() {
@@ -86,7 +87,8 @@ static auto make_center_editor() {
         "\n"
         "    win->set_root(std::move(dock));\n"
         "    return app.run();\n"
-        "}\n");
+        "}\n")
+        .highlight_current_line();
 }
 
 int main(int argc, char *argv[]) {
@@ -145,7 +147,7 @@ int main(int argc, char *argv[]) {
                                 return;
                             }
                         }
-                        auto editor = ui::text_edit();
+                        auto editor = ui::text_edit().highlight_current_line();
                         std::ifstream f(path);
                         if (f) {
                             editor->set_text(std::string(std::istreambuf_iterator<char>(f), {}));
