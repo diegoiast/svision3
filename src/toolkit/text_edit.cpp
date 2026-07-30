@@ -34,9 +34,9 @@ static constexpr FontFamily kFont = FontFamily::Monospace;
 // redo: delete [pos_..before_end_], insert text_after_ at pos_.
 class TextEditCommand : public UndoCommand {
   public:
-    TextEditCommand(TextEdit *edit, TextEdit::Pos pos, TextEdit::Pos before_end,
-                    TextEdit::Pos after_end, std::string text_before, std::string text_after,
-                    TextEdit::Pos old_cursor, TextEdit::Pos new_cursor, int cmd_id = 0)
+    TextEditCommand(TextEdit *edit, TextEdit::Position pos, TextEdit::Position before_end,
+                    TextEdit::Position after_end, std::string text_before, std::string text_after,
+                    TextEdit::Position old_cursor, TextEdit::Position new_cursor, int cmd_id = 0)
         : edit_(edit), pos_(pos), before_end_(before_end), after_end_(after_end),
           text_before_(std::move(text_before)), text_after_(std::move(text_after)),
           old_cursor_(old_cursor), new_cursor_(new_cursor), id_(cmd_id) {}
@@ -80,13 +80,13 @@ class TextEditCommand : public UndoCommand {
 
   private:
     TextEdit *edit_;
-    TextEdit::Pos pos_;
-    TextEdit::Pos before_end_;
-    TextEdit::Pos after_end_;
+    TextEdit::Position pos_;
+    TextEdit::Position before_end_;
+    TextEdit::Position after_end_;
     std::string text_before_;
     std::string text_after_;
-    TextEdit::Pos old_cursor_;
-    TextEdit::Pos new_cursor_;
+    TextEdit::Position old_cursor_;
+    TextEdit::Position new_cursor_;
     int id_;
 };
 
@@ -267,7 +267,7 @@ float TextEdit::gutter_width() const {
     return measure_text(std::string(digits, '9'), palette.fonts.size, kFont).width + 16.0f;
 }
 
-TextEdit::Pos TextEdit::pos_from_point(Point p) const {
+TextEdit::Position TextEdit::pos_from_point(Point p) const {
     auto const &palette = Theme::current().palette;
     auto lh = line_height();
     auto gw = gutter_width();
@@ -276,31 +276,35 @@ TextEdit::Pos TextEdit::pos_from_point(Point p) const {
         return {0, 0};
     }
 
-    auto line = static_cast<int>((p.y + scroll_y_) / lh);
+    // (p.y + scroll_y_) / lh can be negative for a point above the visible
+    // area, so clamp in signed space before converting to the unsigned line
+    // index below.
+    auto raw_line = static_cast<int>((p.y + scroll_y_) / lh);
     auto click_x = p.x - gw + scroll_x_;
-    line = std::clamp(line, 0, static_cast<int>(lines_.size()) - 1);
+    raw_line = std::clamp(raw_line, 0, static_cast<int>(lines_.size()) - 1);
+    auto line = static_cast<size_t>(raw_line);
 
     if (click_x <= 0) {
         return {line, 0};
     }
 
     auto const &ln = lines_[line];
-    auto col = 0;
-    while (col < (int)ln.size()) {
+    size_t col = 0;
+    while (col < ln.size()) {
         auto next_col = Utf8Iterator::next(ln, col);
         auto w = measure_text(ln.substr(0, next_col), palette.fonts.size, kFont).width;
 
         if (w > click_x) {
             auto prev_w = measure_text(ln.substr(0, col), palette.fonts.size, kFont).width;
             if (click_x - prev_w < w - click_x) {
-                return {line, static_cast<int>(col)};
+                return {line, col};
             } else {
-                return {line, static_cast<int>(next_col)};
+                return {line, next_col};
             }
         }
-        col = (int)next_col;
+        col = next_col;
     }
-    return {line, static_cast<int>(col)};
+    return {line, col};
 }
 
 void TextEdit::ensure_cursor_visible() {
@@ -334,7 +338,7 @@ void TextEdit::ensure_cursor_visible() {
     // lines on every keystroke/delete. scroll_x_/scroll_y_ are already correct.
 }
 
-void TextEdit::move_cursor(Pos p, bool extend_selection) {
+void TextEdit::move_cursor(Position p, bool extend_selection) {
     cursor_ = p;
     if (!extend_selection) {
         anchor_ = cursor_;
@@ -401,7 +405,7 @@ void TextEdit::delete_selection_internal() {
     cursor_ = anchor_ = s;
 }
 
-void TextEdit::set_cursor_for_undo(Pos p) {
+void TextEdit::set_cursor_for_undo(Position p) {
     cursor_ = anchor_ = p;
     sync_commands();
     ensure_cursor_visible();
@@ -410,14 +414,14 @@ void TextEdit::set_cursor_for_undo(Pos p) {
     }
 }
 
-std::string TextEdit::range_text(Pos start, Pos end) const {
+std::string TextEdit::range_text(Position start, Position end) const {
     if (start == end) {
         return {};
     }
     auto result = std::string{};
     for (auto i = start.line; i <= end.line; i++) {
-        auto sc = (i == start.line) ? start.col : 0;
-        auto ec = (i == end.line) ? end.col : static_cast<int>(lines_[i].size());
+        auto sc = (i == start.line) ? start.col : size_t{0};
+        auto ec = (i == end.line) ? end.col : lines_[i].size();
         result.append(lines_[i], sc, ec - sc);
         if (i < end.line) {
             result += '\n';
@@ -426,7 +430,7 @@ std::string TextEdit::range_text(Pos start, Pos end) const {
     return result;
 }
 
-void TextEdit::insert_text_raw(std::string_view t, Pos at) {
+void TextEdit::insert_text_raw(std::string_view t, Position at) {
     cursor_ = anchor_ = at;
     for (auto i = 0; i < (int)t.size(); i++) {
         if (t[i] == '\n' || t[i] == '\r') {
@@ -446,7 +450,7 @@ void TextEdit::insert_text_raw(std::string_view t, Pos at) {
     anchor_ = cursor_;
 }
 
-void TextEdit::delete_range_raw(Pos start, Pos end) {
+void TextEdit::delete_range_raw(Position start, Position end) {
     if (start == end) {
         return;
     }
@@ -497,7 +501,7 @@ void TextEdit::insert_text(std::string_view t) {
     // max_line_w_dirty_ is already true and the rescan will cover everything.
     if (!max_line_w_dirty_) {
         auto const &palette = Theme::current().palette;
-        for (auto i = insert_start_line; i <= cursor_.line && i < (int)lines_.size(); i++) {
+        for (auto i = insert_start_line; i <= cursor_.line && i < lines_.size(); i++) {
             auto w = measure_text(lines_[i], palette.fonts.size, kFont).width;
             if (w > cached_max_line_w_) {
                 cached_max_line_w_ = w;
@@ -525,7 +529,7 @@ void TextEdit::move_word_left(bool extend) {
 
     if (col == 0 && line > 0) {
         line--;
-        col = static_cast<int>(lines_[line].size());
+        col = lines_[line].size();
     }
 
     auto const &ln = lines_[line];
@@ -542,9 +546,9 @@ void TextEdit::move_word_right(bool extend) {
     auto line = cursor_.line;
     auto col = cursor_.col;
     auto const &ln = lines_[line];
-    auto len = static_cast<int>(ln.size());
+    auto len = ln.size();
 
-    if (col >= len && line + 1 < static_cast<int>(lines_.size())) {
+    if (col >= len && line + 1 < lines_.size()) {
         line++;
         col = 0;
     } else {
@@ -558,9 +562,15 @@ void TextEdit::move_word_right(bool extend) {
     move_cursor({line, col}, extend);
 }
 
+void TextEdit::move_document_start(bool extend) { move_cursor({0, 0}, extend); }
+
+void TextEdit::move_document_end(bool extend) {
+    move_cursor({lines_.size() - 1, lines_.back().size()}, extend);
+}
+
 void TextEdit::select_all() {
     anchor_ = {0, 0};
-    cursor_ = {static_cast<int>(lines_.size()) - 1, static_cast<int>(lines_.back().size())};
+    cursor_ = {lines_.size() - 1, lines_.back().size()};
     sync_commands();
     reset_cursor_blink();
     ensure_cursor_visible();
@@ -584,8 +594,8 @@ void TextEdit::copy() {
     auto s = sel_start(), e = sel_end();
     auto sel = std::string{};
     for (auto i = s.line; i <= e.line; i++) {
-        auto sc = (i == s.line) ? s.col : 0;
-        auto ec = (i == e.line) ? e.col : static_cast<int>(lines_[i].size());
+        auto sc = (i == s.line) ? s.col : size_t{0};
+        auto ec = (i == e.line) ? e.col : lines_[i].size();
         sel += lines_[i].substr(sc, ec - sc);
         if (i < e.line) {
             sel += '\n';
@@ -698,10 +708,14 @@ void TextEdit::paint(Painter &painter) {
     auto first = std::max(0, static_cast<int>(scroll_y_ / lh));
     auto ss = sel_start();
     auto se = sel_end();
-    auto sel_start_line = has_selection() ? ss.line : -1;
-    auto sel_start_col = has_selection() ? ss.col : -1;
-    auto sel_end_line = has_selection() ? se.line : -1;
-    auto sel_end_col = has_selection() ? se.col : -1;
+    // draw_text_edit()'s selection params are int with -1 meaning "no
+    // selection"; Position's fields are size_t, so the -1 sentinel has to be
+    // applied here rather than folded into the (unsigned) ternary above.
+    auto has_sel = has_selection();
+    auto sel_start_line = has_sel ? static_cast<int>(ss.line) : -1;
+    auto sel_start_col = has_sel ? static_cast<int>(ss.col) : -1;
+    auto sel_end_line = has_sel ? static_cast<int>(se.line) : -1;
+    auto sel_end_col = has_sel ? static_cast<int>(se.col) : -1;
 
     auto wstate = WidgetState{
         .interaction = ButtonState::Normal,
@@ -709,9 +723,10 @@ void TextEdit::paint(Painter &painter) {
         .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
     };
-    theme.draw_text_edit(painter, local_rect, lines_, cursor_.line, cursor_.col, sel_start_line,
-                         sel_start_col, sel_end_line, sel_end_col, first, lh, gw, scroll_x_,
-                         scroll_y_, wstate, cursor_blink_time_);
+    theme.draw_text_edit(painter, local_rect, lines_, static_cast<int>(cursor_.line),
+                         static_cast<int>(cursor_.col), sel_start_line, sel_start_col, sel_end_line,
+                         sel_end_col, first, lh, gw, scroll_x_, scroll_y_, wstate,
+                         cursor_blink_time_);
 
     draw_scrollbars(painter);
 }
@@ -746,12 +761,12 @@ bool TextEdit::handle_mouse(MouseEvent const &event) {
         if (event.position.y + scroll_y_ > (int)lines_.size() * lh) {
             return false;
         }
-        Pos p = pos_from_point(event.position);
+        Position p = pos_from_point(event.position);
         if (event.click_count == 2) {
             // Select word
             auto const &ln = lines_[p.line];
             auto start = p.col, end = p.col;
-            auto len = static_cast<int>(ln.size());
+            auto len = ln.size();
             if (p.col < len && !std::isspace(static_cast<unsigned char>(ln[p.col]))) {
                 while (start > 0 && !std::isspace(static_cast<unsigned char>(ln[start - 1]))) {
                     start--;
@@ -770,7 +785,7 @@ bool TextEdit::handle_mouse(MouseEvent const &event) {
         } else if (event.click_count >= 3) {
             // Select entire line
             anchor_ = {p.line, 0};
-            cursor_ = {p.line, static_cast<int>(lines_[p.line].size())};
+            cursor_ = {p.line, lines_[p.line].size()};
             sync_commands();
             reset_cursor_blink();
             if (window_) {
@@ -834,8 +849,8 @@ void TextEdit::delete_char_backward(bool word) {
         cmd = std::make_unique<TextEditCommand>(this, start_pos, end_pos, start_pos,
                                                 std::move(deleted), "", end_pos, cursor_);
     } else if (cursor_.col > 0) {
-        auto prev = (int)Utf8Iterator::prev(lines_[cursor_.line], cursor_.col);
-        auto del_start = Pos{cursor_.line, prev};
+        auto prev = Utf8Iterator::prev(lines_[cursor_.line], cursor_.col);
+        auto del_start = Position{cursor_.line, prev};
         auto del_end = cursor_;
         auto old_cursor = cursor_;
         auto deleted_char = lines_[cursor_.line].substr(prev, cursor_.col - prev);
@@ -845,10 +860,10 @@ void TextEdit::delete_char_backward(bool word) {
         cmd = std::make_unique<TextEditCommand>(this, del_start, del_end, del_start,
                                                 std::move(deleted_char), "", old_cursor, cursor_);
     } else if (cursor_.line > 0) {
-        auto prev_len = static_cast<int>(lines_[cursor_.line - 1].size());
+        auto prev_len = lines_[cursor_.line - 1].size();
         auto old_cursor = cursor_;
-        auto del_start = Pos{cursor_.line - 1, prev_len};
-        auto del_end = Pos{cursor_.line, 0};
+        auto del_start = Position{cursor_.line - 1, prev_len};
+        auto del_end = Position{cursor_.line, 0};
         lines_[cursor_.line - 1] += lines_[cursor_.line];
         lines_.erase(lines_.begin() + cursor_.line);
         cursor_ = {cursor_.line - 1, prev_len};
@@ -875,20 +890,20 @@ void TextEdit::delete_char_backward(bool word) {
 }
 
 void TextEdit::delete_char_forward() {
-    auto nlines = static_cast<int>(lines_.size());
+    auto nlines = lines_.size();
     std::unique_ptr<TextEditCommand> cmd;
-    if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
-        auto next = (int)Utf8Iterator::next(lines_[cursor_.line], cursor_.col);
+    if (cursor_.col < lines_[cursor_.line].size()) {
+        auto next = Utf8Iterator::next(lines_[cursor_.line], cursor_.col);
         auto del_start = cursor_;
-        auto del_end = Pos{cursor_.line, next};
+        auto del_end = Position{cursor_.line, next};
         auto deleted_char = lines_[cursor_.line].substr(cursor_.col, next - cursor_.col);
         lines_[cursor_.line].erase(cursor_.col, next - cursor_.col);
         cmd = std::make_unique<TextEditCommand>(this, del_start, del_end, del_start,
                                                 std::move(deleted_char), "", cursor_, cursor_);
     } else if (cursor_.line + 1 < nlines) {
         auto old_cursor = cursor_;
-        auto del_start = Pos{cursor_.line, (int)lines_[cursor_.line].size()};
-        auto del_end = Pos{cursor_.line + 1, 0};
+        auto del_start = Position{cursor_.line, lines_[cursor_.line].size()};
+        auto del_end = Position{cursor_.line + 1, 0};
         lines_[cursor_.line] += lines_[cursor_.line + 1];
         lines_.erase(lines_.begin() + cursor_.line + 1);
         auto const &p = Theme::current().palette;
@@ -927,24 +942,29 @@ void TextEdit::indent_selection(bool unindent, int spaces) {
 
     auto old_cursor = cursor_;
     auto changed = false;
-    auto range_start = Pos{first_line, 0};
-    auto range_end_before = Pos{last_line, (int)lines_[last_line].size()};
+    auto range_start = Position{first_line, 0};
+    auto range_end_before = Position{last_line, lines_[last_line].size()};
     auto text_before = range_text(range_start, range_end_before);
     auto indent = std::string(spaces, ' ');
 
     if (unindent) {
         for (auto i = first_line; i <= last_line; i++) {
-            auto sp = 0;
-            while (sp < spaces && sp < (int)lines_[i].size() && lines_[i][sp] == ' ') {
+            size_t sp = 0;
+            while (sp < static_cast<size_t>(spaces) && sp < lines_[i].size() &&
+                  lines_[i][sp] == ' ') {
                 sp++;
             }
             if (sp > 0) {
                 lines_[i].erase(0, sp);
+                // sp counted leading spaces actually present on line i, but
+                // the cursor/anchor column on that line can still be less
+                // than sp -- guard the subtraction instead of letting it
+                // underflow (col is unsigned).
                 if (cursor_.line == i) {
-                    cursor_.col = std::max(0, cursor_.col - sp);
+                    cursor_.col = (sp > cursor_.col) ? 0 : cursor_.col - sp;
                 }
                 if (anchor_.line == i) {
-                    anchor_.col = std::max(0, anchor_.col - sp);
+                    anchor_.col = (sp > anchor_.col) ? 0 : anchor_.col - sp;
                 }
                 changed = true;
             }
@@ -963,7 +983,7 @@ void TextEdit::indent_selection(bool unindent, int spaces) {
     }
 
     if (changed) {
-        auto range_end_after = Pos{last_line, (int)lines_[last_line].size()};
+        auto range_end_after = Position{last_line, lines_[last_line].size()};
         auto text_after = range_text(range_start, range_end_after);
         max_line_w_dirty_ = true;
         undo_stack_.push(std::make_unique<TextEditCommand>(
@@ -987,7 +1007,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
     if (event.type != KeyEvent::Type::Press) {
         return false;
     }
-    auto nlines = static_cast<int>(lines_.size());
+    auto nlines = lines_.size();
 
     reset_cursor_blink();
     ensure_cursor_visible();
@@ -1019,12 +1039,10 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         } else if (!event.shift && has_selection()) {
             move_cursor(sel_start(), false);
         } else if (cursor_.col > 0) {
-            move_cursor({cursor_.line,
-                         static_cast<int>(Utf8Iterator::prev(lines_[cursor_.line], cursor_.col))},
+            move_cursor({cursor_.line, Utf8Iterator::prev(lines_[cursor_.line], cursor_.col)},
                         event.shift);
         } else if (cursor_.line > 0) {
-            move_cursor({cursor_.line - 1, static_cast<int>(lines_[cursor_.line - 1].size())},
-                        event.shift);
+            move_cursor({cursor_.line - 1, lines_[cursor_.line - 1].size()}, event.shift);
         }
         return true;
 
@@ -1033,9 +1051,8 @@ bool TextEdit::handle_key(KeyEvent const &event) {
             move_word_right(event.shift);
         } else if (!event.shift && has_selection()) {
             move_cursor(sel_end(), false);
-        } else if (cursor_.col < static_cast<int>(lines_[cursor_.line].size())) {
-            move_cursor({cursor_.line,
-                         static_cast<int>(Utf8Iterator::next(lines_[cursor_.line], cursor_.col))},
+        } else if (cursor_.col < lines_[cursor_.line].size()) {
+            move_cursor({cursor_.line, Utf8Iterator::next(lines_[cursor_.line], cursor_.col)},
                         event.shift);
         } else if (cursor_.line + 1 < nlines) {
             move_cursor({cursor_.line + 1, 0}, event.shift);
@@ -1044,7 +1061,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
 
     case Key::Up:
         if (cursor_.line > 0) {
-            auto col = std::min(cursor_.col, static_cast<int>(lines_[cursor_.line - 1].size()));
+            auto col = std::min(cursor_.col, lines_[cursor_.line - 1].size());
             move_cursor({cursor_.line - 1, col}, event.shift);
         } else {
             move_cursor({0, 0}, event.shift);
@@ -1053,19 +1070,20 @@ bool TextEdit::handle_key(KeyEvent const &event) {
 
     case Key::Down:
         if (cursor_.line + 1 < nlines) {
-            auto col = std::min(cursor_.col, static_cast<int>(lines_[cursor_.line + 1].size()));
+            auto col = std::min(cursor_.col, lines_[cursor_.line + 1].size());
             move_cursor({cursor_.line + 1, col}, event.shift);
         } else {
-            move_cursor({cursor_.line, static_cast<int>(lines_[cursor_.line].size())}, event.shift);
+            move_cursor({cursor_.line, lines_[cursor_.line].size()}, event.shift);
         }
         return true;
 
     case Key::PageUp: {
         auto lh = line_height();
         auto vr = viewport_rect();
-        auto page_lines = std::max(1, static_cast<int>(vr.height / lh) - 1);
-        auto new_line = std::max(0, cursor_.line - page_lines);
-        auto col = std::min(cursor_.col, static_cast<int>(lines_[new_line].size()));
+        auto page_lines =
+            static_cast<size_t>(std::max(1, static_cast<int>(vr.height / lh) - 1));
+        auto new_line = (page_lines > cursor_.line) ? size_t{0} : cursor_.line - page_lines;
+        auto col = std::min(cursor_.col, lines_[new_line].size());
         move_cursor({new_line, col}, event.shift);
         return true;
     }
@@ -1073,26 +1091,27 @@ bool TextEdit::handle_key(KeyEvent const &event) {
     case Key::PageDown: {
         auto lh = line_height();
         auto vr = viewport_rect();
-        auto page_lines = std::max(1, static_cast<int>(vr.height / lh) - 1);
+        auto page_lines =
+            static_cast<size_t>(std::max(1, static_cast<int>(vr.height / lh) - 1));
         auto new_line = std::min(nlines - 1, cursor_.line + page_lines);
-        auto col = std::min(cursor_.col, static_cast<int>(lines_[new_line].size()));
+        auto col = std::min(cursor_.col, lines_[new_line].size());
         move_cursor({new_line, col}, event.shift);
         return true;
     }
 
     case Key::Home:
-        if (event.super) {
-            move_cursor({0, 0}, event.shift);
+        if (event.ctrl || event.super) {
+            move_document_start(event.shift);
         } else {
             move_cursor({cursor_.line, 0}, event.shift);
         }
         return true;
 
     case Key::End:
-        if (event.super) {
-            move_cursor({nlines - 1, static_cast<int>(lines_.back().size())}, event.shift);
+        if (event.ctrl || event.super) {
+            move_document_end(event.shift);
         } else {
-            move_cursor({cursor_.line, static_cast<int>(lines_[cursor_.line].size())}, event.shift);
+            move_cursor({cursor_.line, lines_[cursor_.line].size()}, event.shift);
         }
         return true;
 

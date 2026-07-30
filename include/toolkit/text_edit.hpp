@@ -19,15 +19,15 @@ class TextEditCommand;
 class TextEdit : public ScrollableWidget {
     DECLARE_WIDGET(TextEdit)
   public:
-    struct Pos {
-        int line = 0;
-        int col = 0;
-        bool operator==(Pos const &o) const { return line == o.line && col == o.col; }
-        bool operator!=(Pos const &o) const { return !(*this == o); }
-        bool operator<(Pos const &o) const {
+    struct Position {
+        size_t line = 0;
+        size_t col = 0;
+        bool operator==(Position const &o) const { return line == o.line && col == o.col; }
+        bool operator!=(Position const &o) const { return !(*this == o); }
+        bool operator<(Position const &o) const {
             return line < o.line || (line == o.line && col < o.col);
         }
-        bool operator<=(Pos const &o) const { return *this == o || *this < o; }
+        bool operator<=(Position const &o) const { return *this == o || *this < o; }
     };
 
     explicit TextEdit(std::string text = "");
@@ -66,21 +66,23 @@ class TextEdit : public ScrollableWidget {
     friend class TextEditCommand;
 
     void reset_cursor_blink();
-    Pos pos_from_point(Point p) const;
+    Position pos_from_point(Point p) const;
     float line_height() const;
     float gutter_width() const;
     void update_scroll_state();
     void ensure_cursor_visible();
-    void move_cursor(Pos p, bool extend_selection);
+    void move_cursor(Position p, bool extend_selection);
     void delete_selection();
     void delete_selection_internal();
-    void set_cursor_for_undo(Pos p);
+    void set_cursor_for_undo(Position p);
     bool has_selection() const { return cursor_ != anchor_; }
-    Pos sel_start() const { return cursor_ < anchor_ ? cursor_ : anchor_; }
-    Pos sel_end() const { return anchor_ < cursor_ ? cursor_ : anchor_; }
+    Position sel_start() const { return cursor_ < anchor_ ? cursor_ : anchor_; }
+    Position sel_end() const { return anchor_ < cursor_ ? cursor_ : anchor_; }
     void insert_text(std::string_view t);
     void move_word_left(bool extend);
     void move_word_right(bool extend);
+    void move_document_start(bool extend);
+    void move_document_end(bool extend);
     void select_all();
     void cut();
     void copy();
@@ -93,13 +95,13 @@ class TextEdit : public ScrollableWidget {
     void delete_char_backward(bool word = false);
     void delete_char_forward();
     void indent_selection(bool unindent, int spaces = 4);
-    std::string range_text(Pos start, Pos end) const;
-    void insert_text_raw(std::string_view t, Pos at);
-    void delete_range_raw(Pos start, Pos end);
+    std::string range_text(Position start, Position end) const;
+    void insert_text_raw(std::string_view t, Position at);
+    void delete_range_raw(Position start, Position end);
 
     std::vector<std::string> lines_{""};
-    Pos cursor_;
-    Pos anchor_;
+    Position cursor_;
+    Position anchor_;
     bool dragging_ = false;
     std::chrono::steady_clock::time_point cursor_blink_time_;
     int blink_timer_id_ = 0;

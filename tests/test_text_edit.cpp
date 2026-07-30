@@ -343,6 +343,47 @@ TEST_CASE("TextEdit End moves to end of line", "[textedit]") {
     REQUIRE(te.text() == "helloX");
 }
 
+TEST_CASE("TextEdit Ctrl+Home moves to start of document", "[textedit]") {
+    init_theme();
+    TextEdit te("aaa\nbbb\nccc");
+    te.set_rect({0, 0, 400, 300});
+    te.handle_key(key_press(Key::Down));
+    te.handle_key(key_press(Key::Down));
+    te.handle_key(key_press(Key::End));
+    te.handle_key(key_press(Key::Home, false, true)); // Ctrl+Home
+    te.handle_key(text_press("X"));
+    REQUIRE(te.text() == "Xaaa\nbbb\nccc");
+}
+
+TEST_CASE("TextEdit Ctrl+End moves to end of document", "[textedit]") {
+    init_theme();
+    TextEdit te("aaa\nbbb\nccc");
+    te.set_rect({0, 0, 400, 300});
+    te.handle_key(key_press(Key::End, false, true)); // Ctrl+End
+    te.handle_key(text_press("X"));
+    REQUIRE(te.text() == "aaa\nbbb\ncccX");
+}
+
+TEST_CASE("TextEdit Ctrl+Shift+End selects from cursor to end of document", "[textedit]") {
+    init_theme();
+    TextEdit te("aaa\nbbb\nccc");
+    te.set_rect({0, 0, 400, 300});
+    te.handle_key(key_press(Key::End, true, true)); // Ctrl+Shift+End
+    te.handle_key(key_press(Key::Delete));
+    REQUIRE(te.text() == "");
+}
+
+TEST_CASE("TextEdit Ctrl+Shift+Home selects from cursor back to start of document",
+          "[textedit]") {
+    init_theme();
+    TextEdit te("aaa\nbbb\nccc");
+    te.set_rect({0, 0, 400, 300});
+    te.handle_key(key_press(Key::End, false, true));  // Ctrl+End: cursor at doc end, no selection
+    te.handle_key(key_press(Key::Home, true, true));  // Ctrl+Shift+Home: select back to doc start
+    te.handle_key(key_press(Key::Delete));
+    REQUIRE(te.text() == "");
+}
+
 TEST_CASE("TextEdit Up clamps col to shorter line", "[textedit]") {
     init_theme();
     TextEdit te("hi\nhello world");
@@ -354,6 +395,19 @@ TEST_CASE("TextEdit Up clamps col to shorter line", "[textedit]") {
     te.handle_key(key_press(Key::Up));
     te.handle_key(text_press("X"));
     REQUIRE(te.text() == "hiX\nhello world");
+}
+
+// Position's line/col are size_t; PageUp computes cursor_.line - page_lines,
+// which must clamp to 0 via a guarded subtraction rather than going negative,
+// or it would underflow to a huge index and crash on lines_[new_line].
+TEST_CASE("TextEdit PageUp near the top of the document clamps to line 0", "[textedit]") {
+    init_theme();
+    TextEdit te("aaa\nbbb\nccc");
+    te.set_rect({0, 0, 400, 3000}); // tall viewport => page_lines exceeds line count
+    te.handle_key(key_press(Key::Down)); // cursor at line 1
+    te.handle_key(key_press(Key::PageUp));
+    te.handle_key(text_press("X"));
+    REQUIRE(te.text() == "Xaaa\nbbb\nccc");
 }
 
 TEST_CASE("TextEdit Down clamps col to shorter line", "[textedit]") {
@@ -578,6 +632,21 @@ TEST_CASE("TextEdit Tab inserts four spaces", "[textedit]") {
     te.set_rect({0, 0, 400, 300});
     te.handle_key(key_press(Key::Tab));
     REQUIRE(te.text() == "    ");
+}
+
+// col is size_t; unindent removes more leading spaces than the cursor's own
+// column when the cursor sits inside the indent being stripped, so the
+// col -= removed subtraction must clamp to 0 via a guard rather than
+// underflowing.
+TEST_CASE("TextEdit Shift+Tab unindent clamps cursor col instead of underflowing",
+          "[textedit]") {
+    init_theme();
+    TextEdit te("  hi"); // two leading spaces
+    te.set_rect({0, 0, 400, 300});
+    te.handle_key(key_press(Key::Right)); // cursor at col 1, inside the indent
+    te.handle_key(key_press(Key::Tab, true)); // Shift+Tab: unindent (default width 4)
+    te.handle_key(text_press("X"));
+    REQUIRE(te.text() == "Xhi");
 }
 
 // ── on_change callback ───────────────────────────────────────────────────────
