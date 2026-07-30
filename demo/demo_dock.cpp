@@ -9,7 +9,6 @@
 
 #include <spdlog/spdlog.h>
 #include <toolkit/application.hpp>
-#include <toolkit/dock_area.hpp>
 #include <toolkit/theme.hpp>
 #include <toolkit/theme_factory.hpp>
 #include <toolkit/window.hpp>
@@ -112,8 +111,6 @@ int main(int argc, char *argv[]) {
 
     auto *win = app.create_window("Dock Demo", {1200, 800});
 
-    auto dock = std::make_unique<DockArea>();
-
     // Center: TabWidget with one initial editor tab
     auto center = ui::tab_widget().tabs_closable(true).add_tab("Welcome", make_center_editor());
     auto *center_ptr = center.get();
@@ -123,53 +120,50 @@ int main(int argc, char *argv[]) {
             center_ptr->remove_tab(index);
         }
     };
-    dock->set_center(std::move(center.w));
 
-    // Left dock: file browser + outline — vertical rotated tabs (West)
-    dock->add_dock(DockPosition::East, "Files",
-                   ui::file_browser().on_file_activated(
-                       [center_ref = weak_ref(center_ptr)](std::string const &path) {
-                           auto *center_ptr = center_ref.get();
-                           if (!center_ptr) {
-                               return;
-                           }
-                           auto name = std::filesystem::path(path).filename().string();
-                           for (int i = 0; i < static_cast<int>(center_ptr->get_tab_count()); ++i) {
-                               if (center_ptr->get_tab_title(i) == name) {
-                                   center_ptr->set_current(i);
-                                   return;
-                               }
-                           }
-                           auto editor = ui::text_edit();
-                           std::ifstream f(path);
-                           if (f) {
-                               editor->set_text(std::string(std::istreambuf_iterator<char>(f), {}));
-                           }
-                           auto canonical = std::filesystem::weakly_canonical(path).string();
-                           auto tab_index = static_cast<int>(center_ptr->get_tab_count());
-                           center_ptr->add_tab(name, std::move(editor.w));
-                           center_ptr->set_tab_tooltip(tab_index, canonical);
-                           center_ptr->set_current(tab_index);
-                       }));
-    dock->add_dock(DockPosition::East, "Outline", make_outline());
-    dock->dock_tab_widget(DockPosition::East)->set_orientation(TabOrientation::West);
+    auto dock =
+        ui::dock_area()
+            .center(std::move(center))
+            .dock_size(DockPosition::East, 200.0f)
+            .dock_size(DockPosition::West, 200.0f)
+            .dock_size(DockPosition::South, 200.0f)
+            .add_dock(
+                DockPosition::East, "Files",
+                ui::file_browser()
+                    .margins({0, 0, 0, 0})
+                    .browser_mode(true)
+                    .on_file_activated([center_ref =
+                                            weak_ref(center_ptr)](std::string const &path) {
+                        auto *center_ptr = center_ref.get();
+                        if (!center_ptr) {
+                            return;
+                        }
+                        auto name = std::filesystem::path(path).filename().string();
+                        for (auto i = 0; i < static_cast<int>(center_ptr->get_tab_count()); ++i) {
+                            if (center_ptr->get_tab_title(i) == name) {
+                                center_ptr->set_current(i);
+                                return;
+                            }
+                        }
+                        auto editor = ui::text_edit();
+                        std::ifstream f(path);
+                        if (f) {
+                            editor->set_text(std::string(std::istreambuf_iterator<char>(f), {}));
+                        }
+                        auto canonical = std::filesystem::weakly_canonical(path).string();
+                        auto tab_index = static_cast<int>(center_ptr->get_tab_count());
+                        center_ptr->add_tab(name, std::move(editor.w));
+                        center_ptr->set_tab_tooltip(tab_index, canonical);
+                        center_ptr->set_current(tab_index);
+                    }))
+            .add_dock(DockPosition::East, "Outline", make_outline())
+            .add_dock(DockPosition::West, "Inspector", make_inspector())
+            .add_dock(DockPosition::South, "Console", make_console())
+            .add_dock(DockPosition::South, "Problems", make_problems());
 
-    // Right dock: inspector — vertical rotated tabs (East)
-    dock->add_dock(DockPosition::West, "Inspector", make_inspector());
-    dock->set_dock_size(DockPosition::East, 200.0f);
-    dock->dock_tab_widget(DockPosition::West)->set_orientation(TabOrientation::East);
-
-    // Bottom dock: console + problems — tabs on bottom edge
-    dock->add_dock(DockPosition::South, "Console", make_console());
-    dock->add_dock(DockPosition::South, "Problems", make_problems());
-    dock->set_dock_size(DockPosition::South, 180.0f);
-    dock->dock_tab_widget(DockPosition::South)->set_orientation(TabOrientation::South);
-    dock->dock_tab_widget(DockPosition::South)->set_collapsible(true);
-
-    auto *dock_ptr = dock.get();
-
+    auto dock_ref = weak_ref(dock.get());
     auto vertical = std::make_shared<bool>(true);
-    auto toggle_vertical = [dock_ref = weak_ref(dock_ptr), vertical]() {
+    auto toggle_vertical = [dock_ref, vertical]() {
         auto *dock_ptr = dock_ref.get();
         if (!dock_ptr) {
             return;
@@ -189,7 +183,7 @@ int main(int argc, char *argv[]) {
         return [style, scheme] { Theme::set_current(ThemeFactory::create(style, scheme)); };
     };
 
-    auto cmd_toggle_docks = Command::create("Toggle Docks", [dock_ref = weak_ref(dock_ptr)]() {
+    auto cmd_toggle_docks = Command::create("Toggle Docks", [dock_ref]() {
         auto *dock_ptr = dock_ref.get();
         if (!dock_ptr) {
             return;
@@ -258,7 +252,7 @@ int main(int argc, char *argv[]) {
             .w);
 
     win->set_root(std::move(dock));
-    win->on_key = [win, dock_ref = weak_ref(dock_ptr)](KeyEvent const &e) {
+    win->on_key = [win, dock_ref](KeyEvent const &e) {
         if (e.key == Key::Escape) {
             auto *dock_ptr = dock_ref.get();
             if (!dock_ptr) {
@@ -288,8 +282,7 @@ int main(int argc, char *argv[]) {
         // the extra space instead of everything scaling proportionally.
         auto path = std::filesystem::path(screenshot_path);
         auto maximized_path =
-            (path.parent_path() /
-             (path.stem().string() + "_maximized" + path.extension().string()))
+            (path.parent_path() / (path.stem().string() + "_maximized" + path.extension().string()))
                 .string();
         win->handle_resize({1800, 1100});
         auto ok2 = win->save_to_png(maximized_path);

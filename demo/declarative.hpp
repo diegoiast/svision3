@@ -6,6 +6,7 @@
 #include <toolkit/button.hpp>
 #include <toolkit/checkbox.hpp>
 #include <toolkit/combobox.hpp>
+#include <toolkit/dock_area.hpp>
 #include <toolkit/file_browser_widget.hpp>
 #include <toolkit/html_view.hpp>
 #include <toolkit/icon_grid.hpp>
@@ -676,6 +677,52 @@ inline Element<toolkit::FileBrowserWidget> file_browser() {
 inline Element<toolkit::TabWidget> tab_widget() {
     return Element<toolkit::TabWidget>(std::make_unique<toolkit::TabWidget>());
 }
+
+// DockArea - doesn't fit the generic Element<T> template (add_dock/set_center
+// take DockPosition, and dock_tab_widget() returns a per-position TabWidget
+// rather than a single child), so it gets its own small fluent wrapper.
+struct DockElement {
+    std::unique_ptr<toolkit::DockArea> w;
+    DockElement() : w(std::make_unique<toolkit::DockArea>()) {}
+    DockElement(DockElement &&) = default;
+    DockElement &operator=(DockElement &&) = default;
+    DockElement(const DockElement &) = delete;
+    DockElement &operator=(const DockElement &) = delete;
+
+    template <typename W> DockElement center(Element<W> &&child) {
+        w->set_center(std::move(child.w));
+        return std::move(*this);
+    }
+
+    DockElement add_dock(toolkit::DockPosition pos, std::string_view title,
+                         std::unique_ptr<toolkit::Widget> content) {
+        w->add_dock(pos, std::string(title), std::move(content));
+        return std::move(*this);
+    }
+
+    template <typename W>
+    DockElement add_dock(toolkit::DockPosition pos, std::string_view title, Element<W> &&child) {
+        return add_dock(pos, title, std::unique_ptr<toolkit::Widget>(std::move(child.w)));
+    }
+
+    DockElement dock_size(toolkit::DockPosition pos, float size) {
+        w->set_dock_size(pos, size);
+        return std::move(*this);
+    }
+
+    DockElement dock_orientation(toolkit::DockPosition pos, toolkit::TabOrientation o) {
+        if (auto tab = w->dock_tab_widget(pos)) {
+            tab->set_orientation(o);
+        }
+        return std::move(*this);
+    }
+
+    toolkit::DockArea *operator->() const { return w.get(); }
+    toolkit::DockArea *get() const { return w.get(); }
+    operator std::unique_ptr<toolkit::Widget>() && { return std::move(w); }
+};
+
+inline DockElement dock_area() { return DockElement{}; }
 
 // Layouts
 inline toolkit::Margins default_margins() { return {10, 10, 10, 10}; }
