@@ -684,7 +684,8 @@ void Window::handle_paint(Painter &painter) {
         }
     }
 
-    if (focused_widget_ && focused_widget_->is_focused() && focused_widget_->is_focusable()) {
+    if (focused_widget_ && focused_widget_->is_focused() && focused_widget_->is_focusable() &&
+        focused_widget_->is_effectively_visible()) {
         Theme::current().draw_focus_ring_for_widget(painter, focused_widget_);
     }
 
