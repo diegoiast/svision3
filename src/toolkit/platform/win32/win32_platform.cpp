@@ -473,10 +473,24 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         int mx = static_cast<int>(static_cast<short>(LOWORD(lp)));
         int my = static_cast<int>(static_cast<short>(HIWORD(lp)));
         bool held = (wp & (MK_LBUTTON | MK_RBUTTON | MK_MBUTTON)) != 0;
+        // Ask for a WM_MOUSELEAVE so hover state clears when the pointer leaves the window.
+        if (!data.tracking_mouse_leave) {
+            TRACKMOUSEEVENT tme = {};
+            tme.cbSize = sizeof(tme);
+            tme.dwFlags = TME_LEAVE;
+            tme.hwndTrack = hwnd;
+            TrackMouseEvent(&tme);
+            data.tracking_mouse_leave = true;
+        }
         MouseEvent e{};
         e.type = held ? MouseEvent::Type::Drag : MouseEvent::Type::Move;
         e.position = {static_cast<float>(mx) / scale, static_cast<float>(my) / scale};
         win->handle_mouse(e);
+        return 0;
+    }
+    case WM_MOUSELEAVE: {
+        data.tracking_mouse_leave = false;
+        win->handle_mouse_leave();
         return 0;
     }
     case WM_MOUSEWHEEL: {

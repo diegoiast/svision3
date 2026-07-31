@@ -418,6 +418,19 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
         win->handle_mouse(e);
         break;
     }
+    case LeaveNotify: {
+        // Clear the hovered widget's hover state once the pointer leaves the window; motion
+        // events stop at the window edge and would otherwise leave it stuck hovered.
+        //
+        // Only NotifyNormal crossings mean the pointer really left: NotifyGrab/NotifyUngrab
+        // are the synthetic pair around a pointer grab (e.g. a menu opening), and
+        // NotifyInferior means it merely moved onto a child window, so it is still inside us.
+        auto const &c = xev.xcrossing;
+        if (c.mode == NotifyNormal && c.detail != NotifyInferior) {
+            win->handle_mouse_leave();
+        }
+        break;
+    }
     case KeyPress: {
         auto &key = xev.xkey;
         auto st = key.state;
@@ -568,6 +581,8 @@ static ::Window extract_event_window(XEvent &ev) {
         return ev.xbutton.window;
     case MotionNotify:
         return ev.xmotion.window;
+    case LeaveNotify:
+        return ev.xcrossing.window;
     case KeyPress:
     case KeyRelease:
         return ev.xkey.window;
@@ -958,8 +973,8 @@ X11PlatformWindow::X11PlatformWindow(X11PlatformApplication *app, std::string_vi
 
     XSetWindowAttributes swa = {};
     swa.event_mask = ExposureMask | StructureNotifyMask | ButtonPressMask | ButtonReleaseMask |
-                     PointerMotionMask | KeyPressMask | KeyReleaseMask | FocusChangeMask |
-                     PropertyChangeMask;
+                     PointerMotionMask | LeaveWindowMask | KeyPressMask | KeyReleaseMask |
+                     FocusChangeMask | PropertyChangeMask;
     swa.colormap = colormap;
     swa.background_pixmap = 0L; // None
     swa.bit_gravity = StaticGravity;

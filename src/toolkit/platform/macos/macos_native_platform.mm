@@ -405,6 +405,15 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
     self.owner->handle_mouse(e);
 }
 
+- (void)mouseExited:(NSEvent *)event {
+    // Clear the hovered widget's hover state once the pointer leaves the view; moved events
+    // stop at the edge and would otherwise leave it stuck hovered.
+    (void)event;
+    if (self.owner) {
+        self.owner->handle_mouse_leave();
+    }
+}
+
 - (void)mouseDragged:(NSEvent *)event {
     auto pos = [self convertMouseEvent:event];
     toolkit::MouseEvent e{toolkit::MouseEvent::Type::Move, pos, 0};
@@ -614,7 +623,8 @@ MacOSNativePlatformWindow::MacOSNativePlatformWindow(std::string_view title, Siz
     [impl_->ns_window setContentView:impl_->view];
     NSTrackingArea *tracking = [[NSTrackingArea alloc]
         initWithRect:NSZeroRect
-             options:(NSTrackingMouseMoved | NSTrackingActiveAlways | NSTrackingInVisibleRect)
+             options:(NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited |
+                      NSTrackingActiveAlways | NSTrackingInVisibleRect)
                owner:impl_->view
             userInfo:nil];
     [impl_->view addTrackingArea:tracking];

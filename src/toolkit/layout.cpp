@@ -69,6 +69,15 @@ auto AbstractLayout::handle_mouse(MouseEvent const &event) -> bool {
                         event.type == MouseEvent::Type::Release ||
                         event.type == MouseEvent::Type::Scroll;
 
+    // Move/Drag/Leave are broadcast to every child rather than stopping at the first one
+    // that reports the event as handled: they are how a child clears its own hover state,
+    // and any child may be the one currently hovered. Stopping early on Leave would leave
+    // every sibling after the first handler stuck in its hovered appearance (e.g. only the
+    // first of the title bar's min/max/close buttons would un-highlight).
+    auto const broadcast = event.type == MouseEvent::Type::Move ||
+                           event.type == MouseEvent::Type::Drag ||
+                           event.type == MouseEvent::Type::Leave;
+
     for_each_child([&](Widget *child) {
         if (stop || !child->is_visible()) {
             return;
@@ -78,7 +87,7 @@ auto AbstractLayout::handle_mouse(MouseEvent const &event) -> bool {
         }
         if (Widget::dispatch_mouse_event(child, event)) {
             handled = true;
-            if (event.type != MouseEvent::Type::Move && event.type != MouseEvent::Type::Drag) {
+            if (!broadcast) {
                 stop = true;
             }
         }

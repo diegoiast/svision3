@@ -54,6 +54,7 @@ class Win32PlatformApplication : public PlatformApplication {
         int last_press_x = 0, last_press_y = 0;
         int last_press_button = -1;
         int click_count = 0;
+        bool tracking_mouse_leave = false;
     };
     std::unordered_map<HWND, WindowData> window_map;
 

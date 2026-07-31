@@ -75,6 +75,10 @@ class Window {
 
     void handle_paint(Painter &painter);
     void handle_mouse(MouseEvent const &event);
+    // Called by platform backends when the pointer leaves the window entirely, so the
+    // currently hovered widget receives a Leave event and clears its hover state (native
+    // move events stop at the window edge and would otherwise leave it stuck hovered).
+    void handle_mouse_leave();
     void handle_key(KeyEvent const &event);
     void handle_resize(Size new_size);
     void handle_activate(bool active);

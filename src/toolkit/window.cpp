@@ -437,6 +437,19 @@ Icon Window::get_icon() const {
     return nullptr;
 }
 
+void Window::handle_mouse_leave() {
+    if (!hovered_widget_) {
+        return;
+    }
+    MouseEvent leave_ev{};
+    leave_ev.type = MouseEvent::Type::Leave;
+    leave_ev.position = {-1.0f, -1.0f};
+    Widget::dispatch_mouse_event(hovered_widget_, leave_ev);
+    hovered_widget_ = nullptr;
+    hide_tooltip();
+    request_redraw("mouse leave");
+}
+
 void Window::handle_maximized(bool maximized) {
     if (is_maximized_ == maximized) {
         return;

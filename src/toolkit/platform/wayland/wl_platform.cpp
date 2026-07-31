@@ -493,6 +493,11 @@ static void pointer_enter(void *data, wl_pointer *, uint32_t serial, wl_surface 
 
 static void pointer_leave(void *data, wl_pointer *, uint32_t, wl_surface *) {
     auto *app = static_cast<WaylandPlatformApplication *>(data);
+    // Tell the window the pointer is gone so the hovered widget clears its hover state;
+    // motion events simply stop at the surface edge and would otherwise leave it stuck.
+    if (app->pointer_focus && app->pointer_focus->owner_) {
+        app->pointer_focus->owner_->handle_mouse_leave();
+    }
     app->pointer_focus = nullptr;
     app->pressed_button = -1;
 }
