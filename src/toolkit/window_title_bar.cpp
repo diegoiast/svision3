@@ -205,6 +205,21 @@ void WindowTitleBar::set_rect(Rect const &rect) {
     layout->set_rect(rect);
 }
 
+Widget *WindowTitleBar::widget_at(Point p) {
+    if (!is_visible() || !hit_test(p)) {
+        return nullptr;
+    }
+    // The layout is given this widget's own rect (see set_rect) and positions its children from
+    // its own origin, so our local point can be handed straight down -- the same convention
+    // handle_mouse() already relies on when it forwards events to the layout.
+    if (layout) {
+        if (auto *child = layout->widget_at(p)) {
+            return child;
+        }
+    }
+    return this;
+}
+
 void WindowTitleBar::set_icon(Icon const &icon) {
     if (icon_widget) {
         icon_widget->set_image(icon);

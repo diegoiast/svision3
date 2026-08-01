@@ -63,6 +63,10 @@ class WindowTitleBar : public Widget {
     void paint(Painter &painter) override;
     void set_rect(Rect const &rect) override;
     bool handle_mouse(MouseEvent const &event) override;
+    // Without this, hover resolution stops at the title bar and never reaches the buttons inside
+    // its layout, so Window::hovered_widget_ is the bar itself -- which has no tooltip. That is
+    // why the minimise/maximise/close buttons never showed one despite setting it.
+    Widget *widget_at(Point p) override;
     /*    void for_each_child(std::function<void(Widget *)> const &callback) {
             layout->for_each_child(callback);
         }
