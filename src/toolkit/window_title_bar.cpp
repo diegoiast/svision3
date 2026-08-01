@@ -37,16 +37,37 @@ void TitlebarButton::paint(Painter &painter) {
     Theme::current().draw_window_button(painter, {0, 0, rect_.width, rect_.height}, type_, wstate);
 }
 
-TitleBarIcon::TitleBarIcon(Window *w) : window_(w) {
+TitleBarIcon::TitleBarIcon(Window *w) : Button(""), window_(w) {
     set_focusable(false);
-    set_show_checkerboard(false);
+    set_flat(true);
+}
+
+void TitleBarIcon::set_image(Icon const &icon) {
+    icon_image_ = icon;
+    if (window_) {
+        window_->request_redraw("title bar icon");
+    }
+}
+
+void TitleBarIcon::paint(Painter &painter) {
+    // Deliberately not Button::paint(): the window icon is an affordance, not a button face.
+    // Button draws a hover/pressed background, which around a 16px icon reads as a stray frame
+    // floating in the title bar -- and Windows' own title bar icon has no hover treatment at all.
+    // Button is still the base class for its press/state handling, just not its chrome.
+    if (!icon_image_ || icon_image_->width <= 0 || icon_image_->height <= 0) {
+        return;
+    }
+    auto iw = static_cast<float>(icon_image_->width);
+    auto ih = static_cast<float>(icon_image_->height);
+    painter.draw_image(*icon_image_,
+                       {(rect_.width - iw) / 2.0f, (rect_.height - ih) / 2.0f});
 }
 
 bool TitleBarIcon::handle_mouse(MouseEvent const &event) {
-    if (!hit_test(event.position)) {
-        return false;
-    }
-    if (event.type == MouseEvent::Type::Press) {
+    // Deliberately not Button's on_click: a system menu opens on press, not on release, which is
+    // what Windows itself does for the title bar icon. Everything else (hover/pressed state) is
+    // left to Button.
+    if (event.type == MouseEvent::Type::Press && hit_test(event.position)) {
         auto shadow = (window_->options().csd && !window_->is_maximized())
                           ? Theme::current().style.shadow.size
                           : 0.0f;
@@ -56,7 +77,7 @@ bool TitleBarIcon::handle_mouse(MouseEvent const &event) {
         window_->platform_window()->show_system_menu(menu_pos);
         return true;
     }
-    return false;
+    return Button::handle_mouse(event);
 }
 
 WindowTitleBar::WindowTitleBar(Window *w) { set_window(w); }

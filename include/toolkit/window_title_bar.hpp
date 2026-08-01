@@ -40,13 +40,20 @@ class TitlebarButton : public Button {
     Size custom_size_hint;
 };
 
-class TitleBarIcon : public ImageWidget {
+class TitleBarIcon : public Button {
   public:
     TitleBarIcon(Window *w);
     bool handle_mouse(MouseEvent const &event) override;
+    Size size_hint() const override { return custom_size_hint_; }
+    void paint(Painter &painter) override;
+
+    // Named set_image() so the themes' existing icon_widget->set_image(...) calls keep working.
+    void set_image(Icon const &icon);
 
   private:
     Window *window_;
+    Icon icon_image_;
+    Size custom_size_hint_{16, 16};
 };
 
 class WindowTitleBar : public Widget {
@@ -72,7 +79,7 @@ class WindowTitleBar : public Widget {
     // of these buttons exist, plus the Maximize/Restore tooltip swap. Call at the top of paint()
     // so a runtime change (e.g. WindowOptions changing) is reflected without redoing layout.
     void sync_button_states();
-    ImageWidget *icon_widget = nullptr;
+    TitleBarIcon *icon_widget = nullptr;
     Label *title_label;
     Button *min_btn = nullptr;
     Button *max_btn = nullptr;

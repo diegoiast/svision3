@@ -55,7 +55,7 @@ class MacOSTitleBar : public WindowTitleBar {
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
-        layout->add_widget(std::unique_ptr<ImageWidget>(icon_widget));
+        layout->add_widget(std::unique_ptr<Widget>(icon_widget));
     }
 };
 MacOSTheme::MacOSTheme(ColorScheme scheme, std::optional<Palette> p)

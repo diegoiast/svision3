@@ -34,7 +34,7 @@ class Win11TitleBar : public WindowTitleBar {
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Start).set_shrinkable(true).set_elide(true);
 
-        layout->add_widget(std::unique_ptr<ImageWidget>(icon_widget));
+        layout->add_widget(std::unique_ptr<Widget>(icon_widget));
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
 
         auto const &decoration = Theme::current().Theme::current().style.window_decoration;
