@@ -630,7 +630,12 @@ Win32PlatformApplication::Win32PlatformApplication() {
 
     WNDCLASSEXW wc = {};
     wc.cbSize = sizeof(wc);
-    wc.style = CS_HREDRAW | CS_VREDRAW;
+    // No CS_HREDRAW | CS_VREDRAW: those ask Windows to invalidate the whole client area on every
+    // width/height change, but WM_SIZE already relayouts and repaints the whole window
+    // synchronously, so the invalidation is redundant -- measured during a real border drag, no
+    // WM_PAINT is ever delivered, every paint comes from our WM_SIZE handler.
+    wc.style = 0;
+
     wc.lpfnWndProc = tk_wnd_proc;
     wc.hInstance = hinstance;
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#ifdef _WIN32
-
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -20,8 +18,10 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <memory>
 #include <optional>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -53,8 +53,6 @@ static Gdiplus::Color to_gdiplus_color(Color const &c) {
     return Gdiplus::Color(static_cast<BYTE>(clamp(c.a)), static_cast<BYTE>(clamp(c.r)),
                           static_cast<BYTE>(clamp(c.g)), static_cast<BYTE>(clamp(c.b)));
 }
-
-// ── Win32TextRasterizer ──────────────────────────────────────────────────────
 
 struct Win32TextRasterizer::Impl {
     HDC hdc = nullptr;
@@ -110,11 +108,41 @@ struct Win32TextRasterizer::Impl {
     };
     std::unordered_map<GdiFontKey, GdiFontEntry, GdiFontKeyHash> gdi_font_cache;
 
+    // Rotated text goes the long way round -- rasterize() allocates a DIB section, runs TextOutW,
+    // flushes GDI and walks every pixel to build a coverage bitmap. That is ~5x the cost of a
+    // plain DrawString, and the text involved (e.g. vertical dock tab labels) is static, so
+    // without this it is re-rasterised on every frame. Keyed on everything rasterize() consumes.
+    struct RasterKey {
+        std::string text;
+        float font_size = 0;
+        float scale = 0;
+        int family = 0;
+        bool bold = false, italic = false;
+        uint32_t argb = 0; // rasterize() bakes colour.a into the coverage
+        bool operator==(RasterKey const &o) const {
+            return font_size == o.font_size && scale == o.scale && family == o.family &&
+                   bold == o.bold && italic == o.italic && argb == o.argb && text == o.text;
+        }
+    };
+    struct RasterKeyHash {
+        size_t operator()(RasterKey const &k) const {
+            size_t h = std::hash<std::string>{}(k.text);
+            auto mix = [&h](size_t v) { h ^= v + 0x9e3779b9 + (h << 6) + (h >> 2); };
+            mix(std::hash<float>{}(k.font_size));
+            mix(std::hash<float>{}(k.scale));
+            mix(std::hash<int>{}(k.family));
+            mix(std::hash<uint32_t>{}(k.argb));
+            mix(static_cast<size_t>(k.bold) | (static_cast<size_t>(k.italic) << 1));
+            return h;
+        }
+    };
+    std::unordered_map<RasterKey, RasterizedText, RasterKeyHash> raster_cache;
+
     ~Impl() {
         for (auto &[k, hf] : hfont_cache) {
             if (hf) DeleteObject(hf);
         }
-        // gdi_font_cache entries are unique_ptr — cleaned up automatically
+        // gdi_font_cache entries are unique_ptr â€” cleaned up automatically
         if (hdc) DeleteDC(hdc);
     }
 
@@ -290,8 +318,6 @@ Painter::FontMetrics Win32TextRasterizer::metrics(float font_size, FontFamily fa
     return result;
 }
 
-// ── GDIPainter ───────────────────────────────────────────────────────────────
-
 struct GDIPainter::Impl {
     Gdiplus::Graphics *graphics;
     bool owned;
@@ -434,12 +460,12 @@ void GDIPainter::fill_rect(Rect const &r, Color const &c) {
 }
 
 void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
-    float s = impl_->scale;
-    float fx = std::floor(r.x * s);
-    float fy = std::floor(r.y * s);
-    float lx = std::ceil((r.x + r.width) * s);
-    float ly = std::ceil((r.y + r.height) * s);
-    float slw = std::max(1.0f, std::round(lw * s));
+    auto s = impl_->scale;
+    auto fx = std::floor(r.x * s);
+    auto fy = std::floor(r.y * s);
+    auto lx = std::ceil((r.x + r.width) * s);
+    auto ly = std::ceil((r.y + r.height) * s);
+    auto slw = std::max(1.0f, std::round(lw * s));
 
     Gdiplus::SmoothingMode old = impl_->graphics->GetSmoothingMode();
     impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
@@ -462,26 +488,84 @@ void GDIPainter::draw_rect(Rect const &r, Color const &c, float lw) {
     impl_->graphics->SetSmoothingMode(old);
 }
 
+// Anti-aliasing the whole shape makes GDI+ walk every pixel of it, which costs tens of
+// milliseconds for something as large as a window background. Only the rows containing the
+// corners actually curve; everything between them is a plain rectangle.
+//
+// So for large fills, draw it in three phases: the top band (both top corners), a plain
+// non-anti-aliased rectangle for the middle, and the bottom band (both bottom corners). The
+// bands are drawn by clipping the *whole* path to the band rather than by filling a partial
+// shape â€” inside a band the path has no horizontal edge at the cut, so the pixels along the
+// cut are fully covered and there is no seam against the middle rectangle. (Splitting the
+// shape itself, e.g. into rectangles plus corner wedges, does seam: the wedges' straight
+// edges get anti-aliased and end up half-blended with the background.)
+//
+// The split is only taken for large fills, gated on the *area* of the middle band (in device
+// pixels, since that is what GDI+ actually rasterises). A purely geometric rule such as
+// "h > 3*rad" describes when the split is applicable, but not when it is worth taking, and
+// measuring both showed the area gate is the one that matters: on demo_dock the geometric
+// rule split 18-20 shapes instead of 7 for no measurable speed-up (the extra shapes are
+// small, so the anti-aliasing it avoids is negligible), while producing 200+ differing
+// pixels against the single-fill reference. The area gate renders byte-identically.
+//
+// The extra shapes differing is not currently explained; until it is, keep the gate
+// conservative so only large fills â€” where the win was measured at 13-35ms -> 1-4ms â€” take
+// this path, and everything else keeps the plain single-path fill.
+//
+// The band height is rounded *up* to a whole device pixel: the cut then lands on a pixel
+// boundary (so the aliased clip edge is crisp) and at or below the arcs' tangent point (so
+// the cut crosses the shape where its sides are already straight and full width). The path
+// itself still uses the caller's radius, so the corners rasterise exactly as they would
+// have with a single fill.
+//
+// Minimum middle-band area, in device pixels, before fill_rounded_rect splits the fill into
+// banded phases (see below). ~500x500; chosen to sit well clear of ordinary widget-sized fills
+// on both sides rather than tuned to a measured crossover.
+static constexpr float kSplitMinArea = 250000.0f;
+
 void GDIPainter::fill_rounded_rect(Rect const &r, Color const &c, float rad) {
     if (rad <= 0) {
         fill_rect(r, c);
         return;
     }
-    float s = impl_->scale;
-    float x = std::floor(r.x * s) / s;
-    float y = std::floor(r.y * s) / s;
-    float w = std::ceil((r.x + r.width) * s) / s - x;
-    float h = std::ceil((r.y + r.height) * s) / s - y;
+    auto s = impl_->scale;
+    auto x = std::floor(r.x * s) / s;
+    auto y = std::floor(r.y * s) / s;
+    auto w = std::ceil((r.x + r.width) * s) / s - x;
+    auto h = std::ceil((r.y + r.height) * s) / s - y;
+    auto d = rad * 2;
 
     Gdiplus::GraphicsPath path;
-    float d = rad * 2;
     path.AddArc(x, y, d, d, 180, 90);
     path.AddArc(x + w - d, y, d, d, 270, 90);
     path.AddArc(x + w - d, y + h - d, d, d, 0, 90);
     path.AddArc(x, y + h - d, d, d, 90, 90);
     path.CloseFigure();
     Gdiplus::SolidBrush brush(to_gdiplus_color(c));
-    impl_->graphics->FillPath(&brush, &path);
+
+    auto band = std::ceil(rad * s) / s;
+    band = std::min(band, h / 2.0f);
+    auto mid_h = h - 2 * band;
+    if (band <= 0 || mid_h <= 0 || (w * s) * (mid_h * s) <= kSplitMinArea) {
+        impl_->graphics->FillPath(&brush, &path);
+        return;
+    }
+
+    auto fill_band = [&](float by, float bh) {
+        // Save/Restore and CombineModeIntersect so an outer clip (e.g. the window's rounded
+        // corner clip pushed by push_clip) is preserved rather than replaced.
+        Gdiplus::GraphicsState st = impl_->graphics->Save();
+        impl_->graphics->SetClip(Gdiplus::RectF(x, by, w, bh), Gdiplus::CombineModeIntersect);
+        impl_->graphics->FillPath(&brush, &path);
+        impl_->graphics->Restore(st);
+    };
+    fill_band(y, band);
+    fill_band(y + h - band, band);
+
+    Gdiplus::SmoothingMode old = impl_->graphics->GetSmoothingMode();
+    impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
+    impl_->graphics->FillRectangle(&brush, x, y + band, w, mid_h);
+    impl_->graphics->SetSmoothingMode(old);
 }
 
 void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, float lw) {
@@ -489,22 +573,20 @@ void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, flo
         draw_rect(r, c, lw);
         return;
     }
-    float s = impl_->scale;
-    float slw = std::max(1.0f, std::round(lw * s)) / s;
-
-    float fx = std::floor(r.x * s);
-    float fy = std::floor(r.y * s);
-    float lx = std::ceil((r.x + r.width) * s);
-    float ly = std::ceil((r.y + r.height) * s);
-
+    auto s = impl_->scale;
+    auto slw = std::max(1.0f, std::round(lw * s)) / s;
+    auto fx = std::floor(r.x * s);
+    auto fy = std::floor(r.y * s);
+    auto lx = std::ceil((r.x + r.width) * s);
+    auto ly = std::ceil((r.y + r.height) * s);
     // For anti-aliased rounded rects, we center the stroke on the outer pixel edge
-    float x = (fx + 0.5f) / s;
-    float y = (fy + 0.5f) / s;
-    float w = (lx - fx - 1.0f) / s;
-    float h = (ly - fy - 1.0f) / s;
+    auto x = (fx + 0.5f) / s;
+    auto y = (fy + 0.5f) / s;
+    auto w = (lx - fx - 1.0f) / s;
+    auto h = (ly - fy - 1.0f) / s;
+    auto d = rad * 2;
 
     Gdiplus::GraphicsPath path;
-    float d = rad * 2;
     path.AddArc(x, y, d, d, 180, 90);
     path.AddArc(x + w - d, y, d, d, 270, 90);
     path.AddArc(x + w - d, y + h - d, d, d, 0, 90);
@@ -516,7 +598,7 @@ void GDIPainter::draw_rounded_rect(Rect const &r, Color const &c, float rad, flo
 }
 
 void GDIPainter::fill_triangle(Point a, Point b, Point c, Color const &color) {
-    float s = impl_->scale;
+    auto s = impl_->scale;
     auto snap = [s](Point p) {
         return Gdiplus::PointF(std::floor(p.x * s) / s, std::floor(p.y * s) / s);
     };
@@ -526,30 +608,29 @@ void GDIPainter::fill_triangle(Point a, Point b, Point c, Color const &color) {
 }
 
 void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
-    float s = impl_->scale;
-    float slw = std::max(1.0f, std::round(lw * s)) / s;
-
-    bool horizontal = std::abs(a.y - b.y) < 0.001f;
-    bool vertical = std::abs(a.x - b.x) < 0.001f;
-    bool axis_aligned = horizontal || vertical;
+    auto s = impl_->scale;
+    auto slw = std::max(1.0f, std::round(lw * s)) / s;
+    auto horizontal = std::abs(a.y - b.y) < 0.001f;
+    auto vertical = std::abs(a.x - b.x) < 0.001f;
+    auto axis_aligned = horizontal || vertical;
 
     if (axis_aligned && impl_->line_style == Painter::LineStyle::Solid) {
         // Fill an exact pixel rect instead of stroking. DrawLine's pen-centered
         // stroke covers the endpoint pixels only partially, and GDI+ drops the
-        // last pixel unpredictably — leaving gaps where frame corners meet.
+        // last pixel unpredictably â€” leaving gaps where frame corners meet.
         // Both endpoints are inclusive here, matching classic Win32 bevel math.
-        float thickness = std::max(1.0f, std::round(lw * s));
+        auto thickness = std::max(1.0f, std::round(lw * s));
         Gdiplus::SolidBrush brush(to_gdiplus_color(c));
         if (horizontal) {
-            float xs = std::floor(std::min(a.x, b.x) * s);
-            float xe = std::floor(std::max(a.x, b.x) * s) + 1.0f;
-            float ys = std::floor(a.y * s) - std::floor((thickness - 1.0f) / 2.0f);
+            auto xs = std::floor(std::min(a.x, b.x) * s);
+            auto xe = std::floor(std::max(a.x, b.x) * s) + 1.0f;
+            auto ys = std::floor(a.y * s) - std::floor((thickness - 1.0f) / 2.0f);
             impl_->graphics->FillRectangle(&brush, xs / s, ys / s, (xe - xs) / s,
                                            thickness / s);
         } else {
-            float ys = std::floor(std::min(a.y, b.y) * s);
-            float ye = std::floor(std::max(a.y, b.y) * s) + 1.0f;
-            float xs = std::floor(a.x * s) - std::floor((thickness - 1.0f) / 2.0f);
+            auto ys = std::floor(std::min(a.y, b.y) * s);
+            auto ye = std::floor(std::max(a.y, b.y) * s) + 1.0f;
+            auto xs = std::floor(a.x * s) - std::floor((thickness - 1.0f) / 2.0f);
             impl_->graphics->FillRectangle(&brush, xs / s, ys / s, thickness / s,
                                            (ye - ys) / s);
         }
@@ -561,15 +642,14 @@ void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
         impl_->graphics->SetSmoothingMode(Gdiplus::SmoothingModeNone);
     }
 
-    float x1 = (std::floor(a.x * s) + 0.5f) / s;
-    float y1 = (std::floor(a.y * s) + 0.5f) / s;
-    float x2 = (std::floor(b.x * s) + 0.5f) / s;
-    float y2 = (std::floor(b.y * s) + 0.5f) / s;
-
+    auto x1 = (std::floor(a.x * s) + 0.5f) / s;
+    auto y1 = (std::floor(a.y * s) + 0.5f) / s;
+    auto x2 = (std::floor(b.x * s) + 0.5f) / s;
+    auto y2 = (std::floor(b.y * s) + 0.5f) / s;
     Gdiplus::Pen pen(to_gdiplus_color(c), slw);
+
     apply_line_style(pen, impl_->line_style, slw);
     impl_->graphics->DrawLine(&pen, x1, y1, x2, y2);
-
     if (axis_aligned) {
         impl_->graphics->SetSmoothingMode(old);
     }
@@ -626,7 +706,7 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
                               Gdiplus::StringFormatFlagsMeasureTrailingSpaces);
 
         // Use the rasterizer's metrics ascent so that draw_text aligns with the baseline_y
-        // that layout code computes via painter.font_metrics() — both come from the same GDI path.
+        // that layout code computes via painter.font_metrics() â€” both come from the same GDI path.
         auto ascent = metrics(font_size, family).ascent;
 
         // DrawString places the origin at the top-left of the layout box; pos.y is the baseline.
@@ -637,9 +717,32 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
             // Rotating the GDI+ context before DrawString disables ClearType (subpixel layout
             // is undefined after rotation), producing pixelated greyscale-AA text.
             // Instead, rasterize the text horizontally (full ClearType quality), colorize the
-            // resulting bitmap, then draw it rotated.  At exactly ±90° the pixel mapping is
+            // resulting bitmap, then draw it rotated.  At exactly Â±90Â° the pixel mapping is
             // 1-to-1 so there are no interpolation artifacts from the rotation itself.
-            auto rast = rasterize(text, font_size, scale, c, family, bold, italic);
+            // Cached: see raster_cache. rasterize() is expensive and this text is typically
+            // static, so re-running it every frame is pure waste.
+            auto to_u8 = [](float v) {
+                return static_cast<uint32_t>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f);
+            };
+            Impl::RasterKey rkey{std::string(text),
+                                 font_size,
+                                 scale,
+                                 static_cast<int>(family),
+                                 bold,
+                                 italic,
+                                 (to_u8(c.a) << 24) | (to_u8(c.r) << 16) | (to_u8(c.g) << 8) |
+                                     to_u8(c.b)};
+            auto rit = impl_->raster_cache.find(rkey);
+            if (rit == impl_->raster_cache.end()) {
+                if (impl_->raster_cache.size() > 256) {
+                    impl_->raster_cache.clear();
+                }
+                rit = impl_->raster_cache
+                          .emplace(std::move(rkey),
+                                   rasterize(text, font_size, scale, c, family, bold, italic))
+                          .first;
+            }
+            auto const &rast = rit->second;
             if (rast.pixels.empty()) {
                 return;
             }
@@ -702,14 +805,105 @@ void Win32TextRasterizer::draw_text(Painter &p, std::string_view text, Point pos
 // UNVERIFIED: not compile-checked on Windows, please build-check before trusting. ImageData's
 // B,G,R,A now matches GDI+'s native PixelFormat32bppARGB directly, so the ColorMatrix R<->B swap
 // this used to need is gone.
+namespace {
+// Device-resolution bitmap cache.
+//
+// GDIPainter applies ScaleTransform(s, s), so drawing an image at its natural *logical* size
+// makes GDI+ resample it to s*size device pixels on every single draw. Measured on demo_dock:
+// 299us per 48x48 icon at s=1.5 versus 34us at s=1.0 -- an 8.8x penalty that is pure repeated
+// resampling, since nothing about the image changed between frames.
+//
+// So when a draw would resample, keep a copy of the image already scaled to device resolution
+// and blit that 1:1 instead. The expensive filtering happens once per (image, device size).
+//
+// This lives at file scope rather than in GDIPainter::Impl because a fresh GDIPainter is
+// constructed for every WM_PAINT -- a per-painter cache would be discarded each frame and never
+// hit. Keyed on ImageData::id, which is monotonic and never reused, so an entry belonging to a
+// destroyed image can never be served for a different one; eviction is therefore only about
+// memory. Access is single-threaded (painting happens on the UI thread).
+struct ScaledKey {
+    uint64_t id = 0;
+    int w = 0, h = 0;
+    bool operator==(ScaledKey const &o) const { return id == o.id && w == o.w && h == o.h; }
+};
+struct ScaledKeyHash {
+    size_t operator()(ScaledKey const &k) const {
+        size_t h = std::hash<uint64_t>{}(k.id);
+        h ^= std::hash<int>{}(k.w) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        h ^= std::hash<int>{}(k.h) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        return h;
+    }
+};
+using ScaledMap = std::unordered_map<ScaledKey, std::unique_ptr<Gdiplus::Bitmap>, ScaledKeyHash>;
+ScaledMap &scaled_image_cache() {
+    // Intentionally leaked: the entries are Gdiplus::Bitmap objects, and a function-local static
+    // would be destroyed during static teardown -- which happens *after* GdiplusShutdown, so
+    // releasing them then is a use-after-shutdown and faults (observed: exit code 0xC0000005).
+    // The cache lives for the whole process anyway, and the OS reclaims the memory at exit.
+    static auto *m = new ScaledMap();
+    return *m;
+}
+
+// Returns a bitmap of `image` pre-scaled to dw x dh device pixels, or nullptr if it could not be
+// built (in which case the caller falls back to resampling inline).
+Gdiplus::Bitmap *get_scaled_bitmap(ImageData const &image, int dw, int dh) {
+    auto &cache = scaled_image_cache();
+    ScaledKey key{image.id, dw, dh};
+    if (auto it = cache.find(key); it != cache.end()) {
+        return it->second.get();
+    }
+    if (cache.size() > 512) {
+        cache.clear();
+    }
+    Gdiplus::Bitmap src(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
+                        (BYTE *)image.pixels.data());
+    if (src.GetLastStatus() != Gdiplus::Ok) {
+        return nullptr;
+    }
+    auto dst = std::make_unique<Gdiplus::Bitmap>(dw, dh, PixelFormat32bppARGB);
+    if (dst->GetLastStatus() != Gdiplus::Ok) {
+        return nullptr;
+    }
+    Gdiplus::Graphics g(dst.get());
+    // Left at GDI+'s default interpolation so the scaled result matches what the previous
+    // per-frame resample produced; the only change is that it now happens once.
+    g.SetSmoothingMode(Gdiplus::SmoothingModeNone);
+    g.DrawImage(&src, Gdiplus::RectF(0, 0, (float)dw, (float)dh), 0, 0, (float)image.width,
+                (float)image.height, Gdiplus::UnitPixel, nullptr);
+    auto *raw = dst.get();
+    cache.emplace(key, std::move(dst));
+    return raw;
+}
+} // namespace
+
 void GDIPainter::draw_image(ImageData const &image, Point position) {
     if (image.width <= 0 || image.height <= 0) {
         return;
     }
 
-    float s = impl_->scale;
-    float x = std::floor(position.x * s) / s;
-    float y = std::floor(position.y * s) / s;
+    auto s = impl_->scale;
+    auto x = std::floor(position.x * s) / s;
+    auto y = std::floor(position.y * s) / s;
+
+    // When the transform would make GDI+ resample (any scale != 1), draw a pre-scaled copy 1:1
+    // instead -- see scaled_image_cache(). At scale 1 the dest already matches the source, so the
+    // original direct path is kept: it is both the reference output and already near-optimal.
+    auto dw = static_cast<int>(std::lround(image.width * s));
+    auto dh = static_cast<int>(std::lround(image.height * s));
+    if (dw != image.width || dh != image.height) {
+        if (auto *cached = get_scaled_bitmap(image, dw, dh)) {
+            Gdiplus::InterpolationMode old_i = impl_->graphics->GetInterpolationMode();
+            // The dest rect maps exactly onto the cached bitmap's pixels, so this is a 1:1 blit
+            // and nearest-neighbour is an exact copy rather than a quality choice.
+            impl_->graphics->SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
+            impl_->graphics->DrawImage(cached,
+                                       Gdiplus::RectF(x, y, (float)image.width,
+                                                      (float)image.height),
+                                       0, 0, (float)dw, (float)dh, Gdiplus::UnitPixel, nullptr);
+            impl_->graphics->SetInterpolationMode(old_i);
+            return;
+        }
+    }
 
     Gdiplus::Bitmap bmp(image.width, image.height, image.width * 4, PixelFormat32bppARGB,
                         (BYTE *)image.pixels.data());
@@ -797,5 +991,3 @@ Icon GDIPainter::capture(Window *window) {
 }
 
 } // namespace toolkit
-
-#endif // _WIN32

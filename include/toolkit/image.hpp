@@ -5,6 +5,7 @@
 
 #include "toolkit/pixel_format.hpp"
 #include "toolkit/xdg_icons.hpp"
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -25,6 +26,19 @@ struct ImageData {
     int height = 0;
     int channels = 4;
     PixelFormat format = PixelFormat::BGRA;
+
+    // Stable identity for painter-side resource caches (e.g. the GDI+ device-resolution bitmap
+    // cache). Monotonic and never reused, so a cache entry belonging to a destroyed image can
+    // never be mistaken for a live one -- eviction is then purely a memory question rather than
+    // a correctness one. Copies deliberately share the id: a copy has identical pixels, so it
+    // should hit the same cache entry. Mutating pixels in place after a draw would leave the
+    // entry stale; nothing in the toolkit does that today (loaders build an image once).
+    uint64_t id = next_id();
+
+    static uint64_t next_id() {
+        static std::atomic<uint64_t> counter{1};
+        return counter.fetch_add(1, std::memory_order_relaxed);
+    }
 };
 
 using Icon = std::shared_ptr<ImageData>;
