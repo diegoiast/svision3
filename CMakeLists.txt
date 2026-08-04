@@ -585,6 +585,7 @@ add_executable(tests
     tests/test_undo_stack.cpp
     tests/test_xdg_image_loader.cpp
     tests/repro_tab_orientation.cpp
+    tests/test_window_title_bar.cpp
 )
 target_link_libraries(tests PRIVATE toolkit Catch2::Catch2)
 

@@ -20,7 +20,7 @@ class Win11TitleBar : public WindowTitleBar {
     using WindowTitleBar::WindowTitleBar;
 
     void initializeTitleBar() override {
-        layout = new HBoxLayout();
+        layout = create_title_layout();
         layout->set_window(window_);
         layout->set_spacing(8.0f);
         layout->set_margins({0, 0, 0, 8.0f});

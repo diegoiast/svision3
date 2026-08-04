@@ -92,6 +92,14 @@ class Widget {
     virtual Widget &set_on_top(bool v);
     virtual bool is_on_top() const { return state.on_top; }
 
+    // Whether a widget_at()/find_focusable_at() traversal is allowed to resolve directly to this
+    // widget as a click/hover target. Purely decorative widgets that never act on mouse input
+    // (e.g. Label) should return false so a parent container -- most notably WindowTitleBar --
+    // can treat a hit on them as "no interactive child here" and fall back to handling the event
+    // itself (e.g. starting a window drag) instead of the event being silently swallowed by a
+    // child whose handle_mouse() is a no-op.
+    virtual bool blocks_hit_test() const { return true; }
+
     // FIXME: really? is this a good API?
     bool can_get_non_focus_input() const { return state.non_focus_input; }
 

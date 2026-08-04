@@ -18,6 +18,10 @@ class Label : public Widget, public Fluent<Label> {
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
+    // A label never acts on mouse input (handle_mouse() is a no-op above), so a click/hover
+    // resolving here should be treated by containers as "nothing interactive at this point"
+    // rather than the label swallowing the event -- see Widget::blocks_hit_test().
+    // bool blocks_hit_test() const override { return false; }
     Size size_hint() const override;
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;

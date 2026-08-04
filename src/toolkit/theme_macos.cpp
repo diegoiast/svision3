@@ -21,7 +21,7 @@ class MacOSTitleBar : public WindowTitleBar {
     MacOSTitleBar(Window *w) : WindowTitleBar(w) {}
 
     virtual void initializeTitleBar() override {
-        layout = new HBoxLayout();
+        layout = create_title_layout();
         layout->set_window(window_);
         layout->set_spacing(8.0f);
         layout->set_margins({11, 72, 11, 12.0f});

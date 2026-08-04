@@ -67,10 +67,6 @@ class WindowTitleBar : public Widget {
     // its layout, so Window::hovered_widget_ is the bar itself -- which has no tooltip. That is
     // why the minimise/maximise/close buttons never showed one despite setting it.
     Widget *widget_at(Point p) override;
-    /*    void for_each_child(std::function<void(Widget *)> const &callback) {
-            layout->for_each_child(callback);
-        }
-    */
     Size size_hint() const override;
 
     // consusmers of this class should derive *this* method
@@ -78,6 +74,11 @@ class WindowTitleBar : public Widget {
     void set_icon(Icon const &icon);
 
   protected:
+    // Every theme override's initializeTitleBar() starts by building its own `layout`. Route that
+    // through here instead of a bare `new HBoxLayout()` so the parent link is set immediately at
+    // construction -- the same moment Layout::add_widget() parents its own children -- rather than
+    // leaving `layout` parentless until something else patches it up later.
+    auto create_title_layout() -> HBoxLayout *;
     auto create_btn(DecorationButton type) -> Button *;
     // Re-reads Window::is_minimizable/is_maximizable/is_closable and applies them to whichever
     // of these buttons exist, plus the Maximize/Restore tooltip swap. Call at the top of paint()

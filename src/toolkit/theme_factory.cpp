@@ -26,7 +26,7 @@ class GnomeTitleBar : public WindowTitleBar {
     }
 
     void initializeTitleBar() {
-        layout = new HBoxLayout();
+        layout = create_title_layout();
         layout->set_window(window_);
         // 36px total height. 24px buttons, centered means (36-24)/2 = 8px vertical margin.
         layout->set_margins(Margins{8.0f, 10.0f, 8.0f, 10.0f});

@@ -68,12 +68,10 @@ bool TitleBarIcon::handle_mouse(MouseEvent const &event) {
     // what Windows itself does for the title bar icon. Everything else (hover/pressed state) is
     // left to Button.
     if (event.type == MouseEvent::Type::Press && hit_test(event.position)) {
-        auto shadow = (window_->options().csd && !window_->is_maximized())
-                          ? Theme::current().style.shadow.size
-                          : 0.0f;
+        // map_to_window() walks the real parent chain (icon -> layout -> WindowTitleBar ->
+        // root_), so it already lands in full window-local coordinates, shadow included --
+        // no separate compensation needed (see WindowTitleBar::create_title_layout()).
         auto menu_pos = map_to_window({0, rect_.height});
-        menu_pos.x += shadow;
-        menu_pos.y += shadow;
         window_->platform_window()->show_system_menu(menu_pos);
         return true;
     }
@@ -82,8 +80,14 @@ bool TitleBarIcon::handle_mouse(MouseEvent const &event) {
 
 WindowTitleBar::WindowTitleBar(Window *w) { set_window(w); }
 
-void WindowTitleBar::initializeTitleBar() {
+auto WindowTitleBar::create_title_layout() -> HBoxLayout * {
     layout = new HBoxLayout();
+    layout->set_parent(this);
+    return layout;
+}
+
+void WindowTitleBar::initializeTitleBar() {
+    layout = create_title_layout();
     layout->set_window(window_);
     layout->set_margins(Margins{8.0f, 12.0, 8.0, 12.0f});
     layout->set_spacing(8.0f);
@@ -202,7 +206,9 @@ void WindowTitleBar::paint(Painter &painter) {
 
 void WindowTitleBar::set_rect(Rect const &rect) {
     Widget::set_rect(rect);
-    layout->set_rect(rect);
+    if (layout) {
+        layout->set_rect(rect);
+    }
 }
 
 Widget *WindowTitleBar::widget_at(Point p) {
@@ -212,8 +218,16 @@ Widget *WindowTitleBar::widget_at(Point p) {
     // The layout is given this widget's own rect (see set_rect) and positions its children from
     // its own origin, so our local point can be handed straight down -- the same convention
     // handle_mouse() already relies on when it forwards events to the layout.
+    //
+    // Only resolve into a child that can actually act on the point (Widget::blocks_hit_test()).
+    // title_label, for instance, stretches to fill the whole draggable middle of the bar but
+    // never handles mouse input -- Press events go straight to whatever widget_at() resolves to
+    // (no bubbling back up on rejection), so handing it a purely decorative child directly would
+    // swallow the click before WindowTitleBar::handle_mouse() ever runs and the window could no
+    // longer be dragged. Buttons/icon (which do handle input, or want tooltip hover resolution)
+    // still resolve normally; anything that opts out is treated as part of the plain bar surface.
     if (layout) {
-        if (auto *child = layout->widget_at(p)) {
+        if (auto *child = layout->widget_at(p); child && child->blocks_hit_test()) {
             return child;
         }
     }

@@ -21,7 +21,7 @@ class Win95TitleBar : public WindowTitleBar {
     using WindowTitleBar::WindowTitleBar;
 
     void initializeTitleBar() override {
-        layout = new HBoxLayout();
+        layout = create_title_layout();
         layout->set_spacing(2.0f);
         layout->set_margins({2, 2, 2, 2});
 

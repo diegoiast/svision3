@@ -21,7 +21,7 @@ class PlasmaTitleBar : public WindowTitleBar {
     using WindowTitleBar::WindowTitleBar;
 
     void initializeTitleBar() override {
-        layout = new HBoxLayout();
+        layout = create_title_layout();
         layout->set_window(window_);
         layout->set_spacing(8.0f);
         layout->set_margins({8, 12, 8, 12.0f});

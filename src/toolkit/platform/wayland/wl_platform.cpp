@@ -1723,11 +1723,20 @@ void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point p
     tooltip_data->xdg_surf = xdg_wm_base_get_xdg_surface(app_->wm_base, tooltip_data->surface);
     xdg_surface_add_listener(tooltip_data->xdg_surf, &xdg_popup_surf_listener, this);
 
+    // xdg_positioner's anchor rect is relative to the parent's *window geometry* (the xdg-shell
+    // spec is explicit about this), which for a CSD window we set to exclude the shadow margin
+    // (see do_paint()'s xdg_surface_set_window_geometry call). `pos` here, however, comes from
+    // Window::tooltip_mouse_pos_ / MouseEvent::position, which is raw surface-local -- i.e. it
+    // still includes the shadow. Passing it straight through anchors the popup `shadow` pixels
+    // off from the cursor in both axes. Subtract it back out to land in window-geometry space.
+    auto anchor_shadow = (owner_->options().csd && !owner_->is_maximized())
+                             ? Theme::current().style.shadow.size
+                             : 0.0f;
     struct xdg_positioner *pos_obj = xdg_wm_base_create_positioner(app_->wm_base);
     xdg_positioner_set_size(pos_obj, static_cast<int32_t>(std::ceil(tw)),
                             static_cast<int32_t>(std::ceil(th)));
-    xdg_positioner_set_anchor_rect(pos_obj, static_cast<int32_t>(std::round(pos.x)),
-                                   static_cast<int32_t>(std::round(pos.y)), 1, 1);
+    xdg_positioner_set_anchor_rect(pos_obj, static_cast<int32_t>(std::round(pos.x - anchor_shadow)),
+                                   static_cast<int32_t>(std::round(pos.y - anchor_shadow)), 1, 1);
     xdg_positioner_set_gravity(pos_obj, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
     xdg_positioner_set_anchor(pos_obj, XDG_POSITIONER_ANCHOR_TOP_LEFT);
     xdg_positioner_set_offset(pos_obj, 0, 10);
