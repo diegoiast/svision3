@@ -84,3 +84,49 @@ TEST_CASE("CSD title bar maximize button is clickable in every theme", "[window]
     click_at(hit);
     REQUIRE(win.is_maximized() == was_maximized);
 }
+
+// Regression test: WindowTitleBar::widget_at() only falls back to itself (so double-click-to-
+// maximize / drag-to-move can run) when the child it would otherwise resolve into opts out via
+// Widget::blocks_hit_test() -- see the comment on that method in window_title_bar.cpp. Label is
+// the one child stretched to fill the whole draggable middle of the bar (stretch factor 1,
+// Alignment::Center), so it decides whether that resolves back to WindowTitleBar or gets
+// swallowed by a purely-decorative Label whose handle_mouse() is a no-op. Label's override of
+// blocks_hit_test() was left commented out, so this silently regressed: double-click and window
+// drag stopped working whenever the click landed on the title text itself (as opposed to bare
+// bar background beside it) -- inconsistent because it depends on title length vs bar width.
+TEST_CASE("CSD title bar double-click-to-maximize works when clicking the title text", "[window][titlebar]") {
+    auto style = GENERATE(ThemeStyle::Win11, ThemeStyle::Win95, ThemeStyle::Plasma6,
+                          ThemeStyle::MacOS);
+    CAPTURE(static_cast<int>(style));
+    Theme::set_current(ThemeFactory::create(style, ColorScheme::Light));
+
+    WindowOptions opts{};
+    opts.csd = true;
+    Window win("A reasonably long window title", {800, 600}, opts);
+
+    auto content = std::make_unique<VBoxLayout>();
+    content->add_widget(std::make_unique<Label>("hello"));
+    win.set_root(std::move(content));
+
+    auto const &s = Theme::current().style;
+    auto inset = s.border_width + s.shadow.size;
+    auto titlebar_top = inset;
+    auto titlebar_h = s.window_decoration.top;
+    REQUIRE(titlebar_h > 0.0f);
+
+    // The horizontal center of the bar sits under the title label (it is stretched to fill the
+    // space between the leading icon and the trailing buttons), well clear of any button.
+    Point center{win.size().width / 2.0f, titlebar_top + titlebar_h / 2.0f};
+
+    auto was_maximized = win.is_maximized();
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.click_count = 2;
+    press.position = center;
+    win.handle_mouse(press);
+    MouseEvent release = press;
+    release.type = MouseEvent::Type::Release;
+    win.handle_mouse(release);
+
+    REQUIRE(win.is_maximized() != was_maximized);
+}
