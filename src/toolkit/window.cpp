@@ -1000,6 +1000,22 @@ void Window::handle_mouse(MouseEvent const &event) {
             local_ev.position = under->map_from_window(event.position);
             if (under->handle_mouse(local_ev)) {
                 needs_redraw = true;
+                // "under" may be a widget that handles mouse input but was deliberately
+                // left out of find_focusable_at() above (e.g. ScrollableWidget's inner
+                // scrollbars, which set focusable=false so Tab navigation skips them).
+                // If it just started its own drag on this Press, capture it the same way
+                // the focusable path above does: Move/Drag/Release must keep reaching it
+                // through the captured_widget_ branch even once the pointer leaves this
+                // widget's bounds -- or the window's -- mid-drag. Without this, such a
+                // widget only gets events while the pointer stays over it, even though it
+                // (e.g. Scrollbar) has already grabbed the OS pointer itself expecting to
+                // keep tracking.
+                if (event.type == MouseEvent::Type::Press) {
+                    captured_widget_ = under;
+                    if (event.button == 0) {
+                        platform_window()->grab_pointer();
+                    }
+                }
             }
         }
     }

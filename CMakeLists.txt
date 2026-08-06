@@ -571,6 +571,7 @@ add_executable(tests
     tests/test_new_image_api.cpp
     tests/test_progress_bar.cpp
     tests/test_radio_button.cpp
+    tests/test_scroll_area_drag.cpp
     tests/test_slider.cpp
     tests/test_spin_box.cpp
     tests/test_splitter.cpp
