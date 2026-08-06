@@ -648,6 +648,29 @@ void MacOSNativePlatformWindow::set_size(Size s) {
     [impl_->ns_window setContentSize:NSMakeSize(s.width, s.height)];
 }
 
+// Cocoa's screen space has its origin at the bottom-left with y growing upward, while the toolkit
+// uses top-left/y-down everywhere else. Both accessors flip through the window's own screen.
+static CGFloat macos_screen_height(NSWindow *window) {
+    NSScreen *screen = [window screen];
+    if (!screen) {
+        screen = [NSScreen mainScreen];
+    }
+    return [screen frame].size.height;
+}
+
+Point MacOSNativePlatformWindow::position() const {
+    auto frame = [impl_->ns_window frame];
+    auto screen_height = macos_screen_height(impl_->ns_window);
+    return {static_cast<float>(frame.origin.x),
+            static_cast<float>(screen_height - frame.origin.y - frame.size.height)};
+}
+
+void MacOSNativePlatformWindow::set_position(Point p) {
+    auto frame = [impl_->ns_window frame];
+    auto screen_height = macos_screen_height(impl_->ns_window);
+    [impl_->ns_window setFrameOrigin:NSMakePoint(p.x, screen_height - p.y - frame.size.height)];
+}
+
 void MacOSNativePlatformWindow::request_redraw() { [impl_->view setNeedsDisplay:YES]; }
 
 void MacOSNativePlatformWindow::set_min_size(Size s) {

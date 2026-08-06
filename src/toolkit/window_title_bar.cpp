@@ -9,10 +9,15 @@
 #include "toolkit/widget.hpp"
 #include "toolkit/window.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <spdlog/spdlog.h>
 
 namespace toolkit {
+
+// How far the pointer must travel from the press before a drag on a maximized window's title bar
+// is treated as "the user wants to pull this window loose" rather than as a click.
+static constexpr auto drag_threshold = 5.0f;
 
 TitlebarButton::TitlebarButton(DecorationButton type, std::string tooltip, Size size_hint)
     : Button(""), type_(type), custom_size_hint(size_hint) {
@@ -251,9 +256,66 @@ void WindowTitleBar::set_icon(Icon const &icon) {
     }
 }
 
+void WindowTitleBar::pull_loose_from_maximized(MouseEvent const &event) {
+    auto *platform = window_->platform_window();
+    auto maximized_size = window_->size();
+
+    // Where the pointer is on screen right now. Only knowable where the platform tracks window
+    // positions at all -- on Wayland the restore below is all we can do, and the compositor is
+    // the one that decides where the surface ends up.
+    auto can_place = platform->can_set_position();
+    auto pointer_in_window = map_to_window(event.position);
+    auto origin = can_place ? platform->position() : Point{};
+
+    window_->restore();
+
+    if (!can_place) {
+        return;
+    }
+    // On backends where unmaximizing is asynchronous the new size is not known yet, and placing
+    // the window from the stale one would just shove it sideways for no reason.
+    auto restored_size = window_->size();
+    if (restored_size.width >= maximized_size.width) {
+        return;
+    }
+
+    // Land the window under the pointer holding the same relative spot on the title bar that was
+    // grabbed, which is what a native title bar does. The restored window carries a shadow inset
+    // the maximized one does not, so the bar no longer starts at the window's own corner.
+    auto const &style = Theme::current().style;
+    auto inset = style.border_width + style.shadow.size;
+    auto ratio = rect_.width > 0 ? press_position.x / rect_.width : 0.5f;
+    auto grab_x = inset + ratio * std::max(0.0f, restored_size.width - 2 * inset);
+    auto grab_y = inset + press_position.y;
+    platform->set_position({origin.x + pointer_in_window.x - grab_x,
+                            origin.y + pointer_in_window.y - grab_y});
+}
+
 bool WindowTitleBar::handle_mouse(MouseEvent const &event) {
     if (layout->handle_mouse(event)) {
         return true;
+    }
+
+    // Checked before the bounds test below: a drag that unmaximizes naturally pulls the pointer
+    // off the bar, and the release ending it can land anywhere.
+    if (pending_move) {
+        if (event.type == MouseEvent::Type::Drag) {
+            auto dx = event.position.x - press_position.x;
+            auto dy = event.position.y - press_position.y;
+            if (dx * dx + dy * dy < drag_threshold * drag_threshold) {
+                return true;
+            }
+            pending_move = false;
+            pull_loose_from_maximized(event);
+            // The press serial, not the drag's: compositors validate a move request against the
+            // input event that is meant to have started it.
+            window_->start_system_move(press_serial);
+            return true;
+        }
+        if (event.type == MouseEvent::Type::Release) {
+            pending_move = false;
+            return true;
+        }
     }
 
     auto local_rect = Rect{0, 0, rect_.width, rect_.height};
@@ -275,6 +337,15 @@ bool WindowTitleBar::handle_mouse(MouseEvent const &event) {
             }
             return true;
         }
+        if (window_->is_maximized() && !window_->platform_window()->system_move_unmaximizes()) {
+            pending_move = true;
+            press_position = event.position;
+            press_serial = event.serial;
+            return true;
+        }
+        // Handing the press straight over covers the maximized case too on platforms that pull
+        // the window loose themselves -- including leaving it maximized when the press turns out
+        // to be a plain click rather than a drag.
         window_->start_system_move(event.serial);
         return true;
     }

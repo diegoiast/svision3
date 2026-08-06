@@ -80,6 +80,19 @@ class WindowTitleBar : public Widget {
     Button *max_btn = nullptr;
     Button *close_btn = nullptr;
     HBoxLayout *layout;
+
+  private:
+    // Restores the window and, where the platform allows a client to place its own windows,
+    // moves it under the pointer so the drag that follows feels continuous.
+    void pull_loose_from_maximized(MouseEvent const &event);
+
+    // A press on a maximized window cannot start a system move straight away: the window has to
+    // be restored first, and only a real drag should do that -- a plain click on the bar must
+    // leave the window maximized. So the press is remembered here until the pointer has actually
+    // travelled far enough (see handle_mouse()).
+    bool pending_move = false;
+    Point press_position{};
+    uint32_t press_serial = 0;
 };
 
 } // namespace toolkit

@@ -93,6 +93,9 @@ class Win32PlatformWindow : public PlatformWindow {
     void maximize() override;
     void restore() override;
     void set_size(Size s) override;
+    bool can_set_position() const override { return true; }
+    Point position() const override;
+    void set_position(Point p) override;
     void request_redraw() override;
     void set_min_size(Size s) override;
     void set_max_size(Size s) override;
@@ -104,6 +107,7 @@ class Win32PlatformWindow : public PlatformWindow {
     Icon get_icon() override;
     void show_system_menu(Point p) override;
     void start_system_move(uint32_t serial) override;
+    bool system_move_unmaximizes() const override { return true; }
     void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
     void hide_tooltip_window() override;

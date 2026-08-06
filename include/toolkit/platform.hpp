@@ -52,6 +52,17 @@ class PlatformWindow {
     virtual void maximize() = 0;
     virtual void restore() = 0;
     virtual void set_size(Size s) = 0;
+
+    // Whether this platform lets a client read and choose where its own top-level windows sit on
+    // screen. Wayland says no by design -- a surface never learns its own global position, and
+    // there is no protocol to ask for one -- so anything built on position()/set_position() needs
+    // a fallback for when this returns false. Default is the restrictive answer.
+    virtual bool can_set_position() const { return false; }
+    // Top-left of the window in screen coordinates, in logical (already unscaled) units.
+    // Only meaningful when can_set_position() is true; {0, 0} otherwise.
+    virtual Point position() const { return {}; }
+    virtual void set_position(Point) {}
+
     virtual void request_redraw() = 0;
     virtual void set_min_size(Size s) = 0;
     virtual void set_max_size(Size s) = 0;
@@ -63,6 +74,12 @@ class PlatformWindow {
     virtual void show_tooltip_window(std::string const &text, Point pos) = 0;
     virtual void hide_tooltip_window() = 0;
     virtual void start_system_move(uint32_t serial) = 0;
+    // Whether start_system_move() called on a *maximized* window unmaximizes it and re-anchors it
+    // under the pointer by itself, so the caller can simply hand it the press and let the drag
+    // continue. Win32's caption drag does. Where this is false the caller has to restore and
+    // place the window first (see can_set_position()), which is a poorer imitation -- so prefer
+    // handing the gesture over whenever a platform claims it.
+    virtual bool system_move_unmaximizes() const { return false; }
     virtual void start_system_resize(WindowEdge edge, uint32_t serial) = 0;
     virtual void set_modal_for(PlatformWindow *parent) = 0;
     virtual void grab_pointer() = 0;

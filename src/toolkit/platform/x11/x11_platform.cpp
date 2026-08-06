@@ -1440,6 +1440,23 @@ void X11PlatformWindow::set_size(Size s) {
                   static_cast<unsigned int>(std::max(1.0f, s.height * scale)));
 }
 
+Point X11PlatformWindow::position() const {
+    auto *d = app_->impl_.get();
+    int root_x = 0, root_y = 0;
+    ::Window child;
+    // Translating this window's own origin rather than reading XGetGeometry: under a reparenting
+    // WM the geometry is relative to the frame, not the root.
+    XTranslateCoordinates(d->display, impl_->xwindow, d->root, 0, 0, &root_x, &root_y, &child);
+    auto scale = scale_factor();
+    return {static_cast<float>(root_x) / scale, static_cast<float>(root_y) / scale};
+}
+
+void X11PlatformWindow::set_position(Point p) {
+    auto scale = scale_factor();
+    XMoveWindow(static_cast<Display *>(app_->impl_->display), impl_->xwindow,
+                static_cast<int>(p.x * scale), static_cast<int>(p.y * scale));
+}
+
 void X11PlatformWindow::request_redraw() { impl_->needs_redraw = true; }
 
 void X11PlatformWindow::do_paint() {

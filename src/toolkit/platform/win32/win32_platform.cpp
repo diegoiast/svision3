@@ -379,6 +379,11 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_ERASEBKGND:
         return 1;
     case WM_SIZE: {
+        if (wp != SIZE_MINIMIZED) {
+            // Keep the window in sync with maximization done by the system (snap,
+            // Win+Up, double click on the title bar, system menu), not just by us.
+            win->handle_maximized(wp == SIZE_MAXIMIZED);
+        }
         float scale = get_window_scale(hwnd);
         float nw = static_cast<float>(LOWORD(lp)) / scale;
         float nh = static_cast<float>(HIWORD(lp)) / scale;
@@ -1001,6 +1006,27 @@ void Win32PlatformWindow::set_size(Size s) {
                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
+Point Win32PlatformWindow::position() const {
+    if (!hwnd) {
+        return {};
+    }
+    RECT r = {};
+    if (!GetWindowRect(hwnd, &r)) {
+        return {};
+    }
+    float scale = get_window_scale(hwnd);
+    return {static_cast<float>(r.left) / scale, static_cast<float>(r.top) / scale};
+}
+
+void Win32PlatformWindow::set_position(Point p) {
+    if (!hwnd) {
+        return;
+    }
+    float scale = get_window_scale(hwnd);
+    SetWindowPos(hwnd, nullptr, static_cast<int>(p.x * scale), static_cast<int>(p.y * scale), 0, 0,
+                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
 void Win32PlatformWindow::request_redraw() {
     if (hwnd) {
         InvalidateRect(hwnd, nullptr, FALSE);
@@ -1311,7 +1337,15 @@ void Win32PlatformWindow::set_cursor(CursorShape shape) {
 
 void Win32PlatformWindow::start_system_move(uint32_t /*serial*/) {
     ReleaseCapture();
-    SendMessageW(hwnd, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
+    // WM_NCLBUTTONDOWN rather than WM_SYSCOMMAND/SC_MOVE: SC_MOVE enters a move *mode* that
+    // decides between mouse and keyboard tracking on entry, and it picks keyboard -- leaving the
+    // window sitting still -- whenever it is entered from anything but a fresh button press.
+    // Pulling a maximized window loose does exactly that: the move starts from a mouse-move,
+    // after the window has already been restored and repositioned. A synthetic caption press is
+    // tied to the button that is actually held down, so it drags in both cases.
+    POINT pt = {};
+    GetCursorPos(&pt);
+    SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, MAKELPARAM(pt.x, pt.y));
 }
 
 void Win32PlatformWindow::start_system_resize(WindowEdge edge, uint32_t /*serial*/) {

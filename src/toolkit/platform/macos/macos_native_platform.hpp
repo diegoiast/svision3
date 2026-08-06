@@ -26,6 +26,9 @@ class MacOSNativePlatformWindow : public PlatformWindow {
     void maximize() override;
     void restore() override;
     void set_size(Size s) override;
+    bool can_set_position() const override { return true; }
+    Point position() const override;
+    void set_position(Point p) override;
     void request_redraw() override;
     void set_min_size(Size s) override;
     void set_max_size(Size s) override;

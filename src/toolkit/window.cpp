@@ -455,6 +455,10 @@ void Window::handle_maximized(bool maximized) {
         return;
     }
     is_maximized_ = maximized;
+    // The shadow inset differs between maximized and restored, and the title bar
+    // shows a different button icon, so both need to be recomputed.
+    relayout();
+    request_redraw("maximized state changed");
 }
 
 void Window::show_tooltip_window(std::string const &text, Point pos) {
@@ -802,7 +806,7 @@ void Window::handle_mouse(MouseEvent const &event) {
         last_serial_ = event.serial;
     }
 
-    if (options_.csd && is_resizable()) {
+    if (options_.csd && is_resizable() && !is_maximized_) {
         auto const &s = Theme::current().style;
         auto const &r = event.position;
         auto shadow = is_maximized_ ? 0.0f : s.shadow.size;

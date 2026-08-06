@@ -170,6 +170,9 @@ class WaylandPlatformWindow : public PlatformWindow {
     void maximize() override;
     void restore() override;
     void set_size(Size s) override;
+    // A Wayland client is never told where its surface is and has no way to ask for a spot, so
+    // position()/set_position() stay at their do-nothing defaults.
+    bool can_set_position() const override { return false; }
     void request_redraw() override;
     void set_min_size(Size s) override;
     void set_max_size(Size s) override;
