@@ -51,6 +51,7 @@ class Window {
     Window &set_root(std::unique_ptr<Widget> root);
     void on_theme_changed();
     void show();
+    void hide();
     void close();
     void request_redraw(std::string_view reason = "other");
 

@@ -21,6 +21,7 @@ class MacOSNativePlatformWindow : public PlatformWindow {
                               WindowOptions options);
     ~MacOSNativePlatformWindow() override;
     void show() override;
+    void hide() override;
     void close() override;
     void minimize() override;
     void maximize() override;

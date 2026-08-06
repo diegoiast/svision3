@@ -1272,10 +1272,23 @@ static bool wl_run_iteration(WaylandPlatformApplication *app) {
 
     // 5. Poll for events.
     int wl_fd = wl_display_get_fd(app->display);
-    struct pollfd fds[2];
-    fds[0] = {wl_fd, POLLIN, 0};
-    fds[1] = {app->wakeup_pipe[0], POLLIN, 0};
-    poll(fds, 2, timeout_ms);
+    std::vector<pollfd> fds;
+    fds.reserve(2 + app->fd_sources.size());
+    fds.push_back({wl_fd, POLLIN, 0});
+    fds.push_back({app->wakeup_pipe[0], POLLIN, 0});
+    // fd_sources entries line up 1:1 with fds[2..] below -- indices must stay
+    // in sync between this loop and the dispatch one after poll().
+    for (auto const &src : app->fd_sources) {
+        short events = 0;
+        if (src.want_read) {
+            events |= POLLIN;
+        }
+        if (src.want_write) {
+            events |= POLLOUT;
+        }
+        fds.push_back({src.fd, events, 0});
+    }
+    poll(fds.data(), fds.size(), timeout_ms);
 
     if (fds[1].revents & POLLIN) {
         char buf[64];
@@ -1288,6 +1301,21 @@ static bool wl_run_iteration(WaylandPlatformApplication *app) {
         wl_display_dispatch(app->display);
     } else {
         wl_display_dispatch_pending(app->display);
+    }
+
+    // 7. Dispatch ready fd sources. Snapshot callbacks first: a callback may
+    // itself call add_fd_source()/remove_fd_source() (e.g. to re-register
+    // after dispatching a D-Bus connection), which would otherwise mutate
+    // app->fd_sources out from under this loop.
+    std::vector<std::function<void()>> ready_fd_callbacks;
+    for (size_t i = 0; i < app->fd_sources.size(); ++i) {
+        auto const &pfd = fds[2 + i];
+        if (pfd.revents & (POLLIN | POLLOUT | POLLERR | POLLHUP)) {
+            ready_fd_callbacks.push_back(app->fd_sources[i].callback);
+        }
+    }
+    for (auto const &cb : ready_fd_callbacks) {
+        cb();
     }
 
     if (app->windows.empty()) {
@@ -1531,8 +1559,20 @@ WaylandPlatformWindow::~WaylandPlatformWindow() {
 }
 
 void WaylandPlatformWindow::show() {
+    // Force a repaint so hide()'s detached buffer gets replaced with a real
+    // one again -- without this, a show() after hide() would just re-commit
+    // a surface with no buffer attached and stay invisible.
+    needs_redraw = true;
     wl_surface_commit(surface);
     wl_display_roundtrip(app_->display);
+}
+
+void WaylandPlatformWindow::hide() {
+    // xdg_toplevel has no "hide" request -- the standard way to unmap a
+    // surface without destroying it is to attach a null buffer and commit.
+    wl_surface_attach(surface, nullptr, 0, 0);
+    wl_surface_commit(surface);
+    wl_display_flush(app_->display);
 }
 
 void WaylandPlatformWindow::close() {
@@ -1951,6 +1991,25 @@ SystemFonts WaylandPlatformApplication::system_fonts() const {
 
 std::string WaylandPlatformApplication::system_icon_theme() const {
     return linux_utils::detect_system_icon_theme();
+}
+
+void WaylandPlatformApplication::add_fd_source(int fd, bool want_read, bool want_write,
+                                                std::function<void()> callback) {
+    auto it = std::find_if(fd_sources.begin(), fd_sources.end(),
+                           [&](FdSource const &s) { return s.fd == fd; });
+    if (it != fd_sources.end()) {
+        it->want_read = want_read;
+        it->want_write = want_write;
+        it->callback = std::move(callback);
+        return;
+    }
+    fd_sources.push_back({fd, want_read, want_write, std::move(callback)});
+}
+
+void WaylandPlatformApplication::remove_fd_source(int fd) {
+    fd_sources.erase(std::remove_if(fd_sources.begin(), fd_sources.end(),
+                                    [&](FdSource const &s) { return s.fd == fd; }),
+                     fd_sources.end());
 }
 
 } // namespace toolkit

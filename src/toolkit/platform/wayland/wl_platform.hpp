@@ -74,6 +74,8 @@ class WaylandPlatformApplication : public PlatformApplication {
     SystemFonts system_fonts() const override;
     std::string system_icon_theme() const override;
     bool needs_csd() const override { return decoration_manager == nullptr; }
+    void add_fd_source(int fd, bool want_read, bool want_write, std::function<void()> callback) override;
+    void remove_fd_source(int fd) override;
 
     wl_display *display = nullptr;
     wl_compositor *compositor = nullptr;
@@ -125,6 +127,14 @@ class WaylandPlatformApplication : public PlatformApplication {
     std::vector<TimerEntry> timers;
     int next_timer_id = 1;
 
+    struct FdSource {
+        int fd;
+        bool want_read;
+        bool want_write;
+        std::function<void()> callback;
+    };
+    std::vector<FdSource> fd_sources;
+
     int wakeup_pipe[2] = {-1, -1};
     std::mutex posted_mutex;
     std::vector<std::function<void()>> posted_fns;
@@ -165,6 +175,7 @@ class WaylandPlatformWindow : public PlatformWindow {
                           Window *owner, WindowOptions options);
     ~WaylandPlatformWindow() override;
     void show() override;
+    void hide() override;
     void close() override;
     void minimize() override;
     void maximize() override;

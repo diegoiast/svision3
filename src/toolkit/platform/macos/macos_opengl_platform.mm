@@ -527,6 +527,8 @@ void MacOSOpenGLPlatformWindow::show() {
     [NSApp activateIgnoringOtherApps:YES];
 }
 
+void MacOSOpenGLPlatformWindow::hide() { [impl_->ns_window orderOut:nil]; }
+
 void MacOSOpenGLPlatformWindow::close() { [impl_->ns_window close]; }
 
 void MacOSOpenGLPlatformWindow::set_size(Size s) {

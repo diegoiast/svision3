@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
+// No-op fallback for platforms without a real tray-icon backend yet
+// (currently: macOS, Windows -- see include/toolkit/tray_icon.hpp for the
+// one real implementation, src/toolkit/linux/tray_icon.cpp). create() always
+// returns nullptr, exactly like the Linux backend does when no D-Bus
+// session bus is reachable, so callers never need to branch on platform.
+
+#include "toolkit/tray_icon.hpp"
+#include <spdlog/spdlog.h>
+
+namespace toolkit {
+
+struct TrayIcon::Impl {};
+
+TrayIcon::TrayIcon() : impl_(std::make_unique<Impl>()) {}
+TrayIcon::~TrayIcon() = default;
+
+std::unique_ptr<TrayIcon> TrayIcon::create(std::string, std::string, std::string, Window *,
+                                           std::vector<Command::Ptr>) {
+    spdlog::warn("TrayIcon: not implemented on this platform yet");
+    return nullptr;
+}
+
+} // namespace toolkit

@@ -642,6 +642,8 @@ void MacOSNativePlatformWindow::show() {
     [NSApp activateIgnoringOtherApps:YES];
 }
 
+void MacOSNativePlatformWindow::hide() { [impl_->ns_window orderOut:nil]; }
+
 void MacOSNativePlatformWindow::close() { [impl_->ns_window close]; }
 
 void MacOSNativePlatformWindow::set_size(Size s) {

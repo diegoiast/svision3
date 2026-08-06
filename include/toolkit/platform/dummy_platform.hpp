@@ -8,6 +8,7 @@ namespace toolkit {
 class DummyPlatformWindow : public PlatformWindow {
   public:
     void show() override {}
+    void hide() override {}
     void close() override {}
     void minimize() override {}
     void maximize() override {}

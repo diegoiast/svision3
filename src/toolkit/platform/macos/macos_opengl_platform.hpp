@@ -21,6 +21,7 @@ class MacOSOpenGLPlatformWindow : public PlatformWindow {
                               WindowOptions options);
     ~MacOSOpenGLPlatformWindow() override;
     void show() override;
+    void hide() override;
     void close() override;
     void minimize() override;
     void maximize() override;

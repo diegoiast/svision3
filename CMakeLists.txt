@@ -514,14 +514,34 @@ if(APPLE)
     enable_language(OBJC)
     add_library(nfd OBJECT src/nfd/nfd_cocoa.m)
     target_compile_options(nfd PRIVATE -fno-objc-arc)
+
+    # No NSStatusItem-based tray icon backend yet -- stub keeps
+    # toolkit::TrayIcon linkable (create() just returns nullptr) so callers
+    # don't need to #ifdef around it. See include/toolkit/tray_icon.hpp.
+    target_sources(toolkit PRIVATE src/toolkit/tray_icon_stub.cpp)
 elseif(WIN32)
     add_library(nfd OBJECT src/nfd/nfd_win.cpp)
+
+    # No Shell_NotifyIcon-based tray icon backend yet -- see the APPLE
+    # branch above for why the stub exists.
+    target_sources(toolkit PRIVATE src/toolkit/tray_icon_stub.cpp)
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(DBUS REQUIRED dbus-1)
     add_library(nfd OBJECT src/nfd/nfd_portal.cpp)
     target_include_directories(nfd PRIVATE ${DBUS_INCLUDE_DIRS})
     target_link_libraries(toolkit PUBLIC ${DBUS_LIBRARIES})
+
+    # dbus-1 is already a required dependency on Linux (nfd_portal.cpp, above)
+    # -- reuse it for the tray icon's own D-Bus service wrapper
+    # (toolkit::dbus::Service, hosting org.kde.StatusNotifierItem).
+    set(TOOLKIT_HAS_DBUS ON)
+    target_sources(toolkit PRIVATE
+        src/toolkit/linux/dbus_service.cpp
+        src/toolkit/linux/tray_icon.cpp
+    )
+    target_include_directories(toolkit PRIVATE ${DBUS_INCLUDE_DIRS})
+    target_compile_definitions(toolkit PUBLIC TOOLKIT_HAS_DBUS)
 endif()
 
 # Bake nfd objects directly into toolkit — it is an implementation detail.
@@ -537,6 +557,16 @@ if(TOOLKIT_BUILD_DEMOS)
 
     add_executable(json_ui_viewer tools/json_ui_viewer.cpp)
     target_link_libraries(json_ui_viewer PRIVATE toolkit)
+
+    # Builds everywhere: TrayIcon::create() always links (real backend on
+    # Linux, no-op stub elsewhere -- see include/toolkit/tray_icon.hpp), and
+    # this demo already handles a nullptr result gracefully.
+    add_executable(demo_tray demo/demo_tray.cpp)
+    set_target_properties(demo_tray PROPERTIES WIN32_EXECUTABLE ON)
+    if(WIN32)
+        set_target_properties(demo_tray PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+    endif()
+    target_link_libraries(demo_tray PRIVATE toolkit)
 endif()
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -595,6 +625,9 @@ target_include_directories(tests PRIVATE src)
 
 if(WIN32)
     target_sources(tests PRIVATE tests/test_win32_shaper.cpp)
+endif()
+if(TOOLKIT_HAS_DBUS)
+    target_sources(tests PRIVATE tests/test_dbus_service.cpp)
 endif()
 endif()
 
