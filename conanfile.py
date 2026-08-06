@@ -105,7 +105,7 @@ class SvisionRecipe(ConanFile):
             self.cpp_info.system_libs = system_libs
         elif self.settings.os == "Windows":
             self.cpp_info.system_libs = [
-                "user32", "gdi32", "msimg32", "gdiplus", "opengl32", "shlwapi", "usp10",
+                "user32", "gdi32", "msimg32", "gdiplus", "opengl32", "shlwapi", "usp10", "shell32",
             ]
         elif self.settings.os == "Macos":
             self.cpp_info.frameworks = [

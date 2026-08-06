@@ -371,7 +371,7 @@ if(APPLE)
     target_include_directories(toolkit PRIVATE
         src/toolkit/platform/macos)
 elseif(WIN32)
-    target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32 gdiplus opengl32 shlwapi usp10)
+    target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32 gdiplus opengl32 shlwapi usp10 shell32)
     target_include_directories(toolkit PRIVATE src/toolkit/platform/win32)
 elseif(UNIX)
     target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
@@ -522,9 +522,10 @@ if(APPLE)
 elseif(WIN32)
     add_library(nfd OBJECT src/nfd/nfd_win.cpp)
 
-    # No Shell_NotifyIcon-based tray icon backend yet -- see the APPLE
-    # branch above for why the stub exists.
-    target_sources(toolkit PRIVATE src/toolkit/tray_icon_stub.cpp)
+    # Shell_NotifyIcon-based tray icon, self-contained in the Win32 shell API
+    # (shell32, linked above) -- no extra dependency the way the Linux
+    # backend needs dbus-1.
+    target_sources(toolkit PRIVATE src/toolkit/win32/tray_icon.cpp)
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(DBUS REQUIRED dbus-1)
@@ -559,8 +560,9 @@ if(TOOLKIT_BUILD_DEMOS)
     target_link_libraries(json_ui_viewer PRIVATE toolkit)
 
     # Builds everywhere: TrayIcon::create() always links (real backend on
-    # Linux, no-op stub elsewhere -- see include/toolkit/tray_icon.hpp), and
-    # this demo already handles a nullptr result gracefully.
+    # Linux and Windows, no-op stub on macOS -- see
+    # include/toolkit/tray_icon.hpp), and this demo already handles a nullptr
+    # result gracefully.
     add_executable(demo_tray demo/demo_tray.cpp)
     set_target_properties(demo_tray PROPERTIES WIN32_EXECUTABLE ON)
     if(WIN32)

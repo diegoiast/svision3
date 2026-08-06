@@ -4,11 +4,10 @@
 // Cross-platform system tray icon facade. The class and this header are
 // platform-neutral; exactly one of the following gets compiled in per
 // target (see CMakeLists.txt) and provides TrayIcon::create()'s definition:
-//  - src/toolkit/linux/tray_icon.cpp -- the only real backend today. Built
-//    when TOOLKIT_HAS_DBUS is defined (Linux, dbus-1 available). Implemented
-//    as a StatusNotifierItem (org.kde.StatusNotifierItem) exported over
-//    D-Bus via toolkit::dbus. Left-click and right-click do two independent
-//    things there:
+//  - src/toolkit/linux/tray_icon.cpp -- built when TOOLKIT_HAS_DBUS is
+//    defined (Linux, dbus-1 available). Implemented as a StatusNotifierItem
+//    (org.kde.StatusNotifierItem) exported over D-Bus via toolkit::dbus.
+//    Left-click and right-click do two independent things there:
 //     - Right-click: exposed through com.canonical.dbusmenu (ItemIsMenu is
 //       false, so the host only auto-opens this on right-click, never on
 //       left-click too) -- rendered entirely by the tray host (Plasma's
@@ -17,16 +16,23 @@
 //       with no host-rendered UI attached to it. Handled as a hide()/show()
 //       toggle on `owner_window` -- the common "click the tray icon to
 //       show/hide the app" pattern (Telegram, Slack, Dropbox, ...).
-//  - src/toolkit/tray_icon_stub.cpp -- everywhere else (macOS, Windows).
-//    create() always returns nullptr, same as the Linux backend does when
-//    no D-Bus session bus is reachable, so callers never need to branch on
-//    platform. A macOS backend would be NSStatusItem-based; Windows would be
-//    Shell_NotifyIcon-based -- both are more capable than SNI/DBusMenu here
-//    (e.g. TrackPopupMenu takes real screen coordinates, so there's no
-//    Wayland-style absolute-positioning gap), just not implemented yet.
+//  - src/toolkit/win32/tray_icon.cpp -- Windows, via Shell_NotifyIcon. Same
+//    left-click/right-click split, but the menu is ours to draw rather than
+//    the host's: TrackPopupMenuEx takes real screen coordinates, so there is
+//    no Wayland-style absolute-positioning gap. Icons come from the
+//    application's icon provider like everywhere else, falling back to the
+//    owner window's icon and then the stock application icon, since a
+//    freedesktop icon name usually resolves to nothing on Windows.
+//  - src/toolkit/tray_icon_stub.cpp -- everywhere else (macOS). create()
+//    always returns nullptr, same as the Linux backend does when no D-Bus
+//    session bus is reachable, so callers never need to branch on platform.
+//    A macOS backend would be NSStatusItem-based, just not implemented yet.
 //
 // EVENTUALLY (not implemented, revisit if/when actually needed):
-//  - macOS and Windows backends (see above).
+//  - A macOS backend (see above).
+//  - Windows: the right-click menu's *items* are fixed at construction, the
+//    same gap as Linux's below (their enabled/checked state is re-read on
+//    every popup, though).
 //  - Linux: the right-click menu is fixed at construction. DBusMenu's
 //    LayoutUpdated signal (which would let it change afterwards) isn't
 //    wired up.

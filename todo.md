@@ -67,7 +67,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 5. [ ] IME / input method support.
 6. [x] RTL / bidirectional text.
 7. [ ] Accessibility (screen readers).
-8. [ ] System tray / notifications.
+8. [x] System tray / notifications.
 9. [ ] Native file drag-and-drop.
 10. [x] Wayland clipboard (cross-client).X11/OpenGL/
 11. [x] Wayland tooltips (xdg_popup)
