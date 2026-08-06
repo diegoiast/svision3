@@ -14,26 +14,16 @@ class HBoxLayout;
 class Label;
 class Window;
 
-// FIXME: we need to update window title bar and maximize button tooltip
-
-/*
-        if (window_->is_maximized()) {
-            max_btn->set_tooltip("Restore");
-        } else {
-            max_btn->set_tooltip("Maximize");
-        }
-
-        // FIXME: update window label only when the window title changed
-        title_label->set_text(std::string(window_->title()));
-        // FIXME: update color on blur/active
-        title_label->set_color(fg);
-*/
-
 class TitlebarButton : public Button {
   public:
     TitlebarButton(DecorationButton type, std::string tooltip, Size size_hint = {20, 20});
     void paint(Painter &painter) override;
     Size size_hint() const override { return custom_size_hint; }
+
+    // The maximize/restore button is the one titlebar button whose glyph must change with window
+    // state (see WindowTitleBar::sync_button_states()) -- everything else keeps the icon it was
+    // constructed with for its whole lifetime.
+    void set_type(DecorationButton type) { type_ = type; }
 
   private:
     DecorationButton type_;

@@ -589,10 +589,12 @@ add_executable(tests
     tests/test_window_title_bar.cpp
 )
 target_link_libraries(tests PRIVATE toolkit Catch2::Catch2)
+# A few tests need private headers (e.g. painters/cairo_painter.hpp) that aren't part of the
+# public include/ surface, to render off-screen for pixel-level assertions.
+target_include_directories(tests PRIVATE src)
 
 if(WIN32)
     target_sources(tests PRIVATE tests/test_win32_shaper.cpp)
-    target_include_directories(tests PRIVATE src)
 endif()
 endif()
 

@@ -176,6 +176,15 @@ void WindowTitleBar::sync_button_states() {
     if (max_btn) {
         max_btn->set_enabled(window_->is_maximizable());
         max_btn->set_tooltip(window_->is_maximized() ? "Restore" : "Maximize");
+        // The tooltip swap above only ever touched text -- the icon glyph itself was fixed to
+        // whatever DecorationButton the theme constructed it with (always ::Maximize), so it
+        // never actually showed "restore" once the window was maximized. max_btn is declared as
+        // the generic Button* every other titlebar button uses, but every theme constructs it as
+        // a TitlebarButton, so this cast is safe.
+        if (auto *titlebar_btn = dynamic_cast<TitlebarButton *>(max_btn)) {
+            titlebar_btn->set_type(window_->is_maximized() ? DecorationButton::Restore
+                                                            : DecorationButton::Maximize);
+        }
     }
     if (close_btn) {
         close_btn->set_enabled(window_->is_closable());

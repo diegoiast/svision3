@@ -233,15 +233,19 @@ void Plasma6Theme::draw_window_button(Painter &painter, Rect const &rect, Decora
         painter.draw_line({center.x - size, center.y}, {center.x, center.y + vd}, fg, 1.5f);
         painter.draw_line({center.x, center.y + vd}, {center.x + size, center.y}, fg, 1.5f);
     } else if (button == DecorationButton::Maximize) {
+        // Mirrors Minimize's downward chevron -- an upward chevron, since this is the
+        // not-yet-maximized state (the same pairing as the minimize glyph above/below it).
+        auto vd = size * 0.66f;
+        painter.draw_line({center.x - size, center.y}, {center.x, center.y - vd}, fg, 1.5f);
+        painter.draw_line({center.x, center.y - vd}, {center.x + size, center.y}, fg, 1.5f);
+    } else if (button == DecorationButton::Restore) {
+        // The diamond this theme used to (incorrectly) show for both Maximize and Restore --
+        // see window_title_bar.cpp's sync_button_states(), which now actually switches between
+        // the two DecorationButton types instead of always requesting ::Maximize.
         painter.draw_line({center.x, center.y - size}, {center.x + size, center.y}, fg, 1.5f);
         painter.draw_line({center.x + size, center.y}, {center.x, center.y + size}, fg, 1.5f);
         painter.draw_line({center.x, center.y + size}, {center.x - size, center.y}, fg, 1.5f);
         painter.draw_line({center.x - size, center.y}, {center.x, center.y - size}, fg, 1.5f);
-    } else if (button == DecorationButton::Restore) {
-        painter.draw_rect({center.x - size, center.y - size + 2, size * 1.5f, size * 1.5f}, fg,
-                          1.5f);
-        painter.draw_rect({center.x - size + 2, center.y - size, size * 1.5f, size * 1.5f}, fg,
-                          1.5f);
     } else if (button == DecorationButton::Close) {
         painter.draw_line({center.x - size, center.y - size}, {center.x + size, center.y + size},
                           fg, 1.5f);
