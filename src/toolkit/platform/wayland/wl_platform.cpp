@@ -915,6 +915,9 @@ static void xdg_surface_configure(void *data, xdg_surface *surf, uint32_t serial
         win->owner_->handle_resize({nw, nh});
     }
     win->needs_redraw = true;
+    // The geometry side of a maximize()/restore() transition has now landed (even if the size
+    // happened not to change) -- see suppress_paint_for_maximize_transition's declaration.
+    win->suppress_paint_for_maximize_transition = false;
 }
 
 static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t w, int32_t h,
@@ -1588,12 +1591,14 @@ void WaylandPlatformWindow::minimize() {
 
 void WaylandPlatformWindow::maximize() {
     if (xdg_toplevel_) {
+        suppress_paint_for_maximize_transition = true;
         xdg_toplevel_set_maximized(xdg_toplevel_);
     }
 }
 
 void WaylandPlatformWindow::restore() {
     if (xdg_toplevel_) {
+        suppress_paint_for_maximize_transition = true;
         xdg_toplevel_unset_maximized(xdg_toplevel_);
     }
 }
@@ -1809,6 +1814,11 @@ void WaylandPlatformWindow::hide_tooltip_window() {
     tooltip_data.reset();
 }
 void WaylandPlatformWindow::do_paint() {
+    if (suppress_paint_for_maximize_transition) {
+        // Leave needs_redraw set: once the transition lands (xdg_surface_configure clears this
+        // flag), the pending request still triggers the first correct paint.
+        return;
+    }
     needs_redraw = false;
     int lw = static_cast<int>(owner_->size().width);
     int lh = static_cast<int>(owner_->size().height);

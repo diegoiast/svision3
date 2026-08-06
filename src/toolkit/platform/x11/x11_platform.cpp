@@ -107,6 +107,18 @@ struct X11PlatformWindow::Impl {
     bool needs_redraw = false;
     bool is_modal = false;
     bool has_input_grab = false;
+
+    // maximize()/restore() only *ask* the WM to change geometry -- the actual resize arrives
+    // later as an async ConfigureNotify (see dispatch_x11_event), decoupled from when the WM
+    // updates _NET_WM_STATE (PropertyNotify). Window::maximize()/restore() flip is_maximized_
+    // synchronously at click time so the maximize/restore button icon updates immediately, but
+    // that means a paint could land in between: CSD shadow/corner-radius (gated on
+    // is_maximized_, see Window::handle_paint) already reflecting the new state while the window
+    // is still sized for the old one -- e.g. a full-screen-sized window suddenly growing a shadow
+    // border. That mismatched frame is the flicker. Suppressing paint here (while still letting
+    // needs_redraw accumulate) skips straight from the last valid maximized frame to the first
+    // valid restored one, both cleared once the transition actually lands.
+    bool suppress_paint_for_maximize_transition = false;
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -328,6 +340,10 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
             win->handle_resize({nw, nh});
             w->needs_redraw = true;
         }
+        // The geometry side of a maximize()/restore() transition has now landed (even if the
+        // size happened not to change, e.g. already at the target size) -- see the comment on
+        // suppress_paint_for_maximize_transition.
+        w->suppress_paint_for_maximize_transition = false;
         break;
     }
     case ButtonPress: {
@@ -555,6 +571,10 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
             XChangeProperty(app->display, xwin, gtk_frame_extents, XA_CARDINAL, 32, PropModeReplace,
                             reinterpret_cast<unsigned char *>(extents), 4);
             win->relayout();
+            // Safety net for WMs that confirm the state change without a geometry change (e.g.
+            // the window was already the right size) -- ConfigureNotify above won't fire then,
+            // so this is what unsticks suppress_paint_for_maximize_transition in that case.
+            w->suppress_paint_for_maximize_transition = false;
         }
         break;
     }
@@ -1231,6 +1251,7 @@ void X11PlatformWindow::minimize() {
 }
 
 void X11PlatformWindow::maximize() {
+    impl_->suppress_paint_for_maximize_transition = true;
     auto *d = app_->impl_.get();
     Atom net_wm_state = XInternAtom(d->display, "_NET_WM_STATE", False);
     Atom net_wm_max_horz = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
@@ -1251,6 +1272,7 @@ void X11PlatformWindow::maximize() {
 }
 
 void X11PlatformWindow::restore() {
+    impl_->suppress_paint_for_maximize_transition = true;
     auto *d = app_->impl_.get();
     Atom net_wm_state = XInternAtom(d->display, "_NET_WM_STATE", False);
     Atom net_wm_max_horz = XInternAtom(d->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
@@ -1422,6 +1444,11 @@ void X11PlatformWindow::request_redraw() { impl_->needs_redraw = true; }
 
 void X11PlatformWindow::do_paint() {
     if (!impl_->needs_redraw || impl_->xwindow == 0L || !impl_->backend) {
+        return;
+    }
+    if (impl_->suppress_paint_for_maximize_transition) {
+        // Leave needs_redraw set: once the transition lands (ConfigureNotify/PropertyNotify
+        // clear this flag), the pending request still triggers the first correct paint.
         return;
     }
     impl_->needs_redraw = false;

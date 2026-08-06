@@ -212,6 +212,13 @@ class WaylandPlatformWindow : public PlatformWindow {
     float scale = 1.0f;
     bool configured = false;
     bool needs_redraw = true;
+    // See x11_platform.cpp's identical flag for the full rationale: Window::maximize()/restore()
+    // flip is_maximized_ synchronously at click time (so the button icon updates immediately),
+    // but the compositor's xdg_toplevel_configure/xdg_surface_configure round-trip that actually
+    // resizes the surface is async. A paint landing in between would use the new is_maximized_
+    // (and thus new CSD shadow/corner-radius) with the still-old size -- the flicker this
+    // suppresses.
+    bool suppress_paint_for_maximize_transition = false;
     int pending_width = 0, pending_height = 0;
     CursorShape current_cursor = CursorShape::Arrow;
 
