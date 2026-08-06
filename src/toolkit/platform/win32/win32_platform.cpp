@@ -964,6 +964,8 @@ void Win32PlatformWindow::show() {
     UpdateWindow(hwnd);
 }
 
+void Win32PlatformWindow::hide() { ShowWindow(hwnd, SW_HIDE); }
+
 void Win32PlatformWindow::close() {
     if (modal_parent_hwnd) {
         EnableWindow(modal_parent_hwnd, TRUE);

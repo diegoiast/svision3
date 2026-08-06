@@ -47,6 +47,9 @@ class PlatformWindow {
   public:
     virtual ~PlatformWindow() = default;
     virtual void show() = 0;
+    // Unmaps the window without destroying it (unlike close()) and without the
+    // taskbar/iconify semantics of minimize() -- a plain "invisible until show() again".
+    virtual void hide() = 0;
     virtual void close() = 0;
     virtual void minimize() = 0;
     virtual void maximize() = 0;
@@ -154,6 +157,20 @@ class PlatformApplication {
     // regardless of WindowOptions::csd/Application::force_csd(). False by default: most backends
     // (X11 WMs, Win32, macOS) always have real native decorations available.
     virtual bool needs_csd() const { return false; }
+
+    // Plugs an externally-owned fd (e.g. a D-Bus connection socket) into the
+    // platform's own poll loop, alongside its X11/wl_display socket, so
+    // integrations like the Linux tray icon don't need their own thread or
+    // loop. `callback` fires once per run_iteration when the fd is
+    // read/write-ready, or on POLLERR/POLLHUP. Calling again with an fd
+    // already registered updates its want_read/want_write/callback in place
+    // (idempotent) rather than adding a second entry -- callers are expected
+    // to re-register after every dispatch since readiness flags can change.
+    // No-op by default; only backends with a real poll()-based loop (X11,
+    // Wayland) override this -- macOS/Win32 use their native OS event loops
+    // and have no poll() to extend.
+    virtual void add_fd_source(int, bool, bool, std::function<void()>) {}
+    virtual void remove_fd_source(int) {}
 
   protected:
     TextRasterizer *rasterizer_ = nullptr;

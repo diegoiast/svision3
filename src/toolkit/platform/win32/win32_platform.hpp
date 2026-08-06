@@ -88,6 +88,7 @@ class Win32PlatformWindow : public PlatformWindow {
                         Window *owner, WindowOptions options);
     ~Win32PlatformWindow() override;
     void show() override;
+    void hide() override;
     void close() override;
     void minimize() override;
     void maximize() override;

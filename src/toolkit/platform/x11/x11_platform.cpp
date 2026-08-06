@@ -25,6 +25,7 @@
 #undef None
 #undef CursorShape
 
+#include <algorithm>
 #include <cmath>
 #include <fcntl.h>
 #include <functional>
@@ -80,6 +81,14 @@ struct X11PlatformApplication::Impl {
     };
     std::vector<TimerEntry> timers;
     int next_timer_id = 1;
+
+    struct FdSource {
+        int fd;
+        bool want_read;
+        bool want_write;
+        std::function<void()> callback;
+    };
+    std::vector<FdSource> fd_sources;
 
     int wakeup_pipe[2] = {-1, -1};
     std::mutex posted_mutex;
@@ -847,16 +856,29 @@ static bool x11_run_iteration(X11PlatformApplication::Impl *d) {
     }
 
     // 4. Poll for events.
-    struct pollfd fds[2];
-    fds[0] = {ConnectionNumber(d->display), POLLIN, 0};
-    fds[1] = {d->wakeup_pipe[0], POLLIN, 0};
+    std::vector<pollfd> fds;
+    fds.reserve(2 + d->fd_sources.size());
+    fds.push_back({ConnectionNumber(d->display), POLLIN, 0});
+    fds.push_back({d->wakeup_pipe[0], POLLIN, 0});
+    // fd_sources entries line up 1:1 with fds[2..] below -- indices must stay
+    // in sync between this loop and the dispatch one after poll().
+    for (auto const &src : d->fd_sources) {
+        short events = 0;
+        if (src.want_read) {
+            events |= POLLIN;
+        }
+        if (src.want_write) {
+            events |= POLLOUT;
+        }
+        fds.push_back({src.fd, events, 0});
+    }
 
     if (XPending(d->display)) {
         timeout_ms = 0;
     }
 
     XFlush(d->display);
-    poll(fds, 2, timeout_ms);
+    poll(fds.data(), fds.size(), timeout_ms);
 
     if (fds[1].revents & POLLIN) {
         char buf[64];
@@ -866,6 +888,22 @@ static bool x11_run_iteration(X11PlatformApplication::Impl *d) {
 
     // 5. Dispatch events.
     process_pending_events(d);
+
+    // 6. Dispatch ready fd sources. Snapshot callbacks first: a callback may
+    // itself call add_fd_source()/remove_fd_source() (e.g. to re-register
+    // after dispatching a D-Bus connection), which would otherwise mutate
+    // d->fd_sources out from under this loop.
+    std::vector<std::function<void()>> ready_fd_callbacks;
+    for (size_t i = 0; i < d->fd_sources.size(); ++i) {
+        auto const &pfd = fds[2 + i];
+        if (pfd.revents & (POLLIN | POLLOUT | POLLERR | POLLHUP)) {
+            ready_fd_callbacks.push_back(d->fd_sources[i].callback);
+        }
+    }
+    for (auto const &cb : ready_fd_callbacks) {
+        cb();
+    }
+
     return d->running;
 }
 
@@ -1240,6 +1278,12 @@ void X11PlatformWindow::grab_pointer() {
 void X11PlatformWindow::ungrab_pointer() {
     auto *d = app_->impl_.get();
     XUngrabPointer(d->display, CurrentTime);
+}
+
+void X11PlatformWindow::hide() {
+    auto *display = static_cast<Display *>(app_->impl_->display);
+    XUnmapWindow(display, impl_->xwindow);
+    XFlush(display);
 }
 
 void X11PlatformWindow::close() { cleanup_resources(); }
@@ -1769,6 +1813,27 @@ SystemFonts X11PlatformApplication::system_fonts() const {
 
 std::string X11PlatformApplication::system_icon_theme() const {
     return linux_utils::detect_system_icon_theme();
+}
+
+void X11PlatformApplication::add_fd_source(int fd, bool want_read, bool want_write,
+                                           std::function<void()> callback) {
+    auto *d = impl_.get();
+    auto it = std::find_if(d->fd_sources.begin(), d->fd_sources.end(),
+                           [&](Impl::FdSource const &s) { return s.fd == fd; });
+    if (it != d->fd_sources.end()) {
+        it->want_read = want_read;
+        it->want_write = want_write;
+        it->callback = std::move(callback);
+        return;
+    }
+    d->fd_sources.push_back({fd, want_read, want_write, std::move(callback)});
+}
+
+void X11PlatformApplication::remove_fd_source(int fd) {
+    auto *d = impl_.get();
+    d->fd_sources.erase(std::remove_if(d->fd_sources.begin(), d->fd_sources.end(),
+                                       [&](Impl::FdSource const &s) { return s.fd == fd; }),
+                        d->fd_sources.end());
 }
 
 } // namespace toolkit

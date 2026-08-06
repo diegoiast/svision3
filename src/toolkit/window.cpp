@@ -272,6 +272,12 @@ void Window::show() {
     }
 }
 
+void Window::hide() {
+    if (impl_->platform) {
+        impl_->platform->hide();
+    }
+}
+
 static void on_theme_changed_recursive(Widget *w) {
     if (!w) {
         return;
