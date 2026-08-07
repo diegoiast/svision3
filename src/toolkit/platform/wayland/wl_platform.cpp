@@ -1246,7 +1246,7 @@ static bool wl_run_iteration(WaylandPlatformApplication *app) {
 
     // 2. Redraw windows that need it.
     for (auto *win : app->windows) {
-        if (win->configured && win->needs_redraw && !win->frame_cb) {
+        if (win->configured && win->mapped && win->needs_redraw && !win->frame_cb) {
             win->do_paint();
         }
     }
@@ -1559,6 +1559,10 @@ WaylandPlatformWindow::~WaylandPlatformWindow() {
 }
 
 void WaylandPlatformWindow::show() {
+    // Let the main loop paint (and thus request a frame callback) again --
+    // see hide() and the `mapped` field's comment for why painting was
+    // blocked while hidden.
+    mapped = true;
     // Force a repaint so hide()'s detached buffer gets replaced with a real
     // one again -- without this, a show() after hide() would just re-commit
     // a surface with no buffer attached and stay invisible.
@@ -1573,6 +1577,17 @@ void WaylandPlatformWindow::hide() {
     wl_surface_attach(surface, nullptr, 0, 0);
     wl_surface_commit(surface);
     wl_display_flush(app_->display);
+
+    // Stop the main loop from painting this window until show() is called
+    // again. An unmapped surface never fires the frame callback do_paint()
+    // requests, so painting while hidden -- which background timers trigger
+    // routinely via request_redraw() -- would leave frame_cb stuck forever,
+    // blocking every future repaint including the one show() needs.
+    mapped = false;
+    if (frame_cb) {
+        wl_callback_destroy(frame_cb);
+        frame_cb = nullptr;
+    }
 }
 
 void WaylandPlatformWindow::close() {
