@@ -81,6 +81,37 @@ class CoreGraphicsPainter : public Painter {
         CGContextFillPath(ctx_);
     }
 
+    void fill_polygon(std::vector<Point> const &points, Color const &color) override {
+        if (points.size() < 3) {
+            return;
+        }
+        CGContextSetLineDash(ctx_, 0, nullptr, 0);
+        CGContextSetRGBFillColor(ctx_, color.r, color.g, color.b, color.a);
+        CGContextBeginPath(ctx_);
+        CGContextMoveToPoint(ctx_, points[0].x, points[0].y);
+        for (size_t i = 1; i < points.size(); i++) {
+            CGContextAddLineToPoint(ctx_, points[i].x, points[i].y);
+        }
+        CGContextClosePath(ctx_);
+        CGContextFillPath(ctx_);
+    }
+
+    void draw_polyline(std::vector<Point> const &points, Color const &color, float lw) override {
+        if (points.size() < 2) {
+            return;
+        }
+        CGContextSetLineDash(ctx_, 0, nullptr, 0);
+        CGContextSetRGBStrokeColor(ctx_, color.r, color.g, color.b, color.a);
+        CGContextSetLineWidth(ctx_, lw);
+        apply_line_style(lw);
+        CGContextBeginPath(ctx_);
+        CGContextMoveToPoint(ctx_, points[0].x, points[0].y);
+        for (size_t i = 1; i < points.size(); i++) {
+            CGContextAddLineToPoint(ctx_, points[i].x, points[i].y);
+        }
+        CGContextStrokePath(ctx_);
+    }
+
     void draw_line(Point a, Point b, Color const &c, float lw) override {
         CGContextSetRGBStrokeColor(ctx_, c.r, c.g, c.b, c.a);
         CGContextSetLineWidth(ctx_, lw);

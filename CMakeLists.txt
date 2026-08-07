@@ -9,6 +9,7 @@ find_package(spdlog REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(lunasvg REQUIRED)
+find_package(CURL REQUIRED)
 
 if(UNIX AND NOT APPLE)
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" ON)
@@ -130,6 +131,16 @@ set(TOOLKIT_SOURCES
     src/toolkit/tray_icon_builder.cpp
     src/toolkit/status_bar.cpp
     src/toolkit/window_title_bar.cpp
+    src/toolkit/net/http.cpp
+    src/toolkit/charts/area_chart.cpp
+    src/toolkit/charts/bar_chart.cpp
+    src/toolkit/charts/candlestick_chart.cpp
+    src/toolkit/charts/chart_interaction.cpp
+    src/toolkit/charts/histogram.cpp
+    src/toolkit/charts/line_chart.cpp
+    src/toolkit/charts/pie_chart.cpp
+    src/toolkit/charts/scatter_plot.cpp
+    src/toolkit/charts/stacked_bar_chart.cpp
 )
 
 if(TOOLKIT_WITH_CAIRO)
@@ -341,7 +352,7 @@ endif()
 
 add_library(toolkit STATIC ${TOOLKIT_SOURCES})
 target_include_directories(toolkit PUBLIC include PRIVATE src src/nfd)
-target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus litehtml md4c::md4c-html nlohmann_json::nlohmann_json lunasvg::lunasvg)
+target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus litehtml md4c::md4c-html nlohmann_json::nlohmann_json lunasvg::lunasvg CURL::libcurl)
 
 if(NOT MSVC)
     # One function/variable per section, so --gc-sections (enabled per-executable
@@ -502,12 +513,20 @@ if(TOOLKIT_BUILD_DEMOS)
     endif()
     target_link_libraries(demo_declarative PRIVATE toolkit)
 
+    add_executable(stock_viewer demo/stock_viewer.cpp)
+    set_target_properties(stock_viewer PROPERTIES WIN32_EXECUTABLE ON)
+    if(WIN32)
+        set_target_properties(stock_viewer PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+    endif()
+    target_link_libraries(stock_viewer PRIVATE toolkit)
+
     if(NOT MSVC)
         # Drop unreferenced sections from libtoolkit.a (and any statically-linked
         # deps) at link time -- the library itself stays complete, this only
         # trims what each demo doesn't actually use.
         target_link_options(demo PRIVATE -Wl,--gc-sections)
         target_link_options(demo_declarative PRIVATE -Wl,--gc-sections)
+        target_link_options(stock_viewer PRIVATE -Wl,--gc-sections)
     endif()
     add_executable(demo_dock demo/demo_dock.cpp)
     set_target_properties(demo_dock PROPERTIES WIN32_EXECUTABLE ON)
@@ -610,6 +629,7 @@ add_executable(tests
     tests/test_main.cpp
     tests/test_menubar.cpp
     tests/test_new_image_api.cpp
+    tests/test_painter_polygon.cpp
     tests/test_progress_bar.cpp
     tests/test_radio_button.cpp
     tests/test_scroll_area_drag.cpp

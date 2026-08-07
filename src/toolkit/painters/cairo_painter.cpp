@@ -146,6 +146,20 @@ void CairoPainter::fill_triangle(Point a, Point b, Point c, Color const &color) 
     cairo_fill(cr_);
 }
 
+void CairoPainter::fill_polygon(std::vector<Point> const &points, Color const &color) {
+    if (points.size() < 3) {
+        return;
+    }
+    cairo_new_path(cr_);
+    cairo_move_to(cr_, points[0].x, points[0].y);
+    for (size_t i = 1; i < points.size(); i++) {
+        cairo_line_to(cr_, points[i].x, points[i].y);
+    }
+    cairo_close_path(cr_);
+    cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
+    cairo_fill(cr_);
+}
+
 void CairoPainter::draw_line(Point from, Point to, Color const &color, float line_width) {
     cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
     cairo_set_line_width(cr_, line_width);
@@ -153,6 +167,21 @@ void CairoPainter::draw_line(Point from, Point to, Color const &color, float lin
     cairo_line_to(cr_, to.x, to.y);
     cairo_stroke(cr_);
 }
+void CairoPainter::draw_polyline(std::vector<Point> const &points, Color const &color,
+                                 float line_width) {
+    if (points.size() < 2) {
+        return;
+    }
+    cairo_new_path(cr_);
+    cairo_move_to(cr_, points[0].x, points[0].y);
+    for (size_t i = 1; i < points.size(); i++) {
+        cairo_line_to(cr_, points[i].x, points[i].y);
+    }
+    cairo_set_source_rgba(cr_, color.r, color.g, color.b, color.a);
+    cairo_set_line_width(cr_, line_width);
+    cairo_stroke(cr_);
+}
+
 void CairoPainter::fill_circle(Point center, float radius, Color const &color) {
     cairo_new_path(cr_);
     cairo_arc(cr_, center.x, center.y, radius, 0, 2 * M_PI);

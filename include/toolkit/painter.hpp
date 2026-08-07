@@ -6,6 +6,7 @@
 #include "toolkit/image.hpp"
 #include "toolkit/types.hpp"
 #include <string_view>
+#include <vector>
 
 namespace toolkit {
 
@@ -51,7 +52,17 @@ class Painter {
     virtual void draw_rounded_rect(Rect const &rect, Color const &color, float radius,
                                    float line_width = 1.0f) = 0;
     virtual void fill_triangle(Point a, Point b, Point c, Color const &color) = 0;
+    // Fills a simple (non-self-intersecting) polygon, convex or concave. Default
+    // implementation triangulates via fill_triangle(); backends with a native
+    // path-fill API (cairo, GDI+, CoreGraphics) should override for quality/perf.
+    virtual void fill_polygon(std::vector<Point> const &points, Color const &color);
     virtual void draw_line(Point from, Point to, Color const &color, float line_width = 1.0f) = 0;
+    // Strokes a connected line strip. Default implementation is a loop of
+    // draw_line(); backends with a native multi-point path API (cairo, GDI+,
+    // CoreGraphics) should override -- a single stroked path gives cleaner
+    // joins than independently-capped segments.
+    virtual void draw_polyline(std::vector<Point> const &points, Color const &color,
+                               float line_width = 1.0f);
     virtual void fill_circle(Point center, float radius, Color const &color) = 0;
     virtual void draw_circle(Point center, float radius, Color const &color,
                              float line_width = 1.0f) = 0;

@@ -607,6 +607,23 @@ void GDIPainter::fill_triangle(Point a, Point b, Point c, Color const &color) {
     impl_->graphics->FillPolygon(&brush, pts, 3);
 }
 
+void GDIPainter::fill_polygon(std::vector<Point> const &points, Color const &color) {
+    if (points.size() < 3) {
+        return;
+    }
+    auto s = impl_->scale;
+    auto snap = [s](Point p) {
+        return Gdiplus::PointF(std::floor(p.x * s) / s, std::floor(p.y * s) / s);
+    };
+    std::vector<Gdiplus::PointF> pts;
+    pts.reserve(points.size());
+    for (auto const &p : points) {
+        pts.push_back(snap(p));
+    }
+    Gdiplus::SolidBrush brush(to_gdiplus_color(color));
+    impl_->graphics->FillPolygon(&brush, pts.data(), static_cast<int>(pts.size()));
+}
+
 void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     auto s = impl_->scale;
     auto slw = std::max(1.0f, std::round(lw * s)) / s;
@@ -653,6 +670,23 @@ void GDIPainter::draw_line(Point a, Point b, Color const &c, float lw) {
     if (axis_aligned) {
         impl_->graphics->SetSmoothingMode(old);
     }
+}
+
+void GDIPainter::draw_polyline(std::vector<Point> const &points, Color const &color, float lw) {
+    if (points.size() < 2) {
+        return;
+    }
+    auto s = impl_->scale;
+    auto slw = std::max(1.0f, std::round(lw * s)) / s;
+    std::vector<Gdiplus::PointF> pts;
+    pts.reserve(points.size());
+    for (auto const &p : points) {
+        pts.push_back(Gdiplus::PointF((std::floor(p.x * s) + 0.5f) / s,
+                                      (std::floor(p.y * s) + 0.5f) / s));
+    }
+    Gdiplus::Pen pen(to_gdiplus_color(color), slw);
+    apply_line_style(pen, impl_->line_style, slw);
+    impl_->graphics->DrawLines(&pen, pts.data(), static_cast<int>(pts.size()));
 }
 
 void GDIPainter::fill_circle(Point center, float radius, Color const &c) {

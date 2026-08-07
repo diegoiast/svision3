@@ -63,6 +63,7 @@ class SvisionRecipe(ConanFile):
         self.requires("md4c/0.5.2")
         self.requires("nlohmann_json/3.11.3")
         self.requires("lunasvg/3.5.0")
+        self.requires("libcurl/8.21.0")
 
         if self.settings.os == "Linux":
             self.requires("stb/cci.20240213")
