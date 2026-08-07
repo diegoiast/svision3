@@ -226,6 +226,15 @@ class WaylandPlatformWindow : public PlatformWindow {
     float scale = 1.0f;
     bool configured = false;
     bool needs_redraw = true;
+    // False between hide() and show(). An unmapped surface never fires the
+    // frame callback do_paint() requests (frame callbacks schedule the next
+    // *presented* frame, and an unmapped surface isn't being presented), so
+    // painting while hidden -- which happens routinely from background
+    // timers calling request_redraw() -- would leave frame_cb stuck forever,
+    // blocking every future repaint including the one show() needs. The main
+    // loop's redraw check gates on this so no paint (and thus no frame_cb
+    // request) happens until show() sets it back.
+    bool mapped = true;
     // See x11_platform.cpp's identical flag for the full rationale: Window::maximize()/restore()
     // flip is_maximized_ synchronously at click time (so the button icon updates immediately),
     // but the compositor's xdg_toplevel_configure/xdg_surface_configure round-trip that actually
