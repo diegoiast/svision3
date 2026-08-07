@@ -39,7 +39,10 @@ class CairoPainter : public Painter {
     void draw_rounded_rect(Rect const &rect, Color const &color, float radius,
                            float line_width) override;
     void fill_triangle(Point a, Point b, Point c, Color const &color) override;
+    void fill_polygon(std::vector<Point> const &points, Color const &color) override;
     void draw_line(Point from, Point to, Color const &color, float line_width) override;
+    void draw_polyline(std::vector<Point> const &points, Color const &color,
+                       float line_width) override;
     void fill_circle(Point center, float radius, Color const &color) override;
     void draw_circle(Point center, float radius, Color const &color, float line_width) override;
     void draw_image(ImageData const &image, Point position) override;

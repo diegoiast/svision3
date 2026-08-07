@@ -118,6 +118,104 @@ void Painter::draw_focus_ring(Rect const &rect, float corner_radius) {
     }
 }
 
+namespace {
+
+float cross(Point const &o, Point const &a, Point const &b) {
+    return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+bool point_in_triangle(Point const &p, Point const &a, Point const &b, Point const &c) {
+    auto d1 = cross(p, a, b);
+    auto d2 = cross(p, b, c);
+    auto d3 = cross(p, c, a);
+    auto has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    auto has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+    return !(has_neg && has_pos);
+}
+
+} // namespace
+
+void Painter::fill_polygon(std::vector<Point> const &points, Color const &color) {
+    if (points.size() < 3) {
+        return;
+    }
+    if (points.size() == 3) {
+        fill_triangle(points[0], points[1], points[2], color);
+        return;
+    }
+
+    std::vector<int> idx(points.size());
+    for (auto i = size_t{0}; i < points.size(); i++) {
+        idx[i] = static_cast<int>(i);
+    }
+
+    auto area = 0.0f;
+    for (auto i = size_t{0}; i < points.size(); i++) {
+        auto const &a = points[i];
+        auto const &b = points[(i + 1) % points.size()];
+        area += a.x * b.y - b.x * a.y;
+    }
+    auto ccw = area > 0.0f;
+
+    // Ear-clipping: repeatedly cut off a convex vertex that contains no other
+    // remaining vertex, leaving a smaller simple polygon behind.
+    auto guard = idx.size() * idx.size() + 8;
+    while (idx.size() > 3 && guard-- > 0) {
+        auto clipped = false;
+        for (auto i = size_t{0}; i < idx.size(); i++) {
+            auto i_prev = (i + idx.size() - 1) % idx.size();
+            auto i_next = (i + 1) % idx.size();
+            auto const &a = points[static_cast<size_t>(idx[i_prev])];
+            auto const &b = points[static_cast<size_t>(idx[i])];
+            auto const &c = points[static_cast<size_t>(idx[i_next])];
+            auto convex = ccw ? cross(a, b, c) > 0.0f : cross(a, b, c) < 0.0f;
+
+            if (!convex) {
+                continue;
+            }
+
+            auto any_inside = false;
+            for (auto k = size_t{0}; k < idx.size(); k++) {
+                if (k == i_prev || k == i || k == i_next) {
+                    continue;
+                }
+                if (point_in_triangle(points[static_cast<size_t>(idx[k])], a, b, c)) {
+                    any_inside = true;
+                    break;
+                }
+            }
+            if (any_inside) {
+                continue;
+            }
+
+            fill_triangle(a, b, c, color);
+            idx.erase(idx.begin() + static_cast<long>(i));
+            clipped = true;
+            break;
+        }
+        if (!clipped) {
+            // Degenerate or self-intersecting input: fall back to a fan so we
+            // still cover the remaining area instead of leaving a hole.
+            break;
+        }
+    }
+
+    if (idx.size() >= 3) {
+        auto const &anchor = points[static_cast<size_t>(idx[0])];
+        for (auto i = size_t{1}; i + 1 < idx.size(); i++) {
+            fill_triangle(anchor, points[static_cast<size_t>(idx[i])],
+                          points[static_cast<size_t>(idx[i + 1])], color);
+        }
+    }
+}
+
+void Painter::draw_polyline(std::vector<Point> const &points, Color const &color,
+                            float line_width) {
+    for (size_t i = 0; i + 1 < points.size(); i++) {
+        draw_line(points[i], points[i + 1], color, line_width);
+    }
+}
+
 float Painter::snap_to_pixel(float val, float scale) {
     if (scale <= 0.0f) {
         return val;
