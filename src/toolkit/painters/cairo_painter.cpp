@@ -1,6 +1,7 @@
 #ifdef TOOLKIT_HAS_CAIRO
 #include "toolkit/painters/cairo_painter.hpp"
 #include "toolkit/pixel_format.hpp"
+#include "toolkit/platform.hpp"
 #include "toolkit/text/bidi.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
@@ -313,7 +314,8 @@ Icon cairo_capture(Window *window) {
     auto ph = static_cast<int>(std::ceil(lh * scale));
     auto surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pw, ph);
     auto cr = cairo_create(surf);
-    auto painter = CairoPainter(cr);
+    auto *plat = detail::current_platform();
+    auto painter = CairoPainter(cr, plat ? plat->rasterizer() : nullptr);
 
     cairo_scale(cr, scale, scale);
     window->handle_paint(painter);
