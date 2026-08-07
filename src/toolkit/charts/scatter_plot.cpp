@@ -2,12 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/charts/scatter_plot.hpp"
+#include "toolkit/charts/chart_defaults.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
+#include <fmt/format.h>
+#include <limits>
 #include <nlohmann/json.hpp>
 
 namespace toolkit {
@@ -23,15 +25,15 @@ void ScatterPlot::clear_series() {
 }
 
 ScatterPlot::PlotArea ScatterPlot::compute_plot_area() const {
-    auto legend_space = (show_legend_ && !series_.empty()) ? kLegendHeight : 0;
+    auto legend_space = (show_legend_ && !series_.empty()) ? chart_defaults::kLegendHeight : 0;
     auto title_space = title_.empty() ? 0.0f : 8.0f;
     auto y_label_space = y_label_.empty() ? 0.0f : 18.0f;
 
     PlotArea pa{};
-    pa.x = rect_.x + kMarginLeft + y_label_space;
-    pa.y = rect_.y + kMarginTop + title_space;
-    pa.w = rect_.width - kMarginLeft - kMarginRight - y_label_space;
-    pa.h = rect_.height - kMarginTop - kMarginBottom - legend_space - title_space;
+    pa.x = rect_.x + chart_defaults::kMarginLeftNarrow + y_label_space;
+    pa.y = rect_.y + chart_defaults::kMarginTop + title_space;
+    pa.w = rect_.width - chart_defaults::kMarginLeftNarrow - chart_defaults::kMarginRight - y_label_space;
+    pa.h = rect_.height - chart_defaults::kMarginTop - chart_defaults::kMarginBottom - legend_space - title_space;
     if (pa.w < 1) {
         pa.w = 1;
     }
@@ -62,7 +64,7 @@ ScatterPlot::PlotArea ScatterPlot::compute_plot_area() const {
 
     if (!first) {
         auto x_range = pa.data_x_max - pa.data_x_min;
-        if (x_range < 1e-6f) {
+        if (x_range < chart_defaults::kMinDataRange) {
             x_range = 1.0f;
         }
         auto x_pad = x_range * 0.08f;
@@ -70,7 +72,7 @@ ScatterPlot::PlotArea ScatterPlot::compute_plot_area() const {
         pa.data_x_max += x_pad;
 
         auto y_range = pa.data_y_max - pa.data_y_min;
-        if (y_range < 1e-6f) {
+        if (y_range < chart_defaults::kMinDataRange) {
             y_range = 1.0f;
         }
         auto y_pad = y_range * 0.08f;
@@ -136,7 +138,7 @@ void ScatterPlot::paint(Painter &painter) {
     if (!title_.empty()) {
         auto ts = painter.measure_text(title_, font_size + 2);
         auto tx = pa.x + (pa.w - ts.width) / 2;
-        auto ty = rect_.y + kMarginTop - 4;
+        auto ty = rect_.y + chart_defaults::kMarginTop - 4;
         painter.draw_text(title_, {tx, ty}, text_color, font_size + 2);
     }
 
@@ -152,7 +154,7 @@ void ScatterPlot::paint(Painter &painter) {
     if (!x_label_.empty()) {
         auto xs = painter.measure_text(x_label_, small_font);
         auto lx = pa.x + (pa.w - xs.width) / 2;
-        auto ly = pa.y + pa.h + kMarginBottom - 14;
+        auto ly = pa.y + pa.h + chart_defaults::kMarginBottom - 14;
         painter.draw_text(x_label_, {lx, ly}, text_color, small_font);
     }
 
@@ -174,9 +176,7 @@ void ScatterPlot::paint(Painter &painter) {
             }
         }
 
-        // FIXME: fmt
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%.4g", static_cast<double>(yv));
+        auto buf = fmt::format("{:.4g}", yv);
         auto ts = painter.measure_text(buf, small_font);
         auto lx = pa.x - ts.width - 6;
         painter.draw_text(buf, {lx, sy + ts.height / 3}, text_color, small_font);
@@ -200,9 +200,7 @@ void ScatterPlot::paint(Painter &painter) {
             }
         }
 
-        // FIXME: fmt
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%.4g", static_cast<double>(xv));
+        auto buf = fmt::format("{:.4g}", xv);
         auto ts = painter.measure_text(buf, small_font);
         auto lx = sx - ts.width / 2;
         auto ly = pa.y + pa.h + 4 + ts.height;
@@ -249,12 +247,8 @@ void ScatterPlot::paint(Painter &painter) {
 
             auto const &dp = s.points[hover_->point_idx];
 
-            // FIXME: fmt
-            char buf[128];
-            std::snprintf(buf, sizeof(buf), "%s  x:%.4g  y:%.4g",
-                          dp.label.empty() ? s.name.c_str() : dp.label.c_str(),
-                          static_cast<double>(dp.x), static_cast<double>(dp.y));
-            std::string tip = buf;
+            auto tip = fmt::format("{}  x:{:.4g}  y:{:.4g}", dp.label.empty() ? s.name : dp.label,
+                                   dp.x, dp.y);
             auto ts = painter.measure_text(tip, small_font);
             auto tip_fm = painter.font_metrics(small_font);
             float tw = ts.width + 12, th = ts.height + 8;
@@ -275,7 +269,7 @@ void ScatterPlot::paint(Painter &painter) {
     // Legend
     if (show_legend_ && !series_.empty()) {
         auto lx = pa.x;
-        auto ly = pa.y + pa.h + kMarginBottom - 4;
+        auto ly = pa.y + pa.h + chart_defaults::kMarginBottom - 4;
         for (auto const &s : series_) {
             painter.fill_circle({lx + 4, ly}, 4, s.color);
             lx += 12;
@@ -359,8 +353,7 @@ bool ScatterPlot::handle_mouse(MouseEvent const &event) {
             return false;
         }
 
-        // FIXME: this should be  maxfloat?
-        auto best_dist2 = 1e9f;
+        auto best_dist2 = std::numeric_limits<float>::max();
         std::optional<HoverInfo> best;
         for (auto si = size_t{0}; si < series_.size(); si++) {
             for (auto pi = size_t{0}; pi < series_[si].points.size(); pi++) {

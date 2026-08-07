@@ -1,4 +1,5 @@
 #include "toolkit/charts/bar_chart.hpp"
+#include "toolkit/charts/chart_defaults.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
@@ -20,15 +21,15 @@ void BarChart::clear_series() {
 }
 
 BarChart::PlotArea BarChart::compute_plot_area() const {
-    auto legend_space = (show_legend_ && !series_.empty()) ? kLegendHeight : 0.0f;
+    auto legend_space = (show_legend_ && !series_.empty()) ? chart_defaults::kLegendHeight : 0.0f;
     auto title_space = title_.empty() ? 0.0f : 8.0f;
     auto y_label_space = y_label_.empty() ? 0.0f : 18.0f;
 
     PlotArea pa{};
-    pa.x = rect_.x + kMarginLeft + y_label_space;
-    pa.y = rect_.y + kMarginTop + title_space;
-    pa.w = rect_.width - kMarginLeft - kMarginRight - y_label_space;
-    pa.h = rect_.height - kMarginTop - kMarginBottom - legend_space - title_space;
+    pa.x = rect_.x + chart_defaults::kMarginLeftWide + y_label_space;
+    pa.y = rect_.y + chart_defaults::kMarginTop + title_space;
+    pa.w = rect_.width - chart_defaults::kMarginLeftWide - chart_defaults::kMarginRight - y_label_space;
+    pa.h = rect_.height - chart_defaults::kMarginTop - chart_defaults::kMarginBottom - legend_space - title_space;
     if (pa.w < 1) {
         pa.w = 1;
     }
@@ -59,7 +60,7 @@ BarChart::PlotArea BarChart::compute_plot_area() const {
         auto pad = pa.data_y_max * 0.05f;
         pa.data_y_min = 0;
         pa.data_y_max += pad;
-        if (pa.data_x_max - pa.data_x_min < 1e-6f) {
+        if (pa.data_x_max - pa.data_x_min < chart_defaults::kMinDataRange) {
             pa.data_x_max = pa.data_x_min + 1;
         }
     }
@@ -107,16 +108,16 @@ void BarChart::compute_nice_ticks(float min_val, float max_val, int target_count
 }
 
 static std::string format_volume(float v) {
-    if (v >= 1e9f) {
-        return fmt::format("{:.1f}B", static_cast<double>(v / 1e9f));
+    if (v >= chart_defaults::kBillion) {
+        return fmt::format("{:.1f}B", v / chart_defaults::kBillion);
     }
-    if (v >= 1e6f) {
-        return fmt::format("{:.1f}M", static_cast<double>(v / 1e6f));
+    if (v >= chart_defaults::kMillion) {
+        return fmt::format("{:.1f}M", v / chart_defaults::kMillion);
     }
-    if (v >= 1e3f) {
-        return fmt::format("{:.0f}K", static_cast<double>(v / 1e3f));
+    if (v >= chart_defaults::kThousand) {
+        return fmt::format("{:.0f}K", v / chart_defaults::kThousand);
     }
-    return fmt::format("{:.0f}", static_cast<double>(v));
+    return fmt::format("{:.0f}", v);
 }
 
 void BarChart::paint(Painter &painter) {
@@ -135,7 +136,7 @@ void BarChart::paint(Painter &painter) {
     if (!title_.empty()) {
         auto ts = painter.measure_text(title_, font_size + 2);
         float tx = pa.x + (pa.w - ts.width) / 2;
-        float ty = rect_.y + kMarginTop - 4;
+        float ty = rect_.y + chart_defaults::kMarginTop - 4;
         painter.draw_text(title_, {tx, ty}, text_color, font_size + 2);
     }
 
@@ -151,7 +152,7 @@ void BarChart::paint(Painter &painter) {
     if (!x_label_.empty()) {
         auto xs = painter.measure_text(x_label_, small_font);
         float lx = pa.x + (pa.w - xs.width) / 2;
-        float ly = pa.y + pa.h + kMarginBottom - 14;
+        float ly = pa.y + pa.h + chart_defaults::kMarginBottom - 14;
         painter.draw_text(x_label_, {lx, ly}, text_color, small_font);
     }
 
@@ -285,7 +286,7 @@ void BarChart::paint(Painter &painter) {
     // Legend
     if (show_legend_ && !series_.empty()) {
         float lx = pa.x;
-        float ly = pa.y + pa.h + kMarginBottom - 4;
+        float ly = pa.y + pa.h + chart_defaults::kMarginBottom - 4;
         for (auto const &s : series_) {
             painter.fill_rect({lx, ly - 4, 12, 8}, s.default_color);
             lx += 16;

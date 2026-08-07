@@ -51,12 +51,6 @@ class ScatterPlot : public Widget {
     std::function<void(size_t series_idx, size_t point_idx)> on_hover;
 
   private:
-    static constexpr float kMarginLeft = 60;
-    static constexpr float kMarginRight = 16;
-    static constexpr float kMarginTop = 30;
-    static constexpr float kMarginBottom = 50;
-    static constexpr float kLegendHeight = 20;
-
     mutable ChartInteraction interaction_;
 
     std::vector<ScatterSeries> series_;

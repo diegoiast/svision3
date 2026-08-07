@@ -2,12 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/charts/line_chart.hpp"
+#include "toolkit/charts/chart_defaults.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <fmt/format.h>
+#include <limits>
 #include <nlohmann/json.hpp>
 
 namespace toolkit {
@@ -23,15 +26,15 @@ void LineChart::clear_series() {
 }
 
 LineChart::PlotArea LineChart::compute_plot_area() const {
-    auto legend_space = (show_legend_ && !series_.empty()) ? kLegendHeight : 0;
+    auto legend_space = (show_legend_ && !series_.empty()) ? chart_defaults::kLegendHeight : 0;
     auto title_space = title_.empty() ? 0 : 8;
     auto y_label_space = y_label_.empty() ? 0 : 18;
 
     PlotArea pa{};
-    pa.x = rect_.x + kMarginLeft + y_label_space;
-    pa.y = rect_.y + kMarginTop + title_space;
-    pa.w = rect_.width - kMarginLeft - kMarginRight - y_label_space;
-    pa.h = rect_.height - kMarginTop - kMarginBottom - legend_space - title_space;
+    pa.x = rect_.x + chart_defaults::kMarginLeftNarrow + y_label_space;
+    pa.y = rect_.y + chart_defaults::kMarginTop + title_space;
+    pa.w = rect_.width - chart_defaults::kMarginLeftNarrow - chart_defaults::kMarginRight - y_label_space;
+    pa.h = rect_.height - chart_defaults::kMarginTop - chart_defaults::kMarginBottom - legend_space - title_space;
 
     if (pa.w < 1) {
         pa.w = 1;
@@ -73,14 +76,14 @@ LineChart::PlotArea LineChart::compute_plot_area() const {
 
         // 5% padding on y-axis
         auto y_range = pa.data_y_max - pa.data_y_min;
-        if (y_range < 1e-6f) {
+        if (y_range < chart_defaults::kMinDataRange) {
             y_range = 1.0f;
         }
         auto pad = y_range * 0.05f;
         pa.data_y_min -= pad;
         pa.data_y_max += pad;
 
-        if (pa.data_x_max - pa.data_x_min < 1e-6f) {
+        if (pa.data_x_max - pa.data_x_min < chart_defaults::kMinDataRange) {
             pa.data_x_max = pa.data_x_min + 1;
         }
     }
@@ -146,7 +149,7 @@ void LineChart::paint(Painter &painter) {
     if (!title_.empty()) {
         auto ts = painter.measure_text(title_, font_size + 2);
         auto tx = pa.x + (pa.w - ts.width) / 2;
-        auto ty = rect_.y + kMarginTop - 4;
+        auto ty = rect_.y + chart_defaults::kMarginTop - 4;
         painter.draw_text(title_, {tx, ty}, text_color, font_size + 2);
     }
 
@@ -162,7 +165,7 @@ void LineChart::paint(Painter &painter) {
     if (!x_label_.empty()) {
         auto xs = painter.measure_text(x_label_, small_font);
         auto lx = pa.x + (pa.w - xs.width) / 2;
-        auto ly = pa.y + pa.h + kMarginBottom - 14;
+        auto ly = pa.y + pa.h + chart_defaults::kMarginBottom - 14;
         painter.draw_text(x_label_, {lx, ly}, text_color, small_font);
     }
 
@@ -278,14 +281,8 @@ void LineChart::paint(Painter &painter) {
             // Tooltip box
             auto const &dp = s.points[hover_->point_idx];
 
-            // FIXME: fmt
-            char val_buf[64];
-            std::snprintf(val_buf, sizeof(val_buf), "%.2f", static_cast<double>(dp.y));
-            std::string tip = s.name;
-            if (!dp.label.empty()) {
-                tip += "  " + dp.label;
-            }
-            tip += std::string("  ") + val_buf;
+            auto tip = dp.label.empty() ? fmt::format("{}  {:.2f}", s.name, dp.y)
+                                        : fmt::format("{}  {}  {:.2f}", s.name, dp.label, dp.y);
 
             auto ts = painter.measure_text(tip, small_font);
             auto tip_fm = painter.font_metrics(small_font);
@@ -309,7 +306,7 @@ void LineChart::paint(Painter &painter) {
     // Legend
     if (show_legend_ && !series_.empty()) {
         auto lx = pa.x;
-        auto ly = pa.y + pa.h + kMarginBottom - 4;
+        auto ly = pa.y + pa.h + chart_defaults::kMarginBottom - 4;
         for (auto const &s : series_) {
             painter.draw_line({lx, ly}, {lx + 16, ly}, s.color, 2.0f);
             lx += 20;
@@ -395,8 +392,7 @@ bool LineChart::handle_mouse(MouseEvent const &event) {
             return false;
         }
 
-        // FIXME: should this be -inf? we have constants
-        auto best_dist2 = 1e9f;
+        auto best_dist2 = std::numeric_limits<float>::max();
         std::optional<HoverInfo> best;
         for (size_t si = 0; si < series_.size(); si++) {
             auto const &pts = series_[si].points;

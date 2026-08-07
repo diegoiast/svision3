@@ -7,7 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
+#include <fmt/format.h>
 #include <nlohmann/json.hpp>
 
 namespace toolkit {
@@ -69,11 +69,14 @@ void PieChart::paint(Painter &painter) {
     }
     auto inner_radius = donut_ ? radius * 0.55f : 0;
     auto constexpr kSegments = 64;
+    // Smallest slice sweep (radians) worth drawing; below this the slice is a
+    // sliver too thin to render meaningfully.
+    auto constexpr kMinSweep = 1e-5f;
     auto angle = static_cast<float>(-M_PI / 2);
 
     for (auto si = size_t{0}; si < slices_.size(); si++) {
         auto sweep = (slices_[si].value / total) * 2.0f * static_cast<float>(M_PI);
-        if (sweep < 1e-5f) {
+        if (sweep < kMinSweep) {
             continue;
         }
 
@@ -83,9 +86,8 @@ void PieChart::paint(Painter &painter) {
             r += 6;
         }
 
-        // FIXME this is a double, should be a float
-        auto n_segs = std::max(4.0, kSegments * (sweep / (2 * M_PI)));
-        auto seg_step = sweep / n_segs;
+        auto n_segs = std::max(4, static_cast<int>(kSegments * (sweep / (2 * M_PI))));
+        auto seg_step = sweep / static_cast<float>(n_segs);
         if (donut_) {
             float ir = inner_radius;
             if (hovered) {
@@ -95,7 +97,7 @@ void PieChart::paint(Painter &painter) {
             // Build polygon: outer arc forward, then inner arc backward
             std::vector<Point> poly;
             poly.reserve(2 * (n_segs + 1) + 1);
-            for (auto j = size_t{0}; j <= n_segs; j++) {
+            for (auto j = 0; j <= n_segs; j++) {
                 auto a = angle + seg_step * j;
                 poly.push_back({cx + std::cos(a) * r, cy + std::sin(a) * r});
             }
@@ -134,9 +136,7 @@ void PieChart::paint(Painter &painter) {
             auto ly = cy + std::sin(mid_angle) * label_r;
             auto pct = slices_[si].value / total * 100;
 
-            // FIXME: port to fmt::format
-            char buf[32];
-            std::snprintf(buf, sizeof(buf), "%.1f%%", static_cast<double>(pct));
+            auto buf = fmt::format("{:.1f}%", pct);
             auto ts = painter.measure_text(buf, small_font);
             painter.draw_text(buf, {lx - ts.width / 2, ly + ts.height / 3}, Color::rgb(1, 1, 1),
                               small_font);
@@ -150,11 +150,7 @@ void PieChart::paint(Painter &painter) {
         auto const &s = slices_[*hover_idx_];
         auto pct = s.value / total * 100;
 
-        // FIXME: port to FMT
-        char buf[128];
-        std::snprintf(buf, sizeof(buf), "%s: %.2f (%.1f%%)", s.label.c_str(),
-                      static_cast<double>(s.value), static_cast<double>(pct));
-        auto tip = buf;
+        auto tip = fmt::format("{}: {:.2f} ({:.1f}%)", s.label, s.value, pct);
         auto ts = painter.measure_text(tip, small_font);
         auto tip_fm = painter.font_metrics(small_font);
         auto tw = ts.width + 12, th = ts.height + 8;

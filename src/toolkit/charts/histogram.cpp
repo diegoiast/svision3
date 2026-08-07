@@ -2,12 +2,13 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/charts/histogram.hpp"
+#include "toolkit/charts/chart_defaults.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
+#include <fmt/format.h>
 #include <nlohmann/json.hpp>
 
 namespace toolkit {
@@ -39,7 +40,11 @@ std::vector<Histogram::BinnedSeries> Histogram::compute_bins() const {
         }
     }
 
-    if (global_max - global_min < 1e-9f) {
+    // Tighter than chart_defaults::kMinDataRange -- bin widths already divide this
+    // span by bin_count_, so a looser epsilon could reject legitimately small but
+    // valid ranges.
+    constexpr auto kMinDataRange = 1e-9f;
+    if (global_max - global_min < kMinDataRange) {
         global_min -= 0.5f;
         global_max += 0.5f;
     }
@@ -77,15 +82,15 @@ std::vector<Histogram::BinnedSeries> Histogram::compute_bins() const {
 }
 
 Histogram::PlotArea Histogram::compute_plot_area(std::vector<BinnedSeries> const &binned) const {
-    auto legend_space = (show_legend_ && !series_.empty()) ? kLegendHeight : 0.0f;
+    auto legend_space = (show_legend_ && !series_.empty()) ? chart_defaults::kLegendHeight : 0.0f;
     auto title_space = title_.empty() ? 0.0f : 8.0f;
     auto y_label_space = y_label_.empty() ? 0.0f : 18.0f;
 
     PlotArea pa{};
-    pa.x = rect_.x + kMarginLeft + y_label_space;
-    pa.y = rect_.y + kMarginTop + title_space;
-    pa.w = rect_.width - kMarginLeft - kMarginRight - y_label_space;
-    pa.h = rect_.height - kMarginTop - kMarginBottom - legend_space - title_space;
+    pa.x = rect_.x + chart_defaults::kMarginLeftNarrow + y_label_space;
+    pa.y = rect_.y + chart_defaults::kMarginTop + title_space;
+    pa.w = rect_.width - chart_defaults::kMarginLeftNarrow - chart_defaults::kMarginRight - y_label_space;
+    pa.h = rect_.height - chart_defaults::kMarginTop - chart_defaults::kMarginBottom - legend_space - title_space;
     if (pa.w < 1) {
         pa.w = 1;
     }
@@ -174,7 +179,7 @@ void Histogram::paint(Painter &painter) {
     if (!title_.empty()) {
         auto ts = painter.measure_text(title_, font_size + 2);
         auto tx = pa.x + (pa.w - ts.width) / 2;
-        auto ty = rect_.y + kMarginTop - 4;
+        auto ty = rect_.y + chart_defaults::kMarginTop - 4;
         painter.draw_text(title_, {tx, ty}, text_color, font_size + 2);
     }
 
@@ -190,7 +195,7 @@ void Histogram::paint(Painter &painter) {
     if (!x_label_.empty()) {
         auto xs = painter.measure_text(x_label_, small_font);
         auto lx = pa.x + (pa.w - xs.width) / 2;
-        auto ly = pa.y + pa.h + kMarginBottom - 14;
+        auto ly = pa.y + pa.h + chart_defaults::kMarginBottom - 14;
         painter.draw_text(x_label_, {lx, ly}, text_color, small_font);
     }
 
@@ -212,9 +217,7 @@ void Histogram::paint(Painter &painter) {
             }
         }
 
-        // FIXME use fmt?
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%.4g", static_cast<double>(yv));
+        auto buf = fmt::format("{:.4g}", yv);
         auto ts = painter.measure_text(buf, small_font);
         auto lx = pa.x - ts.width - 6;
         painter.draw_text(buf, {lx, sy + ts.height / 3}, text_color, small_font);
@@ -228,9 +231,7 @@ void Histogram::paint(Painter &painter) {
         if (sx < pa.x - 1 || sx > pa.x + pa.w + 1) {
             continue;
         }
-        // FIXME use fmt?
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%.4g", static_cast<double>(xv));
+        auto buf = fmt::format("{:.4g}", xv);
         auto ts = painter.measure_text(buf, small_font);
         auto lx = sx - ts.width / 2;
         auto ly = pa.y + pa.h + 4 + ts.height;
@@ -286,11 +287,8 @@ void Histogram::paint(Painter &painter) {
             auto cross_color = Color::rgba(text_color.r, text_color.g, text_color.b, 0.3f);
             painter.draw_line({sx, pa.y}, {sx, pa.y + pa.h}, cross_color, 1.0f);
 
-            // FIXME use fmt
-            char buf[128];
-            std::snprintf(buf, sizeof(buf), "%s  [%.2f, %.2f)  count: %d", bs.name.c_str(),
-                          static_cast<double>(b.low), static_cast<double>(b.high), b.count);
-            std::string tip = buf;
+            auto tip = fmt::format("{}  [{:.2f}, {:.2f})  count: {}", bs.name, b.low, b.high,
+                                   b.count);
 
             auto ts = painter.measure_text(tip, small_font);
             auto tip_fm = painter.font_metrics(small_font);
@@ -312,7 +310,7 @@ void Histogram::paint(Painter &painter) {
     // Legend
     if (show_legend_ && binned.size() > 1) {
         auto lx = pa.x;
-        auto ly = pa.y + pa.h + kMarginBottom - 4;
+        auto ly = pa.y + pa.h + chart_defaults::kMarginBottom - 4;
         for (auto const &bs : binned) {
             painter.fill_rect({lx, ly - 4, 12, 8}, bs.color);
             lx += 16;

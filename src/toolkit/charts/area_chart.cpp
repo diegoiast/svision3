@@ -2,12 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/charts/area_chart.hpp"
+#include "toolkit/charts/chart_defaults.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <nlohmann/json.hpp>
 
 namespace toolkit {
@@ -23,15 +25,15 @@ void AreaChart::clear_series() {
 }
 
 AreaChart::PlotArea AreaChart::compute_plot_area() const {
-    auto legend_space = (show_legend_ && !series_.empty()) ? kLegendHeight : 0;
+    auto legend_space = (show_legend_ && !series_.empty()) ? chart_defaults::kLegendHeight : 0;
     auto title_space = title_.empty() ? 0.0f : 8.0f;
     auto y_label_space = y_label_.empty() ? 0.0f : 18.0f;
 
     PlotArea pa{};
-    pa.x = rect_.x + kMarginLeft + y_label_space;
-    pa.y = rect_.y + kMarginTop + title_space;
-    pa.w = rect_.width - kMarginLeft - kMarginRight - y_label_space;
-    pa.h = rect_.height - kMarginTop - kMarginBottom - legend_space - title_space;
+    pa.x = rect_.x + chart_defaults::kMarginLeftNarrow + y_label_space;
+    pa.y = rect_.y + chart_defaults::kMarginTop + title_space;
+    pa.w = rect_.width - chart_defaults::kMarginLeftNarrow - chart_defaults::kMarginRight - y_label_space;
+    pa.h = rect_.height - chart_defaults::kMarginTop - chart_defaults::kMarginBottom - legend_space - title_space;
     if (pa.w < 1) {
         pa.w = 1;
     }
@@ -62,13 +64,13 @@ AreaChart::PlotArea AreaChart::compute_plot_area() const {
 
     if (!first) {
         auto y_range = pa.data_y_max - pa.data_y_min;
-        if (y_range < 1e-6f) {
+        if (y_range < chart_defaults::kMinDataRange) {
             y_range = 1.0f;
         }
         auto pad = y_range * 0.05f;
         pa.data_y_min -= pad;
         pa.data_y_max += pad;
-        if (pa.data_x_max - pa.data_x_min < 1e-6f) {
+        if (pa.data_x_max - pa.data_x_min < chart_defaults::kMinDataRange) {
             pa.data_x_max = pa.data_x_min + 1;
         }
     }
@@ -133,7 +135,7 @@ void AreaChart::paint(Painter &painter) {
     if (!title_.empty()) {
         auto ts = painter.measure_text(title_, font_size + 2);
         float tx = pa.x + (pa.w - ts.width) / 2;
-        float ty = rect_.y + kMarginTop - 4;
+        float ty = rect_.y + chart_defaults::kMarginTop - 4;
         painter.draw_text(title_, {tx, ty}, text_color, font_size + 2);
     }
 
@@ -149,7 +151,7 @@ void AreaChart::paint(Painter &painter) {
     if (!x_label_.empty()) {
         auto xs = painter.measure_text(x_label_, small_font);
         float lx = pa.x + (pa.w - xs.width) / 2;
-        float ly = pa.y + pa.h + kMarginBottom - 14;
+        float ly = pa.y + pa.h + chart_defaults::kMarginBottom - 14;
         painter.draw_text(x_label_, {lx, ly}, text_color, small_font);
     }
 
@@ -286,7 +288,7 @@ void AreaChart::paint(Painter &painter) {
     // Legend
     if (show_legend_ && !series_.empty()) {
         float lx = pa.x;
-        float ly = pa.y + pa.h + kMarginBottom - 4;
+        float ly = pa.y + pa.h + chart_defaults::kMarginBottom - 4;
         for (auto const &s : series_) {
             painter.fill_rect({lx, ly - 2, 16, 8}, s.fill_color);
             painter.draw_line({lx, ly + 2}, {lx + 16, ly + 2}, s.line_color, 2.0f);
@@ -371,10 +373,10 @@ bool AreaChart::handle_mouse(MouseEvent const &event) {
             return false;
         }
 
-        float best_dist2 = 1e9f;
+        auto best_dist2 = std::numeric_limits<float>::max();
         std::optional<HoverInfo> best;
-        for (size_t si = 0; si < series_.size(); si++) {
-            for (size_t pi = 0; pi < series_[si].points.size(); pi++) {
+        for (auto si = size_t{0}; si < series_.size(); si++) {
+            for (auto pi = size_t{0}; pi < series_[si].points.size(); pi++) {
                 float sx = to_screen_x(pa, series_[si].points[pi].x);
                 float sy = to_screen_y(pa, series_[si].points[pi].y);
                 float dx = sx - mx, dy = sy - my;

@@ -51,12 +51,6 @@ class BarChart : public Widget {
     std::function<void(size_t series_idx, size_t bar_idx)> on_hover;
 
   private:
-    static constexpr float kMarginLeft = 70;
-    static constexpr float kMarginRight = 16;
-    static constexpr float kMarginTop = 30;
-    static constexpr float kMarginBottom = 50;
-    static constexpr float kLegendHeight = 20;
-
     mutable ChartInteraction interaction_;
     std::vector<BarSeries> series_;
     std::string title_;

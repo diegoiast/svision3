@@ -79,12 +79,6 @@ class LineChart : public Widget {
     std::optional<HoverInfo> hover_;
     float mouse_x_ = -1;
 
-    static constexpr float kMarginLeft = 60;
-    static constexpr float kMarginRight = 16;
-    static constexpr float kMarginTop = 30;
-    static constexpr float kMarginBottom = 50;
-    static constexpr float kLegendHeight = 20;
-
     struct PlotArea {
         float x, y, w, h;
         float data_x_min, data_x_max;

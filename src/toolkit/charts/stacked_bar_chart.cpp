@@ -2,12 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "toolkit/charts/stacked_bar_chart.hpp"
+#include "toolkit/charts/chart_defaults.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
+#include <fmt/format.h>
+#include <limits>
 #include <nlohmann/json.hpp>
 
 namespace toolkit {
@@ -32,15 +34,15 @@ void StackedBarChart::clear() {
 }
 
 StackedBarChart::PlotArea StackedBarChart::compute_plot_area() const {
-    auto legend_space = (show_legend_ && !series_.empty()) ? kLegendHeight : 0;
+    auto legend_space = (show_legend_ && !series_.empty()) ? chart_defaults::kLegendHeight : 0;
     auto title_space = title_.empty() ? 0 : 8;
     auto y_label_space = y_label_.empty() ? 0 : 18;
 
     auto pa = PlotArea{};
-    pa.x = rect_.x + kMarginLeft + y_label_space;
-    pa.y = rect_.y + kMarginTop + title_space;
-    pa.w = rect_.width - kMarginLeft - kMarginRight - y_label_space;
-    pa.h = rect_.height - kMarginTop - kMarginBottom - legend_space - title_space;
+    pa.x = rect_.x + chart_defaults::kMarginLeftWide + y_label_space;
+    pa.y = rect_.y + chart_defaults::kMarginTop + title_space;
+    pa.w = rect_.width - chart_defaults::kMarginLeftWide - chart_defaults::kMarginRight - y_label_space;
+    pa.h = rect_.height - chart_defaults::kMarginTop - chart_defaults::kMarginBottom - legend_space - title_space;
     if (pa.w < 1) {
         pa.w = 1;
     }
@@ -124,31 +126,16 @@ void StackedBarChart::compute_nice_ticks(float min_val, float max_val, int targe
 }
 
 static std::string format_value(float v) {
-    // FIXME: max?
-    if (v >= 1e9f) {
-        // FIXME fmt?
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%.1fB", static_cast<double>(v / 1e9f));
-        return buf;
+    if (v >= chart_defaults::kBillion) {
+        return fmt::format("{:.1f}B", v / chart_defaults::kBillion);
     }
-    // FIXME: max?
-    if (v >= 1e6f) {
-        // FIXME fmt?
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%.1fM", static_cast<double>(v / 1e6f));
-        return buf;
+    if (v >= chart_defaults::kMillion) {
+        return fmt::format("{:.1f}M", v / chart_defaults::kMillion);
     }
-    // FIXME: max?
-    if (v >= 1e3f) {
-        // FIXME fmt?
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%.1fK", static_cast<double>(v / 1e3f));
-        return buf;
+    if (v >= chart_defaults::kThousand) {
+        return fmt::format("{:.1f}K", v / chart_defaults::kThousand);
     }
-    // FIXME fmt?
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "%.1f", static_cast<double>(v));
-    return buf;
+    return fmt::format("{:.1f}", v);
 }
 
 void StackedBarChart::paint(Painter &painter) {
@@ -167,7 +154,7 @@ void StackedBarChart::paint(Painter &painter) {
     if (!title_.empty()) {
         auto ts = painter.measure_text(title_, font_size + 2);
         auto tx = pa.x + (pa.w - ts.width) / 2;
-        auto ty = rect_.y + kMarginTop - 4;
+        auto ty = rect_.y + chart_defaults::kMarginTop - 4;
         painter.draw_text(title_, {tx, ty}, text_color, font_size + 2);
     }
 
@@ -183,7 +170,7 @@ void StackedBarChart::paint(Painter &painter) {
     if (!x_label_.empty()) {
         auto xs = painter.measure_text(x_label_, small_font);
         auto lx = pa.x + (pa.w - xs.width) / 2;
-        auto ly = pa.y + pa.h + kMarginBottom - 14;
+        auto ly = pa.y + pa.h + chart_defaults::kMarginBottom - 14;
         painter.draw_text(x_label_, {lx, ly}, text_color, small_font);
     }
 
@@ -277,9 +264,8 @@ void StackedBarChart::paint(Painter &painter) {
                 display_val = (val / total) * 100.0f;
             }
 
-            // FIXME: minimum?
             auto bottom_y =
-                normalized_ ? (cumulative / std::max(total, 1e-6f)) * 100.0f : cumulative;
+                normalized_ ? (cumulative / std::max(total, chart_defaults::kMinDataRange)) * 100.0f : cumulative;
             auto top_y = bottom_y + display_val;
             auto screen_bottom = to_screen_y(pa, bottom_y);
             auto screen_top = to_screen_y(pa, top_y);
@@ -307,11 +293,7 @@ void StackedBarChart::paint(Painter &painter) {
 
         painter.draw_line({sx, pa.y}, {sx, pa.y + pa.h}, cross_color, 1.0f);
 
-        // FIXME: fmt
-        char buf[160];
-        std::snprintf(buf, sizeof(buf), "%s  %s  %s", s.name.c_str(), cat.label.c_str(),
-                      format_value(val).c_str());
-        std::string tip = buf;
+        auto tip = fmt::format("{}  {}  {}", s.name, cat.label, format_value(val));
 
         auto ts = painter.measure_text(tip, small_font);
         auto tip_fm = painter.font_metrics(small_font);
@@ -332,7 +314,7 @@ void StackedBarChart::paint(Painter &painter) {
     // Legend
     if (show_legend_ && !series_.empty()) {
         auto lx = pa.x;
-        auto ly = pa.y + pa.h + kMarginBottom - 4;
+        auto ly = pa.y + pa.h + chart_defaults::kMarginBottom - 4;
         for (auto const &s : series_) {
             painter.fill_rect({lx, ly - 4, 12, 8}, s.color);
             lx += 16;
@@ -421,8 +403,7 @@ bool StackedBarChart::handle_mouse(MouseEvent const &event) {
         bar_w = std::clamp(bar_w, 1.0f, 40.0f);
 
         std::optional<HoverInfo> best;
-        // FIXME: std min/max
-        auto best_dist = 1e9f;
+        auto best_dist = std::numeric_limits<float>::max();
 
         for (auto ci = size_t{0}; ci < n_cats; ci++) {
             auto cx = to_screen_x(pa, categories_[ci].x);
@@ -448,7 +429,7 @@ bool StackedBarChart::handle_mouse(MouseEvent const &event) {
                     display_val = (val / total) * 100.0f;
                 }
                 auto bottom_y =
-                    normalized_ ? (cumulative / std::max(total, 1e-6f)) * 100.0f : cumulative;
+                    normalized_ ? (cumulative / std::max(total, chart_defaults::kMinDataRange)) * 100.0f : cumulative;
                 auto top_y = bottom_y + display_val;
                 auto screen_bottom = to_screen_y(pa, bottom_y);
                 auto screen_top = to_screen_y(pa, top_y);
