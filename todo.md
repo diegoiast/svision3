@@ -94,6 +94,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [ ] Always use local decorations
     1. [ ] Flag to choose to follow theme or platform for CSD
     2. [ ] Theme palette should follow theme or platform?
+    3. [ ] API to hook into the CSD and add new widgets, or replace the titlebar (tabbar on the titlebar like chrome).
 
 ## Widgets [34/39]
 
@@ -136,6 +137,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 37. [ ] Proper filter API for listview and table view.
 38. [ ] MainWindow with docking widgets on the sides.
 39. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
+40. [ ] Color picker
+41.
 
 ## Layout System [11/14]
 
@@ -288,7 +291,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## Image Widget
 
 1. [x] Scrollbar drag is not working, instead it acts as dragging inside the main widget
-2. [ ] We got round cornders on the left side only
+2. [x] We got round corners on the left side only
 
 ## LineInput Features [15/15]
 
@@ -331,7 +334,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 10. [x] Tab bar overflow (scroll when too many tabs).
 11. [x] When tab bar is selected, it has a ring around it.
 12. [ ] Tabs can have several icons at the title
-13. [ ] If you add an editor to a tab widget, focus another widget and then
+13. [x] If you add an editor to a tab widget, focus another widget and then
         window->set_foused_widget(tab) - tab becomes active, and text arrives to
         the editor, but it will have not cursor and not be "focused".
 
