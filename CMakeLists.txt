@@ -106,6 +106,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/menubar.cpp
     src/toolkit/message_box.cpp
     src/toolkit/layout.cpp
+    src/toolkit/dock_area.cpp
     src/toolkit/theme.cpp
     src/toolkit/theme_base.cpp
     src/toolkit/theme_macos.cpp
@@ -508,6 +509,12 @@ if(TOOLKIT_BUILD_DEMOS)
         target_link_options(demo PRIVATE -Wl,--gc-sections)
         target_link_options(demo_declarative PRIVATE -Wl,--gc-sections)
     endif()
+    add_executable(demo_dock demo/demo_dock.cpp)
+    set_target_properties(demo_dock PROPERTIES WIN32_EXECUTABLE ON)
+    if(WIN32)
+        set_target_properties(demo_dock PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+    endif()
+    target_link_libraries(demo_dock PRIVATE toolkit)
 endif()
 
 # ── nfd (Native File Dialog) ──────────────────────────────────────────────────
@@ -589,6 +596,7 @@ add_executable(tests
     tests/test_label.cpp
     tests/test_checkbox.cpp
     tests/test_combobox.cpp
+    tests/test_dock_area.cpp
     tests/test_filter_adapter.cpp
     tests/test_html_view.cpp
     tests/test_icon_grid.cpp

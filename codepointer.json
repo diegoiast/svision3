@@ -38,6 +38,14 @@
         },
         {
             "executables": {
+                "linux": "build/Debug/demo_dock",
+                "windows": "build\\Debug\\demo_dock.exe"
+            },
+            "name": "Demo docks",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "executables": {
                 "linux": "build/Debug/sqlite_viewer",
                 "windows": "build\\Debug\\sqlite_viewer.exe"
             },

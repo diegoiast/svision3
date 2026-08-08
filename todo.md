@@ -135,10 +135,9 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 35. [x] Undo/redo system (text area + LineInput).
 36. [ ] Client side decorations with theme.
 37. [ ] Proper filter API for listview and table view.
-38. [ ] MainWindow with docking widgets on the sides.
+38. [x] MainWindow with docking widgets on the sides.
 39. [ ] Text cursor drawing: input, text and and spinbox use use it. Maybe use a shared class?
 40. [ ] Color picker
-41.
 
 ## Layout System [11/14]
 
@@ -356,7 +355,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 14. [x] Selection API (selection(), set_selection(), select_all(), clear_selection())
 15. [x] Column headers: TableView.
 16. [ ] Drag to reorder items.
-17. [ ] Inline editing.
+17. [ ] Inline editing using model.
 18. [ ] Inline widgets, should be recycled. Currently - it needs
         `n` widgets, while it needs in theory only `k` (the height of the list widget).
 
