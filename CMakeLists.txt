@@ -17,6 +17,7 @@ else()
     option(TOOLKIT_WITH_CAIRO "Build with Cairo support" OFF)
 endif()
 option(TOOLKIT_BUILD_DEMOS "Build demo applications and tools" ON)
+option(TOOLKIT_BUILD_TASK_MANAGER_DEMO "Build the task_manager demo (fetches hwinfo via FetchContent)" ON)
 option(TOOLKIT_BUILD_TESTS "Build the test suite" ON)
 if(UNIX AND NOT APPLE)
     option(TOOLKIT_WITH_X11 "Build the X11 backend if available" ON)
@@ -499,6 +500,49 @@ endif()
 target_sources(toolkit PRIVATE $<TARGET_OBJECTS:db>)
 
 if(TOOLKIT_BUILD_DEMOS)
+    if(TOOLKIT_BUILD_TASK_MANAGER_DEMO)
+        # ── hwinfo (task_manager demo only: live CPU/RAM monitoring) ───────────
+        include(FetchContent)
+        set(HWINFO_OS OFF CACHE BOOL "" FORCE)
+        set(HWINFO_MAINBOARD OFF CACHE BOOL "" FORCE)
+        set(HWINFO_CPU ON CACHE BOOL "" FORCE)
+        set(HWINFO_DISK OFF CACHE BOOL "" FORCE)
+        set(HWINFO_RAM ON CACHE BOOL "" FORCE)
+        set(HWINFO_GPU OFF CACHE BOOL "" FORCE)
+        set(HWINFO_GPU_OPENCL OFF CACHE BOOL "" FORCE)
+        set(HWINFO_BATTERY OFF CACHE BOOL "" FORCE)
+        set(HWINFO_NETWORK OFF CACHE BOOL "" FORCE)
+        set(HWINFO_SHARED OFF CACHE BOOL "" FORCE)
+        set(HWINFO_STATIC ON CACHE BOOL "" FORCE)
+        set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(hwinfo
+            GIT_REPOSITORY https://github.com/lfreist/hwinfo.git
+            GIT_TAG        88c5072c4a137d54e94c7e712ae28ac284f1dd9b # main, 2026-07-21; pinned for the monitoring/ API
+        )
+        FetchContent_MakeAvailable(hwinfo)
+
+        # ── process_info (task_manager demo only: process list + network I/O) ──
+        # One implementation per platform behind demo/process_info.hpp; only
+        # Linux exists today, so everyone else gets the empty stub until someone
+        # writes a process_info_win32.cpp/process_info_macos.cpp.
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            set(TASK_MANAGER_PROCESS_INFO_SRC demo/process_info_linux.cpp)
+        else()
+            set(TASK_MANAGER_PROCESS_INFO_SRC demo/process_info_stub.cpp)
+        endif()
+
+        add_executable(task_manager demo/task_manager.cpp ${TASK_MANAGER_PROCESS_INFO_SRC})
+        set_target_properties(task_manager PROPERTIES WIN32_EXECUTABLE ON)
+        if(WIN32)
+            set_target_properties(task_manager PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+        endif()
+        target_link_libraries(task_manager PRIVATE toolkit lfreist-hwinfo::hwinfo)
+        if(NOT MSVC)
+            target_link_options(task_manager PRIVATE -Wl,--gc-sections)
+        endif()
+    endif()
+
     add_executable(demo demo/demo1.cpp)
     set_target_properties(demo PROPERTIES WIN32_EXECUTABLE ON)
     if(WIN32)
