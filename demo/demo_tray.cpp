@@ -12,12 +12,16 @@ using namespace toolkit;
 
 int main() {
     auto app = Application{};
-    // "breeze" is a real system theme (unlike demo1.cpp/demo_declarative.cpp's bundled "Faenza",
-    // which only resolves when run from the repo root) -- needed so the menu icons below
-    // (document-new, edit-copy, ...) actually load instead of failing silently.
-    app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("breeze"));
+    // Prefer whatever icon theme the desktop is actually configured with, since "breeze" and
+    // friends only exist on a Linux box. Falling back to the repo's bundled "Faenza" is what
+    // makes the icons below (utilities-terminal, document-new, edit-copy, ...) resolve on
+    // Windows -- but, like demo1.cpp, only when run from the repo root: the bundled theme is
+    // looked up as themes/<name> relative to the working directory.
+    if (!app.use_xdg_icons()) {
+        app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("Faenza"));
+    }
 
-    auto *win = app.create_window("Tray Demo", {400, 150});
+    auto win = app.create_window("Tray Demo", {400, 150});
     auto label = std::make_unique<RichLabel>(
         "**This window exists only to keep the app running.**\n\n"
         "Left-click the tray icon to hide/show this window.\nRight-click it for a menu.");
@@ -46,10 +50,19 @@ int main() {
     add_action(right_click_actions, "Paste", "edit-paste");
     add_action(right_click_actions, "Quit", "application-exit");
 
-    auto tray = TrayIcon::create("utilities-terminal", "svision3 tray demo", "svision3-tray-demo", win,
-                                 std::move(right_click_actions));
+    // icon() is what every backend draws; icon_name() is the extra hint that lets a Linux tray
+    // host theme it and size it to the panel instead of scaling our bitmap.
+    auto tray = TrayIcon::builder()
+                    .icon(app.load_icon("utilities-terminal", 22, ""))
+                    .icon_name("utilities-terminal")
+                    .tooltip("svision3 tray demo")
+                    .id("svision3-tray-demo")
+                    .owner_window(win)
+                    .actions(std::move(right_click_actions))
+                    .build();
     if (!tray) {
-        spdlog::error("Failed to create tray icon (no D-Bus session bus?)");
+        spdlog::error("Failed to create tray icon (no tray backend on this platform, or no "
+                      "D-Bus session bus on Linux)");
     }
 
     win->show();

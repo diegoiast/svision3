@@ -24,17 +24,17 @@ class Splitter : public Widget, public Fluent<Splitter> {
     // Add a child widget to the end. A new divider is created between the previous
     // last child and this one with a default equal-distribution ratio. Call
     // set_ratio() after adding all children to set exact positions.
-    Splitter &add_child(std::unique_ptr<Widget> w);
+    std::weak_ptr<Widget> add_child(std::shared_ptr<Widget> w);
 
     // Insert a child widget at index, shifting later children (and their
     // dividers) up by one. index is clamped to [0, child_count()], so
     // insert_child(child_count(), w) is equivalent to add_child(w). Like
     // add_child(), the new divider gets a default equal-distribution ratio;
     // call set_ratio() afterwards for exact positions.
-    Splitter &insert_child(size_t index, std::unique_ptr<Widget> w);
+    std::weak_ptr<Widget> insert_child(size_t index, std::shared_ptr<Widget> w);
 
     size_t child_count() const { return children_.size(); }
-    WeakRefWidget<Widget> child_at(size_t index) const;
+    std::weak_ptr<Widget> child_at(size_t index) const;
 
     // Remove and destroy the child at index, along with the divider adjacent to it.
     // Any in-progress drag/hover on a divider is cleared, since divider indices
@@ -91,7 +91,7 @@ class Splitter : public Widget, public Fluent<Splitter> {
         float px = std::numeric_limits<float>::quiet_NaN(); // NaN = not captured yet
     };
 
-    std::vector<std::unique_ptr<Widget>> children_;
+    std::vector<std::shared_ptr<Widget>> children_;
     std::vector<float> ratios_;                        // child_count()-1 values
     mutable std::vector<DividerLock> locked_dividers_; // child_count()-1 entries
     std::vector<float> stretch_factors_;               // child_count() values

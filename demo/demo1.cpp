@@ -129,7 +129,12 @@ int main(int argc, char *argv[]) {
     current_style = toolkit::Theme::detect_system_style();
     toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
 
-    auto *window = app.create_window("Demo", {600, 400});
+    // Application owns the window for the process lifetime, so calling straight
+    // through `window` here is fine. The callbacks below each capture their own
+    // `weak_window = std::weak_ptr(window)` instead: most of them end up on
+    // something the window itself owns (a Command, a widget, a timer), where
+    // capturing the shared_ptr would be a cycle that never frees.
+    auto window = app.create_window("Demo", {600, 400});
 
     auto root = std::make_unique<toolkit::VBoxLayout>();
     root->set_margins({0, 0, 0, 0});
@@ -147,8 +152,12 @@ int main(int argc, char *argv[]) {
     auto *use_native_cb = new toolkit::Checkbox("Use native dialogs");
     use_native_cb->set_checked(true);
 
-    auto open_action = [editor, use_native_cb, window] {
-        toolkit::FileDialog(window)
+    auto open_action = [editor, use_native_cb, weak_window = std::weak_ptr(window)] {
+        auto window = weak_window.lock();
+        if (!window) {
+            return;
+        }
+        toolkit::FileDialog(window.get())
             .title("Open File")
             .use_native(use_native_cb->checked())
             .open()
@@ -178,8 +187,12 @@ int main(int argc, char *argv[]) {
     open_menu_cmd->set_icon(XDG::IconActions::documentOpen);
     file_menu->add_action(open_menu_cmd);
 
-    auto save_action = [editor, use_native_cb, window] {
-        toolkit::FileDialog(window)
+    auto save_action = [editor, use_native_cb, weak_window = std::weak_ptr(window)] {
+        auto window = weak_window.lock();
+        if (!window) {
+            return;
+        }
+        toolkit::FileDialog(window.get())
             .title("Save File")
             .use_native(use_native_cb->checked())
             .save()
@@ -206,7 +219,11 @@ int main(int argc, char *argv[]) {
     file_menu->add_submenu("Recent &Files", recent_files_menu);
 
     file_menu->add_separator();
-    auto exit_cmd = toolkit::Command::create("Exit", [window] { window->close(); });
+    auto exit_cmd = toolkit::Command::create("Exit", [weak_window = std::weak_ptr(window)] {
+        if (auto window = weak_window.lock()) {
+            window->close();
+        }
+    });
     exit_cmd->set_icon(XDG::IconActions::applicationExit);
     file_menu->add_action(exit_cmd);
 
@@ -224,8 +241,12 @@ int main(int argc, char *argv[]) {
     edit_menu->add_action("Copy", [] { spdlog::info("Menu: Copy"); });
     edit_menu->add_action("Paste", [] { spdlog::info("Menu: Paste"); });
 
-    menubar->add_menu("&Help")->add_action("About", [window] {
-        toolkit::MessageBox(window)
+    menubar->add_menu("&Help")->add_action("About", [weak_window = std::weak_ptr(window)] {
+        auto window = weak_window.lock();
+        if (!window) {
+            return;
+        }
+        toolkit::MessageBox(window.get())
             .title("About Demo")
             .markdown()
             .message("## SVision3\n\n"
@@ -273,7 +294,7 @@ int main(int argc, char *argv[]) {
     }
     style_names.push_back("Other");
 
-    auto theme_combo = std::make_unique<toolkit::Combobox>(style_names);
+    auto theme_combo = std::make_shared<toolkit::Combobox>(style_names);
     {
         int initial_selected = -1;
         auto const &theme = toolkit::Theme::current();
@@ -289,14 +310,14 @@ int main(int argc, char *argv[]) {
         theme_combo->set_selected(initial_selected);
     }
 
-    auto theme_toggle = std::make_unique<toolkit::Checkbox>("Light Theme");
+    auto theme_toggle = std::make_shared<toolkit::Checkbox>("Light Theme");
     theme_toggle->set_checked(toolkit::Theme::current().palette.window.luma() > 0.5f);
 
     // UI sync function
-    auto sync_theme_ui = [combo_ref = toolkit::weak_ref(theme_combo),
-                          toggle_ref = toolkit::weak_ref(theme_toggle)](const toolkit::Theme &theme) {
-        auto *theme_combo = combo_ref.get();
-        auto *theme_toggle = toggle_ref.get();
+    auto sync_theme_ui = [combo_ref = std::weak_ptr(theme_combo),
+                          toggle_ref = std::weak_ptr(theme_toggle)](const toolkit::Theme &theme) {
+        auto theme_combo = combo_ref.lock();
+        auto theme_toggle = toggle_ref.lock();
         if (!theme_combo || !theme_toggle) {
             return;
         }
@@ -317,7 +338,7 @@ int main(int argc, char *argv[]) {
     };
     toolkit::Theme::add_theme_observer(sync_theme_ui);
 
-    theme_combo->on_change = [window](int index) {
+    theme_combo->on_change = [weak_window = std::weak_ptr(window)](int index) {
         auto scheme = toolkit::Theme::current().palette.window.luma() < 0.5f
                           ? toolkit::ColorScheme::Dark
                           : toolkit::ColorScheme::Light;
@@ -325,17 +346,26 @@ int main(int argc, char *argv[]) {
                                                           : toolkit::ThemeStyle::Material;
         auto new_theme = toolkit::ThemeFactory::create(style, scheme);
         toolkit::Theme::set_current(std::move(new_theme));
-        window->request_redraw("theme changed");
+        if (auto window = weak_window.lock()) {
+            window->request_redraw("theme changed");
+        }
     };
 
-    theme_toggle->on_toggle = [window, theme_combo = theme_combo.get()](bool checked) {
+    theme_toggle->on_toggle = [weak_window = std::weak_ptr(window),
+                               combo_ref = std::weak_ptr(theme_combo)](bool checked) {
+        auto theme_combo = combo_ref.lock();
+        if (!theme_combo) {
+            return;
+        }
         auto scheme = checked ? toolkit::ColorScheme::Light : toolkit::ColorScheme::Dark;
         int index = theme_combo->selected();
         auto style =
             (index == 0) ? toolkit::ThemeStyle::System : static_cast<toolkit::ThemeStyle>(index);
         auto new_theme = toolkit::ThemeFactory::create(style, scheme);
         toolkit::Theme::set_current(std::move(new_theme));
-        window->request_redraw("scheme changed");
+        if (auto window = weak_window.lock()) {
+            window->request_redraw("scheme changed");
+        }
     };
 
     auto spacer = std::make_unique<toolkit::Label>("");
@@ -345,13 +375,19 @@ int main(int argc, char *argv[]) {
 
     root->add_widget(std::move(toolbar));
 
-    auto debug_stats_widget = [&window]() {
+    auto debug_stats_widget = [weak_window = std::weak_ptr(window)]() {
         return ui::vbox()
-            .add(ui::checkbox("Show Debug Frames").on_toggle([&window](bool checked) {
+            .add(ui::checkbox("Show Debug Frames").on_toggle([weak_window](bool checked) {
                 toolkit::Widget::debug_show_frames = checked;
-                window->request_redraw();
+                if (auto window = weak_window.lock()) {
+                    window->request_redraw();
+                }
             }))
-            .add(ui::checkbox("Show Performance Stats").on_toggle([&window](bool checked) {
+            .add(ui::checkbox("Show Performance Stats").on_toggle([weak_window](bool checked) {
+                auto window = weak_window.lock();
+                if (!window) {
+                    return;
+                }
                 if (checked) {
                     window->reset_statistics();
                     spdlog::set_level(spdlog::level::trace);
@@ -360,9 +396,11 @@ int main(int argc, char *argv[]) {
                 }
                 window->set_statistics_logging_enabled(checked);
             }))
-            .add(ui::checkbox("Show Widget Inspector").on_toggle([&window](bool checked) {
+            .add(ui::checkbox("Show Widget Inspector").on_toggle([weak_window](bool checked) {
                 toolkit::Widget::debug_show_inspector = checked;
-                window->request_redraw();
+                if (auto window = weak_window.lock()) {
+                    window->request_redraw();
+                }
             }));
     };
 
@@ -405,16 +443,18 @@ int main(int argc, char *argv[]) {
             toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
     }
 
-    auto combo = std::make_unique<toolkit::Combobox>(main_page_style_names);
+    auto combo = std::make_shared<toolkit::Combobox>(main_page_style_names);
     combo->set_selected(static_cast<int>(current_style));
     combo->set_tooltip("Select a theme style");
-    combo->on_change = [&app, window](int index) {
+    combo->on_change = [&app, weak_window = std::weak_ptr(window)](int index) {
         current_style = static_cast<toolkit::ThemeStyle>(index);
-        apply_theme(app, window);
+        if (auto window = weak_window.lock()) {
+            apply_theme(app, window.get());
+        }
     };
     toolkit::Theme::add_theme_observer(
-        [combo_ref = toolkit::weak_ref(combo)](const toolkit::Theme &theme) {
-            auto *combo = combo_ref.get();
+        [combo_ref = std::weak_ptr(combo)](const toolkit::Theme &theme) {
+            auto combo = combo_ref.lock();
             if (!combo) {
                 return;
             }
@@ -438,11 +478,13 @@ int main(int argc, char *argv[]) {
     auto rb_dark = std::make_unique<toolkit::RadioButton>("&Dark", scheme_group);
     rb_dark->set_tooltip("Dark color scheme (Alt+D)");
     scheme_group.select(rb_light.get());
-    scheme_group.on_change = [&app, window](int index) {
+    scheme_group.on_change = [&app, weak_window = std::weak_ptr(window)](int index) {
         constexpr toolkit::ColorScheme schemes[] = {toolkit::ColorScheme::Light,
                                                     toolkit::ColorScheme::Dark};
         current_scheme = schemes[index];
-        apply_theme(app, window);
+        if (auto window = weak_window.lock()) {
+            apply_theme(app, window.get());
+        }
     };
     tab_main->add_widget(std::move(rb_light));
     tab_main->add_widget(std::move(rb_dark));
@@ -522,7 +564,12 @@ int main(int argc, char *argv[]) {
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name()));
     // Capture the raw pointer while platform_label still owns the Label; the move
     // into the layout must come AFTER, or .get() would return a moved-from pointer.
-    window->on_scale_changed = [&app, window, platform_label = platform_label.get()](float scale) {
+    window->on_scale_changed = [&app, weak_window = std::weak_ptr(window),
+                                platform_label = platform_label.get()](float scale) {
+        auto window = weak_window.lock();
+        if (!window) {
+            return;
+        }
         auto text = fmt::format("Platform: {} | Painter: {} | DPI scale: {:.3f}",
                                 app.platform_name(), window->painter_name(), scale);
         platform_label->set_text(text);
@@ -604,18 +651,30 @@ int main(int argc, char *argv[]) {
 
     static int auto_progress_timer = 0;
 
-    auto &slider = slider_row->add<toolkit::Slider>(1).set_range(0, 100);
-    auto &slider_val =
-        slider_row->add<toolkit::Label>().set_text(fmt::format("{:.0f}%", slider.value()));
+    // add<T>() hands back a weak_ptr. lock() it for the immediate setup, but
+    // capture the weak_ptr itself in the callback below: that callback lives on
+    // the slider, which the same layout owns alongside the label, so a shared
+    // capture of either would be a cycle.
+    auto slider_ref = slider_row->add<toolkit::Slider>(1);
+    auto slider_val_ref = slider_row->add<toolkit::Label>();
 
-    slider.set_on_change([progress_ptr, &slider_val, window](toolkit::Slider &slider, float v) {
+    auto slider = slider_ref.lock();
+    slider->set_range(0, 100);
+    slider_val_ref.lock()->set_text(fmt::format("{:.0f}%", slider->value()));
+
+    slider->set_on_change([progress_ptr, slider_val_ref, weak_window = std::weak_ptr(window)](
+                              toolkit::Slider &, float v) {
         if (auto_progress_timer != 0) {
-            window->stop_timer(auto_progress_timer);
+            if (auto window = weak_window.lock()) {
+                window->stop_timer(auto_progress_timer);
+            }
             auto_progress_timer = 0;
         }
         progress_ptr->set_value(v / 100.0f);
         progress_ptr->set_tooltip(fmt::format("{:.0f}%", v));
-        slider_val.set_text(fmt::format("{:.0f}%", v));
+        if (auto slider_val = slider_val_ref.lock()) {
+            slider_val->set_text(fmt::format("{:.0f}%", v));
+        }
     });
 
     // We need to capture the timer ID to stop it if the user interacts with the slider
@@ -671,15 +730,20 @@ int main(int argc, char *argv[]) {
 
     auto grid_controls = std::make_unique<toolkit::HBoxLayout>();
     grid_controls->set_spacing(10);
-    grid_controls->add<toolkit::Label>().set_text("Icon Size:");
+    grid_controls->add<toolkit::Label>().lock()->set_text("Icon Size:");
 
-    auto &size_slider = grid_controls->add<toolkit::Slider>(1).set_range(16, 256).set_value(48);
-    auto &size_label = grid_controls->add<toolkit::Label>().set_text("48px");
+    auto size_slider_ref = grid_controls->add<toolkit::Slider>(1);
+    auto size_label_ref = grid_controls->add<toolkit::Label>();
 
-    size_slider.set_on_change([grid_ptr, &size_label](toolkit::Slider &, float v) {
+    size_slider_ref.lock()->set_range(16, 256).set_value(48);
+    size_label_ref.lock()->set_text("48px");
+
+    size_slider_ref.lock()->set_on_change([grid_ptr, size_label_ref](toolkit::Slider &, float v) {
         auto size = static_cast<int>(v);
         grid_ptr->set_icon_size(size);
-        size_label.set_text(fmt::format("{}px", size));
+        if (auto size_label = size_label_ref.lock()) {
+            size_label->set_text(fmt::format("{}px", size));
+        }
     });
 
     auto scaling_cb = std::make_unique<toolkit::Checkbox>("Scale Icons");
@@ -726,14 +790,17 @@ int main(int argc, char *argv[]) {
     filter_progress->set_visible(false);
     tab3->add_widget(std::move(filter_progress));
 
-    filter_adapter->on_progress = [filter_progress_ptr, window](float progress) {
+    filter_adapter->on_progress = [filter_progress_ptr,
+                                   weak_window = std::weak_ptr(window)](float progress) {
         if (progress < 0.0f) {
             filter_progress_ptr->set_visible(false);
         } else {
             filter_progress_ptr->set_visible(true);
             filter_progress_ptr->set_value(progress);
         }
-        window->request_redraw();
+        if (auto window = weak_window.lock()) {
+            window->request_redraw();
+        }
     };
 
     auto songs_list = std::make_unique<toolkit::ListView>(filter_adapter);
@@ -803,8 +870,12 @@ int main(int argc, char *argv[]) {
         choose_dir_btn->set_icon(directory_icon);
     }
     choose_dir_btn->set_tooltip("Choose a directory");
-    choose_dir_btn->on_click = [use_native_cb, window] {
-        toolkit::DirectoryDialog(window)
+    choose_dir_btn->on_click = [use_native_cb, weak_window = std::weak_ptr(window)] {
+        auto window = weak_window.lock();
+        if (!window) {
+            return;
+        }
+        toolkit::DirectoryDialog(window.get())
             .title("Choose Directory")
             .use_native(use_native_cb->checked())
             .choose()
@@ -943,32 +1014,37 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    preview_editor->on_change = [preview_pending, preview_last_edit, preview_progress, window]() {
+    preview_editor->on_change = [preview_pending, preview_last_edit, preview_progress,
+                                 weak_window = std::weak_ptr(window)]() {
         *preview_last_edit = std::chrono::steady_clock::now();
         if (!*preview_pending) {
             *preview_pending = true;
             preview_progress->set_visible(true);
             preview_progress->set_value(0.0f);
-            window->request_redraw("preview pending");
+            if (auto window = weak_window.lock()) {
+                window->request_redraw("preview pending");
+            }
         }
     };
 
-    window->start_timer(
-        0.25f, [preview_pending, preview_last_edit, preview_progress, apply_preview, window]() {
-            if (!*preview_pending) {
-                return;
-            }
-            auto elapsed =
-                std::chrono::duration<float>(std::chrono::steady_clock::now() - *preview_last_edit)
-                    .count();
-            preview_progress->set_value(std::min(elapsed / PREVIEW_DELAY_SEC, 1.0f));
-            if (elapsed >= PREVIEW_DELAY_SEC) {
-                *preview_pending = false;
-                preview_progress->set_visible(false);
-                apply_preview();
+    window->start_timer(0.25f, [preview_pending, preview_last_edit, preview_progress, apply_preview,
+                                weak_window = std::weak_ptr(window)]() {
+        if (!*preview_pending) {
+            return;
+        }
+        auto elapsed =
+            std::chrono::duration<float>(std::chrono::steady_clock::now() - *preview_last_edit)
+                .count();
+        preview_progress->set_value(std::min(elapsed / PREVIEW_DELAY_SEC, 1.0f));
+        if (elapsed >= PREVIEW_DELAY_SEC) {
+            *preview_pending = false;
+            preview_progress->set_visible(false);
+            apply_preview();
+            if (auto window = weak_window.lock()) {
                 window->request_redraw("preview done");
             }
-        });
+        }
+    });
 
     preview_mode_group->on_change = [preview_is_markdown, preview_pending, preview_progress,
                                      preview_editor, apply_preview](int index) {
@@ -1083,8 +1159,12 @@ int main(int argc, char *argv[]) {
     if (icon) {
         load_btn->set_icon(icon);
     }
-    load_btn->on_click = [img_widget_ptr, window, use_native_cb] {
-        toolkit::FileDialog(window)
+    load_btn->on_click = [img_widget_ptr, use_native_cb, weak_window = std::weak_ptr(window)] {
+        auto window = weak_window.lock();
+        if (!window) {
+            return;
+        }
+        toolkit::FileDialog(window.get())
             .title("Load Image")
             .use_native(use_native_cb->checked())
             .open()
@@ -1127,7 +1207,11 @@ int main(int argc, char *argv[]) {
     button_bar->add_widget(std::move(btn_spacer), 1);
 
     auto toast_btn = std::make_unique<toolkit::Button>("Toast");
-    toast_btn->on_click = [window] {
+    toast_btn->on_click = [weak_window = std::weak_ptr(window)] {
+        auto window = weak_window.lock();
+        if (!window) {
+            return;
+        }
         static const std::optional<toolkit::Color> colors[] = {
             toolkit::Color::rgb(1.0f, 0.85f, 0.85f), toolkit::Color::rgb(0.85f, 1.0f, 0.85f),
             toolkit::Color::rgb(0.85f, 0.85f, 1.0f), toolkit::Color::rgb(1.0f, 1.0f, 0.85f),
@@ -1150,13 +1234,21 @@ int main(int argc, char *argv[]) {
     button_bar->add_widget(std::move(toast_btn));
 
     auto export_btn = std::make_unique<toolkit::Button>("Export to JSON");
-    export_btn->on_click = [window, use_native_cb] {
-        toolkit::FileDialog(window)
+    export_btn->on_click = [use_native_cb, weak_window = std::weak_ptr(window)] {
+        auto window = weak_window.lock();
+        if (!window) {
+            return;
+        }
+        toolkit::FileDialog(window.get())
             .title("Export Window to JSON")
             .use_native(use_native_cb->checked())
             .save()
-            .then([window](auto path) {
-                if (path) {
+            .then([weak_window](auto path) {
+                // The dialog is async, so re-lock rather than reusing the
+                // shared_ptr above -- holding that one across the .then would
+                // keep the window alive just to serialize it.
+                auto window = weak_window.lock();
+                if (path && window) {
                     std::ofstream f(*path);
                     if (f) {
                         f << window->to_json().dump(4);
@@ -1167,7 +1259,11 @@ int main(int argc, char *argv[]) {
     button_bar->add_widget(std::move(export_btn));
 
     auto quit_btn = std::make_unique<toolkit::Button>("&Quit");
-    quit_btn->on_click = [window] { window->close(); };
+    quit_btn->on_click = [weak_window = std::weak_ptr(window)] {
+        if (auto window = weak_window.lock()) {
+            window->close();
+        }
+    };
     quit_btn->set_tooltip("Close the application (Cmd+Q)");
     button_bar->add_widget(std::move(quit_btn));
 

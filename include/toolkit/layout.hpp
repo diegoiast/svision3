@@ -11,6 +11,17 @@
 
 namespace toolkit {
 
+// Child widgets are owned by shared_ptr, and every function that takes
+// ownership hands back a weak_ptr to what it just stored. Callers that need to
+// keep touching a child (a callback, a timer) store that weak_ptr and lock() at
+// use, rather than holding a raw pointer that dangles or a shared_ptr that
+// keeps the child alive after its parent dropped it.
+//
+// Storing the *shared_ptr* in something the layout itself owns -- a callback on
+// a sibling widget, most often -- is a reference cycle that never frees. That
+// is the one thing this ownership model makes possible and the previous
+// unique_ptr one did not, so prefer the weak_ptr these functions return.
+
 // Base for all layouts. Shared implementations of paint, handle_mouse,
 // handle_key, set_rect, set_window, find_focusable_at, widget_at,
 // collect_focusables, collect_mnemonics all delegate to for_each_child().
@@ -53,22 +64,22 @@ class VBoxLayout : public AbstractLayout {
     void from_json(nlohmann::json const &j) override;
 
     struct Item {
-        std::unique_ptr<Widget> widget;
+        std::shared_ptr<Widget> widget;
         int stretch;
         Alignment h_align;
     };
 
-    void add_widget(std::unique_ptr<Widget> widget, int stretch = 0,
-                    Alignment h_align = Alignment::Fill);
-    template <class T> T &add(int stretch = 0, Alignment h_align = Alignment::Fill) {
-        auto ptr = std::make_unique<T>();
-        T &ref = *ptr;
+    std::weak_ptr<Widget> add_widget(std::shared_ptr<Widget> widget, int stretch = 0,
+                                     Alignment h_align = Alignment::Fill);
+    template <class T> std::weak_ptr<T> add(int stretch = 0, Alignment h_align = Alignment::Fill) {
+        auto ptr = std::make_shared<T>();
+        auto ref = std::weak_ptr<T>(ptr);
         add_widget(std::move(ptr), stretch, h_align);
         return ref;
     }
 
     void clear_items() { items_.clear(); }
-    auto release_item(int index) -> std::unique_ptr<Widget>;
+    auto release_item(int index) -> std::shared_ptr<Widget>;
 
     Size size_hint() const override;
     void for_each_child(std::function<void(Widget *)> const &callback) override;
@@ -90,24 +101,24 @@ class HBoxLayout : public AbstractLayout {
     void from_json(nlohmann::json const &j) override;
 
     struct Item {
-        std::unique_ptr<Widget> widget;
+        std::shared_ptr<Widget> widget;
         int stretch;
         Alignment v_align;
     };
 
-    void add_widget(std::unique_ptr<Widget> widget, int stretch = 0,
-                    Alignment v_align = Alignment::Center);
-    void insert_widget(int index, std::unique_ptr<Widget> widget, int stretch = 0,
-                       Alignment v_align = Alignment::Center);
-    template <class T> T &add(int stretch = 0, Alignment v_align = Alignment::Fill) {
-        auto ptr = std::make_unique<T>();
-        T &ref = *ptr;
+    std::weak_ptr<Widget> add_widget(std::shared_ptr<Widget> widget, int stretch = 0,
+                                     Alignment v_align = Alignment::Center);
+    std::weak_ptr<Widget> insert_widget(int index, std::shared_ptr<Widget> widget, int stretch = 0,
+                                        Alignment v_align = Alignment::Center);
+    template <class T> std::weak_ptr<T> add(int stretch = 0, Alignment v_align = Alignment::Fill) {
+        auto ptr = std::make_shared<T>();
+        auto ref = std::weak_ptr<T>(ptr);
         add_widget(std::move(ptr), stretch, v_align);
         return ref;
     }
 
     void clear_items() { items_.clear(); }
-    auto release_item(int index) -> std::unique_ptr<Widget>;
+    auto release_item(int index) -> std::shared_ptr<Widget>;
 
     Size size_hint() const override;
     void for_each_child(std::function<void(Widget *)> const &callback) override;
@@ -129,7 +140,7 @@ class GridLayout : public AbstractLayout {
     void from_json(nlohmann::json const &j) override;
 
     struct Item {
-        std::unique_ptr<Widget> widget;
+        std::shared_ptr<Widget> widget;
         int row;
         int col;
         int rowspan;
@@ -138,15 +149,17 @@ class GridLayout : public AbstractLayout {
         Alignment v_align;
     };
 
-    void add_widget(std::unique_ptr<Widget> widget, int row, int col, int rowspan = 1,
-                    int colspan = 1, Alignment h_align = Alignment::Fill,
-                    Alignment v_align = Alignment::Fill);
+    std::weak_ptr<Widget> add_widget(std::shared_ptr<Widget> widget, int row, int col,
+                                     int rowspan = 1, int colspan = 1,
+                                     Alignment h_align = Alignment::Fill,
+                                     Alignment v_align = Alignment::Fill);
 
     template <class T>
-    T &add(int row, int col, int rowspan = 1, int colspan = 1, Alignment h_align = Alignment::Fill,
-           Alignment v_align = Alignment::Fill) {
-        auto ptr = std::make_unique<T>();
-        T &ref = *ptr;
+    std::weak_ptr<T> add(int row, int col, int rowspan = 1, int colspan = 1,
+                         Alignment h_align = Alignment::Fill,
+                         Alignment v_align = Alignment::Fill) {
+        auto ptr = std::make_shared<T>();
+        auto ref = std::weak_ptr<T>(ptr);
         add_widget(std::move(ptr), row, col, rowspan, colspan, h_align, v_align);
         return ref;
     }
@@ -195,10 +208,10 @@ class StackedLayout : public AbstractLayout {
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;
 
-    void add_widget(std::unique_ptr<Widget> widget);
-    template <class T> T &add() {
-        auto ptr = std::make_unique<T>();
-        T &ref = *ptr;
+    std::weak_ptr<Widget> add_widget(std::shared_ptr<Widget> widget);
+    template <class T> std::weak_ptr<T> add() {
+        auto ptr = std::make_shared<T>();
+        auto ref = std::weak_ptr<T>(ptr);
         add_widget(std::move(ptr));
         return ref;
     }
@@ -212,13 +225,13 @@ class StackedLayout : public AbstractLayout {
     Size size_hint() const override;
     void for_each_child(std::function<void(Widget *)> const &callback) override;
 
-    std::vector<std::unique_ptr<Widget>> const &items() const { return items_; }
+    std::vector<std::shared_ptr<Widget>> const &items() const { return items_; }
 
   protected:
     void apply_layout() override;
 
   private:
-    std::vector<std::unique_ptr<Widget>> items_;
+    std::vector<std::shared_ptr<Widget>> items_;
     int current_ = -1;
 };
 
@@ -230,11 +243,19 @@ class FormLayout : public AbstractLayout {
     void from_json(nlohmann::json const &j) override;
 
     struct Row {
-        std::unique_ptr<Widget> label;
-        std::unique_ptr<Widget> field;
+        std::shared_ptr<Widget> label;
+        std::shared_ptr<Widget> field;
     };
 
-    void add_row(std::unique_ptr<Widget> label, std::unique_ptr<Widget> field);
+    // A row is two widgets, so this hands back both weak_ptrs rather than the
+    // single one the other add functions return. Either may be empty, matching
+    // a null label or field going in.
+    struct RowRef {
+        std::weak_ptr<Widget> label;
+        std::weak_ptr<Widget> field;
+    };
+
+    RowRef add_row(std::shared_ptr<Widget> label, std::shared_ptr<Widget> field);
     FormLayout &set_label_spacing(float s) {
         label_spacing_ = s;
         return *this;

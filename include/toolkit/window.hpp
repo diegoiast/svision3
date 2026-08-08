@@ -47,8 +47,11 @@ class Window {
     }
     std::vector<Command::Ptr> const &global_commands() const { return global_commands_; }
 
-    void add_widget(std::unique_ptr<Widget> widget);
-    Window &set_root(std::unique_ptr<Widget> root);
+    std::weak_ptr<Widget> add_widget(std::shared_ptr<Widget> widget);
+
+    // Returns a weak_ptr to the widget passed in -- not to the CSD wrapper this
+    // may put above it, which is an implementation detail of the window.
+    std::weak_ptr<Widget> set_root(std::shared_ptr<Widget> root);
     void on_theme_changed();
     void show();
     void hide();
@@ -174,12 +177,15 @@ class Window {
     Size min_size_;
     Size max_size_;
     // FIXME: do we really need a "root" widget?
-    std::unique_ptr<Widget> root_;
-    std::vector<std::unique_ptr<Widget>> widgets_;
+    std::shared_ptr<Widget> root_;
+    std::vector<std::shared_ptr<Widget>> widgets_;
     std::vector<Command::Ptr> global_commands_;
     bool is_active_ = true;
     bool is_maximized_ = false;
     float scale_ = 1.0f;
+    // Liveness flag for the theme observer only. Cannot be a weak_ptr<Window>
+    // even though Application now owns windows by shared_ptr: the observer is
+    // registered from the constructor, before any shared_ptr owns this.
     std::shared_ptr<bool> theme_observer_alive_ = std::make_shared<bool>(true);
     Widget *focused_widget_ = nullptr;
     Widget *saved_focus_ = nullptr;

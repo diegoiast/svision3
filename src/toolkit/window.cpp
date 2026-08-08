@@ -128,7 +128,6 @@ Window::Window(std::string_view title, Size size, WindowOptions options)
     // even if the window is born on a high-DPI display.
     scale_ = impl_->platform->scale_factor();
 
-    theme_observer_alive_ = std::make_shared<bool>(true);
     Theme::add_theme_observer([this, alive = theme_observer_alive_](const Theme &) {
         if (*alive) {
             on_theme_changed();
@@ -292,11 +291,11 @@ void Window::on_theme_changed() {
             if (layout->items().size() >= 2) {
                 auto content = layout->release_item(1);
                 layout->clear_items();
-                auto new_layout = std::make_unique<VBoxLayout>();
+                auto new_layout = std::make_shared<VBoxLayout>();
                 new_layout->set_spacing(0);
                 new_layout->set_margins({0, 0, 0, 0});
-                auto *title_bar = Theme::current().create_title_bar(this).release();
-                new_layout->add_widget(std::unique_ptr<Widget>(title_bar));
+                auto title_bar = std::shared_ptr<Widget>(Theme::current().create_title_bar(this));
+                new_layout->add_widget(title_bar);
                 title_bar->set_window(this);
                 new_layout->add_widget(std::move(content), 1);
                 root_ = std::move(new_layout);
@@ -479,13 +478,14 @@ void Window::hide_tooltip_window() {
     }
 }
 
-Window &Window::set_root(std::unique_ptr<Widget> root) {
+std::weak_ptr<Widget> Window::set_root(std::shared_ptr<Widget> root) {
+    auto ref = std::weak_ptr<Widget>(root);
     if (options_.csd) {
-        auto layout = std::make_unique<VBoxLayout>();
+        auto layout = std::make_shared<VBoxLayout>();
         layout->set_spacing(0);
         layout->set_margins({0, 0, 0, 0});
-        auto *title_bar = Theme::current().create_title_bar(this).release();
-        layout->add_widget(std::unique_ptr<Widget>(title_bar));
+        auto title_bar = std::shared_ptr<Widget>(Theme::current().create_title_bar(this));
+        layout->add_widget(title_bar);
         title_bar->set_window(this);
         layout->add_widget(std::move(root), 1);
         root_ = std::move(layout);
@@ -497,12 +497,17 @@ Window &Window::set_root(std::unique_ptr<Widget> root) {
     }
 
     relayout();
-    return *this;
+    return ref;
 }
 
-void Window::add_widget(std::unique_ptr<Widget> widget) {
+std::weak_ptr<Widget> Window::add_widget(std::shared_ptr<Widget> widget) {
+    if (!widget) {
+        return {};
+    }
+    auto ref = std::weak_ptr<Widget>(widget);
     widget->set_window(this);
     widgets_.push_back(std::move(widget));
+    return ref;
 }
 
 void Window::relayout_toasts() {

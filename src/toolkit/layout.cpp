@@ -176,7 +176,7 @@ void VBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
     }
 }
 
-auto VBoxLayout::release_item(int index) -> std::unique_ptr<Widget> {
+auto VBoxLayout::release_item(int index) -> std::shared_ptr<Widget> {
     if (index < 0 || index >= static_cast<int>(items_.size())) {
         return nullptr;
     }
@@ -187,7 +187,12 @@ auto VBoxLayout::release_item(int index) -> std::unique_ptr<Widget> {
     return widget;
 }
 
-void VBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignment h_align) {
+std::weak_ptr<Widget> VBoxLayout::add_widget(std::shared_ptr<Widget> widget, int stretch,
+                                             Alignment h_align) {
+    if (!widget) {
+        return {};
+    }
+    auto ref = std::weak_ptr<Widget>(widget);
     widget->set_parent(this);
     if (window_) {
         widget->set_window(window_);
@@ -196,6 +201,7 @@ void VBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
     if (rect_.width > 0 || rect_.height > 0) {
         apply_layout();
     }
+    return ref;
 }
 
 void VBoxLayout::apply_layout() {
@@ -364,7 +370,7 @@ void HBoxLayout::for_each_child(std::function<void(Widget *)> const &callback) {
     }
 }
 
-auto HBoxLayout::release_item(int index) -> std::unique_ptr<Widget> {
+auto HBoxLayout::release_item(int index) -> std::shared_ptr<Widget> {
     if (index < 0 || index >= static_cast<int>(items_.size())) {
         return nullptr;
     }
@@ -375,7 +381,12 @@ auto HBoxLayout::release_item(int index) -> std::unique_ptr<Widget> {
     return widget;
 }
 
-void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignment v_align) {
+std::weak_ptr<Widget> HBoxLayout::add_widget(std::shared_ptr<Widget> widget, int stretch,
+                                             Alignment v_align) {
+    if (!widget) {
+        return {};
+    }
+    auto ref = std::weak_ptr<Widget>(widget);
     widget->set_parent(this);
     if (window_) {
         widget->set_window(window_);
@@ -384,10 +395,15 @@ void HBoxLayout::add_widget(std::unique_ptr<Widget> widget, int stretch, Alignme
     if (rect_.width > 0 || rect_.height > 0) {
         apply_layout();
     }
+    return ref;
 }
 
-void HBoxLayout::insert_widget(int index, std::unique_ptr<Widget> widget, int stretch,
-                               Alignment v_align) {
+std::weak_ptr<Widget> HBoxLayout::insert_widget(int index, std::shared_ptr<Widget> widget,
+                                                int stretch, Alignment v_align) {
+    if (!widget) {
+        return {};
+    }
+    auto ref = std::weak_ptr<Widget>(widget);
     widget->set_parent(this);
     if (window_) {
         widget->set_window(window_);
@@ -397,6 +413,7 @@ void HBoxLayout::insert_widget(int index, std::unique_ptr<Widget> widget, int st
     if (rect_.width > 0 || rect_.height > 0) {
         apply_layout();
     }
+    return ref;
 }
 
 void HBoxLayout::apply_layout() {
@@ -566,8 +583,13 @@ void GridLayout::for_each_child(std::function<void(Widget *)> const &callback) {
     }
 }
 
-void GridLayout::add_widget(std::unique_ptr<Widget> widget, int row, int col, int rowspan,
-                            int colspan, Alignment h_align, Alignment v_align) {
+std::weak_ptr<Widget> GridLayout::add_widget(std::shared_ptr<Widget> widget, int row, int col,
+                                             int rowspan, int colspan, Alignment h_align,
+                                             Alignment v_align) {
+    if (!widget) {
+        return {};
+    }
+    auto ref = std::weak_ptr<Widget>(widget);
     widget->set_parent(this);
     if (window_) {
         widget->set_window(window_);
@@ -576,6 +598,7 @@ void GridLayout::add_widget(std::unique_ptr<Widget> widget, int row, int col, in
     if (rect_.width > 0 || rect_.height > 0) {
         apply_layout();
     }
+    return ref;
 }
 
 void GridLayout::apply_layout() {
@@ -870,7 +893,11 @@ void StackedLayout::for_each_child(std::function<void(Widget *)> const &callback
     }
 }
 
-void StackedLayout::add_widget(std::unique_ptr<Widget> widget) {
+std::weak_ptr<Widget> StackedLayout::add_widget(std::shared_ptr<Widget> widget) {
+    if (!widget) {
+        return {};
+    }
+    auto ref = std::weak_ptr<Widget>(widget);
     widget->set_parent(this);
     if (window_) {
         widget->set_window(window_);
@@ -880,6 +907,7 @@ void StackedLayout::add_widget(std::unique_ptr<Widget> widget) {
     if (current_ < 0) {
         set_current(0);
     }
+    return ref;
 }
 
 void StackedLayout::remove_widget(int index) {
@@ -1001,7 +1029,9 @@ void FormLayout::for_each_child(std::function<void(Widget *)> const &callback) {
     }
 }
 
-void FormLayout::add_row(std::unique_ptr<Widget> label, std::unique_ptr<Widget> field) {
+FormLayout::RowRef FormLayout::add_row(std::shared_ptr<Widget> label,
+                                       std::shared_ptr<Widget> field) {
+    auto ref = RowRef{label, field};
     if (label) {
         label->set_parent(this);
         if (window_) {
@@ -1018,6 +1048,7 @@ void FormLayout::add_row(std::unique_ptr<Widget> label, std::unique_ptr<Widget> 
     if (rect_.width > 0 || rect_.height > 0) {
         apply_layout();
     }
+    return ref;
 }
 
 void FormLayout::apply_layout() {
@@ -1158,8 +1189,8 @@ void FormLayout::from_json(nlohmann::json const &j) {
     if (j.contains("rows") && j["rows"].is_array()) {
         rows_.clear();
         for (auto const &row_j : j["rows"]) {
-            std::unique_ptr<Widget> label;
-            std::unique_ptr<Widget> field;
+            std::shared_ptr<Widget> label;
+            std::shared_ptr<Widget> field;
             if (row_j.contains("label")) {
                 label = WidgetLoader::instance().create_widget(row_j["label"]);
             }

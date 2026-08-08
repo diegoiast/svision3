@@ -20,7 +20,7 @@ class Toolbar : public Widget, public Fluent<Toolbar> {
     void from_json(nlohmann::json const &j) override;
 
     void add_command(Command::Ptr cmd);
-    void add_widget(std::unique_ptr<Widget> w, float stretch = 0);
+    std::weak_ptr<Widget> add_widget(std::shared_ptr<Widget> w, float stretch = 0);
     void add_separator();
 
     void insert_command(int index, Command::Ptr cmd);

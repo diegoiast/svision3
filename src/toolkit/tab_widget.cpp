@@ -95,13 +95,14 @@ TabWidget::TabWidget() {
     next_button_->set_parent(this);
 }
 
-TabWidget &TabWidget::add_tab(std::string title, std::unique_ptr<Widget> content, bool closable) {
-    content_layout_->add_widget(std::move(content));
+std::weak_ptr<Widget> TabWidget::add_tab(std::string title, std::shared_ptr<Widget> content,
+                                         bool closable) {
+    auto ref = content_layout_->add_widget(std::move(content));
     tabs_.push_back({.title = std::move(title), .closable = closable});
     if (rect_.width > 0 || rect_.height > 0) {
         layout_content();
     }
-    return *this;
+    return ref;
 }
 
 TabWidget &TabWidget::remove_tab(int index) {
@@ -321,24 +322,28 @@ TabWidget &TabWidget::set_orientation(TabOrientation o) {
     return *this;
 }
 
-TabWidget &TabWidget::set_leading_widget(std::unique_ptr<Widget> widget) {
-    widget->set_parent(this);
+std::weak_ptr<Widget> TabWidget::set_leading_widget(std::shared_ptr<Widget> widget) {
+    if (widget) {
+        widget->set_parent(this);
+    }
     leading_widget_ = std::move(widget);
     if (leading_widget_ && window_) {
         leading_widget_->set_window(window_);
     }
     layout_content();
-    return *this;
+    return leading_widget_;
 }
 
-TabWidget &TabWidget::set_trailing_widget(std::unique_ptr<Widget> widget) {
-    widget->set_parent(this);
+std::weak_ptr<Widget> TabWidget::set_trailing_widget(std::shared_ptr<Widget> widget) {
+    if (widget) {
+        widget->set_parent(this);
+    }
     trailing_widget_ = std::move(widget);
     if (trailing_widget_ && window_) {
         trailing_widget_->set_window(window_);
     }
     layout_content();
-    return *this;
+    return trailing_widget_;
 }
 
 float TabWidget::tab_bar_size() const { return tab_bar_thickness(); }

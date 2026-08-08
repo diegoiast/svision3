@@ -151,7 +151,11 @@ int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
 
     toolkit::Application app;
-    auto *window = app.create_window("SQLite Viewer", {800, 600});
+    // Raw pointer for ViewerState and the callbacks below: Application owns the
+    // window for the process lifetime, and several of these end up on widgets
+    // the window itself owns, where a shared capture would be a cycle.
+    auto window_owner = app.create_window("SQLite Viewer", {800, 600});
+    auto *window = window_owner.get();
 
     ViewerState vs;
     vs.window = window;

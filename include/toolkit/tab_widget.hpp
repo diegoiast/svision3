@@ -18,7 +18,9 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;
 
-    TabWidget &add_tab(std::string title, std::unique_ptr<Widget> content, bool closable = true);
+    // Returns a weak_ptr to the content widget just added.
+    std::weak_ptr<Widget> add_tab(std::string title, std::shared_ptr<Widget> content,
+                                  bool closable = true);
     TabWidget &remove_tab(int index);
 
     int current_index() const { return current_; }
@@ -75,8 +77,8 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     TabWidget &set_orientation(TabOrientation o);
     TabOrientation orientation() const { return orientation_; }
 
-    TabWidget &set_leading_widget(std::unique_ptr<Widget> widget);
-    TabWidget &set_trailing_widget(std::unique_ptr<Widget> widget);
+    std::weak_ptr<Widget> set_leading_widget(std::shared_ptr<Widget> widget);
+    std::weak_ptr<Widget> set_trailing_widget(std::shared_ptr<Widget> widget);
 
     std::function<void(int index, std::string const &title)> on_tab_close;
 
@@ -129,8 +131,8 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     int hovered_tab_ = -1;
     int hovered_close_ = -1;
 
-    std::unique_ptr<Widget> leading_widget_;
-    std::unique_ptr<Widget> trailing_widget_;
+    std::shared_ptr<Widget> leading_widget_;
+    std::shared_ptr<Widget> trailing_widget_;
 
     std::unique_ptr<class Button> prev_button_;
     std::unique_ptr<class Button> next_button_;

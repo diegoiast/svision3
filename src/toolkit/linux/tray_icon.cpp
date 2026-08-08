@@ -11,9 +11,40 @@ namespace toolkit {
 
 using namespace toolkit::dbus;
 
+namespace {
+
+// SNI wants ARGB32 in network byte order -- big-endian, so the bytes go out A, R, G, B per pixel.
+// ImageData is straight alpha in either BGRA or RGBA order, which is what ARGB32 means here
+// (Qt's QImage::Format_ARGB32, non-premultiplied), so only the byte order changes.
+auto to_icon_pixmap(ImageData const &img) -> dbus::IconPixmap {
+    auto pixmap = dbus::IconPixmap{};
+    pixmap.width = img.width;
+    pixmap.height = img.height;
+
+    auto count = static_cast<size_t>(img.width * img.height);
+    pixmap.argb32.resize(count * 4);
+    auto const *src = img.pixels.data();
+    auto swapped = img.format == PixelFormat::RGBA;
+    for (auto i = 0; i < count; i++) {
+        auto b = src[i * 4 + (swapped ? 2 : 0)];
+        auto g = src[i * 4 + 1];
+        auto r = src[i * 4 + (swapped ? 0 : 2)];
+        auto a = src[i * 4 + 3];
+        pixmap.argb32[i * 4 + 0] = a;
+        pixmap.argb32[i * 4 + 1] = r;
+        pixmap.argb32[i * 4 + 2] = g;
+        pixmap.argb32[i * 4 + 3] = b;
+    }
+    return pixmap;
+}
+
+} // namespace
+
 struct TrayIcon::Impl {
     std::vector<Command::Ptr> right_click_actions;
-    Window *owner_window = nullptr;
+    // Weak: the tray icon never keeps the window alive, and outliving it is normal (the window
+    // can be closed while the icon stays in the tray).
+    std::weak_ptr<Window> owner_window;
     // Tracks what the *last* Activate()-driven toggle did, not the window's
     // actual state -- there is no is_visible() query on Window to read that
     // back. Can drift from reality if the window is also closed/reopened
@@ -60,9 +91,7 @@ struct TrayIcon::Impl {
 TrayIcon::TrayIcon() : impl_(std::make_unique<Impl>()) {}
 TrayIcon::~TrayIcon() = default;
 
-std::unique_ptr<TrayIcon> TrayIcon::create(std::string icon_name, std::string tooltip, std::string id,
-                                           Window *owner_window,
-                                           std::vector<Command::Ptr> right_click_actions) {
+std::unique_ptr<TrayIcon> TrayIconBuilder::build() const {
     auto service = Service::connect_session_bus();
     if (!service) {
         spdlog::warn("TrayIcon: no D-Bus session bus reachable, tray icon not created");
@@ -71,10 +100,23 @@ std::unique_ptr<TrayIcon> TrayIcon::create(std::string icon_name, std::string to
 
     auto tray = std::unique_ptr<TrayIcon>(new TrayIcon());
     auto *self = tray->impl_.get();
-    self->right_click_actions = std::move(right_click_actions);
-    self->owner_window = owner_window;
+    self->right_click_actions = actions_;
+    self->owner_window = owner_window_;
     self->service = std::move(service);
     auto *svc = self->service.get();
+
+    // Copies, not captures of the builder's own members: every property getter below outlives
+    // this call, and the builder is typically a temporary (TrayIcon::builder().icon(...).build()).
+    auto icon_name = icon_name_;
+    auto tooltip = tooltip_;
+    auto id = id_;
+    auto pixmaps = std::vector<dbus::IconPixmap>{};
+    if (icon_ && !icon_->pixels.empty()) {
+        pixmaps.push_back(to_icon_pixmap(*icon_));
+    }
+    if (pixmaps.empty() && icon_name.empty()) {
+        spdlog::warn("TrayIcon: neither icon() nor icon_name() set, the host will show nothing");
+    }
 
     // ── com.canonical.dbusmenu, so the host renders the right-click menu ───
     // natively.
@@ -128,7 +170,11 @@ std::unique_ptr<TrayIcon> TrayIcon::create(std::string icon_name, std::string to
     item.add_property("org.kde.StatusNotifierItem", "Status",
                       [] { return Value{std::string("Active")}; });
     item.add_property("org.kde.StatusNotifierItem", "WindowId", [] { return Value{uint32_t{0}}; });
+    // Both are published. A host prefers IconName when it resolves, which is what lets it render
+    // at the panel's own size and re-render on icon-theme/DPI changes; IconPixmap is the fixed
+    // bitmap it falls back to (and the only one of the two most callers set).
     item.add_property("org.kde.StatusNotifierItem", "IconName", [icon_name] { return Value{icon_name}; });
+    item.add_property("org.kde.StatusNotifierItem", "IconPixmap", [pixmaps] { return Value{pixmaps}; });
     // false: an item with ItemIsMenu=true has *only* a menu -- hosts open
     // /MenuBar on left-click too and never call Activate() at all. Keeping
     // it false is what makes left-click (Activate) and right-click (the
@@ -136,19 +182,20 @@ std::unique_ptr<TrayIcon> TrayIcon::create(std::string icon_name, std::string to
     item.add_property("org.kde.StatusNotifierItem", "ItemIsMenu", [] { return Value{false}; });
     item.add_property("org.kde.StatusNotifierItem", "Menu",
                       [] { return Value{ObjectPath{"/MenuBar"}}; });
-    item.add_property("org.kde.StatusNotifierItem", "ToolTip", [tooltip, icon_name] {
-        return Value{Struct{{Value{icon_name}, Value{Array{"(iiay)", {}}}, Value{tooltip},
+    // (icon name, icon pixmaps, title, description) -- same two-icon fallback as above.
+    item.add_property("org.kde.StatusNotifierItem", "ToolTip", [tooltip, icon_name, pixmaps] {
+        return Value{Struct{{Value{icon_name}, Value{pixmaps}, Value{tooltip},
                             Value{std::string("")}}}};
     });
 
     auto noop = [](MethodCall const &) -> MethodResult { return MethodReply{}; };
     item.add_method("org.kde.StatusNotifierItem", "Activate",
                     [self](MethodCall const &) -> MethodResult {
-                        if (self->owner_window) {
+                        if (auto window = self->owner_window.lock()) {
                             if (self->window_shown) {
-                                self->owner_window->hide();
+                                window->hide();
                             } else {
-                                self->owner_window->show();
+                                window->show();
                             }
                             self->window_shown = !self->window_shown;
                         }

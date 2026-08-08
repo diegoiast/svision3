@@ -38,12 +38,13 @@ namespace ui {
 struct CommandElement;
 struct MenuElement;
 
-// Element: fluent builder wrapper around a unique_ptr<T>
+// Element: fluent builder wrapper around a shared_ptr<T>. Shared, because that's
+// what every toolkit container now takes ownership as -- see toolkit/layout.hpp.
 template <typename T> struct Element {
-    std::unique_ptr<T> w;
+    std::shared_ptr<T> w;
     toolkit::Command *last_cmd_ = nullptr;
     bool expand_ = false;
-    Element(std::unique_ptr<T> widget) : w(std::move(widget)) {}
+    Element(std::shared_ptr<T> widget) : w(std::move(widget)) {}
     Element(Element &&) = default;
     Element &operator=(Element &&) = default;
     Element(const Element &) = delete;
@@ -305,7 +306,7 @@ template <typename T> struct Element {
         return std::move(add_child(std::move(child), stretch));
     }
 
-    template <typename W> Element add(std::unique_ptr<W> child, int stretch = 0) {
+    template <typename W> Element add(std::shared_ptr<W> child, int stretch = 0) {
         w->add_widget(std::move(child), stretch);
         return std::move(*this);
     }
@@ -491,9 +492,15 @@ template <typename T> struct Element {
         return std::move(*this);
     }
 
-    operator std::unique_ptr<toolkit::Widget>() && { return std::move(w); }
-    operator std::unique_ptr<toolkit::Widget>() & { return std::move(w); }
+    operator std::shared_ptr<toolkit::Widget>() && { return std::move(w); }
+    operator std::shared_ptr<toolkit::Widget>() & { return w; }
     T *get() const { return w.get(); }
+
+    // A weak_ptr to the widget, valid past the point this Element is moved into
+    // a container: the container takes over the shared ownership, so the
+    // weak_ptr keeps tracking the same object. Use this rather than get() for
+    // anything stored in a long-lived callback.
+    std::weak_ptr<T> ref() const { return w; }
 };
 
 // CommandElement and MenuElement

@@ -80,8 +80,8 @@ void Toolbar::add_command(Command::Ptr cmd) {
     layout_->add_widget(std::make_unique<ToolButton>(std::move(cmd)));
 }
 
-void Toolbar::add_widget(std::unique_ptr<Widget> w, float stretch) {
-    layout_->add_widget(std::move(w), stretch);
+std::weak_ptr<Widget> Toolbar::add_widget(std::shared_ptr<Widget> w, float stretch) {
+    return layout_->add_widget(std::move(w), stretch);
 }
 
 void Toolbar::add_separator() { layout_->add_widget(std::make_unique<ToolbarSeparator>()); }

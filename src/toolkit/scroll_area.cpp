@@ -20,7 +20,7 @@ ScrollArea::ScrollArea() {
     state.focusable = true;
 }
 
-void ScrollArea::set_content(std::unique_ptr<Widget> widget) {
+std::weak_ptr<Widget> ScrollArea::set_content(std::shared_ptr<Widget> widget) {
     content_ = std::move(widget);
     if (content_) {
         content_->set_parent(this);
@@ -28,6 +28,7 @@ void ScrollArea::set_content(std::unique_ptr<Widget> widget) {
     }
     scroll_x_ = scroll_y_ = 0;
     update_content_rect();
+    return content_;
 }
 
 void ScrollArea::on_scroll(float /*x*/, float /*y*/) {

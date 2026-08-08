@@ -580,13 +580,18 @@ DirectoryDialog::Future DirectoryDialog::show_toolkit() {
     auto widget = std::make_unique<DirChooserWidget>(start);
     auto widget_ptr = widget.get();
     auto win = Application::instance().create_window(title, {400, 150});
+    // on_confirm lives on the widget the window owns, so it takes a weak
+    // reference back -- a shared one would be a cycle.
+    auto weak_win = std::weak_ptr<Window>(win);
 
-    widget_ptr->on_confirm = [callback, settled, win](std::optional<std::string> result) {
+    widget_ptr->on_confirm = [callback, settled, weak_win](std::optional<std::string> result) {
         if (*settled) {
             return;
         }
         *settled = true;
-        win->close();
+        if (auto win = weak_win.lock()) {
+            win->close();
+        }
         if (*callback) {
             (*callback)(result);
         }

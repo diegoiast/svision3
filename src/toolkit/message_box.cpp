@@ -53,8 +53,12 @@ MessageBox::Future MessageBox::show() {
     MessageBoxButtons buttons = buttons_;
     bool use_markdown = markdown_;
 
-    auto *win = Application::instance().create_window(
+    auto win = Application::instance().create_window(
         title_str, {400, 160}, {.resizable = false, .minimizable = false, .maximizable = false});
+    // The callbacks below are all reachable from the window itself (through its
+    // root widget, or on_key directly), so they capture a weak_ptr -- holding
+    // the shared_ptr there would be a cycle that never frees the window.
+    auto weak_win = std::weak_ptr<Window>(win);
     auto root = std::make_unique<VBoxLayout>();
     root->set_margins({16, 16, 16, 16});
     root->set_spacing(12);
@@ -105,11 +109,13 @@ MessageBox::Future MessageBox::show() {
 
     auto make_btn = [&](std::string_view label, MessageBoxResult r) {
         auto btn = std::make_unique<Button>(std::string{label});
-        btn->on_click = [win, callback, r] {
+        btn->on_click = [weak_win, callback, r] {
             if (*callback) {
                 (*callback)(r);
             }
-            win->close();
+            if (auto win = weak_win.lock()) {
+                win->close();
+            }
         };
         btn_row->add_widget(std::move(btn));
     };
@@ -142,12 +148,14 @@ MessageBox::Future MessageBox::show() {
     if (parent_ && parent_->platform_window()) {
         win->platform_window()->set_modal_for(parent_->platform_window());
     }
-    win->on_key = [win, callback](KeyEvent const &e) -> bool {
+    win->on_key = [weak_win, callback](KeyEvent const &e) -> bool {
         if (e.type == KeyEvent::Type::Press && e.key == Key::Escape) {
             if (*callback) {
                 (*callback)(MessageBoxResult::Cancel);
             }
-            win->close();
+            if (auto win = weak_win.lock()) {
+                win->close();
+            }
             return true;
         }
         return false;
@@ -165,8 +173,11 @@ std::future<MessageBoxResult> MessageBox::show_static(Window *parent, std::strin
 
     auto result = MessageBoxResult::Cancel;
     auto done = false;
-    auto *win = Application::instance().create_window(
+    auto win = Application::instance().create_window(
         title_str, {400, 160}, {.resizable = false, .minimizable = false, .maximizable = false});
+    // See the async show() above: weak, or the window's own callbacks keep it
+    // alive forever.
+    auto weak_win = std::weak_ptr<Window>(win);
     auto root = std::make_unique<VBoxLayout>();
     root->set_margins({16, 16, 16, 16});
     root->set_spacing(12);
@@ -213,10 +224,12 @@ std::future<MessageBoxResult> MessageBox::show_static(Window *parent, std::strin
 
     auto make_btn = [&](std::string_view label, MessageBoxResult r) {
         auto btn = std::make_unique<Button>(std::string{label});
-        btn->on_click = [win, &result, &done, r] {
+        btn->on_click = [weak_win, &result, &done, r] {
             result = r;
             done = true;
-            win->close();
+            if (auto win = weak_win.lock()) {
+                win->close();
+            }
         };
         btn_row->add_widget(std::move(btn));
     };
@@ -249,11 +262,13 @@ std::future<MessageBoxResult> MessageBox::show_static(Window *parent, std::strin
     if (parent && parent->platform_window()) {
         win->platform_window()->set_modal_for(parent->platform_window());
     }
-    win->on_key = [win, &result, &done](KeyEvent const &e) -> bool {
+    win->on_key = [weak_win, &result, &done](KeyEvent const &e) -> bool {
         if (e.type == KeyEvent::Type::Press && e.key == Key::Escape) {
             result = MessageBoxResult::Cancel;
             done = true;
-            win->close();
+            if (auto win = weak_win.lock()) {
+                win->close();
+            }
             return true;
         }
         return false;

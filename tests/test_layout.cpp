@@ -189,8 +189,8 @@ TEST_CASE("StackedLayout add_widget sets current to first item", "[layout][stack
 
 TEST_CASE("StackedLayout only current item is visible", "[layout][stacked]") {
     StackedLayout sl;
-    auto *a = &sl.add<Label>();
-    auto *b = &sl.add<Label>();
+    auto a = sl.add<Label>().lock();
+    auto b = sl.add<Label>().lock();
     REQUIRE(a->is_visible());
     REQUIRE(!b->is_visible());
 
@@ -214,8 +214,8 @@ TEST_CASE("StackedLayout set_current ignores out-of-range", "[layout][stacked]")
 TEST_CASE("StackedLayout apply_layout sizes current to full rect", "[layout][stacked]") {
     StackedLayout sl;
     sl.set_rect({0, 0, 200, 150}); // set rect before widgets
-    auto *a = &sl.add<Label>();
-    auto *b = &sl.add<Label>();
+    auto a = sl.add<Label>().lock();
+    auto b = sl.add<Label>().lock();
 
     REQUIRE(a->rect().x == 0.0f);
     REQUIRE(a->rect().y == 0.0f);
@@ -233,7 +233,7 @@ TEST_CASE("StackedLayout apply_layout respects margins", "[layout][stacked]") {
     StackedLayout sl;
     sl.set_margins({10, 20, 30, 40}); // top, right, bottom, left
     sl.set_rect({0, 0, 200, 150});
-    auto *a = &sl.add<Label>();
+    auto a = sl.add<Label>().lock();
 
     REQUIRE(a->rect().x == 40.0f);
     REQUIRE(a->rect().y == 10.0f);

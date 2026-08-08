@@ -42,7 +42,17 @@ class Application {
     void set_force_csd(bool force);
     bool force_csd() const;
 
-    Window *create_window(std::string_view title, Size size, WindowOptions options = {});
+    // The Application keeps a reference for the process lifetime, so the
+    // returned pointer stays valid without the caller holding on to it -- take
+    // it by `auto` and use it like the raw pointer this used to return.
+    //
+    // Anything that outlives the call and refers back to the window (a widget
+    // callback, a tray icon, a timer) must store std::weak_ptr<Window> and
+    // lock() at use. Storing the shared_ptr instead keeps the window alive
+    // past close(), and storing it in something the window itself owns (a
+    // widget, a callback on one) is a reference cycle that never frees.
+    std::shared_ptr<Window> create_window(std::string_view title, Size size,
+                                          WindowOptions options = {});
     int run();
     void run_until(std::function<bool()> should_exit);
     void quit();
@@ -77,7 +87,7 @@ class Application {
     struct Impl;
     std::unique_ptr<Impl> impl_;
 
-    std::vector<std::unique_ptr<Window>> windows_;
+    std::vector<std::shared_ptr<Window>> windows_;
 };
 
 } // namespace toolkit

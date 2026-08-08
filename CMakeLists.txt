@@ -126,6 +126,7 @@ set(TOOLKIT_SOURCES
     src/toolkit/scrollbar.cpp
     src/toolkit/scrollable_widget.cpp
     src/toolkit/toast_widget.cpp
+    src/toolkit/tray_icon_builder.cpp
     src/toolkit/status_bar.cpp
     src/toolkit/window_title_bar.cpp
 )
@@ -516,7 +517,7 @@ if(APPLE)
     target_compile_options(nfd PRIVATE -fno-objc-arc)
 
     # No NSStatusItem-based tray icon backend yet -- stub keeps
-    # toolkit::TrayIcon linkable (create() just returns nullptr) so callers
+    # toolkit::TrayIcon linkable (build() just returns nullptr) so callers
     # don't need to #ifdef around it. See include/toolkit/tray_icon.hpp.
     target_sources(toolkit PRIVATE src/toolkit/tray_icon_stub.cpp)
 elseif(WIN32)

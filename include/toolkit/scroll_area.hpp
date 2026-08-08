@@ -19,8 +19,8 @@ class ScrollArea : public ScrollableWidget {
 
     nlohmann::json to_json() const override;
 
-    void set_content(std::unique_ptr<Widget> widget);
-    Widget *content() const { return content_.get(); }
+    std::weak_ptr<Widget> set_content(std::shared_ptr<Widget> widget);
+    std::weak_ptr<Widget> content() const { return content_; }
 
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
@@ -38,7 +38,7 @@ class ScrollArea : public ScrollableWidget {
     void on_scroll(float x, float y) override;
 
   private:
-    std::unique_ptr<Widget> content_;
+    std::shared_ptr<Widget> content_;
 
     void update_content_rect();
 };

@@ -17,7 +17,6 @@
 //    toolkit's own in-window answer to that.
 
 #include "toolkit/tray_icon.hpp"
-#include "toolkit/application.hpp"
 #include "toolkit/window.hpp"
 
 #ifndef NOMINMAX
@@ -143,7 +142,9 @@ struct TrayState {
     // menu is rebuilt on every popup and creating these per popup would leak them.
     std::vector<HBITMAP> menu_bitmaps;
 
-    Window *owner_window = nullptr;
+    // Weak: the tray icon never keeps the window alive, and outliving it is normal (the window
+    // can be closed while the icon stays in the tray).
+    std::weak_ptr<Window> owner_window;
     // Tracks what the last toggle did, not the window's actual state -- there is no is_visible()
     // on Window to read back. Same caveat as the Linux backend: fine for a click toggle, not a
     // substitute for real visibility tracking.
@@ -167,13 +168,14 @@ struct TrayState {
     }
 
     void toggle_window() {
-        if (!owner_window) {
+        auto window = owner_window.lock();
+        if (!window) {
             return;
         }
         if (window_shown) {
-            owner_window->hide();
+            window->hide();
         } else {
-            owner_window->show();
+            window->show();
         }
         window_shown = !window_shown;
     }
@@ -282,11 +284,10 @@ struct TrayIcon::Impl : TrayState {};
 TrayIcon::TrayIcon() : impl_(std::make_unique<Impl>()) {}
 TrayIcon::~TrayIcon() = default;
 
-std::unique_ptr<TrayIcon> TrayIcon::create(std::string icon_name, std::string tooltip,
-                                           std::string /*id*/, Window *owner_window,
-                                           std::vector<Command::Ptr> right_click_actions) {
+std::unique_ptr<TrayIcon> TrayIconBuilder::build() const {
     // `id` has no Windows counterpart: StatusNotifierItem needs it to identify the item on the
-    // bus, while Shell_NotifyIcon identifies ours by (hWnd, uID) alone.
+    // bus, while Shell_NotifyIcon identifies ours by (hWnd, uID) alone. `icon_name` likewise:
+    // a freedesktop icon-theme name means nothing here, icon() is what gets drawn.
     auto hinstance = GetModuleHandleW(nullptr);
     if (!register_tray_class(hinstance)) {
         spdlog::warn("TrayIcon: RegisterClassEx failed, error={}", GetLastError());
@@ -295,8 +296,8 @@ std::unique_ptr<TrayIcon> TrayIcon::create(std::string icon_name, std::string to
 
     auto tray = std::unique_ptr<TrayIcon>(new TrayIcon());
     auto *self = tray->impl_.get();
-    self->right_click_actions = std::move(right_click_actions);
-    self->owner_window = owner_window;
+    self->right_click_actions = actions_;
+    self->owner_window = owner_window_;
 
     // Deliberately *not* HWND_MESSAGE: a message-only window is excluded from broadcasts, and
     // TaskbarCreated (see the window procedure) is one. So this is a real top-level window that
@@ -317,27 +318,21 @@ std::unique_ptr<TrayIcon> TrayIcon::create(std::string icon_name, std::string to
         ChangeWindowMessageFilterEx(self->hwnd, self->taskbar_created, MSGFLT_ALLOW, nullptr);
     }
 
-    // icon_name is a freedesktop icon-theme name (the API is shared with the Linux backend), so
-    // it only resolves if the application installed an icon provider that has it. Falling back to
-    // the owner window's own icon, and then to the stock application icon, keeps a tray icon on
-    // screen either way rather than failing the whole call.
-    // Empty context, i.e. search every one: a tray icon name is typically an application
-    // ("apps", e.g. utilities-terminal) or a status icon, and the caller gives a bare name with
-    // no context to go on. load_icon()'s default of "actions" is a strict filter that would miss
-    // both.
-    auto icon_size = GetSystemMetrics(SM_CXSMICON);
-    if (auto image = Application::instance().load_icon(icon_name, icon_size, "")) {
-        self->hicon = icon_from_image(*image);
+    // Falling back to the owner window's own icon, and then to the stock application icon, keeps
+    // a tray icon on screen rather than failing the whole call when the caller passed none.
+    if (icon_ && !icon_->pixels.empty()) {
+        self->hicon = icon_from_image(*icon_);
     }
-    if (!self->hicon && owner_window) {
-        if (auto window_icon = owner_window->get_icon()) {
-            self->hicon = icon_from_image(*window_icon);
+    if (!self->hicon) {
+        if (auto window = owner_window_.lock()) {
+            if (auto window_icon = window->get_icon()) {
+                self->hicon = icon_from_image(*window_icon);
+            }
         }
     }
     self->owns_icon = self->hicon != nullptr;
     if (!self->hicon) {
-        spdlog::warn("TrayIcon: no icon for '{}', falling back to the stock application icon",
-                     icon_name);
+        spdlog::warn("TrayIcon: no icon supplied, falling back to the stock application icon");
         self->hicon = LoadIconW(nullptr, IDI_APPLICATION);
     }
 
@@ -356,7 +351,7 @@ std::unique_ptr<TrayIcon> TrayIcon::create(std::string icon_name, std::string to
     self->nid.uCallbackMessage = kTrayCallbackMessage;
     self->nid.hIcon = self->hicon;
     // szTip is a fixed 128-wchar buffer; a longer tooltip is truncated rather than rejected.
-    wcsncpy_s(self->nid.szTip, to_wide(tooltip).c_str(), _TRUNCATE);
+    wcsncpy_s(self->nid.szTip, to_wide(tooltip_).c_str(), _TRUNCATE);
 
     if (!Shell_NotifyIconW(NIM_ADD, &self->nid)) {
         spdlog::error("TrayIcon: Shell_NotifyIcon(NIM_ADD) failed, error={}", GetLastError());

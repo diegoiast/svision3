@@ -269,7 +269,8 @@ void Application::set_force_csd(bool force) { detail::default_force_csd() = forc
 
 bool Application::force_csd() const { return detail::default_force_csd(); }
 
-Window *Application::create_window(std::string_view title, Size size, WindowOptions options) {
+std::shared_ptr<Window> Application::create_window(std::string_view title, Size size,
+                                                   WindowOptions options) {
     if (impl_->platform->needs_csd()) {
         // Native decorations aren't an option at all here (e.g. GNOME/mutter's Wayland
         // compositor doesn't implement the xdg-decoration protocol); this platform mandate still
@@ -277,8 +278,8 @@ Window *Application::create_window(std::string_view title, Size size, WindowOpti
         // per-window with an explicit `.csd = false`.
         options.csd = true;
     }
-    windows_.push_back(std::make_unique<Window>(title, size, options));
-    return windows_.back().get();
+    windows_.push_back(std::make_shared<Window>(title, size, options));
+    return windows_.back();
 }
 
 int Application::run() { return impl_->platform->run(); }

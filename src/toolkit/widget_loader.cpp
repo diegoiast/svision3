@@ -21,7 +21,7 @@
 
 #define DO_REGISTER_WIDGET(x)                                                                      \
     register_widget(#x, [](nlohmann::json const &j) {                                              \
-        auto w = std::make_unique<x>();                                                            \
+        auto w = std::make_shared<x>();                                                            \
         w->from_json(j);                                                                           \
         return w;                                                                                  \
     })
@@ -45,13 +45,13 @@ void WidgetLoader::register_widget(std::string_view class_name, WidgetFactory fa
 void WidgetLoader::register_all_widgets() {
     // FIXME: simple constructor is missing
     register_widget("Button", [](nlohmann::json const &j) {
-        auto w = std::make_unique<Button>("");
+        auto w = std::make_shared<Button>("");
         w->from_json(j);
         return w;
     });
     // FIXME: simple constructor is missing
     register_widget("Checkbox", [](nlohmann::json const &j) {
-        auto w = std::make_unique<Checkbox>("");
+        auto w = std::make_shared<Checkbox>("");
         w->from_json(j);
         return w;
     });
@@ -59,7 +59,7 @@ void WidgetLoader::register_all_widgets() {
     register_widget("RadioButton", [](nlohmann::json const &j) {
         // FIXME: support for radio group boxes
         static RadioGroup g;
-        auto w = std::make_unique<RadioButton>("", g);
+        auto w = std::make_shared<RadioButton>("", g);
         w->from_json(j);
         return w;
     });
@@ -87,7 +87,7 @@ void WidgetLoader::register_all_widgets() {
     DO_REGISTER_WIDGET(FileBrowserWidget);
 }
 
-std::unique_ptr<Widget> WidgetLoader::create_widget(nlohmann::json const &j) {
+std::shared_ptr<Widget> WidgetLoader::create_widget(nlohmann::json const &j) {
     if (!j.is_object()) {
         spdlog::error("WidgetLoader: Expected object, got: {}", j.dump());
         return nullptr;
@@ -140,7 +140,7 @@ std::unique_ptr<Widget> WidgetLoader::create_widget(nlohmann::json const &j) {
     return w;
 }
 
-std::unique_ptr<Window> WidgetLoader::load_window(nlohmann::json const &j) {
+std::shared_ptr<Window> WidgetLoader::load_window(nlohmann::json const &j) {
     auto title = j.value("title", "Loaded Window");
     if (!j.contains("size")) {
         spdlog::error("WidgetLoader: 'size' field missing");
@@ -152,7 +152,7 @@ std::unique_ptr<Window> WidgetLoader::load_window(nlohmann::json const &j) {
         return nullptr;
     }
     Size size{size_j.at("width").get<float>(), size_j.at("height").get<float>()};
-    auto window = std::make_unique<Window>(title, size);
+    auto window = std::make_shared<Window>(title, size);
     if (j.contains("root")) {
         window->set_root(create_widget(j["root"]));
     }

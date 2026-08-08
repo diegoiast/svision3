@@ -44,11 +44,11 @@ void Splitter::from_json(nlohmann::json const &j) {
 // Child management
 // ---------------------------------------------------------------------------
 
-Splitter &Splitter::add_child(std::unique_ptr<Widget> w) {
+std::weak_ptr<Widget> Splitter::add_child(std::shared_ptr<Widget> w) {
     return insert_child(children_.size(), std::move(w));
 }
 
-Splitter &Splitter::insert_child(size_t index, std::unique_ptr<Widget> w) {
+std::weak_ptr<Widget> Splitter::insert_child(size_t index, std::shared_ptr<Widget> w) {
     auto count = children_.size();
     index = std::min(index, count);
 
@@ -63,6 +63,7 @@ Splitter &Splitter::insert_child(size_t index, std::unique_ptr<Widget> w) {
         w->set_parent(this);
         w->set_window(window_);
     }
+    auto ref = std::weak_ptr<Widget>(w);
     children_.insert(children_.begin() + index, std::move(w));
 
     // Divider indices shift after insertion; any in-progress interaction is stale.
@@ -71,12 +72,12 @@ Splitter &Splitter::insert_child(size_t index, std::unique_ptr<Widget> w) {
     cursor_ = CursorShape::Arrow;
 
     layout_children();
-    return *this;
+    return ref;
 }
 
-WeakRefWidget<Widget> Splitter::child_at(size_t index) const {
+std::weak_ptr<Widget> Splitter::child_at(size_t index) const {
     if (index >= children_.size()) return {};
-    return weak_ref(children_[index].get());
+    return children_[index];
 }
 
 Splitter &Splitter::remove_child(size_t index) {

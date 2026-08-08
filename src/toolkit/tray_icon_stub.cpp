@@ -4,7 +4,7 @@
 // No-op fallback for platforms without a real tray-icon backend yet
 // (currently: macOS only -- see include/toolkit/tray_icon.hpp for the real
 // implementations, src/toolkit/linux/tray_icon.cpp and
-// src/toolkit/win32/tray_icon.cpp). create() always returns nullptr, exactly
+// src/toolkit/win32/tray_icon.cpp). build() always returns nullptr, exactly
 // like the Linux backend does when no D-Bus session bus is reachable, so
 // callers never need to branch on platform.
 
@@ -18,8 +18,7 @@ struct TrayIcon::Impl {};
 TrayIcon::TrayIcon() : impl_(std::make_unique<Impl>()) {}
 TrayIcon::~TrayIcon() = default;
 
-std::unique_ptr<TrayIcon> TrayIcon::create(std::string, std::string, std::string, Window *,
-                                           std::vector<Command::Ptr>) {
+std::unique_ptr<TrayIcon> TrayIconBuilder::build() const {
     spdlog::warn("TrayIcon: not implemented on this platform yet");
     return nullptr;
 }

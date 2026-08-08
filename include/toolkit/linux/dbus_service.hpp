@@ -122,11 +122,13 @@ struct MethodCall {
 };
 
 struct MethodReply {
-    std::vector<Value> args; // empty = void reply
+    // empty = void reply
+    std::vector<Value> args;
 };
 
 struct MethodError {
-    std::string name; // e.g. "org.freedesktop.DBus.Error.InvalidArgs"
+    // e.g. "org.freedesktop.DBus.Error.InvalidArgs"
+    std::string name;
     std::string message;
 };
 

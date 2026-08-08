@@ -118,7 +118,10 @@ int main(int argc, char *argv[]) {
         style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
     }
     style_names.push_back("Other");
-    auto window = app.create_window("Declarative Kitchen sink", {600, 400});
+    // Raw pointer for the callbacks below -- see demo1.cpp: several land on
+    // Commands the window owns, where a shared capture would be a cycle.
+    auto window_owner = app.create_window("Declarative Kitchen sink", {600, 400});
+    auto *window = window_owner.get();
     auto platformText =
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name());
     auto group = ui::radio_group().on_change([&app, window](int index) {
@@ -127,8 +130,6 @@ int main(int argc, char *argv[]) {
     });
     auto rb_light = ui::radio_button("&Light", group).selected(true);
     auto rb_dark = ui::radio_button("&Dark", group);
-    auto *rb_light_ptr = rb_light.get();
-    auto *rb_dark_ptr = rb_dark.get();
 
     auto toolbar_theme_combo = ui::combobox(style_names).on_change([&app, window](int index) {
         if (index < toolkit::theme_style_count) {
@@ -155,21 +156,19 @@ int main(int argc, char *argv[]) {
     status_bar_ptr->add_section("work", "Processing").spinner(350);
     status_bar_ptr->add_section("pulse", "Scanning").pulse(350);
 
-    auto *t_combo_ptr = toolbar_theme_combo.get();
-    auto *t_toggle_ptr = toolbar_theme_toggle.get();
-    auto *m_combo_ptr = main_theme_combo.get();
-
-    // Initial state and observer
-    auto sync_ui = [t_combo_ref = toolkit::weak_ref(t_combo_ptr),
-                    t_toggle_ref = toolkit::weak_ref(t_toggle_ptr),
-                    m_combo_ref = toolkit::weak_ref(m_combo_ptr), group,
-                    rb_light_ref = toolkit::weak_ref(rb_light_ptr),
-                    rb_dark_ref = toolkit::weak_ref(rb_dark_ptr)](const toolkit::Theme &theme) {
-        auto *t_combo_ptr = t_combo_ref.get();
-        auto *t_toggle_ptr = t_toggle_ref.get();
-        auto *m_combo_ptr = m_combo_ref.get();
-        auto *rb_light_ptr = rb_light_ref.get();
-        auto *rb_dark_ptr = rb_dark_ref.get();
+    // Initial state and observer. Element::ref() outlives the .add() that moves
+    // each Element into its container -- the container takes over the shared
+    // ownership, so these weak_ptrs keep tracking the same widgets.
+    auto sync_ui = [t_combo_ref = toolbar_theme_combo.ref(),
+                    t_toggle_ref = toolbar_theme_toggle.ref(),
+                    m_combo_ref = main_theme_combo.ref(), group,
+                    rb_light_ref = rb_light.ref(),
+                    rb_dark_ref = rb_dark.ref()](const toolkit::Theme &theme) {
+        auto t_combo_ptr = t_combo_ref.lock();
+        auto t_toggle_ptr = t_toggle_ref.lock();
+        auto m_combo_ptr = m_combo_ref.lock();
+        auto rb_light_ptr = rb_light_ref.lock();
+        auto rb_dark_ptr = rb_dark_ref.lock();
         if (!t_combo_ptr || !t_toggle_ptr || !m_combo_ptr || !rb_light_ptr || !rb_dark_ptr) {
             return;
         }
@@ -190,7 +189,7 @@ int main(int argc, char *argv[]) {
 
         bool light = theme.palette.window.luma() > 0.5f;
         t_toggle_ptr->set_checked(light);
-        group.group->select(light ? rb_light_ptr : rb_dark_ptr);
+        group.group->select(light ? rb_light_ptr.get() : rb_dark_ptr.get());
     };
 
     sync_ui(toolkit::Theme::current());

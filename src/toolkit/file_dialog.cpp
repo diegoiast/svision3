@@ -65,6 +65,9 @@ FileDialog::Future FileDialog::show(std::string_view ok_label) {
     auto callback = std::make_shared<Callback>();
     auto settled = std::make_shared<bool>(false);
     auto win = Application::instance().create_window(title_, {700, 500});
+    // on_ok/on_cancel live on the widget the window owns, so they take a weak
+    // reference back -- a shared one would be a cycle.
+    auto weak_win = std::weak_ptr<Window>(win);
     auto widget = std::make_unique<FileBrowserWidget>();
     widget->set_browser_mode(false);
     auto fdp = widget.get();
@@ -86,23 +89,27 @@ FileDialog::Future FileDialog::show(std::string_view ok_label) {
         fdp->set_filename(default_name_);
     }
 
-    fdp->on_ok = [callback, settled, fdp, win] {
+    fdp->on_ok = [callback, settled, fdp, weak_win] {
         if (*settled) {
             return;
         }
         *settled = true;
         auto path = fdp->selected_path();
-        win->close();
+        if (auto win = weak_win.lock()) {
+            win->close();
+        }
         if (*callback) {
             (*callback)(std::move(path));
         }
     };
-    fdp->on_cancel = [callback, settled, win] {
+    fdp->on_cancel = [callback, settled, weak_win] {
         if (*settled) {
             return;
         }
         *settled = true;
-        win->close();
+        if (auto win = weak_win.lock()) {
+            win->close();
+        }
         if (*callback) {
             (*callback)(std::nullopt);
         }
