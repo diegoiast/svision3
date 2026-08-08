@@ -19,6 +19,11 @@ TableView::TableView(std::shared_ptr<ItemModel> model) : model_(std::move(model)
             rebuild_sort_index();
             auto_fit_columns();
             update_scroll_state();
+            // Refresh rather than leave stale: a row tooltip built from data
+            // at the last hover-changed moment would otherwise keep showing
+            // whatever was there before this update (e.g. a filter box
+            // re-rendering the table while the mouse sits still over a row).
+            update_row_tooltip();
             if (window()) {
                 window()->request_redraw("table selection");
             }
@@ -76,6 +81,11 @@ TableView &TableView::set_model(std::shared_ptr<ItemModel> model) {
             rebuild_sort_index();
             auto_fit_columns();
             update_scroll_state();
+            // Refresh rather than leave stale: a row tooltip built from data
+            // at the last hover-changed moment would otherwise keep showing
+            // whatever was there before this update (e.g. a filter box
+            // re-rendering the table while the mouse sits still over a row).
+            update_row_tooltip();
             if (window()) {
                 window()->request_redraw("table selection");
             }
@@ -121,12 +131,76 @@ void TableView::rebuild_sort_index() {
     auto *m = model_.get();
     auto ascending = (sort_order_ == SortOrder::Ascending);
 
-    // FIXME: we need to allow users a custom sort method
+    auto it = column_comparators_.find(sort_column_);
+    if (it != column_comparators_.end()) {
+        auto const &less = it->second;
+        std::stable_sort(sort_indices_.begin(), sort_indices_.end(),
+                         [m, col, ascending, &less](size_t a, size_t b) {
+                             return ascending ? less(m->cell_text(a, col), m->cell_text(b, col))
+                                              : less(m->cell_text(b, col), m->cell_text(a, col));
+                         });
+        return;
+    }
+
     std::stable_sort(sort_indices_.begin(), sort_indices_.end(),
                      [m, col, ascending](size_t a, size_t b) {
                          return ascending ? (m->cell_text(a, col) < m->cell_text(b, col))
                                           : (m->cell_text(a, col) > m->cell_text(b, col));
                      });
+}
+
+TableView &TableView::set_row_tooltip_provider(RowTooltipProvider provider) {
+    row_tooltip_provider_ = std::move(provider);
+    row_tooltip_markdown_ = false;
+    update_row_tooltip();
+    return *this;
+}
+
+TableView &TableView::set_row_markdown_tooltip_provider(RowTooltipProvider provider) {
+    row_tooltip_provider_ = std::move(provider);
+    row_tooltip_markdown_ = true;
+    update_row_tooltip();
+    return *this;
+}
+
+void TableView::update_row_tooltip() {
+    if (!row_tooltip_provider_) {
+        return;
+    }
+    // The row count can shrink out from under an already-hovered row (e.g.
+    // filtering the model down via set_data() while the mouse sits still) --
+    // model_row() would otherwise fall back to treating the stale display
+    // index as a model row directly, which may not even exist anymore.
+    if (hovered_row_ && model_ && *hovered_row_ >= model_->row_count()) {
+        hovered_row_ = std::nullopt;
+    }
+    if (!hovered_row_) {
+        set_tooltip({});
+        return;
+    }
+    auto text = row_tooltip_provider_(model_row(*hovered_row_));
+    if (row_tooltip_markdown_) {
+        set_markdown_tooltip(std::move(text));
+    } else {
+        set_tooltip(std::move(text));
+    }
+}
+
+TableView &TableView::set_row_context_menu_handler(RowContextMenuHandler handler) {
+    row_context_menu_handler_ = std::move(handler);
+    return *this;
+}
+
+TableView &TableView::set_column_comparator(int column, CellComparator less) {
+    if (less) {
+        column_comparators_[column] = std::move(less);
+    } else {
+        column_comparators_.erase(column);
+    }
+    if (sort_column_ == column) {
+        rebuild_sort_index();
+    }
+    return *this;
 }
 
 void TableView::ensure_column_widths() {
@@ -502,6 +576,23 @@ bool TableView::handle_mouse(MouseEvent const &event) {
         return false;
     }
 
+    // Leave's position is wherever the mouse ended up outside this widget, so
+    // it would otherwise always be rejected by the viewport bounds check
+    // below -- meaning hovered_row_ (and any row tooltip/highlight tied to
+    // it) would never clear when the mouse moves off the table entirely
+    // (e.g. up into a filter box above it).
+    if (event.type == MouseEvent::Type::Leave) {
+        over_resize_grip_ = false;
+        if (hovered_row_) {
+            hovered_row_ = std::nullopt;
+            update_row_tooltip();
+            if (window()) {
+                window()->request_redraw("table hover leave");
+            }
+        }
+        return true;
+    }
+
     if (handle_scrollbar_mouse(event)) {
         return true;
     }
@@ -544,7 +635,11 @@ bool TableView::handle_mouse(MouseEvent const &event) {
 
     if (event.type == MouseEvent::Type::Move) {
         over_resize_grip_ = header_resize_hit(event.position.x, event.position.y) >= 0;
-        hovered_row_ = row_at_y(event.position.y);
+        auto new_hovered = row_at_y(event.position.y);
+        if (new_hovered != hovered_row_) {
+            hovered_row_ = new_hovered;
+            update_row_tooltip();
+        }
         return true;
     }
 
@@ -562,6 +657,16 @@ bool TableView::handle_mouse(MouseEvent const &event) {
         auto row = row_at_y(event.position.y);
         if (!row) {
             return false;
+        }
+
+        if (event.button == 1 && row_context_menu_handler_) {
+            selection_.clear();
+            selection_.insert(*row);
+            anchor_row_ = row;
+            cursor_row_ = row;
+            notify_selection();
+            row_context_menu_handler_(model_row(*row), map_to_window(event.position));
+            return true;
         }
 
         auto toggle_mod = event.super || event.ctrl;

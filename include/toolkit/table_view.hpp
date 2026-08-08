@@ -6,6 +6,7 @@
 #include "toolkit/item_model.hpp"
 #include "toolkit/scrollable_widget.hpp"
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -46,6 +47,30 @@ class TableView : public ScrollableWidget, public Fluent<TableView> {
     TableView &set_column_width(int column, float width);
     float column_width(int column) const;
 
+    // Compares two cells of `column` and returns true if `a` sorts before `b`
+    // (ascending order — TableView flips the result itself when the user has
+    // sorted descending). Without one set, columns fall back to lexicographic
+    // comparison of ItemModel::cell_text(), which sorts "10" before "9".
+    using CellComparator = std::function<bool(std::string_view a, std::string_view b)>;
+    TableView &set_column_comparator(int column, CellComparator less);
+
+    // Called with the *model* row index (accounting for the current sort)
+    // whenever the hovered row changes, to build that row's tooltip on demand
+    // (applied via Widget::set_tooltip()/set_markdown_tooltip(), so it shows
+    // up through the normal tooltip pipeline). Returning "" shows no tooltip.
+    // set_row_tooltip_provider() renders the result as plain text;
+    // set_row_markdown_tooltip_provider() renders it as rich markdown.
+    using RowTooltipProvider = std::function<std::string(size_t model_row)>;
+    TableView &set_row_tooltip_provider(RowTooltipProvider provider);
+    TableView &set_row_markdown_tooltip_provider(RowTooltipProvider provider);
+
+    // Called on a right click (Press, button 1) over a data row, after
+    // TableView has already selected that row -- with the *model* row index
+    // (accounting for the current sort) and the click position in window
+    // coordinates, ready to pass straight to ContextMenu::show()/Menu::show().
+    using RowContextMenuHandler = std::function<void(size_t model_row, Point window_pos)>;
+    TableView &set_row_context_menu_handler(RowContextMenuHandler handler);
+
     int sort_column() const { return sort_column_; }
     SortOrder sort_order() const { return sort_order_; }
 
@@ -83,9 +108,14 @@ class TableView : public ScrollableWidget, public Fluent<TableView> {
 
     void rebuild_sort_index();
     size_t model_row(size_t display_row) const;
+    void update_row_tooltip();
 
     std::shared_ptr<ItemModel> model_;
     std::vector<float> column_widths_;
+    std::map<int, CellComparator> column_comparators_;
+    RowTooltipProvider row_tooltip_provider_;
+    bool row_tooltip_markdown_ = false;
+    RowContextMenuHandler row_context_menu_handler_;
     std::vector<size_t> sort_indices_;
     std::set<size_t> selection_;
     std::optional<size_t> anchor_row_;

@@ -220,3 +220,166 @@ TEST_CASE("TableView relative coordinates", "[tableview]") {
     e.position = {110, 150};
     REQUIRE(tv.handle_mouse(e) == false);
 }
+
+// Row/header pixel heights are theme-dependent, so rather than hardcode a y
+// that happens to land on display row 0, scan down from the top for the
+// first y that produces a non-empty tooltip -- row_at_y() is monotonic in y,
+// so that's guaranteed to be display row 0. Returns the y it stopped at.
+static float move_to_first_row(TableView &tv, float x = 10) {
+    MouseEvent e{};
+    e.type = MouseEvent::Type::Move;
+    for (auto y = 0.0f; y < 300.0f; y += 1.0f) {
+        e.position = {x, y};
+        tv.handle_mouse(e);
+        if (!tv.tooltip().empty()) {
+            return y;
+        }
+    }
+    return 0;
+}
+
+TEST_CASE("TableView set_column_comparator sorts numerically", "[tableview]") {
+    auto model = std::make_shared<StringTableModel>(
+        std::vector<std::string>{"N"},
+        std::vector<std::vector<std::string>>{{"9"}, {"10"}, {"2"}});
+    TableView tv(model);
+    tv.set_rect({0, 0, 300, 300});
+    tv.set_column_comparator(0, [](std::string_view a, std::string_view b) {
+        return std::strtod(std::string(a).c_str(), nullptr) < std::strtod(std::string(b).c_str(), nullptr);
+    });
+    // Identifies the model row under display row 0 once sorted.
+    tv.set_row_tooltip_provider([model](size_t row) -> std::string { return model->cell_text(row, 0); });
+
+    MouseEvent e{};
+    e.type = MouseEvent::Type::Release; // sort toggles on header release, not press
+    e.position = {5, 5};                // header, column 0 -> ascending sort
+    REQUIRE(tv.handle_mouse(e) == true);
+    REQUIRE(tv.sort_column() == 0);
+
+    // With ascending numeric sort, display row 0 must be "2" (the smallest
+    // value), not "10" (which a lexicographic compare would put first).
+    move_to_first_row(tv, 5);
+    REQUIRE(tv.tooltip() == "2");
+}
+
+TEST_CASE("TableView row tooltip provider tracks hover", "[tableview]") {
+    auto model = make_model();
+    TableView tv(model);
+    tv.set_rect({0, 0, 300, 300});
+    tv.set_row_tooltip_provider(
+        [](size_t row) -> std::string { return "row " + std::to_string(row); });
+
+    REQUIRE(tv.tooltip().empty());
+    REQUIRE_FALSE(tv.tooltip_is_markdown());
+
+    move_to_first_row(tv);
+    REQUIRE(tv.tooltip() == "row 0");
+    REQUIRE_FALSE(tv.tooltip_is_markdown());
+}
+
+TEST_CASE("TableView row markdown tooltip provider marks markdown", "[tableview]") {
+    auto model = make_model();
+    TableView tv(model);
+    tv.set_rect({0, 0, 300, 300});
+    tv.set_row_markdown_tooltip_provider(
+        [](size_t row) -> std::string { return "**row " + std::to_string(row) + "**"; });
+
+    move_to_first_row(tv);
+    REQUIRE(tv.tooltip() == "**row 0**");
+    REQUIRE(tv.tooltip_is_markdown());
+
+    // Moving off the rows (but still inside the widget's own rect, since
+    // handle_mouse() bails out early for positions outside it) clears the
+    // tooltip again.
+    MouseEvent e{};
+    e.type = MouseEvent::Type::Move;
+    e.position = {10, 250};
+    tv.handle_mouse(e);
+    REQUIRE(tv.tooltip().empty());
+}
+
+TEST_CASE("TableView row context menu handler fires on right click", "[tableview]") {
+    auto model = make_model();
+    TableView tv(model);
+    tv.set_rect({0, 0, 300, 300});
+
+    auto fired_row = std::optional<size_t>{};
+    auto fired_pos = Point{};
+    tv.set_row_context_menu_handler([&](size_t row, Point pos) {
+        fired_row = row;
+        fired_pos = pos;
+    });
+
+    // Find display row 0's y using the same probe as the tooltip tests above.
+    tv.set_row_tooltip_provider([](size_t row) -> std::string { return std::to_string(row); });
+    auto probe_y = move_to_first_row(tv);
+    REQUIRE(tv.tooltip() == "0");
+
+    MouseEvent press{};
+    press.type = MouseEvent::Type::Press;
+    press.button = 1; // right click
+    press.position = {10, probe_y};
+    REQUIRE(tv.handle_mouse(press) == true);
+
+    REQUIRE(fired_row.has_value());
+    REQUIRE(*fired_row == 0);
+    REQUIRE(fired_pos.x == 10);
+    REQUIRE(fired_pos.y == probe_y);
+    REQUIRE(tv.selected_row() == size_t{0});
+}
+
+TEST_CASE("TableView row tooltip refreshes when data changes under a stationary hover",
+         "[tableview]") {
+    auto model = std::make_shared<StringTableModel>(
+        std::vector<std::string>{"Name"},
+        std::vector<std::vector<std::string>>{{"Alice"}, {"Bob"}, {"Charlie"}});
+    TableView tv(model);
+    tv.set_rect({0, 0, 300, 300});
+    tv.set_row_tooltip_provider(
+        [model](size_t row) -> std::string { return model->cell_text(row, 0); });
+
+    auto probe_y = move_to_first_row(tv);
+    REQUIRE(tv.tooltip() == "Alice");
+
+    // Simulate a filter box re-rendering the table (e.g. StringTableModel::set_data())
+    // while the mouse sits still at the same y -- display row 0 now holds a
+    // completely different row. Without a refresh the tooltip would keep
+    // showing "Alice" since hovered_row_ (0) never changed.
+    model->set_data({"Name"}, {{"Zed"}});
+    REQUIRE(tv.tooltip() == "Zed");
+
+    // Now the model shrinks further, to zero rows, out from under the same
+    // hovered index -- the tooltip must clear rather than read a row that no
+    // longer exists.
+    model->set_data({"Name"}, {});
+    REQUIRE(tv.tooltip().empty());
+
+    // And re-populating without any further mouse movement stays cleared:
+    // hovered_row_ was reset above, and nothing re-hovers it on its own.
+    model->set_data({"Name"}, {{"New"}});
+    REQUIRE(tv.tooltip().empty());
+
+    // Only an actual hover (mouse move) brings a tooltip back.
+    MouseEvent move{};
+    move.type = MouseEvent::Type::Move;
+    move.position = {10, probe_y};
+    tv.handle_mouse(move);
+    REQUIRE(tv.tooltip() == "New");
+}
+
+TEST_CASE("TableView row tooltip clears when the mouse leaves the widget", "[tableview]") {
+    auto model = make_model();
+    TableView tv(model);
+    tv.set_rect({0, 0, 300, 300});
+    tv.set_row_tooltip_provider(
+        [](size_t row) -> std::string { return "row " + std::to_string(row); });
+
+    move_to_first_row(tv);
+    REQUIRE(tv.tooltip() == "row 0");
+
+    MouseEvent leave{};
+    leave.type = MouseEvent::Type::Leave;
+    leave.position = {10, -50}; // wherever the mouse ended up outside the widget
+    REQUIRE(tv.handle_mouse(leave) == true);
+    REQUIRE(tv.tooltip().empty());
+}
