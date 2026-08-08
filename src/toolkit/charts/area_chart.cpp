@@ -63,6 +63,15 @@ AreaChart::PlotArea AreaChart::compute_plot_area() const {
     }
 
     if (!first) {
+        if (!auto_range_) {
+            if (y_min_override_) {
+                pa.data_y_min = *y_min_override_;
+            }
+            if (y_max_override_) {
+                pa.data_y_max = *y_max_override_;
+            }
+        }
+
         auto y_range = pa.data_y_max - pa.data_y_min;
         if (y_range < chart_defaults::kMinDataRange) {
             y_range = 1.0f;
@@ -174,9 +183,10 @@ void AreaChart::paint(Painter &painter) {
         }
         char buf[32];
         std::snprintf(buf, sizeof(buf), "%.4g", static_cast<double>(yv));
-        auto ts = painter.measure_text(buf, small_font);
+        std::string label = buf + y_unit_suffix_;
+        auto ts = painter.measure_text(label, small_font);
         float lx = pa.x - ts.width - 6;
-        painter.draw_text(buf, {lx, sy + ts.height / 3}, text_color, small_font);
+        painter.draw_text(label, {lx, sy + ts.height / 3}, text_color, small_font);
     }
 
     // X-axis labels from first series
@@ -266,7 +276,7 @@ void AreaChart::paint(Painter &painter) {
             if (!dp.label.empty()) {
                 tip += "  " + dp.label;
             }
-            tip += std::string("  ") + val_buf;
+            tip += std::string("  ") + val_buf + y_unit_suffix_;
 
             auto ts = painter.measure_text(tip, small_font);
             auto tip_fm = painter.font_metrics(small_font);
