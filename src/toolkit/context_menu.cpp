@@ -302,6 +302,14 @@ void ContextMenu::open_submenu(int index) {
         return;
     }
 
+    // A tooltip may still be showing (or pending on its delay timer) for
+    // whatever was hovered just before the mouse reached this item -- close
+    // it explicitly rather than relying on it never having been (re)armed,
+    // since the two are otherwise unrelated systems.
+    if (window_) {
+        window_->hide_tooltip();
+    }
+
     open_submenu_index_ = index;
     auto const &item = items_[index];
     auto y = 2.0f;

@@ -758,15 +758,7 @@ void Window::handle_paint(Painter &painter) {
     }
 
     if (tooltip_visible_ && tooltip_widget_) {
-        auto const &current = tooltip_widget_->tooltip();
-        if (current != tooltip_text_) {
-            tooltip_text_ = current;
-            if (!tooltip_text_.empty() && !tooltip_widget_->tooltip_is_markdown()) {
-                show_tooltip_window(tooltip_text_, tooltip_mouse_pos_);
-            } else {
-                hide_tooltip();
-            }
-        }
+        apply_tooltip_text_change();
     }
 
     auto draw_end = std::chrono::steady_clock::now();
@@ -1091,7 +1083,15 @@ void Window::handle_mouse(MouseEvent const &event) {
             }
         }
 
-        update_tooltip(under, event.position);
+        // While a popup (context menu, submenu, ...) is open, moves that land
+        // outside every popup's bounds still reach here (the dispatch loop
+        // above only `return`s early on a *hit*) and would otherwise re-arm
+        // a tooltip for whatever's underneath -- e.g. crossing back over a
+        // TableView row while the mouse travels from a menu item to its
+        // submenu, popping that row's tooltip on top of the still-open menu.
+        if (!has_popup()) {
+            update_tooltip(under, event.position);
+        }
     }
 
     if (hovered_widget_) {
@@ -1288,13 +1288,8 @@ Window &Window::resize_to_fit() {
 void Window::update_tooltip(Widget *under, Point mouse_pos) {
     if (under == tooltip_widget_) {
         tooltip_mouse_pos_ = mouse_pos;
-        if (tooltip_visible_ && under && under->tooltip() != tooltip_text_) {
-            tooltip_text_ = under->tooltip();
-            if (!tooltip_text_.empty()) {
-                show_tooltip_window(tooltip_text_, tooltip_mouse_pos_);
-            } else {
-                hide_tooltip();
-            }
+        if (tooltip_visible_ && under) {
+            apply_tooltip_text_change();
         }
         return;
     }
@@ -1308,6 +1303,27 @@ void Window::update_tooltip(Widget *under, Point mouse_pos) {
         tooltip_mouse_pos_ = mouse_pos;
         tooltip_text_ = under->tooltip();
         tooltip_timer_id_ = start_timer(delay, [this] { show_tooltip(); }, false);
+    }
+}
+
+// Shared by update_tooltip() (reacting to mouse movement) and paint()
+// (catching a hovered widget's tooltip text changing for a non-mouse reason,
+// e.g. a timer refreshing it) -- both need the same "text changed while a
+// tooltip is already showing" reaction: hide if now empty, refresh the rich
+// overlay in place for markdown so it doesn't also pop a plain-text window on
+// top of it, otherwise (re)show the plain popup.
+void Window::apply_tooltip_text_change() {
+    auto const &current = tooltip_widget_->tooltip();
+    if (current == tooltip_text_) {
+        return;
+    }
+    tooltip_text_ = current;
+    if (tooltip_text_.empty()) {
+        hide_tooltip();
+    } else if (tooltip_widget_->tooltip_is_markdown()) {
+        show_rich_tooltip();
+    } else {
+        show_tooltip_window(tooltip_text_, tooltip_mouse_pos_);
     }
 }
 

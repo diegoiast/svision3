@@ -161,6 +161,7 @@ class Window {
     bool dispatch_key_event_recursive(Widget *w, KeyEvent const &event);
     void focus_next(bool reverse);
     void update_tooltip(Widget *under, Point mouse_pos);
+    void apply_tooltip_text_change();
     void show_tooltip();
     void show_rich_tooltip();
     void show_tooltip_window(std::string const &text, Point screen_pos);

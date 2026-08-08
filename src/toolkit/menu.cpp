@@ -377,6 +377,12 @@ void Menu::open_submenu(int index) {
     if (index < 0 || index >= items_.size() || !items_[index].is_submenu()) {
         return;
     }
+
+    // See ContextMenu::open_submenu()'s identical call for why.
+    if (window_) {
+        window_->hide_tooltip();
+    }
+
     open_submenu_index_ = index;
     auto const &item = items_[index];
     auto y = 2.0f;
