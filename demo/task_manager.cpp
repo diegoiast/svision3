@@ -51,7 +51,11 @@ constexpr auto kProcessRefreshIntervalSec = 2.0f;
 // remaining points, and requests a redraw -- everything a new sample needs.
 struct SlidingChart {
     toolkit::AreaChart *chart;
-    toolkit::Window *window;
+    // Weak, not a raw Window*: these SlidingCharts are function-local statics
+    // driven by a timer and a background monitor thread, so they outlive the
+    // window at shutdown. lock() turns that into a no-op instead of a dangling
+    // deref.
+    std::weak_ptr<toolkit::Window> window;
     std::string series_name;
     toolkit::Color line_color;
     toolkit::Color fill_color;
@@ -72,7 +76,9 @@ struct SlidingChart {
         series.points.assign(points.begin(), points.end());
         chart->clear_series();
         chart->add_series(std::move(series));
-        window->request_redraw();
+        if (auto win = window.lock()) {
+            win->request_redraw();
+        }
     }
 };
 
@@ -254,7 +260,8 @@ int main(int argc, char *argv[]) {
     // gets replaced on the next right click.
     static auto process_context_menu = std::unique_ptr<toolkit::ContextMenu>{};
     process_table->set_row_context_menu_handler(
-        [window, process_model](size_t model_row, toolkit::Point window_pos) {
+        [weak_window = std::weak_ptr(window), process_model](size_t model_row,
+                                                             toolkit::Point window_pos) {
             auto const &pid_text = process_model->cell_text(model_row, 0);
             auto pid = std::atoi(pid_text.c_str());
 
@@ -278,8 +285,12 @@ int main(int argc, char *argv[]) {
                 toolkit::Clipboard::set_text(text);
             }));
 
+            auto window = weak_window.lock();
+            if (!window) {
+                return;
+            }
             process_context_menu = std::make_unique<toolkit::ContextMenu>(std::move(items));
-            process_context_menu->show(window, window_pos);
+            process_context_menu->show(window.get(), window_pos);
         });
 
     auto process_filter_input = ui::line_input("Filter by name...");
@@ -424,8 +435,16 @@ int main(int argc, char *argv[]) {
     quit_cmd->set_icon("application-exit");
     tray_actions.push_back(std::move(quit_cmd));
 
-    auto tray = toolkit::TrayIcon::create("utilities-system-monitor", "Task Manager",
-                                          "svision3-task-manager", window, std::move(tray_actions));
+    // icon() is the bitmap every backend draws; icon_name() is the extra hint a
+    // Linux tray host uses to theme and size it to the panel.
+    auto tray = toolkit::TrayIcon::builder()
+                    .icon(app.load_icon("utilities-system-monitor", 22, ""))
+                    .icon_name("utilities-system-monitor")
+                    .tooltip("Task Manager")
+                    .id("svision3-task-manager")
+                    .owner_window(window)
+                    .actions(std::move(tray_actions))
+                    .build();
     if (!tray) {
         spdlog::info("Tray icon unavailable (no D-Bus session bus?) -- continuing without it");
     }
@@ -436,8 +455,9 @@ int main(int argc, char *argv[]) {
         // Let a few real samples accumulate before capturing.
         window->start_timer(
             3.5f,
-            [&app, window, screenshot_path] {
-                auto ok = window->save_to_png(screenshot_path);
+            [&app, weak_window = std::weak_ptr(window), screenshot_path] {
+                auto window = weak_window.lock();
+                auto ok = window && window->save_to_png(screenshot_path);
                 spdlog::info("Screenshot saved to '{}': {}", screenshot_path,
                              ok ? "success" : "failed");
                 app.quit();

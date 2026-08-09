@@ -43,7 +43,14 @@ struct StockDay {
 static std::string format_timestamp(int64_t ts) {
     auto t = static_cast<time_t>(ts);
     auto tm_buf = tm{};
+    // gmtime_r is POSIX; MSVC spells it gmtime_s and takes the arguments the
+    // other way round. Both are the thread-safe form -- plain gmtime() returns
+    // a shared static buffer.
+#ifdef _WIN32
+    gmtime_s(&tm_buf, &t);
+#else
     gmtime_r(&t, &tm_buf);
+#endif
     char buf[16];
     std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm_buf);
     return buf;
@@ -471,9 +478,11 @@ int main() {
     }
     auto theme_combo = ui::combobox(style_names)
                            .selected(static_cast<int>(current_style))
-                           .on_change([window](int index) {
+                           .on_change([weak_window = std::weak_ptr(window)](int index) {
                                current_style = static_cast<toolkit::ThemeStyle>(index);
-                               apply_theme(window);
+                               if (auto window = weak_window.lock()) {
+                                   apply_theme(window.get());
+                               }
                            });
     toolbar.add_child(std::move(theme_combo));
 
