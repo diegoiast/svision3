@@ -523,11 +523,13 @@ if(TOOLKIT_BUILD_DEMOS)
         FetchContent_MakeAvailable(hwinfo)
 
         # ── process_info (task_manager demo only: process list + network I/O) ──
-        # One implementation per platform behind demo/process_info.hpp; only
-        # Linux exists today, so everyone else gets the empty stub until someone
-        # writes a process_info_win32.cpp/process_info_macos.cpp.
+        # One implementation per platform behind demo/process_info.hpp; Linux
+        # and Windows exist today, so macOS gets the empty stub until someone
+        # writes a process_info_macos.cpp.
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
             set(TASK_MANAGER_PROCESS_INFO_SRC demo/process_info_linux.cpp)
+        elseif(WIN32)
+            set(TASK_MANAGER_PROCESS_INFO_SRC demo/process_info_win32.cpp)
         else()
             set(TASK_MANAGER_PROCESS_INFO_SRC demo/process_info_stub.cpp)
         endif()
@@ -538,6 +540,12 @@ if(TOOLKIT_BUILD_DEMOS)
             set_target_properties(task_manager PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
         endif()
         target_link_libraries(task_manager PRIVATE toolkit lfreist-hwinfo::hwinfo)
+        if(WIN32)
+            # process_info_win32.cpp: psapi = GetProcessMemoryInfo,
+            # iphlpapi = GetIfTable2, advapi32 = the token/SID lookup behind
+            # ProcessDetail::user.
+            target_link_libraries(task_manager PRIVATE psapi iphlpapi advapi32)
+        endif()
         if(NOT MSVC)
             target_link_options(task_manager PRIVATE -Wl,--gc-sections)
         endif()
