@@ -84,6 +84,12 @@ HttpResponse fetch(HttpRequest const &request) {
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(request.timeout_ms));
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+#ifdef _WIN32
+    // curl implements NATIVE_CA only on Windows; elsewhere OpenSSL finds the
+    // distribution's bundle on its own, so the option is not needed there.
+    // NATIVE_CA makes it read the OS certificate store.
+    curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, static_cast<long>(CURLSSLOPT_NATIVE_CA));
+#endif
 
     if (request.method != HttpMethod::Get) {
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method_string(request.method));
