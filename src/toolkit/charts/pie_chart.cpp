@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
+#if defined(_WIN32)
+#define _USE_MATH_DEFINES
+#endif
+
 #include "toolkit/charts/pie_chart.hpp"
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
