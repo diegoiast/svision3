@@ -1,15 +1,6 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-// Platform-abstracted process/network enumeration for the task_manager demo.
-// hwinfo (see task_manager.cpp) covers CPU/RAM monitoring but has no process
-// listing or network I/O counters at all, so this fills that gap with one
-// implementation per platform: process_info_linux.cpp today, with
-// process_info_win32.cpp/process_info_macos.cpp meant to replace
-// process_info_stub.cpp once someone writes the EnumProcesses/GetIfTable2 or
-// sysctl/getifaddrs equivalents. task_manager.cpp only ever calls through
-// this header, so adding a platform is just adding its .cpp and wiring it
-// into CMakeLists.txt -- no changes to the demo itself.
 #pragma once
 
 #include <cstdint>
@@ -17,6 +8,9 @@
 #include <unordered_map>
 #include <vector>
 
+// Platform-abstracted process/network enumeration for the task_manager demo.
+// hwinfo (see task_manager.cpp) covers CPU/RAM monitoring but has no process
+// listing or network I/O counters at all.
 namespace process_info {
 
 struct ProcessRow {

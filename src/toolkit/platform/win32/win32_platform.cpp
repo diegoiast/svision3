@@ -5,7 +5,7 @@
 #include "toolkit/theme.hpp"
 #include "toolkit/window.hpp"
 #include "win32_image_loader.hpp"
-#include "win32_utils.hpp"
+#include "toolkit/win32/win32_utils.hpp"
 
 // clang-format off
 #ifndef NOMINMAX
@@ -86,7 +86,7 @@ static float get_window_scale(HWND hwnd) {
 
 // --- Helpers ---
 
-// Declared in win32_utils.hpp and given external linkage (not static) so other win32
+// Declared in toolkit/win32/win32_utils.hpp and given external linkage (not static) so other win32
 // TUs (e.g. the image loader) share this one implementation without pulling <windows.h>
 // into their headers.
 std::wstring utf8_to_wide(std::string_view s) {
@@ -813,12 +813,12 @@ std::string Win32PlatformApplication::clipboard_get_text() {
 }
 
 void Win32PlatformApplication::clipboard_set_text(std::string const &text) {
-    int wlen =
+    auto wlen =
         MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
     if (wlen <= 0) {
         return;
     }
-    HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, (wlen + 1) * sizeof(wchar_t));
+    auto hg = GlobalAlloc(GMEM_MOVEABLE, (wlen + 1) * sizeof(wchar_t));
     if (!hg) {
         return;
     }
@@ -838,6 +838,11 @@ void Win32PlatformApplication::clipboard_set_text(std::string const &text) {
 Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::string_view title,
                                          Size size, Window *owner, WindowOptions options)
     : app_(app), owner_(owner) {
+    auto wtitle = utf8_to_wide(title);
+    auto scale = static_cast<float>(get_system_dpi()) / 96.0f;
+    auto style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
+    auto adjust_style = WS_OVERLAPPEDWINDOW;
+
     arrow_cursor = LoadCursorW(nullptr, IDC_ARROW);
     ibeam_cursor = LoadCursorW(nullptr, IDC_IBEAM);
     hand_cursor = LoadCursorW(nullptr, IDC_HAND);
@@ -847,11 +852,6 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
     resize_nw_cursor = LoadCursorW(nullptr, IDC_SIZENWSE);
     resize_nesw_cursor = LoadCursorW(nullptr, IDC_SIZENESW);
     move_cursor = LoadCursorW(nullptr, IDC_SIZEALL);
-    std::wstring wtitle = utf8_to_wide(title);
-    float scale = static_cast<float>(get_system_dpi()) / 96.0f;
-
-    DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
-    DWORD adjust_style = WS_OVERLAPPEDWINDOW;
 
     if (options.csd) {
         // Use WS_OVERLAPPEDWINDOW to get standard animations even for CSD.
@@ -861,13 +861,13 @@ Win32PlatformWindow::Win32PlatformWindow(Win32PlatformApplication *app, std::str
         adjust_style = WS_POPUP;
     }
 
-    RECT r = {0, 0, static_cast<LONG>(size.width * scale), static_cast<LONG>(size.height * scale)};
+    auto r = RECT{0, 0, static_cast<LONG>(size.width * scale), static_cast<LONG>(size.height * scale)};
     AdjustWindowRectEx(&r, adjust_style, FALSE, 0);
     hwnd = CreateWindowExW(0, Win32PlatformApplication::kWindowClassName, wtitle.c_str(), style,
                            CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
                            nullptr, nullptr, app_->hinstance, nullptr);
 
-    MARGINS margins = {1, 1, 1, 1};
+    auto margins = MARGINS{1, 1, 1, 1};
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 
     // After creation, we might have a different scale if we are on a different monitor

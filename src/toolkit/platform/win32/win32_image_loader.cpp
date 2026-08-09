@@ -1,5 +1,5 @@
 #include "win32_image_loader.hpp"
-#include "win32_utils.hpp"
+#include "toolkit/win32/win32_utils.hpp"
 #include "toolkit/pixel_format.hpp"
 
 // clang-format off
