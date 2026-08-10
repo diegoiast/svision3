@@ -586,6 +586,13 @@ if(TOOLKIT_BUILD_DEMOS)
         set_target_properties(demo_dock PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
     endif()
     target_link_libraries(demo_dock PRIVATE toolkit)
+
+    # Scratch tool for the documentation site: renders each widget offscreen
+    # (dummy platform + Cairo image surface, no display needed) to a PNG.
+    # Not WIN32_EXECUTABLE -- it's a console tool, not a demo app.
+    add_executable(widget_screenshot demo/widget_screenshot.cpp)
+    target_include_directories(widget_screenshot PRIVATE src)
+    target_link_libraries(widget_screenshot PRIVATE toolkit)
 endif()
 
 # ── nfd (Native File Dialog) ──────────────────────────────────────────────────
