@@ -57,6 +57,10 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 43. [ ] Blinking API - we have a timer, I am unsure what can be done to make it public.
 44. [ ] Resource / asset management.
 45. [ ] Some way to connect to Appium for GUI testing. Maybe emulate the flutter observatory?
+46. [ ] Click events on RichLabel?
+47. [ ] Click events on Toasts?
+48. [ ] Toast on windows 95 - title is not readable.
+49. [ ] Window/Layout - add - should be templated, and return a reference.
 
 ## Platform
 
@@ -249,7 +253,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 ## Windows 95 theme
 
-1. Fix
+1. IconGrid seelction should be squared.
 
 ## Menus
 
@@ -319,7 +323,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 5. [x] Min/max size constraints on window
 6. [x] Window min size auto-computed from root content
 
-## TabWidget / TabHeader Features [10/12]
+## TabWidget / TabHeader Features [11/15]
 
 1. [x] Clickable tab bar with active/inactive/hover states.
 2. [x] Close button on tabs (logs, doesn't close).
@@ -336,6 +340,8 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 13. [x] If you add an editor to a tab widget, focus another widget and then
         window->set_foused_widget(tab) - tab becomes active, and text arrives to
         the editor, but it will have not cursor and not be "focused".
+14. [ ] Tabs should have frame/border
+15. [ ] Event to notify when a user requests to close a tab, with option to prevent it
 
 ## ListView Features [15/18]
 
@@ -378,6 +384,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [ ] Editable / searchable mode
 2. [ ] Grouped items / separators
 3. [ ] When clicking the main widget and sub menu is opened - close the menu.
+4. [ ] Use a model for items.
 
 ## HTML View
 
