@@ -278,9 +278,12 @@ class Theme {
                                 bool hovered_thumb) const = 0;
     virtual void draw_tab_bar_background(Painter &painter, Rect const &rect,
                                          WidgetState const &state) const = 0;
+    // font_size == 0 means "use the theme's default palette.fonts.size" -- see
+    // TabWidget::set_tab_font_size() for the per-widget override this threads through.
     virtual void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                           WidgetState const &state, TabOrientation orientation,
-                          bool has_close = false, bool hovered_close = false) const = 0;
+                          bool has_close = false, bool hovered_close = false,
+                          float font_size = 0.0f) const = 0;
     virtual void draw_list_item(Painter &painter, Rect const &rect, std::string_view text,
                                 Icon const &icon, bool selected, bool hovered,
                                 bool alternate) const = 0;
@@ -333,7 +336,7 @@ class Theme {
     virtual Size measure_menu_item(std::string_view text, Icon const &icon,
                                    std::string_view shortcut) const = 0;
     virtual float menu_separator_height() const = 0;
-    virtual Size measure_tab(std::string_view text) const = 0;
+    virtual Size measure_tab(std::string_view text, float font_size = 0.0f) const = 0;
     virtual float list_item_height() const = 0;
     virtual Size measure_icon_grid_item(std::string_view text, int icon_size) const = 0;
     virtual Size measure_tooltip(std::string_view text) const = 0;

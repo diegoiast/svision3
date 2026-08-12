@@ -579,9 +579,10 @@ void BaseTheme::draw_tab_bar_background(Painter &painter, Rect const &rect,
 
 void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                          WidgetState const &state, TabOrientation orientation, bool has_close,
-                         bool hovered_close) const {
+                         bool hovered_close, float font_size) const {
     auto &style = this->style;
     auto hovered = state.interaction == ButtonState::Hovered;
+    auto effective_font_size = font_size > 0.0f ? font_size : palette.fonts.size;
 
     auto bg = active ? palette.tab_select_background : palette.tab_background;
     if (hovered) {
@@ -641,8 +642,8 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
         text_orientation = Painter::TextOrientation::VerticalCW;
     }
 
-    auto fm = painter.font_metrics(palette.fonts.size);
-    auto text_w = painter.measure_text(text, palette.fonts.size).width;
+    auto fm = painter.font_metrics(effective_font_size);
+    auto text_w = painter.measure_text(text, effective_font_size).width;
     auto text_x = 0.0f, baseline_y = 0.0f;
     auto close_cx = 0.0f, close_cy = 0.0f;
     auto const close_btn_size = 14.0f;
@@ -697,7 +698,7 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
         close_cy = effective_rect.y + effective_rect.height / 2.0f;
     }
 
-    painter.draw_text(text, {text_x, baseline_y}, text_c, palette.fonts.size, FontFamily::System,
+    painter.draw_text(text, {text_x, baseline_y}, text_c, effective_font_size, FontFamily::System,
                       text_orientation);
 
     if (has_close) {
@@ -1362,12 +1363,13 @@ Size BaseTheme::measure_menu_item(std::string_view text, Icon const &icon,
 }
 
 float BaseTheme::menu_separator_height() const { return 8.0f; }
-Size BaseTheme::measure_tab(std::string_view text) const {
+Size BaseTheme::measure_tab(std::string_view text, float font_size) const {
     auto &style = this->style;
     auto *p = detail::current_platform();
-    auto text_w = p->measure_text(text, palette.fonts.size).width;
+    auto effective_font_size = font_size > 0.0f ? font_size : palette.fonts.size;
+    auto text_w = p->measure_text(text, effective_font_size).width;
     auto w = text_w + style.tabWidget.tab_padding_h * 2;
-    auto h = p->font_metrics(palette.fonts.size).height + style.tabWidget.tab_padding_v * 2;
+    auto h = p->font_metrics(effective_font_size).height + style.tabWidget.tab_padding_v * 2;
     return {w, h};
 }
 float BaseTheme::list_item_height() const { return 24.0f; }

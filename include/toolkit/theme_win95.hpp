@@ -40,7 +40,7 @@ class Win95Theme : public BaseTheme {
 
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                   WidgetState const &state, TabOrientation orientation, bool has_close,
-                  bool hovered_close) const override;
+                  bool hovered_close, float font_size = 0.0f) const override;
 };
 
 } // namespace toolkit

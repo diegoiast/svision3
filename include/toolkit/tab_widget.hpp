@@ -39,6 +39,13 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     TabWidget &set_min_tab_width(float width);
     float min_tab_width() const { return min_tab_width_; }
 
+    // 0 (the default) means "use the theme's default font size".
+    TabWidget &set_tab_font_size(float size) {
+        tab_font_size_ = size;
+        return *this;
+    }
+    float tab_font_size() const { return tab_font_size_; }
+
     TabWidget &set_tabs_movable(bool movable) {
         tabs_movable_ = movable;
         return *this;
@@ -141,6 +148,7 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     float scroll_offset_ = 0;
     bool tabs_closable_ = true;
     float min_tab_width_ = 0.0f;
+    float tab_font_size_ = 0.0f;
     bool tabs_movable_ = true;
     bool focus_on_tab_click_ = true;
     bool collapsible_ = false;

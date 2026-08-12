@@ -353,7 +353,7 @@ void Win95Theme::draw_list_item(Painter &painter, Rect const &rect, std::string_
 
 void Win95Theme::draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                           WidgetState const &state, TabOrientation orientation, bool has_close,
-                          bool hovered_close) const {
+                          bool hovered_close, float font_size) const {
     auto tab_rect = rect;
     if (!active) {
         switch (orientation) {
@@ -380,7 +380,7 @@ void Win95Theme::draw_tab(Painter &painter, Rect const &rect, std::string_view t
     painter.fill_rect(tab_rect, bg);
 
     BaseTheme::draw_tab(painter, tab_rect, text, active, state, orientation, has_close,
-                        hovered_close);
+                        hovered_close, font_size);
 
     auto x = tab_rect.x, y = tab_rect.y, w = tab_rect.width, h = tab_rect.height;
     auto tl_outer = palette.light;

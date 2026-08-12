@@ -372,7 +372,7 @@ auto TabWidget::tab_bar_thickness() const -> float {
         orientation_ == TabOrientation::EastVertical) {
         float max_thickness = min_tab_width_;
         for (auto const &tab : tabs_) {
-            float t = theme.measure_tab(tab.title).width;
+            float t = theme.measure_tab(tab.title, tab_font_size_).width;
             if (tabs_closable_ && tab.closable) {
                 t += close_btn_size_ + close_btn_gap_;
             }
@@ -389,7 +389,7 @@ auto TabWidget::tab_bar_thickness() const -> float {
         return max_thickness;
     }
 
-    return theme.measure_tab("").height;
+    return theme.measure_tab("", tab_font_size_).height;
 }
 
 auto TabWidget::tab_size(int i) const -> float {
@@ -398,10 +398,10 @@ auto TabWidget::tab_size(int i) const -> float {
 
     if (orientation_ == TabOrientation::WestVertical ||
         orientation_ == TabOrientation::EastVertical) {
-        return theme.measure_tab(tabs_[i].title).height;
+        return theme.measure_tab(tabs_[i].title, tab_font_size_).height;
     }
 
-    float size = theme.measure_tab(tabs_[i].title).width;
+    float size = theme.measure_tab(tabs_[i].title, tab_font_size_).width;
     if (tabs_closable_ && tabs_[i].closable) {
         size += close_btn_size_ + close_btn_gap_;
     }
@@ -701,7 +701,8 @@ void TabWidget::paint(Painter &painter) {
             .window_active = window_ ? window_->is_active() : true,
         };
         Theme::current().draw_tab(painter, tab_rect, tabs_[i].title, active, tab_state,
-                                  orientation_, tabs_closable_ && tabs_[i].closable, hovered_close);
+                                  orientation_, tabs_closable_ && tabs_[i].closable, hovered_close,
+                                  tab_font_size_);
     };
 
     auto start_pos = 0.0f;

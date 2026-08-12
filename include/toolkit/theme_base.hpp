@@ -58,7 +58,7 @@ class BaseTheme : public Theme {
                                  WidgetState const &state) const override;
     void draw_tab(Painter &painter, Rect const &rect, std::string_view text, bool active,
                   WidgetState const &state, TabOrientation orientation, bool has_close,
-                  bool hovered_close) const override;
+                  bool hovered_close, float font_size = 0.0f) const override;
     void draw_list_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                         bool selected, bool hovered, bool alternate) const override;
     void draw_list_background(Painter &painter, Rect const &rect,
@@ -106,7 +106,7 @@ class BaseTheme : public Theme {
     Size measure_menu_item(std::string_view text, Icon const &icon,
                            std::string_view shortcut) const override;
     float menu_separator_height() const override;
-    Size measure_tab(std::string_view text) const override;
+    Size measure_tab(std::string_view text, float font_size = 0.0f) const override;
     float list_item_height() const override;
     Size measure_icon_grid_item(std::string_view text, int icon_size) const override;
     Size measure_tooltip(std::string_view text) const override;
