@@ -590,7 +590,7 @@ if(TOOLKIT_BUILD_DEMOS)
     # Scratch tool for the documentation site: renders each widget offscreen
     # (dummy platform + Cairo image surface, no display needed) to a PNG.
     # Not WIN32_EXECUTABLE -- it's a console tool, not a demo app.
-    add_executable(widget_screenshot demo/widget_screenshot.cpp)
+    add_executable(widget_screenshot tools/widget_screenshot.cpp)
     target_include_directories(widget_screenshot PRIVATE src)
     target_link_libraries(widget_screenshot PRIVATE toolkit)
 endif()

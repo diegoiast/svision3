@@ -28,6 +28,7 @@
 #include "toolkit/file_browser_widget.hpp"
 #include "toolkit/html_view.hpp"
 #include "toolkit/icon_grid.hpp"
+#include "toolkit/image.hpp"
 #include "toolkit/image_widget.hpp"
 #include "toolkit/item_model.hpp"
 #include "toolkit/label.hpp"
@@ -56,6 +57,7 @@
 #include "toolkit/toolbar.hpp"
 #include "toolkit/tree_view.hpp"
 #include "toolkit/window.hpp"
+#include "toolkit/xdg_image_loader.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -65,6 +67,9 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 using namespace toolkit;
 
@@ -78,6 +83,165 @@ std::shared_ptr<Widget> pad(std::shared_ptr<Widget> content) {
     layout->add_widget(std::move(content), 1, Alignment::Fill);
     return layout;
 }
+
+// Small, self-contained 16x16 XPM icons for the icon_grid demo below. Real
+// icon themes (XDG lookup) aren't available in this headless tool -- no
+// theme is loaded, so file_browser_widget's real filesystem icons come up
+// empty too -- so icon_grid gets a handful of hand-drawn geometric icons
+// via toolkit::parse_xpm() instead, which needs no icon theme at all.
+constexpr std::string_view kIconSquareXpm = R"(/* XPM */
+static char *icon[] = {
+"16 16 2 1",
+"  c None",
+". c #F5A623",
+"                ",
+"                ",
+"                ",
+"                ",
+"    ........    ",
+"    ........    ",
+"    ........    ",
+"    ........    ",
+"    ........    ",
+"    ........    ",
+"    ........    ",
+"    ........    ",
+"                ",
+"                ",
+"                ",
+"                "
+};)";
+
+constexpr std::string_view kIconCircleXpm = R"(/* XPM */
+static char *icon[] = {
+"16 16 2 1",
+"  c None",
+". c #4A90D9",
+"                ",
+"                ",
+"                ",
+"     ......     ",
+"    ........    ",
+"   ..........   ",
+"   ..........   ",
+"   ..........   ",
+"   ..........   ",
+"   ..........   ",
+"   ..........   ",
+"    ........    ",
+"     ......     ",
+"                ",
+"                ",
+"                "
+};)";
+
+constexpr std::string_view kIconPlusXpm = R"(/* XPM */
+static char *icon[] = {
+"16 16 2 1",
+"  c None",
+". c #9B59B6",
+"                ",
+"                ",
+"      ....      ",
+"      ....      ",
+"      ....      ",
+"      ....      ",
+"  ............  ",
+"  ............  ",
+"  ............  ",
+"  ............  ",
+"      ....      ",
+"      ....      ",
+"      ....      ",
+"      ....      ",
+"                ",
+"                "
+};)";
+
+constexpr std::string_view kIconTriangleXpm = R"(/* XPM */
+static char *icon[] = {
+"16 16 2 1",
+"  c None",
+". c #E74C3C",
+"                ",
+"                ",
+"       ..       ",
+"      ....      ",
+"     ......     ",
+"    ........    ",
+"   ..........   ",
+"  ............  ",
+" .............. ",
+" .............. ",
+" .............. ",
+" .............. ",
+" .............. ",
+" .............. ",
+"                ",
+"                "
+};)";
+
+constexpr std::string_view kIconDiamondXpm = R"(/* XPM */
+static char *icon[] = {
+"16 16 2 1",
+"  c None",
+". c #2ECC71",
+"                ",
+"       .        ",
+"      ...       ",
+"     .....      ",
+"    .......     ",
+"   .........    ",
+"  ...........   ",
+" .............  ",
+"  ...........   ",
+"   .........    ",
+"    .......     ",
+"     .....      ",
+"      ...       ",
+"       .        ",
+"                ",
+"                "
+};)";
+
+constexpr std::string_view kIconRingXpm = R"(/* XPM */
+static char *icon[] = {
+"16 16 2 1",
+"  c None",
+". c #17A2B8",
+"                ",
+"                ",
+"                ",
+"     ......     ",
+"    ........    ",
+"   ..      ..   ",
+"   ..      ..   ",
+"   ..      ..   ",
+"   ..      ..   ",
+"   ..      ..   ",
+"   ..      ..   ",
+"    ........    ",
+"     ......     ",
+"                ",
+"                ",
+"                "
+};)";
+
+// A minimal ItemModel that just pairs a label with a pre-built icon --
+// icon_at() ignores the requested size and hands back the fixed 16x16
+// bitmap; IconGrid's own scale_icons(true) handles scaling it up.
+class IconItemModel : public ItemModel {
+  public:
+    explicit IconItemModel(std::vector<std::pair<std::string, Icon>> items)
+        : items_(std::move(items)) {}
+
+    size_t row_count() const override { return items_.size(); }
+    std::string cell_text(size_t row, size_t) const override { return items_[row].first; }
+    Icon icon_at(size_t row, size_t, int) const override { return items_[row].second; }
+
+  private:
+    std::vector<std::pair<std::string, Icon>> items_;
+};
 
 struct WidgetSpec {
     Size canvas;
@@ -154,11 +318,27 @@ std::map<std::string, WidgetSpec> build_registry() {
                                      c->handle_mouse(
                                          MouseEvent{MouseEvent::Type::Press, {10, 10}});
                                  }};
-    reg["line_input"] = natural({260, 120}, [] {
-        auto li = std::make_shared<LineInput>("Search…");
-        li->set_text("svision3");
-        return li;
-    });
+    // Three inputs stacked to show the common states at a glance: empty
+    // with just a placeholder hint, filled with a value, and password mode.
+    reg["line_input"] = WidgetSpec{{260, 190}, [](Window &window) {
+                                       auto layout = std::make_shared<VBoxLayout>();
+                                       layout->set_margins({16, 16, 16, 16});
+                                       layout->set_spacing(10);
+
+                                       auto empty = std::make_shared<LineInput>("Search…");
+                                       layout->add_widget(empty, 0, Alignment::Start);
+
+                                       auto filled = std::make_shared<LineInput>("Search…");
+                                       filled->set_text("svision3");
+                                       layout->add_widget(filled, 0, Alignment::Start);
+
+                                       auto password = std::make_shared<LineInput>("Password");
+                                       password->set_text("hunter2");
+                                       password->set_password_mode(true);
+                                       layout->add_widget(password, 0, Alignment::Start);
+
+                                       window.set_root(layout);
+                                   }};
     reg["text_edit"] = simple({420, 280}, [] {
         auto te = std::make_shared<TextEdit>(
             "#include <iostream>\n\nint main() {\n    std::cout << \"Hello\\n\";\n}\n");
@@ -190,10 +370,16 @@ std::map<std::string, WidgetSpec> build_registry() {
         return p;
     });
     reg["icon_grid"] = simple({420, 300}, [] {
-        auto model = std::make_shared<StringListModel>(std::vector<std::string>{
-            "Documents", "Photos", "Music", "Videos", "Downloads", "Projects"});
+        auto icon = [](std::string_view xpm) { return parse_xpm(xpm, PixelFormat::BGRA); };
+        std::vector<std::pair<std::string, Icon>> items = {
+            {"Documents", icon(kIconSquareXpm)}, {"Photos", icon(kIconCircleXpm)},
+            {"Music", icon(kIconPlusXpm)},       {"Videos", icon(kIconTriangleXpm)},
+            {"Downloads", icon(kIconDiamondXpm)}, {"Projects", icon(kIconRingXpm)},
+        };
+        auto model = std::make_shared<IconItemModel>(std::move(items));
         auto grid = std::make_shared<IconGrid>(model);
         grid->set_icon_size(48);
+        grid->set_scale_icons(true);
         grid->set_selected(size_t(1));
         return grid;
     });
@@ -220,20 +406,138 @@ std::map<std::string, WidgetSpec> build_registry() {
                                           window.set_root(pad(iw));
                                           iw->fit_to_widget();
                                       }};
-    reg["toast_widget"] = simple({340, 160}, [] {
-        auto toast = ToastBuilder{}.title("Saved").text("Your changes have been saved.").timeout(4.0f).build();
-        return std::shared_ptr<Widget>(std::move(toast));
-    });
+    // Two toasts stacked, like they'd pile up in a real window: a plain one
+    // and a rich-text one with a custom background, to show both at once.
+    reg["toast_widget"] = WidgetSpec{{360, 280}, [](Window &window) {
+                                          auto layout = std::make_shared<VBoxLayout>();
+                                          layout->set_margins({16, 16, 16, 16});
+                                          layout->set_spacing(12);
+
+                                          auto toast1 = ToastBuilder{}
+                                                            .title("Saved")
+                                                            .text("Your changes have been saved.")
+                                                            .timeout(4.0f)
+                                                            .build();
+                                          layout->add_widget(
+                                              std::shared_ptr<Widget>(std::move(toast1)), 0,
+                                              Alignment::Fill);
+
+                                          auto toast2 = ToastBuilder{}
+                                                            .title("Update available")
+                                                            .rich_text("**v2.0** is ready to install.")
+                                                            .background(Color::rgb(0.85f, 0.93f, 1.0f))
+                                                            .timeout(8.0f)
+                                                            .build();
+                                          layout->add_widget(
+                                              std::shared_ptr<Widget>(std::move(toast2)), 0,
+                                              Alignment::Fill);
+
+                                          window.set_root(layout);
+                                      }};
 
     // ── Containers & navigation ────────────────────────────────────────
-    reg["tab_widget"] = simple({420, 260}, [] {
-        auto tabs = std::make_shared<TabWidget>();
-        tabs->add_tab("Overview", std::make_shared<Label>("Overview content"));
-        tabs->add_tab("Details", std::make_shared<Label>("Details content"));
-        tabs->add_tab("Settings", std::make_shared<Label>("Settings content"));
-        tabs->set_current(0);
-        return tabs;
-    });
+    // A 2x2 grid of the four compass orientations (skipping WestVertical/
+    // EastVertical, which just rotate West/East's tab-label text) so the
+    // difference is visible at a glance.
+    reg["tab_widget"] = WidgetSpec{{900, 1040}, [](Window &window) {
+                                       // Cycles through a fixed palette so every tab's content
+                                       // pane -- across every orientation in this screenshot --
+                                       // gets a visibly different color, making it obvious which
+                                       // content belongs to which tab.
+                                       static std::vector<Color> const content_colors = {
+                                           Color::rgb(0.90f, 0.55f, 0.55f),
+                                           Color::rgb(0.55f, 0.75f, 0.90f),
+                                           Color::rgb(0.60f, 0.85f, 0.60f),
+                                           Color::rgb(0.95f, 0.85f, 0.55f),
+                                           Color::rgb(0.80f, 0.65f, 0.90f),
+                                           Color::rgb(0.90f, 0.70f, 0.55f),
+                                       };
+                                       int color_index = 0;
+                                       auto make_content = [&](std::string text) {
+                                           auto label = std::make_shared<Label>(std::move(text));
+                                           label->set_background_color(
+                                               content_colors[color_index++ % content_colors.size()]);
+                                           return label;
+                                       };
+                                       // orientation_name is baked into each tab's own content
+                                       // label (e.g. "North Content") rather than a separate
+                                       // caption widget above the TabWidget, so the cell is
+                                       // self-describing from its content alone.
+                                       //
+                                       // Only the horizontal-text orientations (WestVertical /
+                                       // EastVertical) can afford long tab titles -- North/South/
+                                       // West/East get short "Tab N" titles, since on West/East
+                                       // that title is rotated and its *length* becomes the tab
+                                       // strip's length.
+                                       auto make_tabs = [&](TabOrientation o,
+                                                            std::string const &orientation_name,
+                                                            int tab_count, bool short_titles) {
+                                           auto tabs = std::make_shared<TabWidget>();
+                                           tabs->set_orientation(o);
+                                           // Closable tabs eat significant width/height in the
+                                           // West/East (vertical-label) orientations at this
+                                           // demo's small cell size, so keep it simple.
+                                           tabs->set_tabs_closable(false);
+                                           for (int i = 1; i <= tab_count; ++i) {
+                                               auto title = short_titles ? "Tab " + std::to_string(i)
+                                                                        : "Tab number " + std::to_string(i);
+                                               tabs->add_tab(title,
+                                                            make_content(orientation_name + " " + title));
+                                           }
+                                           tabs->set_current(0);
+                                           return tabs;
+                                       };
+                                       auto padded = [](std::shared_ptr<Widget> tabs) {
+                                           auto box = std::make_shared<VBoxLayout>();
+                                           box->set_margins({4, 4, 4, 4});
+                                           box->add_widget(std::move(tabs), 1, Alignment::Fill);
+                                           return box;
+                                       };
+
+                                       // A 3-row stack of horizontal Splitters, two orientations
+                                       // per row -- this also demonstrates Splitter itself. Each
+                                       // Splitter here only ever holds 2 children: cramming all 6
+                                       // into one splitter (or 3 into one column, as an earlier
+                                       // version of this did) squeezes the vertical-text
+                                       // orientations' tab strips far too short to render legibly.
+                                       auto row = [](std::shared_ptr<Widget> a, std::shared_ptr<Widget> b) {
+                                           auto s = std::make_shared<Splitter>(Orientation::Horizontal);
+                                           s->add_child(std::move(a));
+                                           s->add_child(std::move(b));
+                                           return s;
+                                       };
+                                       auto rows = std::make_shared<Splitter>(Orientation::Vertical);
+                                       rows->add_child(row(
+                                           padded(make_tabs(TabOrientation::North, "North", 4,
+                                                            /*short_titles=*/true)),
+                                           padded(make_tabs(TabOrientation::South, "South", 4,
+                                                            /*short_titles=*/true))));
+                                       rows->add_child(row(
+                                           padded(make_tabs(TabOrientation::West, "West", 4,
+                                                            /*short_titles=*/true)),
+                                           padded(make_tabs(TabOrientation::WestVertical,
+                                                            "West (horizontal text)", 4,
+                                                            /*short_titles=*/false))));
+                                       rows->add_child(row(
+                                           padded(make_tabs(TabOrientation::EastVertical,
+                                                            "East (horizontal text)", 4,
+                                                            /*short_titles=*/false)),
+                                           padded(make_tabs(TabOrientation::East, "East", 4,
+                                                            /*short_titles=*/true))));
+                                       // Splitter's "default equal-distribution ratio" for a new
+                                       // divider turns out to favor earlier children's natural
+                                       // size on first layout, not a true equal split -- pin both
+                                       // dividers to exact thirds. With short "Tab N" titles on
+                                       // North/South/West/East, every row now needs roughly the
+                                       // same amount of room.
+                                       rows->set_ratio(0, 1.0f / 3.0f);
+                                       rows->set_ratio(1, 2.0f / 3.0f);
+
+                                       auto outer = std::make_shared<VBoxLayout>();
+                                       outer->set_margins({16, 16, 16, 16});
+                                       outer->add_widget(rows, 1, Alignment::Fill);
+                                       window.set_root(outer);
+                                   }};
     reg["splitter"] = simple({420, 220}, [] {
         auto sp = std::make_shared<Splitter>(Orientation::Horizontal);
         sp->add_child(std::make_shared<Label>("Left pane"));
@@ -303,9 +607,13 @@ std::map<std::string, WidgetSpec> build_registry() {
         table->auto_fit_columns();
         return table;
     });
-    reg["file_browser_widget"] = simple({480, 340}, [] {
+    reg["file_browser_widget"] = simple({620, 380}, [] {
         auto browser = std::make_shared<FileBrowserWidget>();
         browser->set_browser_mode(true);
+        // Icon theme lookup isn't available in this headless tool (no XDG
+        // icon theme installed), so icon/list mode renders with missing
+        // icons -- Details mode doesn't rely on them.
+        browser->set_view_mode(FileBrowserWidget::ViewMode::Details);
         browser->navigate_to(".");
         return browser;
     });
@@ -511,6 +819,17 @@ int main(int argc, char **argv) {
     Application app;
     auto *platform = detail::current_platform();
     platform->set_rasterizer(new CairoTextRasterizer());
+    // Widgets like FileBrowserWidget draw real XDG icons (go-previous,
+    // folder-new, ...) rather than text glyphs, so without a theme those
+    // buttons render empty. Faenza is bundled in the repo -- set_theme()
+    // resolves "themes/<name>" relative to the current working directory,
+    // so this only works run from the repo root.
+    auto icon_loader = std::make_unique<XdgImageLoader>("Faenza");
+    if (!icon_loader->theme_loaded()) {
+        std::cerr << "warning: Faenza icon theme not found -- run this from the "
+                    "repository root\n";
+    }
+    app.set_icon_provider(std::move(icon_loader));
 
     auto &reg = registry();
     WidgetSpec const *single = nullptr;
