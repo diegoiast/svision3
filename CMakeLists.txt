@@ -635,7 +635,7 @@ endif()
 target_sources(toolkit PRIVATE $<TARGET_OBJECTS:nfd>)
 
 if(TOOLKIT_BUILD_DEMOS)
-    add_executable(sqlite_viewer tools/sqlite_viewer.cpp)
+    add_executable(sqlite_viewer demo/sqlite_viewer.cpp)
     set_target_properties(sqlite_viewer PROPERTIES WIN32_EXECUTABLE ON)
     if(WIN32)
         set_target_properties(sqlite_viewer PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
