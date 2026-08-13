@@ -20,6 +20,8 @@ painters:
 This should lead to relatively small binaries on Windows and macOS.
 On linux the demos are about 4.6MB after stripping.
 
+Homepage: https://diegoiast.github.io/get-svision3/
+
 ## Features
 
 - Layouts: `HBoxLayout`, `VBoxLayout` with margins, spacing, and stretch factors
