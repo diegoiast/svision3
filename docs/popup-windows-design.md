@@ -95,15 +95,15 @@ What's missing for a menu:
 
 ### 2.2 `[exists → gap]` `Application::create_window` + `frameless` + `set_modal_for` — real interactive secondary window
 
-`MessageBox` and `FileDialog` already create a full second `toolkit::Window`
+`MessageBox` and `FileDialog` already create a full second `svision3::Window`
 with `WindowOptions{.frameless = true}` and mark it modal
 (`message_box.cpp:56,143,168,250`). This proves the multi-window path is
 already live in production: one `PlatformApplication` already pumps events
-for N native windows / N `toolkit::Window`s concurrently, today.
+for N native windows / N `svision3::Window`s concurrently, today.
 
 What's missing for a menu:
 
-- it's a *full* `toolkit::Window` — root widget, layout, its own min/max
+- it's a *full* `svision3::Window` — root widget, layout, its own min/max
   size handling, etc. A menu wants something much lighter: no root layout,
   just "a rect that paints one thing and forwards input."
 - `set_modal_for` blocks interaction with the parent until the child
@@ -186,7 +186,7 @@ single cross-platform answer:
 (scrollbar dragging, `scrollbar.cpp:238,256`) — X11/Win32 popups would
 reuse the same primitive for a different purpose, not need a new one.
 
-### 3.5 `[new]` Toolkit-level integration: `Window::open_popup` grows a second backend
+### 3.5 `[new]` svision3-level integration: `Window::open_popup` grows a second backend
 
 `Menu::show` itself barely changes — it still needs to compute a size and
 position and hand off paint/mouse/key callbacks. What changes is what's
@@ -255,7 +255,7 @@ window level (`NSStatusWindowLevel`, already used for the tooltip in
 
 1. `PopupWindow` + Wayland backend first — `xdg_popup`'s grab and
    `popup_done` solve §3.4 for free, making it the cheapest platform to
-   validate the toolkit-level integration (§3.5/§3.6) against.
+   validate the svision3-level integration (§3.5/§3.6) against.
 2. X11 second — closest existing code to reuse (override-redirect tooltip
    window + already-existing `grab_pointer`).
 3. Win32 and macOS in parallel, once §3.5's `PopupWindow` abstraction is
@@ -269,11 +269,11 @@ window level (`NSStatusWindowLevel`, already used for the tooltip in
 
 | File | Change |
 |---|---|
-| `include/toolkit/platform.hpp` | new `PlatformWindow::create_popup` factory (§3.1) |
-| `src/toolkit/platform/wayland/wl_platform.cpp` | interactive `xdg_popup` w/ `xdg_popup_grab`, `popup_done` handling |
-| `src/toolkit/platform/x11/x11_platform.cpp` | interactive `override_redirect` popup window, input routing, grab-based dismissal |
-| `src/toolkit/platform/win32/win32_platform.cpp` | interactive `WS_POPUP` window, window proc, focus-loss dismissal |
-| `src/toolkit/platform/macos/macos_native_platform.mm`, `macos_opengl_platform.mm` | interactive borderless `NSWindow`/`NSPanel`, local event monitor |
-| `include/toolkit/window.hpp` / `src/toolkit/window.cpp` | `PopupWindow` type; `open_popup`/`close_popup` back it with a real window instead of (or alongside) the current paint-callback overlay |
-| `src/toolkit/menu.cpp` | positioning moves to screen-space + monitor clamping instead of `window_->size()` |
-| `src/toolkit/context_menu.cpp`, `src/toolkit/combobox.cpp` | same migration once `Menu` validates the approach |
+| `include/svision3/platform.hpp` | new `PlatformWindow::create_popup` factory (§3.1) |
+| `src/svision3/platform/wayland/wl_platform.cpp` | interactive `xdg_popup` w/ `xdg_popup_grab`, `popup_done` handling |
+| `src/svision3/platform/x11/x11_platform.cpp` | interactive `override_redirect` popup window, input routing, grab-based dismissal |
+| `src/svision3/platform/win32/win32_platform.cpp` | interactive `WS_POPUP` window, window proc, focus-loss dismissal |
+| `src/svision3/platform/macos/macos_native_platform.mm`, `macos_opengl_platform.mm` | interactive borderless `NSWindow`/`NSPanel`, local event monitor |
+| `include/svision3/window.hpp` / `src/svision3/window.cpp` | `PopupWindow` type; `open_popup`/`close_popup` back it with a real window instead of (or alongside) the current paint-callback overlay |
+| `src/svision3/menu.cpp` | positioning moves to screen-space + monitor clamping instead of `window_->size()` |
+| `src/svision3/context_menu.cpp`, `src/svision3/combobox.cpp` | same migration once `Menu` validates the approach |

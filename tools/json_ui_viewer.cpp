@@ -1,5 +1,5 @@
-#include "toolkit/application.hpp"
-#include "toolkit/widget_loader.hpp"
+#include "svision3/application.hpp"
+#include "svision3/widget_loader.hpp"
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -24,8 +24,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    toolkit::Application app;
-    auto window = toolkit::WidgetLoader::instance().load_window(j);
+    svision3::Application app;
+    auto window = svision3::WidgetLoader::instance().load_window(j);
     
     if (!window) {
         std::cerr << "Failed to load window from JSON." << std::endl;

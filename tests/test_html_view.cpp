@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/html_view.hpp"
-#include "toolkit/scroll_area.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
+#include "svision3/html_view.hpp"
+#include "svision3/scroll_area.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 

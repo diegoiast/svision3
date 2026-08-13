@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/painters/win32_shaper.hpp"
-#include "toolkit/text/text_layout.hpp"
+#include "svision3/painters/win32_shaper.hpp"
+#include "svision3/text/text_layout.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 
@@ -13,8 +13,8 @@
 // caret geometry when driving a real TextLayout. See test_text_layout.cpp
 // for the pixel-exact version of these same checks against a DummyTextShaper.
 
-using namespace toolkit;
-using namespace toolkit::text;
+using namespace svision3;
+using namespace svision3::text;
 
 TEST_CASE("Win32Shaper: shape_run covers every character of a plain LTR run", "[win32-shaper]") {
     Win32Shaper shaper;

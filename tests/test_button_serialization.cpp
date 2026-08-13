@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/button.hpp"
+#include "svision3/button.hpp"
 #include <nlohmann/json.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Button Serialization", "[button][serialization]") {
     Button b("Hello World");

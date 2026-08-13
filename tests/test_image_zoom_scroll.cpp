@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/image_widget.hpp"
-#include "toolkit/image.hpp"
+#include "svision3/image_widget.hpp"
+#include "svision3/image.hpp"
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("ImageWidget zoom and scroll", "[ImageWidget]") {
     ImageWidget iw;

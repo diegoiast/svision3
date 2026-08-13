@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
+#pragma once
+
+#include "svision3/theme_base.hpp"
+
+namespace svision3 {
+
+class Window;
+
+class Win11Theme : public BaseTheme {
+  public:
+    static Palette default_palette(ColorScheme scheme, std::optional<Color> accent);
+
+    explicit Win11Theme(ColorScheme scheme = ColorScheme::Light,
+                        std::optional<Palette> p = std::nullopt);
+
+    Palette default_palette(ColorScheme scheme) const override;
+
+    std::unique_ptr<Widget> create_title_bar(Window *window) const override;
+
+    void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title, bool hovered,
+                           bool active, bool show_mnemonics) const override;
+
+    void draw_tree_item(Painter &painter, Rect const &rect, std::string_view text, int depth,
+                        bool has_children, bool expanded, bool selected, bool hovered,
+                        bool alternate) const override;
+
+    void draw_tab_content_background(Painter &painter, Rect const &rect) const override;
+
+    void draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
+                            WidgetState const &state) const override;
+};
+
+} // namespace svision3

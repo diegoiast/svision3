@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/text/bidi.hpp"
+#include "svision3/text/bidi.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit::bidi;
+using namespace svision3::bidi;
 
 // ── detect_base_direction (P2/P3: first strong character) ─────────────────────
 

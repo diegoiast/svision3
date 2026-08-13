@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/application.hpp"
-#include "toolkit/tray_icon.hpp"
-#include "toolkit/rich_label.hpp"
-#include "toolkit/window.hpp"
-#include "toolkit/xdg_image_loader.hpp"
+#include "svision3/application.hpp"
+#include "svision3/tray_icon.hpp"
+#include "svision3/rich_label.hpp"
+#include "svision3/window.hpp"
+#include "svision3/xdg_image_loader.hpp"
 #include <spdlog/spdlog.h>
 
-using namespace toolkit;
+using namespace svision3;
 
 int main() {
     auto app = Application{};
@@ -18,7 +18,7 @@ int main() {
     // Windows -- but, like demo1.cpp, only when run from the repo root: the bundled theme is
     // looked up as themes/<name> relative to the working directory.
     if (!app.use_xdg_icons()) {
-        app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("Faenza"));
+        app.set_icon_provider(std::make_unique<svision3::XdgImageLoader>("Faenza"));
     }
 
     auto win = app.create_window("Tray Demo", {400, 150});

@@ -1,14 +1,14 @@
-#include "toolkit/layout.hpp"
-#include "toolkit/menubar.hpp"
-// #include "toolkit/platform/dummy_platform.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
-#include "toolkit/window.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/menubar.hpp"
+// #include "svision3/platform/dummy_platform.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
+#include "svision3/window.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <spdlog/spdlog.h>
-#include <toolkit/text_rasterizer.hpp>
+#include <svision3/text_rasterizer.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("MenuBar interaction", "[menubar]") {
     Theme::set_current(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light));

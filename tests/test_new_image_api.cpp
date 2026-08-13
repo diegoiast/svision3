@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/image.hpp"
-#include "toolkit/platform.hpp"
+#include "svision3/image.hpp"
+#include "svision3/platform.hpp"
 #include <catch2/catch_all.hpp>
 #include <filesystem>
 #include <fstream>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("New Image API", "[image]") {
     auto app = create_platform_application();

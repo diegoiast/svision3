@@ -1,8 +1,8 @@
 #include "declarative_charts.hpp"
-#include "toolkit/application.hpp"
-#include "toolkit/net/http.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
+#include "svision3/application.hpp"
+#include "svision3/net/http.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -15,18 +15,18 @@
 #include <string>
 #include <vector>
 
-static auto current_style = toolkit::ThemeStyle::MacOS;
-static auto current_scheme = toolkit::ColorScheme::Light;
+static auto current_style = svision3::ThemeStyle::MacOS;
+static auto current_scheme = svision3::ColorScheme::Light;
 
-static void apply_theme(toolkit::Window *window) {
-    toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
+static void apply_theme(svision3::Window *window) {
+    svision3::Theme::set_current(svision3::ThemeFactory::create(current_style, current_scheme));
     window->request_redraw();
 }
 
-static constexpr auto series_colors = std::array<toolkit::Color, 6>{
-    toolkit::Color::rgb(0.30f, 0.69f, 0.29f), toolkit::Color::rgb(0.22f, 0.56f, 0.94f),
-    toolkit::Color::rgb(0.91f, 0.30f, 0.24f), toolkit::Color::rgb(0.96f, 0.73f, 0.18f),
-    toolkit::Color::rgb(0.61f, 0.35f, 0.71f), toolkit::Color::rgb(0.94f, 0.50f, 0.17f),
+static constexpr auto series_colors = std::array<svision3::Color, 6>{
+    svision3::Color::rgb(0.30f, 0.69f, 0.29f), svision3::Color::rgb(0.22f, 0.56f, 0.94f),
+    svision3::Color::rgb(0.91f, 0.30f, 0.24f), svision3::Color::rgb(0.96f, 0.73f, 0.18f),
+    svision3::Color::rgb(0.61f, 0.35f, 0.71f), svision3::Color::rgb(0.94f, 0.50f, 0.17f),
 };
 static constexpr auto kNumColors = static_cast<int>(series_colors.size());
 static auto next_color = 0;
@@ -107,9 +107,9 @@ static auto current_range = 3; // default: 1Y
 int main() {
     spdlog::set_level(spdlog::level::debug);
 
-    toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
+    svision3::Theme::set_current(svision3::ThemeFactory::create(current_style, current_scheme));
 
-    auto app = toolkit::Application{};
+    auto app = svision3::Application{};
     auto window = app.create_window("Stock Viewer", {960, 640});
 
     // -- Charts, built up front so we can wire their raw pointers into the
@@ -169,12 +169,12 @@ int main() {
     auto ticker_input = ui::line_input("Ticker (e.g. AAPL)");
     auto ticker_input_ptr = ticker_input.get();
 
-    auto range_btns = std::vector<toolkit::Button *>{};
+    auto range_btns = std::vector<svision3::Button *>{};
     auto loaded_tickers = std::vector<std::string>{};
 
     struct TickerReturns {
         std::string name;
-        toolkit::Color color;
+        svision3::Color color;
         std::vector<float> daily_returns;
         float latest_price = 0;
     };
@@ -200,15 +200,15 @@ int main() {
             window->request_redraw();
         }
 
-        auto req = toolkit::net::HttpRequest{};
+        auto req = svision3::net::HttpRequest{};
         req.url = url;
         req.headers.push_back({"User-Agent", "Mozilla/5.0"});
 
-        toolkit::net::fetch_async(req, [ticker, price_chart_ptr, volume_chart_ptr, candle_chart_ptr,
+        svision3::net::fetch_async(req, [ticker, price_chart_ptr, volume_chart_ptr, candle_chart_ptr,
                                         returns_chart_ptr, pie_chart_ptr, scatter_ptr,
                                         histogram_ptr, stacked_vol_ptr, status_ptr, progress_ptr,
                                         window, &loaded_tickers,
-                                        &all_returns](toolkit::net::HttpResponse resp) {
+                                        &all_returns](svision3::net::HttpResponse resp) {
             if (progress_ptr) {
                 progress_ptr->hide();
             }
@@ -243,11 +243,11 @@ int main() {
 
             // Price line chart
             if (price_chart_ptr) {
-                auto series = toolkit::ChartSeries{};
+                auto series = svision3::ChartSeries{};
                 series.name = ticker;
                 series.color = color;
                 for (auto i = size_t{0}; i < days.size(); i++) {
-                    auto dp = toolkit::ChartDataPoint{};
+                    auto dp = svision3::ChartDataPoint{};
                     dp.x = static_cast<float>(i);
                     dp.y = days[i].close;
                     dp.label = days[i].date;
@@ -258,17 +258,17 @@ int main() {
 
             // Volume bar chart
             if (volume_chart_ptr) {
-                auto vol_series = toolkit::BarSeries{};
+                auto vol_series = svision3::BarSeries{};
                 vol_series.name = ticker;
                 vol_series.default_color = color;
                 for (auto i = size_t{0}; i < days.size(); i++) {
-                    auto bp = toolkit::BarDataPoint{};
+                    auto bp = svision3::BarDataPoint{};
                     bp.x = static_cast<float>(i);
                     bp.y = days[i].volume;
                     bp.label = days[i].date;
                     auto up = days[i].close >= days[i].open;
-                    bp.color = up ? toolkit::Color::rgba(0.30f, 0.69f, 0.29f, 0.7f)
-                                  : toolkit::Color::rgba(0.91f, 0.30f, 0.24f, 0.7f);
+                    bp.color = up ? svision3::Color::rgba(0.30f, 0.69f, 0.29f, 0.7f)
+                                  : svision3::Color::rgba(0.91f, 0.30f, 0.24f, 0.7f);
                     bp.detail = up ? "Close > Open (Up)" : "Close < Open (Down)";
                     vol_series.points.push_back(std::move(bp));
                 }
@@ -277,12 +277,12 @@ int main() {
 
             // Candlestick chart
             if (candle_chart_ptr) {
-                auto cs = toolkit::CandlestickSeries{};
+                auto cs = svision3::CandlestickSeries{};
                 cs.name = ticker;
                 cs.up_color = color.lighten(0.1f);
                 cs.down_color = color.darken(0.1f);
                 for (auto i = size_t{0}; i < days.size(); i++) {
-                    auto cd = toolkit::CandlestickData{};
+                    auto cd = svision3::CandlestickData{};
                     cd.x = static_cast<float>(i);
                     cd.open = days[i].open;
                     cd.high = days[i].high;
@@ -306,14 +306,14 @@ int main() {
 
             // Area chart: normalized returns (% change from day 0)
             if (returns_chart_ptr && !days.empty()) {
-                auto as = toolkit::AreaSeries{};
+                auto as = svision3::AreaSeries{};
                 as.name = ticker;
                 as.line_color = color;
-                as.fill_color = toolkit::Color::rgba(color.r, color.g, color.b, 0.2f);
+                as.fill_color = svision3::Color::rgba(color.r, color.g, color.b, 0.2f);
                 auto base = days[0].close;
                 if (base > 0) {
                     for (auto i = size_t{0}; i < days.size(); i++) {
-                        auto dp = toolkit::AreaDataPoint{};
+                        auto dp = svision3::AreaDataPoint{};
                         dp.x = static_cast<float>(i);
                         dp.y = (days[i].close - base) / base * 100.0f;
                         dp.label = days[i].date;
@@ -333,7 +333,7 @@ int main() {
 
             // Pie chart: portfolio allocation by latest price
             if (pie_chart_ptr) {
-                auto slices = std::vector<toolkit::PieSlice>{};
+                auto slices = std::vector<svision3::PieSlice>{};
                 for (auto const &r : all_returns) {
                     slices.push_back({r.name, r.latest_price, r.color});
                 }
@@ -347,12 +347,12 @@ int main() {
                 auto const &r1 = all_returns[1];
                 auto n = std::min(r0.daily_returns.size(), r1.daily_returns.size());
                 if (n > 0) {
-                    auto ss = toolkit::ScatterSeries{};
+                    auto ss = svision3::ScatterSeries{};
                     ss.name = r0.name + " vs " + r1.name;
-                    ss.color = toolkit::Color::rgb(0.40f, 0.65f, 0.95f);
+                    ss.color = svision3::Color::rgb(0.40f, 0.65f, 0.95f);
                     ss.point_radius = 3.5f;
                     for (auto i = size_t{0}; i < n; i++) {
-                        auto sp = toolkit::ScatterPoint{};
+                        auto sp = svision3::ScatterPoint{};
                         sp.x = r0.daily_returns[i];
                         sp.y = r1.daily_returns[i];
                         ss.points.push_back(std::move(sp));
@@ -365,7 +365,7 @@ int main() {
 
             // Histogram: distribution of daily returns
             if (histogram_ptr && !daily_ret.empty()) {
-                auto hs = toolkit::HistogramSeries{};
+                auto hs = svision3::HistogramSeries{};
                 hs.name = ticker;
                 hs.color = color;
                 hs.values = daily_ret;
@@ -375,17 +375,17 @@ int main() {
             // Stacked bar: volume per ticker stacked by day
             if (stacked_vol_ptr) {
                 if (stacked_vol_ptr->series_count() == 0) {
-                    auto cats = std::vector<toolkit::StackedBarCategory>{};
+                    auto cats = std::vector<svision3::StackedBarCategory>{};
                     auto label_step = std::max(1, static_cast<int>(days.size()) / 12);
                     for (auto i = size_t{0}; i < days.size(); i++) {
-                        auto cat = toolkit::StackedBarCategory{};
+                        auto cat = svision3::StackedBarCategory{};
                         cat.x = static_cast<float>(i);
                         cat.label = (i % label_step == 0) ? days[i].date : "";
                         cats.push_back(std::move(cat));
                     }
                     stacked_vol_ptr->set_categories(std::move(cats));
                 }
-                auto sbs = toolkit::StackedBarSeries{};
+                auto sbs = svision3::StackedBarSeries{};
                 sbs.name = ticker;
                 sbs.color = color;
                 sbs.values.reserve(days.size());
@@ -450,7 +450,7 @@ int main() {
     };
 
     // -- Build UI --
-    ticker_input->on_submit = [&fetch_ticker](std::string const &text, toolkit::LineInput &) {
+    ticker_input->on_submit = [&fetch_ticker](std::string const &text, svision3::LineInput &) {
         fetch_ticker(text);
     };
     auto add_btn = ui::button("Add").on_click(
@@ -473,13 +473,13 @@ int main() {
     toolbar.add_child(ui::label("Theme:"));
 
     auto style_names = std::vector<std::string>{};
-    for (auto i = 0; i < toolkit::theme_style_count; i++) {
-        style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
+    for (auto i = 0; i < svision3::theme_style_count; i++) {
+        style_names.push_back(svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i)));
     }
     auto theme_combo = ui::combobox(style_names)
                            .selected(static_cast<int>(current_style))
                            .on_change([weak_window = std::weak_ptr(window)](int index) {
-                               current_style = static_cast<toolkit::ThemeStyle>(index);
+                               current_style = static_cast<svision3::ThemeStyle>(index);
                                if (auto window = weak_window.lock()) {
                                    apply_theme(window.get());
                                }
@@ -510,8 +510,8 @@ int main() {
     root.add_child(std::move(status_row));
 
     window->set_root(std::move(root));
-    window->on_key = [&app](toolkit::KeyEvent const &e) -> bool {
-        if (e.type == toolkit::KeyEvent::Type::Press && e.super && e.text == "q") {
+    window->on_key = [&app](svision3::KeyEvent const &e) -> bool {
+        if (e.type == svision3::KeyEvent::Type::Press && e.super && e.text == "q") {
             app.quit();
             return true;
         }

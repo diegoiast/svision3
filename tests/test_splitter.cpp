@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/splitter.hpp"
-#include "toolkit/label.hpp"
+#include "svision3/splitter.hpp"
+#include "svision3/label.hpp"
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Splitter stretch: by default all children grow equally on resize", "[splitter]") {
     Splitter sp(Orientation::Horizontal);

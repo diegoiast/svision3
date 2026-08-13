@@ -1,7 +1,7 @@
-#include "toolkit/button.hpp"
+#include "svision3/button.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Button is focusable", "[button]") {
     Button b("Click");

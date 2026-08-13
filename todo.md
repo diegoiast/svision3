@@ -65,7 +65,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## Platform
 
 1. [x] File dialogs (open/save) - implemented via NFD internally
-2. [x] Non-native file dialogs (open/save) - re-implement them in this toolkit.
+2. [x] Non-native file dialogs (open/save) - re-implement them in svision3.
 3. [x] Message boxes / alerts.
 4. [x] Multi-window.
 5. [ ] IME / input method support.

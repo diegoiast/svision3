@@ -1,7 +1,7 @@
-#include "toolkit/checkbox.hpp"
+#include "svision3/checkbox.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Checkbox default unchecked", "[checkbox]") {
     Checkbox cb("Option");

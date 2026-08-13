@@ -13,23 +13,23 @@ Give app developers a way to ask "where is the user, roughly?" that:
   have one, with different capability/precision/permission models).
 - Falls back to something that still works when the native broker is
   unavailable, denied, or absent (common on Linux — see below).
-- Follows this toolkit's existing conventions instead of inventing new ones
+- Follows svision3's existing conventions instead of inventing new ones
   where an existing pattern already fits.
 
 ## Precedent: two existing patterns, and why neither fits alone
 
-This toolkit already has two provider-injection patterns for a similar
+svision3 already has two provider-injection patterns for a similar
 problem (image loading). Both are documented here because the new
 `LocationProvider` design deliberately combines them — it isn't a copy of
 either one.
 
 ### Pattern A — `ImageLoaderInterface` / `SVGLoaderInterface` (no override)
 
-`include/toolkit/image.hpp`. Each `PlatformApplication` subclass lazily
+`include/svision3/image.hpp`. Each `PlatformApplication` subclass lazily
 constructs its own default and hands it out via a virtual getter:
 
 ```cpp
-// include/toolkit/platform.hpp
+// include/svision3/platform.hpp
 virtual std::shared_ptr<ImageLoaderInterface> get_image_loader() = 0;
 ```
 
@@ -39,7 +39,7 @@ the platform constructs is what you get.
 
 ### Pattern B — `IconProvider` (developer-injected, no native default)
 
-`include/toolkit/application.hpp`:
+`include/svision3/application.hpp`:
 
 ```cpp
 void set_icon_provider(std::unique_ptr<IconProvider> provider);
@@ -84,9 +84,9 @@ not N×M.
 ## The interface
 
 ```cpp
-// include/toolkit/geolocation.hpp
+// include/svision3/geolocation.hpp
 
-namespace toolkit {
+namespace svision3 {
 
 struct GeoPosition {
     double latitude;
@@ -132,7 +132,7 @@ class LocationProvider {
     virtual void request_location(std::function<void(LocationResult)> callback) = 0;
 };
 
-} // namespace toolkit
+} // namespace svision3
 ```
 
 `std::expected` mirrors the error-carrying return already implied by
@@ -144,7 +144,7 @@ decision either way.
 ## Platform-native default: mirrors Pattern A
 
 ```cpp
-// include/toolkit/platform.hpp — added alongside get_image_loader()
+// include/svision3/platform.hpp — added alongside get_image_loader()
 virtual std::shared_ptr<LocationProvider> get_location_provider() = 0;
 ```
 
@@ -201,7 +201,7 @@ data points argue for decisions already made in this design:
   effectively down to GeoClue2 with nothing behind it either.
 
 Neither of the two most mature reference implementations currently has a
-working answer for "GeoClue2 isn't installed" on Linux. This toolkit's
+working answer for "GeoClue2 isn't installed" on Linux. svision3's
 `FallbackLocationProvider` chain (native → `IpApiLocationProvider` →
 `OfflineMmdbLocationProvider`) is a genuine improvement on that point, not
 redundant engineering — it's worth treating as a first-class part of this
@@ -210,7 +210,7 @@ design rather than an afterthought bolted onto the Linux native provider.
 ## Developer-facing API on `Application`: mirrors Pattern B
 
 ```cpp
-// include/toolkit/application.hpp — added alongside set_icon_provider()
+// include/svision3/application.hpp — added alongside set_icon_provider()
 
 // Convenience: ask the current platform for its native provider and install
 // it as the active one. Mirrors use_xdg_icons()'s shape exactly — returns
@@ -262,7 +262,7 @@ fallback chain itself (see next section).
 
 None of these require a signup/API key, which is exactly why they were the
 recommendation earlier (see the IP-lookup and offline-DB discussions this
-document distills) — a toolkit consumed by many downstream developers can't
+document distills) — a library consumed by many downstream developers can't
 bake in a personal account credential the way MaxMind's own GeoLite2
 download would require.
 
@@ -323,8 +323,8 @@ class OfflineMmdbLocationProvider : public LocationProvider {
 
 Neither `Painter` nor the image-loader patterns implement "try A, if it
 fails/denies/times out, fall through to B" — both existing patterns commit to
-exactly one implementation up front. A fallback chain is new for this
-toolkit. Proposed shape: a `LocationProvider` implementation that itself
+exactly one implementation up front. A fallback chain is new for
+svision3. Proposed shape: a `LocationProvider` implementation that itself
 holds an ordered list of other providers and tries each in turn:
 
 ```cpp
@@ -357,12 +357,12 @@ mirrors `Application::icon_provider()` instead: a persistent object owned by
 `->`:
 
 ```cpp
-// include/toolkit/application.hpp
+// include/svision3/application.hpp
 Geolocator *geolocator(); // lazily constructed, always non-null, owned by Application
 ```
 
 ```cpp
-// include/toolkit/geolocation.hpp
+// include/svision3/geolocation.hpp
 
 class Geolocator {
   public:
@@ -391,7 +391,7 @@ class Geolocator {
 Usage:
 
 ```cpp
-app.geolocator()->request().then([](toolkit::LocationResult result) {
+app.geolocator()->request().then([](svision3::LocationResult result) {
     if (result) {
         spdlog::info("lat={} lon={}", result->latitude, result->longitude);
     } else {
@@ -412,11 +412,11 @@ Ties together `setup_native_provider()`, `set_provider()`,
 fields from a single app's startup code:
 
 ```cpp
-#include "toolkit/application.hpp"
-#include "toolkit/geolocation.hpp"
+#include "svision3/application.hpp"
+#include "svision3/geolocation.hpp"
 
 int main() {
-    toolkit::Application app;
+    svision3::Application app;
 
     // Try the OS-native broker first (WinRT / CoreLocation / GeoClue-via-portal).
     // Returns false if this platform has none installed/available -- not an
@@ -426,19 +426,19 @@ int main() {
 
     // Whether or not a native provider is active, install a fallback chain so
     // permission-denied / unavailable / timeout still resolves to *something*:
-    std::vector<std::unique_ptr<toolkit::LocationProvider>> chain;
+    std::vector<std::unique_ptr<svision3::LocationProvider>> chain;
     if (has_native) {
         // app.provider() currently holds the native one from setup_native_provider();
         // move it in as the first link in the chain.
         chain.push_back(app.take_provider());
     }
-    chain.push_back(std::make_unique<toolkit::IpApiLocationProvider>());
-    chain.push_back(std::make_unique<toolkit::OfflineMmdbLocationProvider>("/path/to/dbip-city-lite.mmdb"));
-    app.set_provider(std::make_unique<toolkit::FallbackLocationProvider>(std::move(chain)));
+    chain.push_back(std::make_unique<svision3::IpApiLocationProvider>());
+    chain.push_back(std::make_unique<svision3::OfflineMmdbLocationProvider>("/path/to/dbip-city-lite.mmdb"));
+    app.set_provider(std::make_unique<svision3::FallbackLocationProvider>(std::move(chain)));
 
     auto *window = app.create_window("Weather", {400, 300});
 
-    app.geolocator()->request().then([window](toolkit::LocationResult result) {
+    app.geolocator()->request().then([window](svision3::LocationResult result) {
         if (!result) {
             spdlog::warn("location unavailable: {}", (int)result.error());
             return;
@@ -494,16 +494,16 @@ as designed here — only to the internals of the two concrete providers.
 1. Confirm `std::expected` availability, or fall back to
    `std::optional<GeoPosition>` + separate error accessor.
 2. Decide the network-fetch abstraction (separate design doc) — likely
-   candidates: a minimal libcurl wrapper, or reusing whatever the toolkit
+   candidates: a minimal libcurl wrapper, or reusing whatever svision3
    ends up needing for other network features, if any exist by then.
 3. Decide the MMDB reader dependency (`libmaxminddb` vs. a minimal in-house
    reader) — leaning `libmaxminddb` per the earlier discussion (BSD-2-Clause,
    small, works with DB-IP's MMDB files despite the MaxMind-branded name).
 4. Decide where a downloaded `.mmdb` file is cached on disk per-platform
-   (likely alongside whatever convention the toolkit already uses for
+   (likely alongside whatever convention svision3 already uses for
    per-app cache/config directories, if one exists — not checked as part of
    this document).
-5. macOS `Info.plist` usage-description string: does this toolkit have an
+5. macOS `Info.plist` usage-description string: does svision3 have an
    existing mechanism for apps to supply Info.plist entries, or does this
    need one added as a prerequisite for `CoreLocationProvider` to work at
    all?

@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/layout.hpp"
-#include "toolkit/button.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/platform/dummy_platform.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/button.hpp"
+#include "svision3/label.hpp"
+#include "svision3/platform/dummy_platform.hpp"
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("VBoxLayout size_hint with no children", "[layout]") {
     VBoxLayout layout;

@@ -1,7 +1,7 @@
-#include "toolkit/lunasvg_image_loader.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
-#include "toolkit/xdg_image_loader.hpp"
+#include "svision3/lunasvg_image_loader.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
+#include "svision3/xdg_image_loader.hpp"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <filesystem>
@@ -9,16 +9,16 @@
 // Test the raster loader that the target platform actually ships: WIC/GDI+ on Windows,
 // stb elsewhere. Both produce B,G,R,A when asked, so the round-trip assertions hold.
 #ifdef _WIN32
-#include "toolkit/platform/win32/win32_image_loader.hpp"
+#include "svision3/platform/win32/win32_image_loader.hpp"
 // clang-format off
 #include <windows.h>
 #include <gdiplus.h>
 // clang-format on
 #else
-#include "toolkit/stb_image_loader.hpp"
+#include "svision3/stb_image_loader.hpp"
 #endif
 
-using namespace toolkit;
+using namespace svision3;
 
 #ifdef _WIN32
 using RasterLoader = Win32ImageLoader;

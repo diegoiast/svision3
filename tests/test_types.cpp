@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include "toolkit/types.hpp"
+#include "svision3/types.hpp"
 
-using namespace toolkit;
+using namespace svision3;
 using Catch::Matchers::WithinAbs;
 
 TEST_CASE("Point default construction", "[types]") {

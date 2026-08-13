@@ -1,13 +1,13 @@
-#include "toolkit/combobox.hpp"
-#include "toolkit/platform.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
-#include "toolkit/widget_loader.hpp"
-#include "toolkit/window.hpp"
+#include "svision3/combobox.hpp"
+#include "svision3/platform.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
+#include "svision3/widget_loader.hpp"
+#include "svision3/window.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Combobox default state", "[combobox]") {
     Combobox cb;

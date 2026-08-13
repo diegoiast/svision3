@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-// Exercises toolkit::dbus::Service against the real session bus daemon --
+// Exercises svision3::dbus::Service against the real session bus daemon --
 // there is no mock/fake here, this is deliberately an integration test. If
 // no session bus is reachable (e.g. a headless CI container with no
 // dbus-daemon at all) every test skips via REQUIRE-free early return rather
 // than failing the suite.
 
-#include "toolkit/linux/dbus_service.hpp"
+#include "svision3/linux/dbus_service.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <poll.h>
 
-using namespace toolkit::dbus;
+using namespace svision3::dbus;
 
 namespace {
 

@@ -5,47 +5,47 @@
 
 #include "declarative.hpp"
 
-#include "toolkit/charts/area_chart.hpp"
-#include "toolkit/charts/bar_chart.hpp"
-#include "toolkit/charts/candlestick_chart.hpp"
-#include "toolkit/charts/histogram.hpp"
-#include "toolkit/charts/line_chart.hpp"
-#include "toolkit/charts/pie_chart.hpp"
-#include "toolkit/charts/scatter_plot.hpp"
-#include "toolkit/charts/stacked_bar_chart.hpp"
+#include "svision3/charts/area_chart.hpp"
+#include "svision3/charts/bar_chart.hpp"
+#include "svision3/charts/candlestick_chart.hpp"
+#include "svision3/charts/histogram.hpp"
+#include "svision3/charts/line_chart.hpp"
+#include "svision3/charts/pie_chart.hpp"
+#include "svision3/charts/scatter_plot.hpp"
+#include "svision3/charts/stacked_bar_chart.hpp"
 
 namespace ui {
 
-inline Element<toolkit::AreaChart> area_chart() {
-    return Element<toolkit::AreaChart>(std::make_unique<toolkit::AreaChart>());
+inline Element<svision3::AreaChart> area_chart() {
+    return Element<svision3::AreaChart>(std::make_unique<svision3::AreaChart>());
 }
 
-inline Element<toolkit::BarChart> bar_chart() {
-    return Element<toolkit::BarChart>(std::make_unique<toolkit::BarChart>());
+inline Element<svision3::BarChart> bar_chart() {
+    return Element<svision3::BarChart>(std::make_unique<svision3::BarChart>());
 }
 
-inline Element<toolkit::CandlestickChart> candlestick_chart() {
-    return Element<toolkit::CandlestickChart>(std::make_unique<toolkit::CandlestickChart>());
+inline Element<svision3::CandlestickChart> candlestick_chart() {
+    return Element<svision3::CandlestickChart>(std::make_unique<svision3::CandlestickChart>());
 }
 
-inline Element<toolkit::Histogram> histogram() {
-    return Element<toolkit::Histogram>(std::make_unique<toolkit::Histogram>());
+inline Element<svision3::Histogram> histogram() {
+    return Element<svision3::Histogram>(std::make_unique<svision3::Histogram>());
 }
 
-inline Element<toolkit::LineChart> line_chart() {
-    return Element<toolkit::LineChart>(std::make_unique<toolkit::LineChart>());
+inline Element<svision3::LineChart> line_chart() {
+    return Element<svision3::LineChart>(std::make_unique<svision3::LineChart>());
 }
 
-inline Element<toolkit::PieChart> pie_chart() {
-    return Element<toolkit::PieChart>(std::make_unique<toolkit::PieChart>());
+inline Element<svision3::PieChart> pie_chart() {
+    return Element<svision3::PieChart>(std::make_unique<svision3::PieChart>());
 }
 
-inline Element<toolkit::ScatterPlot> scatter_plot() {
-    return Element<toolkit::ScatterPlot>(std::make_unique<toolkit::ScatterPlot>());
+inline Element<svision3::ScatterPlot> scatter_plot() {
+    return Element<svision3::ScatterPlot>(std::make_unique<svision3::ScatterPlot>());
 }
 
-inline Element<toolkit::StackedBarChart> stacked_bar_chart() {
-    return Element<toolkit::StackedBarChart>(std::make_unique<toolkit::StackedBarChart>());
+inline Element<svision3::StackedBarChart> stacked_bar_chart() {
+    return Element<svision3::StackedBarChart>(std::make_unique<svision3::StackedBarChart>());
 }
 
 } // namespace ui

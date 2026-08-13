@@ -1,10 +1,10 @@
-#include "toolkit/line_input.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
+#include "svision3/line_input.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("LineInput hit tests with read-only and password", "[lineinput]") {
     Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));

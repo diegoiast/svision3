@@ -1,9 +1,9 @@
-#include "toolkit/image_widget.hpp"
-#include "toolkit/widget_loader.hpp"
+#include "svision3/image_widget.hpp"
+#include "svision3/widget_loader.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("ImageWidget defaults", "[image_widget]") {
     ImageWidget w;

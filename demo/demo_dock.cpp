@@ -8,13 +8,13 @@
 #include <fstream>
 
 #include <spdlog/spdlog.h>
-#include <toolkit/application.hpp>
-#include <toolkit/theme.hpp>
-#include <toolkit/theme_factory.hpp>
-#include <toolkit/window.hpp>
-#include <toolkit/xdg_image_loader.hpp>
+#include <svision3/application.hpp>
+#include <svision3/theme.hpp>
+#include <svision3/theme_factory.hpp>
+#include <svision3/window.hpp>
+#include <svision3/xdg_image_loader.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 static auto make_outline() {
     auto model = std::make_shared<StringListModel>(std::vector<std::string>{
@@ -53,10 +53,10 @@ static std::unique_ptr<Widget> make_inspector() {
 static auto make_console() {
     // FIXME: use raw strgins
     return ui::text_edit(
-        "[build] Scanning dependencies of target toolkit\n"
-        "[build] Building CXX object CMakeFiles/toolkit.dir/src/toolkit/layout.cpp.o\n"
-        "[build] Building CXX object CMakeFiles/toolkit.dir/src/toolkit/dock_area.cpp.o\n"
-        "[build] Linking CXX static library libtoolkit.a\n"
+        "[build] Scanning dependencies of target svision3\n"
+        "[build] Building CXX object CMakeFiles/svision3.dir/src/svision3/layout.cpp.o\n"
+        "[build] Building CXX object CMakeFiles/svision3.dir/src/svision3/dock_area.cpp.o\n"
+        "[build] Linking CXX static library libsvision3.a\n"
         "[build] Building CXX executable demo_dock\n"
         "[build] Build finished successfully.\n")
         .highlight_current_line();
@@ -72,18 +72,18 @@ static auto make_center_editor() {
     return ui::text_edit(
         "// SPDX-License-Identifier: MIT\n"
         "\n"
-        "#include \"toolkit/dock_area.hpp\"\n"
-        "#include \"toolkit/application.hpp\"\n"
+        "#include \"svision3/dock_area.hpp\"\n"
+        "#include \"svision3/application.hpp\"\n"
         "\n"
         "int main(int argc, char *argv[]) {\n"
-        "    auto app = toolkit::Application{};\n"
+        "    auto app = svision3::Application{};\n"
         "\n"
         "    auto *win = app.create_window(\"My App\", {1200, 800});\n"
         "\n"
-        "    auto dock = std::make_unique<toolkit::DockArea>();\n"
-        "    dock->set_center<toolkit::TextEdit>();\n"
-        "    dock->add_dock<toolkit::ListView>(toolkit::DockPosition::Left, \"Files\");\n"
-        "    dock->add_dock<toolkit::TextEdit>(toolkit::DockPosition::Bottom, \"Console\");\n"
+        "    auto dock = std::make_unique<svision3::DockArea>();\n"
+        "    dock->set_center<svision3::TextEdit>();\n"
+        "    dock->add_dock<svision3::ListView>(svision3::DockPosition::Left, \"Files\");\n"
+        "    dock->add_dock<svision3::TextEdit>(svision3::DockPosition::Bottom, \"Console\");\n"
         "\n"
         "    win->set_root(std::move(dock));\n"
         "    return app.run();\n"

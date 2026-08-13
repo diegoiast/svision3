@@ -10,15 +10,15 @@
 
 #include "declarative.hpp"
 #include "github_markdown_css.hpp"
-#include "toolkit/application.hpp"
-#include "toolkit/directory_dialog.hpp"
-#include "toolkit/file_dialog.hpp"
-#include "toolkit/line_input.hpp"
-#include "toolkit/message_box.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
-#include "toolkit/xdg_icons.hpp"
-#include "toolkit/xdg_image_loader.hpp"
+#include "svision3/application.hpp"
+#include "svision3/directory_dialog.hpp"
+#include "svision3/file_dialog.hpp"
+#include "svision3/line_input.hpp"
+#include "svision3/message_box.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
+#include "svision3/xdg_icons.hpp"
+#include "svision3/xdg_image_loader.hpp"
 
 auto LOREM_IPSUM = "Hello שלום مرحبا  世界 — code 你好 नमस्ते "
                    "☆ ✓ ∑ ∞ ★ français Русский 日本語";
@@ -84,15 +84,15 @@ int main() {
 )";
 #include "BeatesSongs.hpp"
 
-static toolkit::ThemeStyle current_style = toolkit::ThemeStyle::MacOS;
-static toolkit::ColorScheme current_scheme = toolkit::ColorScheme::Light;
-static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
-    toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
+static svision3::ThemeStyle current_style = svision3::ThemeStyle::MacOS;
+static svision3::ColorScheme current_scheme = svision3::ColorScheme::Light;
+static void apply_theme(svision3::Application &app, svision3::Window *window) {
+    svision3::Theme::set_current(svision3::ThemeFactory::create(current_style, current_scheme));
     window->request_redraw();
 }
 
 int main(int argc, char *argv[]) {
-    toolkit::Application app;
+    svision3::Application app;
     app.set_force_csd(true);
 
     std::string screenshot_path;
@@ -105,20 +105,20 @@ int main(int argc, char *argv[]) {
 
 #if 1
     if (!app.use_xdg_icons()) {
-        auto loader = std::make_unique<toolkit::XdgImageLoader>();
+        auto loader = std::make_unique<svision3::XdgImageLoader>();
         loader->set_theme_path("./themes/Faenza");
         app.set_icon_provider(std::move(loader));
     }
 #else
-    app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("Faenza"));
-    // app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("breeze-icons-6.4.0/icons"));
-    // app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("WinXPSVG-plasma5up-scalable-icontheme-blackysgate.de"));
+    app.set_icon_provider(std::make_unique<svision3::XdgImageLoader>("Faenza"));
+    // app.set_icon_provider(std::make_unique<svision3::XdgImageLoader>("breeze-icons-6.4.0/icons"));
+    // app.set_icon_provider(std::make_unique<svision3::XdgImageLoader>("WinXPSVG-plasma5up-scalable-icontheme-blackysgate.de"));
 #endif
-    current_style = toolkit::Theme::detect_system_style();
+    current_style = svision3::Theme::detect_system_style();
 
     auto style_names = std::vector<std::string>{};
-    for (int i = 0; i < toolkit::theme_style_count; i++) {
-        style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
+    for (int i = 0; i < svision3::theme_style_count; i++) {
+        style_names.push_back(svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i)));
     }
     style_names.push_back("Other");
     // Raw pointer for the callbacks below -- see demo1.cpp: several land on
@@ -128,26 +128,26 @@ int main(int argc, char *argv[]) {
     auto platformText =
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name());
     auto group = ui::radio_group().on_change([&app, window](int index) {
-        current_scheme = (index == 0) ? toolkit::ColorScheme::Light : toolkit::ColorScheme::Dark;
+        current_scheme = (index == 0) ? svision3::ColorScheme::Light : svision3::ColorScheme::Dark;
         apply_theme(app, window);
     });
     auto rb_light = ui::radio_button("&Light", group).selected(true);
     auto rb_dark = ui::radio_button("&Dark", group);
 
     auto toolbar_theme_combo = ui::combobox(style_names).on_change([&app, window](int index) {
-        if (index < toolkit::theme_style_count) {
-            current_style = static_cast<toolkit::ThemeStyle>(index);
+        if (index < svision3::theme_style_count) {
+            current_style = static_cast<svision3::ThemeStyle>(index);
             apply_theme(app, window);
         }
     });
     auto toolbar_theme_toggle = ui::checkbox("Light Theme").on_toggle([&app, window](bool checked) {
-        current_scheme = checked ? toolkit::ColorScheme::Light : toolkit::ColorScheme::Dark;
+        current_scheme = checked ? svision3::ColorScheme::Light : svision3::ColorScheme::Dark;
         apply_theme(app, window);
     });
 
     auto main_theme_combo = ui::combobox(style_names).on_change([&app, window](int index) {
-        if (index < toolkit::theme_style_count) {
-            current_style = static_cast<toolkit::ThemeStyle>(index);
+        if (index < svision3::theme_style_count) {
+            current_style = static_cast<svision3::ThemeStyle>(index);
             apply_theme(app, window);
         }
     });
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
                     t_toggle_ref = toolbar_theme_toggle.ref(),
                     m_combo_ref = main_theme_combo.ref(), group,
                     rb_light_ref = rb_light.ref(),
-                    rb_dark_ref = rb_dark.ref()](const toolkit::Theme &theme) {
+                    rb_dark_ref = rb_dark.ref()](const svision3::Theme &theme) {
         auto t_combo_ptr = t_combo_ref.lock();
         auto t_toggle_ptr = t_toggle_ref.lock();
         auto m_combo_ptr = m_combo_ref.lock();
@@ -177,14 +177,14 @@ int main(int argc, char *argv[]) {
         }
 
         int selected = -1;
-        for (int i = 0; i < toolkit::theme_style_count; i++) {
-            if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
+        for (int i = 0; i < svision3::theme_style_count; i++) {
+            if (theme.name == svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i))) {
                 selected = i;
                 break;
             }
         }
         if (selected == -1) {
-            selected = toolkit::theme_style_count; // "Other"
+            selected = svision3::theme_style_count; // "Other"
         }
 
         t_combo_ptr->set_selected(selected);
@@ -195,8 +195,8 @@ int main(int argc, char *argv[]) {
         group.group->select(light ? rb_light_ptr.get() : rb_dark_ptr.get());
     };
 
-    sync_ui(toolkit::Theme::current());
-    toolkit::Theme::add_theme_observer(sync_ui);
+    sync_ui(svision3::Theme::current());
+    svision3::Theme::add_theme_observer(sync_ui);
 
     // Progress bar needs to be accesed from the lambda, and inserted into the root widget
     // If you move this to be bellow the root widget, code will crash
@@ -214,11 +214,11 @@ int main(int argc, char *argv[]) {
     auto use_native_cb = ui::checkbox("Use native dialogs").checked(true);
     auto use_native_cb_ptr = use_native_cb.get();
 
-    auto table_model = std::make_shared<toolkit::StringTableModel>(
+    auto table_model = std::make_shared<svision3::StringTableModel>(
         std::vector<std::string>{"Song", "Album", "Year", "Duration"}, beatlesSongsLength);
 
-    auto songs_adapter = std::make_shared<toolkit::StringListModel>(beatlesSongs);
-    auto filter_adapter = std::make_shared<toolkit::FilterAdapter>(songs_adapter);
+    auto songs_adapter = std::make_shared<svision3::StringListModel>(beatlesSongs);
+    auto filter_adapter = std::make_shared<svision3::FilterAdapter>(songs_adapter);
     auto email_stats_label = ui::label("Empty");
     auto filter_progress = ui::progress_bar();
     filter_adapter->set_simulated_delay_ms(10);
@@ -234,8 +234,8 @@ int main(int argc, char *argv[]) {
     };
 
     // Just to make the code prettier after clang-format :)
-    using STM = toolkit::SimpleTreeModel;
-    auto tree_model = std::make_shared<STM>(std::vector<toolkit::TreeNode>{
+    using STM = svision3::SimpleTreeModel;
+    auto tree_model = std::make_shared<STM>(std::vector<svision3::TreeNode>{
         {.text = "Documents",
          .children =
              {
@@ -293,7 +293,7 @@ int main(int argc, char *argv[]) {
     });
 
     auto grid_model =
-        std::make_shared<toolkit::StandardIconModel>(std::vector<toolkit::StandardIconItem>{
+        std::make_shared<svision3::StandardIconModel>(std::vector<svision3::StandardIconItem>{
             {.text = "Folder", .icon_name = XDG::IconMimeTypes::inodeDirectory},
             {.text = "Document", .icon_name = XDG::IconMimeTypes::textXGeneric},
             {.text = "Image", .icon_name = XDG::IconMimeTypes::imageXGeneric},
@@ -331,10 +331,10 @@ int main(int argc, char *argv[]) {
     // Pointer set after rootWidget is built; safe to capture by ref since both
     // live in main(). The editor tab is always at index 6 in rootWidget.
     static constexpr int editor_tab_index = 6;
-    toolkit::TabWidget *root_tab_ptr = nullptr;
+    svision3::TabWidget *root_tab_ptr = nullptr;
 
     auto open_action = [editor = editor.get(), window, &root_tab_ptr]() {
-        toolkit::FileDialog(window)
+        svision3::FileDialog(window)
             .title("Open File")
             .open()
             .then([editor, &root_tab_ptr](auto path) {
@@ -359,7 +359,7 @@ int main(int argc, char *argv[]) {
     auto exit_cmd =
         ui::command("Exit", [&window] { window->close(); }).icon(XDG::IconActions::applicationExit);
     auto export_cmd = ui::command("Export JSON", [window, use_native_cb_ptr] {
-        toolkit::FileDialog(window)
+        svision3::FileDialog(window)
             .title("Export Window to JSON")
             .use_native(use_native_cb_ptr->checked())
             .save()
@@ -391,7 +391,7 @@ int main(int argc, char *argv[]) {
             .flat(true)
             .focusable(false)
             .padding({2, 8, 2, 8})
-            .background_color(toolkit::Color::rgb(1.0f, 0.8f, 0.8f));
+            .background_color(svision3::Color::rgb(1.0f, 0.8f, 0.8f));
     };
 
     // ── Preview tab setup ─────────────────────────────────────────────
@@ -498,7 +498,7 @@ int main(int argc, char *argv[]) {
     auto debug_stats_widget = [&window]() {
         return ui::vbox()
             .add(ui::checkbox("Show debug frames").on_toggle([&window](auto checked) {
-                toolkit::Widget::debug_show_frames = checked;
+                svision3::Widget::debug_show_frames = checked;
                 window->request_redraw();
             }))
             .add(ui::checkbox("Show performance stats").on_toggle([&window](auto checked) {
@@ -511,14 +511,14 @@ int main(int argc, char *argv[]) {
                 window->set_statistics_logging_enabled(checked);
             }))
             .add(ui::checkbox("Show widget inspector").on_toggle([&window](auto checked) {
-                toolkit::Widget::debug_show_inspector = checked;
+                svision3::Widget::debug_show_inspector = checked;
                 window->request_redraw();
             }));
     };
 
     auto rootWidget =
         ui::tab_widget()
-            .orientation(toolkit::TabOrientation::WestVertical)
+            .orientation(svision3::TabOrientation::WestVertical)
             .trailing_widget(debug_stats_widget())
             .min_tab_width(100)
             .tabs_closable(false)
@@ -592,14 +592,14 @@ int main(int argc, char *argv[]) {
                     .add(ui::line_input("Password").password_mode(true))
                     .add(ui::line_input().text("This text cannot be edited").read_only(true))
                     .add(ui::line_input("Numbers only (blocking)")
-                             .validation_mode(toolkit::LineInput::ValidationMode::Block)
+                             .validation_mode(svision3::LineInput::ValidationMode::Block)
                              .validator([](auto &text, auto &) {
                                  return std::regex_match(text, std::regex("[0-9]*"));
                              }))
                     .add(ui::hbox()
                              .margins(ui::no_margins())
                              .add(ui::line_input("Email address (visual)")
-                                      .validation_mode(toolkit::LineInput::ValidationMode::Notify)
+                                      .validation_mode(svision3::LineInput::ValidationMode::Notify)
                                       .validator([](auto &text, auto &) {
                                           auto static email_regex = std::regex(
                                               R"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})");
@@ -609,7 +609,7 @@ int main(int argc, char *argv[]) {
                                           return std::regex_match(text, email_regex);
                                       })
                                       .on_change([l = email_stats_label.get()](auto &s, auto &w) {
-                                          auto const &palette = toolkit::Theme::current().palette;
+                                          auto const &palette = svision3::Theme::current().palette;
                                           if (s.empty()) {
                                               l->set_text("Empty");
                                               l->set_background_color(palette.warning);
@@ -668,7 +668,7 @@ int main(int argc, char *argv[]) {
                              .add(ui::button("Open Image")
                                       .icon(open_icon)
                                       .on_click([window, iw_ptr]() {
-                                          toolkit::FileDialog(window)
+                                          svision3::FileDialog(window)
                                               .title("Open Image")
                                               .open()
                                               .then([iw_ptr, window](auto path) {
@@ -720,7 +720,7 @@ int main(int argc, char *argv[]) {
                              .add(ui::button("Save As...")
                                       .on_click([&window, editor_ptr = editor.get(),
                                                  use_native_cb_ptr]() {
-                                          toolkit::FileDialog(window)
+                                          svision3::FileDialog(window)
                                               .title("Save File")
                                               .use_native(use_native_cb_ptr->checked())
                                               .save()
@@ -736,7 +736,7 @@ int main(int argc, char *argv[]) {
                              .add(ui::button("Choose Directory...")
                                       .icon(directory_icon)
                                       .on_click([&window, use_native_cb_ptr]() {
-                                          toolkit::DirectoryDialog(window)
+                                          svision3::DirectoryDialog(window)
                                               .title("Choose Directory")
                                               .use_native(use_native_cb_ptr->checked())
                                               .choose()
@@ -766,75 +766,75 @@ int main(int argc, char *argv[]) {
                             .margins(ui::no_margins())
                             .spacing(0)
                             .add(ui::tab_widget()
-                                     .orientation(toolkit::TabOrientation::West)
+                                     .orientation(svision3::TabOrientation::West)
                                      .leading_widget(make_plus())
                                      .trailing_widget(make_close())
                                      .add_tab("West 1", ui::label("West 1 Content")
-                                                            .alignment(toolkit::Alignment::Center))
+                                                            .alignment(svision3::Alignment::Center))
                                      .add_tab("West 2", ui::label("West 2 Content")
-                                                            .alignment(toolkit::Alignment::Center)
+                                                            .alignment(svision3::Alignment::Center)
                                                             .background_color(
-                                                                toolkit::Color::rgb(0.8, 1.0, 0.8)))
+                                                                svision3::Color::rgb(0.8, 1.0, 0.8)))
                                      .add_tab("West 3", ui::label("West 3 Content")
-                                                            .alignment(toolkit::Alignment::Center)
+                                                            .alignment(svision3::Alignment::Center)
                                                             .background_color(
-                                                                toolkit::Color::rgb(0.7, 1.0, 0.7)))
+                                                                svision3::Color::rgb(0.7, 1.0, 0.7)))
                                      .add_tab("West 4", ui::label("West 4 Content")
-                                                            .alignment(toolkit::Alignment::Center)
+                                                            .alignment(svision3::Alignment::Center)
                                                             .background_color(
-                                                                toolkit::Color::rgb(0.6, 1.0, 0.6)))
+                                                                svision3::Color::rgb(0.6, 1.0, 0.6)))
                                      .add_tab("West 5", ui::label("West 5 Content")
-                                                            .alignment(toolkit::Alignment::Center)
-                                                            .background_color(toolkit::Color::rgb(
+                                                            .alignment(svision3::Alignment::Center)
+                                                            .background_color(svision3::Color::rgb(
                                                                 0.5, 1.0, 0.5))),
                                  ui::expand)
                             .add(ui::tab_widget()
-                                     .orientation(toolkit::TabOrientation::East)
+                                     .orientation(svision3::TabOrientation::East)
                                      .leading_widget(make_plus())
                                      .trailing_widget(make_close())
                                      .add_tab("East 1", ui::label("East 1 Content")
-                                                            .alignment(toolkit::Alignment::Center))
+                                                            .alignment(svision3::Alignment::Center))
                                      .add_tab("East 2", ui::label("East 2 Content")
-                                                            .alignment(toolkit::Alignment::Center)
+                                                            .alignment(svision3::Alignment::Center)
                                                             .background_color(
-                                                                toolkit::Color::rgb(0.8, 0.8, 1.0)))
+                                                                svision3::Color::rgb(0.8, 0.8, 1.0)))
                                      .add_tab("East 3", ui::label("East 3 Content")
-                                                            .alignment(toolkit::Alignment::Center)
+                                                            .alignment(svision3::Alignment::Center)
                                                             .background_color(
-                                                                toolkit::Color::rgb(0.7, 0.7, 1.0)))
+                                                                svision3::Color::rgb(0.7, 0.7, 1.0)))
                                      .add_tab("East 4", ui::label("East 4 Content")
-                                                            .alignment(toolkit::Alignment::Center)
+                                                            .alignment(svision3::Alignment::Center)
                                                             .background_color(
-                                                                toolkit::Color::rgb(0.6, 0.6, 1.0)))
+                                                                svision3::Color::rgb(0.6, 0.6, 1.0)))
                                      .add_tab("East 5", ui::label("East 5 Content")
-                                                            .alignment(toolkit::Alignment::Center)
-                                                            .background_color(toolkit::Color::rgb(
+                                                            .alignment(svision3::Alignment::Center)
+                                                            .background_color(svision3::Color::rgb(
                                                                 0.5, 0.5, 1.0))),
                                  ui::expand),
                         ui::expand)
                     .add(ui::tab_widget()
-                             .orientation(toolkit::TabOrientation::South)
+                             .orientation(svision3::TabOrientation::South)
                              .leading_widget(make_plus())
                              .trailing_widget(make_close())
                              .add_tab(
                                  "South 1",
-                                 ui::label("South 1 Content").alignment(toolkit::Alignment::Center))
+                                 ui::label("South 1 Content").alignment(svision3::Alignment::Center))
                              .add_tab("South 2",
                                       ui::label("South 2 Content")
-                                          .alignment(toolkit::Alignment::Center)
-                                          .background_color(toolkit::Color::rgb(1.0, 0.8, 0.8)))
+                                          .alignment(svision3::Alignment::Center)
+                                          .background_color(svision3::Color::rgb(1.0, 0.8, 0.8)))
                              .add_tab("South 3",
                                       ui::label("South 3 Content")
-                                          .alignment(toolkit::Alignment::Center)
-                                          .background_color(toolkit::Color::rgb(1.0, 0.7, 0.7)))
+                                          .alignment(svision3::Alignment::Center)
+                                          .background_color(svision3::Color::rgb(1.0, 0.7, 0.7)))
                              .add_tab("South 4",
                                       ui::label("South 4 Content")
-                                          .alignment(toolkit::Alignment::Center)
-                                          .background_color(toolkit::Color::rgb(1.0, 0.6, 0.6)))
+                                          .alignment(svision3::Alignment::Center)
+                                          .background_color(svision3::Color::rgb(1.0, 0.6, 0.6)))
                              .add_tab("South 5",
                                       ui::label("South 5 Content")
-                                          .alignment(toolkit::Alignment::Center)
-                                          .background_color(toolkit::Color::rgb(1.0, 0.5, 0.5)))));
+                                          .alignment(svision3::Alignment::Center)
+                                          .background_color(svision3::Color::rgb(1.0, 0.5, 0.5)))));
 
     root_tab_ptr = rootWidget.get();
 
@@ -867,7 +867,7 @@ int main(int argc, char *argv[]) {
                      .add_menu(ui::menu("&Help")
                                    .action("About",
                                            [&window] {
-                                               toolkit::MessageBox(window)
+                                               svision3::MessageBox(window)
                                                    .title("About SVision3")
                                                    .markdown()
                                                    .message("## SVision3\n\n"
@@ -891,12 +891,12 @@ int main(int argc, char *argv[]) {
                      .add(ui::button("About").disable())
                      .add(ui::spacer(), ui::expand)
                      .add(ui::button("Toast").on_click([window] {
-                         static const std::optional<toolkit::Color> colors[] = {
-                             toolkit::Color::rgb(1.0f, 0.85f, 0.85f),
-                             toolkit::Color::rgb(0.85f, 1.0f, 0.85f),
-                             toolkit::Color::rgb(0.85f, 0.85f, 1.0f),
-                             toolkit::Color::rgb(1.0f, 1.0f, 0.85f),
-                             toolkit::Color::rgb(1.0f, 0.85f, 1.0f),
+                         static const std::optional<svision3::Color> colors[] = {
+                             svision3::Color::rgb(1.0f, 0.85f, 0.85f),
+                             svision3::Color::rgb(0.85f, 1.0f, 0.85f),
+                             svision3::Color::rgb(0.85f, 0.85f, 1.0f),
+                             svision3::Color::rgb(1.0f, 1.0f, 0.85f),
+                             svision3::Color::rgb(1.0f, 0.85f, 1.0f),
                              std::nullopt,
                          };
                          static int count = 0;

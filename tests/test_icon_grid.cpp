@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/icon_grid.hpp"
-#include "toolkit/item_model.hpp"
+#include "svision3/icon_grid.hpp"
+#include "svision3/item_model.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 // ---------------------------------------------------------------------------
 // Helpers

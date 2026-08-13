@@ -1,8 +1,8 @@
-#include "toolkit/list_view.hpp"
-#include "toolkit/theme_factory.hpp"
+#include "svision3/list_view.hpp"
+#include "svision3/theme_factory.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 static std::shared_ptr<StringListModel> make_model(int n = 5) {
     std::vector<std::string> items;

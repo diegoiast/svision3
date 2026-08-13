@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/slider.hpp"
-#include "toolkit/layout.hpp"
+#include "svision3/slider.hpp"
+#include "svision3/layout.hpp"
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Slider default values", "[slider]") {
     Slider s;

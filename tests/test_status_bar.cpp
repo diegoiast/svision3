@@ -1,8 +1,8 @@
-#include "toolkit/status_bar.hpp"
+#include "svision3/status_bar.hpp"
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("StatusBar defaults to empty", "[status_bar]") {
     StatusBar bar;

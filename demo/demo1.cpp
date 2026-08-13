@@ -3,40 +3,40 @@
 
 #include "declarative.hpp"
 #include "github_markdown_css.hpp"
-#include "toolkit/application.hpp"
-#include "toolkit/button.hpp"
-#include "toolkit/checkbox.hpp"
-#include "toolkit/combobox.hpp"
-#include "toolkit/directory_dialog.hpp"
-#include "toolkit/file_dialog.hpp"
-#include "toolkit/html_view.hpp"
-#include "toolkit/icon_grid.hpp"
-#include "toolkit/image_widget.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/layout.hpp"
-#include "toolkit/line_input.hpp"
-#include "toolkit/list_view.hpp"
-#include "toolkit/menu.hpp"
-#include "toolkit/menubar.hpp"
-#include "toolkit/message_box.hpp"
-#include "toolkit/progress_bar.hpp"
-#include "toolkit/radio_button.hpp"
-#include "toolkit/rich_label.hpp"
-#include "toolkit/scroll_area.hpp"
-#include "toolkit/scrollbar.hpp"
-#include "toolkit/slider.hpp"
-#include "toolkit/spin_box.hpp"
-#include "toolkit/splitter.hpp"
-#include "toolkit/status_bar.hpp"
-#include "toolkit/tab_widget.hpp"
-#include "toolkit/table_view.hpp"
-#include "toolkit/text_edit.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
-#include "toolkit/toolbar.hpp"
-#include "toolkit/tree_view.hpp"
-#include "toolkit/window.hpp"
-#include "toolkit/xdg_image_loader.hpp"
+#include "svision3/application.hpp"
+#include "svision3/button.hpp"
+#include "svision3/checkbox.hpp"
+#include "svision3/combobox.hpp"
+#include "svision3/directory_dialog.hpp"
+#include "svision3/file_dialog.hpp"
+#include "svision3/html_view.hpp"
+#include "svision3/icon_grid.hpp"
+#include "svision3/image_widget.hpp"
+#include "svision3/label.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/line_input.hpp"
+#include "svision3/list_view.hpp"
+#include "svision3/menu.hpp"
+#include "svision3/menubar.hpp"
+#include "svision3/message_box.hpp"
+#include "svision3/progress_bar.hpp"
+#include "svision3/radio_button.hpp"
+#include "svision3/rich_label.hpp"
+#include "svision3/scroll_area.hpp"
+#include "svision3/scrollbar.hpp"
+#include "svision3/slider.hpp"
+#include "svision3/spin_box.hpp"
+#include "svision3/splitter.hpp"
+#include "svision3/status_bar.hpp"
+#include "svision3/tab_widget.hpp"
+#include "svision3/table_view.hpp"
+#include "svision3/text_edit.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
+#include "svision3/toolbar.hpp"
+#include "svision3/tree_view.hpp"
+#include "svision3/window.hpp"
+#include "svision3/xdg_image_loader.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -96,14 +96,14 @@ int main() {
 > Blockquotes work too.
 )";
 
-static toolkit::RadioGroup scheme_group;
-static toolkit::ThemeStyle current_style = toolkit::ThemeStyle::MacOS; // Placeholder, set in main
-static toolkit::ColorScheme current_scheme = toolkit::ColorScheme::Light;
+static svision3::RadioGroup scheme_group;
+static svision3::ThemeStyle current_style = svision3::ThemeStyle::MacOS; // Placeholder, set in main
+static svision3::ColorScheme current_scheme = svision3::ColorScheme::Light;
 
 #include "BeatesSongs.hpp"
 
-static void apply_theme(toolkit::Application &app, toolkit::Window *window) {
-    toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
+static void apply_theme(svision3::Application &app, svision3::Window *window) {
+    svision3::Theme::set_current(svision3::ThemeFactory::create(current_style, current_scheme));
     window->request_redraw("theme apply");
 }
 
@@ -116,8 +116,8 @@ static constexpr auto LOREM_IPSUM_MD =
 int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
 
-    toolkit::Application app;
-    app.set_icon_provider(std::make_unique<toolkit::XdgImageLoader>("Faenza"));
+    svision3::Application app;
+    app.set_icon_provider(std::make_unique<svision3::XdgImageLoader>("Faenza"));
 
     std::string screenshot_path;
     for (int i = 1; i < argc; i++) {
@@ -126,8 +126,8 @@ int main(int argc, char *argv[]) {
             screenshot_path = arg.substr(13);
         }
     }
-    current_style = toolkit::Theme::detect_system_style();
-    toolkit::Theme::set_current(toolkit::ThemeFactory::create(current_style, current_scheme));
+    current_style = svision3::Theme::detect_system_style();
+    svision3::Theme::set_current(svision3::ThemeFactory::create(current_style, current_scheme));
 
     // Application owns the window for the process lifetime, so calling straight
     // through `window` here is fine. The callbacks below each capture their own
@@ -136,12 +136,12 @@ int main(int argc, char *argv[]) {
     // capturing the shared_ptr would be a cycle that never frees.
     auto window = app.create_window("Demo", {600, 400});
 
-    auto root = std::make_unique<toolkit::VBoxLayout>();
+    auto root = std::make_unique<svision3::VBoxLayout>();
     root->set_margins({0, 0, 0, 0});
     root->set_spacing(0);
 
     // This needs to be acessible by the menu and the editor tab
-    auto editor = new toolkit::TextEdit();
+    auto editor = new svision3::TextEdit();
     editor->set_text("#include <iostream>\n"
                      "\n"
                      "int main() {\n"
@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
                      "    return 0;\n"
                      "}\n");
 
-    auto *use_native_cb = new toolkit::Checkbox("Use native dialogs");
+    auto *use_native_cb = new svision3::Checkbox("Use native dialogs");
     use_native_cb->set_checked(true);
 
     auto open_action = [editor, use_native_cb, weak_window = std::weak_ptr(window)] {
@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
         if (!window) {
             return;
         }
-        toolkit::FileDialog(window.get())
+        svision3::FileDialog(window.get())
             .title("Open File")
             .use_native(use_native_cb->checked())
             .open()
@@ -174,15 +174,15 @@ int main(int argc, char *argv[]) {
     };
 
     // ── MenuBar ─────────────────────────────────────────────────────────
-    auto menubar = std::make_unique<toolkit::MenuBar>();
+    auto menubar = std::make_unique<svision3::MenuBar>();
     auto *menubar_ptr = menubar.get();
 
     auto file_menu = menubar->add_menu("&File");
-    auto new_cmd = toolkit::Command::create("New", [] { spdlog::info("Menu: New"); });
+    auto new_cmd = svision3::Command::create("New", [] { spdlog::info("Menu: New"); });
     new_cmd->set_shortcut("Std+N");
     file_menu->add_action(new_cmd);
 
-    auto open_menu_cmd = toolkit::Command::create("Open...", open_action);
+    auto open_menu_cmd = svision3::Command::create("Open...", open_action);
     open_menu_cmd->set_shortcut("F3");
     open_menu_cmd->set_icon(XDG::IconActions::documentOpen);
     file_menu->add_action(open_menu_cmd);
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
         if (!window) {
             return;
         }
-        toolkit::FileDialog(window.get())
+        svision3::FileDialog(window.get())
             .title("Save File")
             .use_native(use_native_cb->checked())
             .save()
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
                 }
             });
     };
-    auto save_cmd = toolkit::Command::create("Save As...", save_action);
+    auto save_cmd = svision3::Command::create("Save As...", save_action);
     save_cmd->set_shortcut("Std+S");
     save_cmd->set_icon(XDG::IconActions::documentSaveAs);
     file_menu->add_action(save_cmd);
@@ -213,13 +213,13 @@ int main(int argc, char *argv[]) {
     file_menu->add_separator();
 
     // Nested menu example
-    auto recent_files_menu = std::make_shared<toolkit::Menu>("Recent &Files");
+    auto recent_files_menu = std::make_shared<svision3::Menu>("Recent &Files");
     recent_files_menu->add_action("&File1.txt", [] { spdlog::info("Opening &File1.txt"); });
     recent_files_menu->add_action("&File2.txt", [] { spdlog::info("Opening &File2.txt"); });
     file_menu->add_submenu("Recent &Files", recent_files_menu);
 
     file_menu->add_separator();
-    auto exit_cmd = toolkit::Command::create("Exit", [weak_window = std::weak_ptr(window)] {
+    auto exit_cmd = svision3::Command::create("Exit", [weak_window = std::weak_ptr(window)] {
         if (auto window = weak_window.lock()) {
             window->close();
         }
@@ -228,11 +228,11 @@ int main(int argc, char *argv[]) {
     file_menu->add_action(exit_cmd);
 
     auto edit_menu = menubar->add_menu("&Edit");
-    auto undo_cmd = toolkit::Command::create("Undo", [] { spdlog::info("Menu: Undo"); });
+    auto undo_cmd = svision3::Command::create("Undo", [] { spdlog::info("Menu: Undo"); });
     undo_cmd->set_shortcut("Std+Z");
     edit_menu->add_action(undo_cmd);
 
-    auto redo_cmd = toolkit::Command::create("Redo", [] { spdlog::info("Menu: Redo"); });
+    auto redo_cmd = svision3::Command::create("Redo", [] { spdlog::info("Menu: Redo"); });
     redo_cmd->set_shortcut("Std+Y");
     edit_menu->add_action(redo_cmd);
 
@@ -246,13 +246,13 @@ int main(int argc, char *argv[]) {
         if (!window) {
             return;
         }
-        toolkit::MessageBox(window.get())
+        svision3::MessageBox(window.get())
             .title("About Demo")
             .markdown()
             .message("## SVision3\n\n"
                      "Imperative API demo application.\n\n"
                      "Demo of a C++ **cross-platform** UI toolkit.")
-            .icon(toolkit::MessageBoxIcon::Information)
+            .icon(svision3::MessageBoxIcon::Information)
             .show();
     });
 
@@ -266,10 +266,10 @@ int main(int argc, char *argv[]) {
     root->add_widget(std::move(menubar));
 
     // ── Toolbar ──────────────────────────────────────────────────────────
-    auto toolbar = std::make_unique<toolkit::Toolbar>();
+    auto toolbar = std::make_unique<svision3::Toolbar>();
 
     auto ok_action = [] { spdlog::info("Toolbar: OK triggered"); };
-    auto ok_cmd = toolkit::Command::create("OK", ok_action);
+    auto ok_cmd = svision3::Command::create("OK", ok_action);
     ok_cmd->set_tooltip("Trigger the OK action");
     ok_cmd->set_icon(XDG::IconActions::dialogApply);
     toolbar->add_command(ok_cmd);
@@ -279,43 +279,43 @@ int main(int argc, char *argv[]) {
 
     toolbar->add_separator();
 
-    auto disabled_cmd = toolkit::Command::create("Disabled", [] {});
+    auto disabled_cmd = svision3::Command::create("Disabled", [] {});
     disabled_cmd->set_enabled(false);
     disabled_cmd->set_tooltip("This command is disabled");
     toolbar->add_command(disabled_cmd);
 
-    auto autoclick_cmd = toolkit::Command::create("Increase count", [] {});
+    auto autoclick_cmd = svision3::Command::create("Increase count", [] {});
     autoclick_cmd->set_tooltip("Increase the counter");
     toolbar->add_command(autoclick_cmd);
 
     std::vector<std::string> style_names;
-    for (int i = 0; i < toolkit::theme_style_count; i++) {
-        style_names.push_back(toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
+    for (int i = 0; i < svision3::theme_style_count; i++) {
+        style_names.push_back(svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i)));
     }
     style_names.push_back("Other");
 
-    auto theme_combo = std::make_shared<toolkit::Combobox>(style_names);
+    auto theme_combo = std::make_shared<svision3::Combobox>(style_names);
     {
         int initial_selected = -1;
-        auto const &theme = toolkit::Theme::current();
-        for (int i = 0; i < toolkit::theme_style_count; i++) {
-            if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
+        auto const &theme = svision3::Theme::current();
+        for (int i = 0; i < svision3::theme_style_count; i++) {
+            if (theme.name == svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i))) {
                 initial_selected = i;
                 break;
             }
         }
         if (initial_selected == -1) {
-            initial_selected = toolkit::theme_style_count;
+            initial_selected = svision3::theme_style_count;
         }
         theme_combo->set_selected(initial_selected);
     }
 
-    auto theme_toggle = std::make_shared<toolkit::Checkbox>("Light Theme");
-    theme_toggle->set_checked(toolkit::Theme::current().palette.window.luma() > 0.5f);
+    auto theme_toggle = std::make_shared<svision3::Checkbox>("Light Theme");
+    theme_toggle->set_checked(svision3::Theme::current().palette.window.luma() > 0.5f);
 
     // UI sync function
     auto sync_theme_ui = [combo_ref = std::weak_ptr(theme_combo),
-                          toggle_ref = std::weak_ptr(theme_toggle)](const toolkit::Theme &theme) {
+                          toggle_ref = std::weak_ptr(theme_toggle)](const svision3::Theme &theme) {
         auto theme_combo = combo_ref.lock();
         auto theme_toggle = toggle_ref.lock();
         if (!theme_combo || !theme_toggle) {
@@ -323,29 +323,29 @@ int main(int argc, char *argv[]) {
         }
 
         int selected = -1;
-        for (int i = 0; i < toolkit::theme_style_count; i++) {
-            if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
+        for (int i = 0; i < svision3::theme_style_count; i++) {
+            if (theme.name == svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i))) {
                 selected = i;
                 break;
             }
         }
         if (selected == -1) {
-            selected = toolkit::theme_style_count; // "Other"
+            selected = svision3::theme_style_count; // "Other"
         }
 
         theme_combo->set_selected(selected);
         theme_toggle->set_checked(theme.palette.window.luma() > 0.5f);
     };
-    toolkit::Theme::add_theme_observer(sync_theme_ui);
+    svision3::Theme::add_theme_observer(sync_theme_ui);
 
     theme_combo->on_change = [weak_window = std::weak_ptr(window)](int index) {
-        auto scheme = toolkit::Theme::current().palette.window.luma() < 0.5f
-                          ? toolkit::ColorScheme::Dark
-                          : toolkit::ColorScheme::Light;
-        auto style = (index < toolkit::theme_style_count) ? static_cast<toolkit::ThemeStyle>(index)
-                                                          : toolkit::ThemeStyle::Material;
-        auto new_theme = toolkit::ThemeFactory::create(style, scheme);
-        toolkit::Theme::set_current(std::move(new_theme));
+        auto scheme = svision3::Theme::current().palette.window.luma() < 0.5f
+                          ? svision3::ColorScheme::Dark
+                          : svision3::ColorScheme::Light;
+        auto style = (index < svision3::theme_style_count) ? static_cast<svision3::ThemeStyle>(index)
+                                                          : svision3::ThemeStyle::Material;
+        auto new_theme = svision3::ThemeFactory::create(style, scheme);
+        svision3::Theme::set_current(std::move(new_theme));
         if (auto window = weak_window.lock()) {
             window->request_redraw("theme changed");
         }
@@ -357,18 +357,18 @@ int main(int argc, char *argv[]) {
         if (!theme_combo) {
             return;
         }
-        auto scheme = checked ? toolkit::ColorScheme::Light : toolkit::ColorScheme::Dark;
+        auto scheme = checked ? svision3::ColorScheme::Light : svision3::ColorScheme::Dark;
         int index = theme_combo->selected();
         auto style =
-            (index == 0) ? toolkit::ThemeStyle::System : static_cast<toolkit::ThemeStyle>(index);
-        auto new_theme = toolkit::ThemeFactory::create(style, scheme);
-        toolkit::Theme::set_current(std::move(new_theme));
+            (index == 0) ? svision3::ThemeStyle::System : static_cast<svision3::ThemeStyle>(index);
+        auto new_theme = svision3::ThemeFactory::create(style, scheme);
+        svision3::Theme::set_current(std::move(new_theme));
         if (auto window = weak_window.lock()) {
             window->request_redraw("scheme changed");
         }
     };
 
-    auto spacer = std::make_unique<toolkit::Label>("");
+    auto spacer = std::make_unique<svision3::Label>("");
     toolbar->add_widget(std::move(spacer), 1.0f);
     toolbar->add_widget(std::move(theme_toggle));
     toolbar->add_widget(std::move(theme_combo));
@@ -378,7 +378,7 @@ int main(int argc, char *argv[]) {
     auto debug_stats_widget = [weak_window = std::weak_ptr(window)]() {
         return ui::vbox()
             .add(ui::checkbox("Show Debug Frames").on_toggle([weak_window](bool checked) {
-                toolkit::Widget::debug_show_frames = checked;
+                svision3::Widget::debug_show_frames = checked;
                 if (auto window = weak_window.lock()) {
                     window->request_redraw();
                 }
@@ -397,70 +397,70 @@ int main(int argc, char *argv[]) {
                 window->set_statistics_logging_enabled(checked);
             }))
             .add(ui::checkbox("Show Widget Inspector").on_toggle([weak_window](bool checked) {
-                toolkit::Widget::debug_show_inspector = checked;
+                svision3::Widget::debug_show_inspector = checked;
                 if (auto window = weak_window.lock()) {
                     window->request_redraw();
                 }
             }));
     };
 
-    auto tabs = std::make_unique<toolkit::TabWidget>();
+    auto tabs = std::make_unique<svision3::TabWidget>();
     tabs->set_tabs_closable(false);
     tabs->set_tabs_movable(false);
-    tabs->set_orientation(toolkit::TabOrientation::WestVertical);
+    tabs->set_orientation(svision3::TabOrientation::WestVertical);
     tabs->set_trailing_widget(debug_stats_widget());
     tabs->set_min_tab_width(200.0f);
     auto *tabs_ptr = tabs.get();
 
     // ── Tab: Main ──────────────────────────────────────────────────────
-    auto tab_main = std::make_unique<toolkit::VBoxLayout>();
+    auto tab_main = std::make_unique<svision3::VBoxLayout>();
     tab_main->set_margins({20, 20, 20, 20});
     tab_main->set_spacing(12);
 
-    auto plain_label = std::make_unique<toolkit::Label>(LOREM_IPSUM);
+    auto plain_label = std::make_unique<svision3::Label>(LOREM_IPSUM);
     plain_label->set_elide(true);
     plain_label->set_shrinkable(true);
     tab_main->add_widget(std::move(plain_label));
 
-    auto rich_label = std::make_unique<toolkit::RichLabel>(LOREM_IPSUM_MD);
+    auto rich_label = std::make_unique<svision3::RichLabel>(LOREM_IPSUM_MD);
     rich_label->set_markdown_tooltip(rich_label->text());
     tab_main->add_widget(std::move(rich_label));
 
-    auto cb1 = std::make_unique<toolkit::Checkbox>("Enable &notifications");
+    auto cb1 = std::make_unique<svision3::Checkbox>("Enable &notifications");
     cb1->set_checked(true);
     cb1->set_tooltip("Toggle desktop notifications (Alt+N)");
     tab_main->add_widget(std::move(cb1));
 
-    auto cb2 = std::make_unique<toolkit::Checkbox>("Tri-&state option");
+    auto cb2 = std::make_unique<svision3::Checkbox>("Tri-&state option");
     cb2->set_tri_state(true);
-    cb2->set_check_state(toolkit::CheckState::Partial);
+    cb2->set_check_state(svision3::CheckState::Partial);
     cb2->set_tooltip("This checkbox cycles through three states (Alt+S)");
     tab_main->add_widget(std::move(cb2));
 
     std::vector<std::string> main_page_style_names;
-    for (int i = 0; i < toolkit::theme_style_count; i++) {
+    for (int i = 0; i < svision3::theme_style_count; i++) {
         main_page_style_names.push_back(
-            toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i)));
+            svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i)));
     }
 
-    auto combo = std::make_shared<toolkit::Combobox>(main_page_style_names);
+    auto combo = std::make_shared<svision3::Combobox>(main_page_style_names);
     combo->set_selected(static_cast<int>(current_style));
     combo->set_tooltip("Select a theme style");
     combo->on_change = [&app, weak_window = std::weak_ptr(window)](int index) {
-        current_style = static_cast<toolkit::ThemeStyle>(index);
+        current_style = static_cast<svision3::ThemeStyle>(index);
         if (auto window = weak_window.lock()) {
             apply_theme(app, window.get());
         }
     };
-    toolkit::Theme::add_theme_observer(
-        [combo_ref = std::weak_ptr(combo)](const toolkit::Theme &theme) {
+    svision3::Theme::add_theme_observer(
+        [combo_ref = std::weak_ptr(combo)](const svision3::Theme &theme) {
             auto combo = combo_ref.lock();
             if (!combo) {
                 return;
             }
             int selected = -1;
-            for (int i = 0; i < toolkit::theme_style_count; i++) {
-                if (theme.name == toolkit::Theme::style_name(static_cast<toolkit::ThemeStyle>(i))) {
+            for (int i = 0; i < svision3::theme_style_count; i++) {
+                if (theme.name == svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i))) {
                     selected = i;
                     break;
                 }
@@ -468,19 +468,19 @@ int main(int argc, char *argv[]) {
             if (selected != -1) {
                 combo->set_selected(selected);
             } else {
-                combo->set_selected(toolkit::theme_style_count); // "Other"
+                combo->set_selected(svision3::theme_style_count); // "Other"
             }
         });
     tab_main->add_widget(std::move(combo));
 
-    auto rb_light = std::make_unique<toolkit::RadioButton>("&Light", scheme_group);
+    auto rb_light = std::make_unique<svision3::RadioButton>("&Light", scheme_group);
     rb_light->set_tooltip("Light color scheme (Alt+L)");
-    auto rb_dark = std::make_unique<toolkit::RadioButton>("&Dark", scheme_group);
+    auto rb_dark = std::make_unique<svision3::RadioButton>("&Dark", scheme_group);
     rb_dark->set_tooltip("Dark color scheme (Alt+D)");
     scheme_group.select(rb_light.get());
     scheme_group.on_change = [&app, weak_window = std::weak_ptr(window)](int index) {
-        constexpr toolkit::ColorScheme schemes[] = {toolkit::ColorScheme::Light,
-                                                    toolkit::ColorScheme::Dark};
+        constexpr svision3::ColorScheme schemes[] = {svision3::ColorScheme::Light,
+                                                    svision3::ColorScheme::Dark};
         current_scheme = schemes[index];
         if (auto window = weak_window.lock()) {
             apply_theme(app, window.get());
@@ -489,18 +489,18 @@ int main(int argc, char *argv[]) {
     tab_main->add_widget(std::move(rb_light));
     tab_main->add_widget(std::move(rb_dark));
 
-    auto progress = std::make_unique<toolkit::ProgressBar>();
+    auto progress = std::make_unique<svision3::ProgressBar>();
     auto *progress_ptr = progress.get();
     progress->set_value(0.0f);
     progress->set_tooltip("0%");
     tab_main->add_widget(std::move(progress));
 
-    auto repeat_row = std::make_unique<toolkit::HBoxLayout>();
+    auto repeat_row = std::make_unique<svision3::HBoxLayout>();
     repeat_row->set_spacing(10);
-    auto repeat_btn = std::make_unique<toolkit::Button>("Auto &repeat");
+    auto repeat_btn = std::make_unique<svision3::Button>("Auto &repeat");
     repeat_btn->set_auto_repeat(true, 1.0f, 0.2f);
     repeat_btn->set_markdown_tooltip("Auto repeat button, every _second_");
-    auto repeat_label = std::make_unique<toolkit::Label>("Count: 0");
+    auto repeat_label = std::make_unique<svision3::Label>("Count: 0");
     auto *repeat_label_ptr = repeat_label.get();
     static int repeat_count = 0;
     auto repeat_action = [repeat_label_ptr] {
@@ -509,7 +509,7 @@ int main(int argc, char *argv[]) {
     };
     repeat_btn->set_command(autoclick_cmd);
 
-    auto open_icon_btn = std::make_unique<toolkit::Button>("&Open");
+    auto open_icon_btn = std::make_unique<svision3::Button>("&Open");
     auto icon = app.load_icon(XDG::IconActions::documentOpen, 16);
     auto directory_icon = app.load_icon(XDG::IconMimeTypes::inodeDirectory, 16);
     if (icon) {
@@ -517,21 +517,21 @@ int main(int argc, char *argv[]) {
     }
     open_icon_btn->set_tooltip("Open file");
 
-    auto open_menu = std::make_shared<toolkit::Menu>();
-    auto open_file_cmd = toolkit::Command::create("Open File", open_action);
+    auto open_menu = std::make_shared<svision3::Menu>();
+    auto open_file_cmd = svision3::Command::create("Open File", open_action);
     open_file_cmd->set_icon(XDG::IconActions::documentOpen);
     open_menu->add_action(open_file_cmd);
     auto open_document_cmd =
-        toolkit::Command::create("Open Document", [] { spdlog::info("Menu: Open Document"); });
+        svision3::Command::create("Open Document", [] { spdlog::info("Menu: Open Document"); });
     open_document_cmd->set_icon(XDG::IconActions::documentOpen);
     open_menu->add_action(open_document_cmd);
     auto open_image_cmd =
-        toolkit::Command::create("Open Image", [] { spdlog::info("Menu: Open Image"); });
+        svision3::Command::create("Open Image", [] { spdlog::info("Menu: Open Image"); });
     open_image_cmd->set_icon(XDG::IconMimeTypes::imageXGeneric);
     open_menu->add_action(open_image_cmd);
     open_icon_btn->set_menu(open_menu);
 
-    auto toggle_btn = std::make_unique<toolkit::Button>("Toggle me");
+    auto toggle_btn = std::make_unique<svision3::Button>("Toggle me");
     toggle_btn->set_checkable(true);
     toggle_btn->on_toggle = [](bool checked) { spdlog::info("Button toggled: {}", checked); };
 
@@ -546,13 +546,13 @@ int main(int argc, char *argv[]) {
     repeat_row->add_widget(std::move(repeat_label), 1);
     tab_main->add_widget(std::move(repeat_row));
 
-    auto scrollbar = std::make_unique<toolkit::Scrollbar>();
+    auto scrollbar = std::make_unique<svision3::Scrollbar>();
     scrollbar->set_range(0, 100);
     scrollbar->set_step_small(5);
     scrollbar->set_step_page(20);
     scrollbar->set_value(50);
     auto *scrollbar_ptr = scrollbar.get();
-    auto scrollbar_label = std::make_unique<toolkit::Label>("Scroll: 50");
+    auto scrollbar_label = std::make_unique<svision3::Label>("Scroll: 50");
     auto *scrollbar_label_ptr = scrollbar_label.get();
     scrollbar->on_change = [scrollbar_label_ptr](float v) {
         scrollbar_label_ptr->set_text(fmt::format("Scroll: {:.0f}", v));
@@ -560,7 +560,7 @@ int main(int argc, char *argv[]) {
     tab_main->add_widget(std::move(scrollbar));
     tab_main->add_widget(std::move(scrollbar_label));
 
-    auto platform_label = std::make_unique<toolkit::Label>(
+    auto platform_label = std::make_unique<svision3::Label>(
         fmt::format("Platform: {} | Painter: {}", app.platform_name(), window->painter_name()));
     // Capture the raw pointer while platform_label still owns the Label; the move
     // into the layout must come AFTER, or .get() would return a moved-from pointer.
@@ -577,43 +577,43 @@ int main(int argc, char *argv[]) {
     tab_main->add_widget(std::move(platform_label));
 
     // ── Tab: Inputs ────────────────────────────────────────────────────
-    auto tab_inputs = std::make_unique<toolkit::VBoxLayout>();
+    auto tab_inputs = std::make_unique<svision3::VBoxLayout>();
     tab_inputs->set_margins({20, 20, 20, 20});
     tab_inputs->set_spacing(12);
 
     // Label buddy: Alt+U focuses the username input
-    auto username_row = std::make_unique<toolkit::HBoxLayout>();
+    auto username_row = std::make_unique<svision3::HBoxLayout>();
     username_row->set_spacing(8);
-    auto *username_input = new toolkit::LineInput("Enter username");
-    auto username_label = std::make_unique<toolkit::Label>("&Username:");
+    auto *username_input = new svision3::LineInput("Enter username");
+    auto username_label = std::make_unique<svision3::Label>("&Username:");
     username_label->set_buddy(username_input);
     username_row->add_widget(std::move(username_label));
-    username_row->add_widget(std::unique_ptr<toolkit::LineInput>(username_input), 1);
+    username_row->add_widget(std::unique_ptr<svision3::LineInput>(username_input), 1);
     tab_inputs->add_widget(std::move(username_row));
 
-    auto input1 = std::make_unique<toolkit::LineInput>("Regular input");
+    auto input1 = std::make_unique<svision3::LineInput>("Regular input");
     tab_inputs->add_widget(std::move(input1));
 
-    auto input2 = std::make_unique<toolkit::LineInput>("Password input");
+    auto input2 = std::make_unique<svision3::LineInput>("Password input");
     input2->set_password_mode(true);
     tab_inputs->add_widget(std::move(input2));
 
-    auto input3 = std::make_unique<toolkit::LineInput>("Read-only input");
+    auto input3 = std::make_unique<svision3::LineInput>("Read-only input");
     input3->set_text("This text cannot be edited");
     input3->set_read_only(true);
     tab_inputs->add_widget(std::move(input3));
 
-    auto input4 = std::make_unique<toolkit::LineInput>("Numbers only (Blocking)");
+    auto input4 = std::make_unique<svision3::LineInput>("Numbers only (Blocking)");
     input4->set_validator([](std::string const &text, auto &) {
         return std::regex_match(text, std::regex("[0-9]*"));
     });
-    input4->set_validation_mode(toolkit::LineInput::ValidationMode::Block);
+    input4->set_validation_mode(svision3::LineInput::ValidationMode::Block);
     tab_inputs->add_widget(std::move(input4));
 
-    auto email_row = std::make_unique<toolkit::HBoxLayout>();
+    auto email_row = std::make_unique<svision3::HBoxLayout>();
     email_row->set_spacing(10);
 
-    auto input5 = std::make_unique<toolkit::LineInput>("Email address (Visual)");
+    auto input5 = std::make_unique<svision3::LineInput>("Email address (Visual)");
     auto *input5_ptr = input5.get();
     input5->set_validator([](std::string const &text, auto &) {
         if (text.empty()) {
@@ -622,14 +622,14 @@ int main(int argc, char *argv[]) {
         static const std::regex email_regex(R"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})");
         return std::regex_match(text, email_regex);
     });
-    input5->set_validation_mode(toolkit::LineInput::ValidationMode::Notify);
+    input5->set_validation_mode(svision3::LineInput::ValidationMode::Notify);
 
-    auto status_label = std::make_unique<toolkit::Label>("Empty");
+    auto status_label = std::make_unique<svision3::Label>("Empty");
     auto *status_ptr = status_label.get();
-    status_ptr->set_background_color(toolkit::Theme::current().palette.warning);
+    status_ptr->set_background_color(svision3::Theme::current().palette.warning);
 
     input5->on_change = [input5_ptr, status_ptr](std::string const &s, auto &input) {
-        auto const &palette = toolkit::Theme::current().palette;
+        auto const &palette = svision3::Theme::current().palette;
         if (s.empty()) {
             status_ptr->set_text("Empty");
             status_ptr->set_background_color(palette.warning);
@@ -646,7 +646,7 @@ int main(int argc, char *argv[]) {
     email_row->add_widget(std::move(status_label));
     tab_inputs->add_widget(std::move(email_row));
 
-    auto slider_row = std::make_unique<toolkit::HBoxLayout>();
+    auto slider_row = std::make_unique<svision3::HBoxLayout>();
     slider_row->set_spacing(10);
 
     static int auto_progress_timer = 0;
@@ -655,15 +655,15 @@ int main(int argc, char *argv[]) {
     // capture the weak_ptr itself in the callback below: that callback lives on
     // the slider, which the same layout owns alongside the label, so a shared
     // capture of either would be a cycle.
-    auto slider_ref = slider_row->add<toolkit::Slider>(1);
-    auto slider_val_ref = slider_row->add<toolkit::Label>();
+    auto slider_ref = slider_row->add<svision3::Slider>(1);
+    auto slider_val_ref = slider_row->add<svision3::Label>();
 
     auto slider = slider_ref.lock();
     slider->set_range(0, 100);
     slider_val_ref.lock()->set_text(fmt::format("{:.0f}%", slider->value()));
 
     slider->set_on_change([progress_ptr, slider_val_ref, weak_window = std::weak_ptr(window)](
-                              toolkit::Slider &, float v) {
+                              svision3::Slider &, float v) {
         if (auto_progress_timer != 0) {
             if (auto window = weak_window.lock()) {
                 window->stop_timer(auto_progress_timer);
@@ -681,16 +681,16 @@ int main(int argc, char *argv[]) {
 
     tab_inputs->add_widget(std::move(slider_row));
 
-    auto inputs_spacer = std::make_unique<toolkit::Label>("");
+    auto inputs_spacer = std::make_unique<svision3::Label>("");
     tab_inputs->add_widget(std::move(inputs_spacer), 1);
 
     // ── Tab: Icon Grid ──────────────────────────────────────────────────
-    auto tab_grid = std::make_unique<toolkit::VBoxLayout>();
+    auto tab_grid = std::make_unique<svision3::VBoxLayout>();
     tab_grid->set_margins({20, 20, 20, 20});
     tab_grid->set_spacing(12);
 
     auto grid_model =
-        std::make_shared<toolkit::StandardIconModel>(std::vector<toolkit::StandardIconItem>{
+        std::make_shared<svision3::StandardIconModel>(std::vector<svision3::StandardIconItem>{
             {.text = "Folder", .icon_name = XDG::IconMimeTypes::inodeDirectory},
             {.text = "Document", .icon_name = XDG::IconMimeTypes::textXGeneric},
             {.text = "Image", .icon_name = XDG::IconMimeTypes::imageXGeneric},
@@ -715,7 +715,7 @@ int main(int argc, char *argv[]) {
             {.text = "Question", .icon_name = XDG::IconStatus::dialogQuestion},
         });
 
-    auto grid = std::make_unique<toolkit::IconGrid>(grid_model);
+    auto grid = std::make_unique<svision3::IconGrid>(grid_model);
     auto *grid_ptr = grid.get();
     grid->on_selection_changed = [](std::set<size_t> const &indices) {
         if (indices.empty()) {
@@ -728,17 +728,17 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    auto grid_controls = std::make_unique<toolkit::HBoxLayout>();
+    auto grid_controls = std::make_unique<svision3::HBoxLayout>();
     grid_controls->set_spacing(10);
-    grid_controls->add<toolkit::Label>().lock()->set_text("Icon Size:");
+    grid_controls->add<svision3::Label>().lock()->set_text("Icon Size:");
 
-    auto size_slider_ref = grid_controls->add<toolkit::Slider>(1);
-    auto size_label_ref = grid_controls->add<toolkit::Label>();
+    auto size_slider_ref = grid_controls->add<svision3::Slider>(1);
+    auto size_label_ref = grid_controls->add<svision3::Label>();
 
     size_slider_ref.lock()->set_range(16, 256).set_value(48);
     size_label_ref.lock()->set_text("48px");
 
-    size_slider_ref.lock()->set_on_change([grid_ptr, size_label_ref](toolkit::Slider &, float v) {
+    size_slider_ref.lock()->set_on_change([grid_ptr, size_label_ref](svision3::Slider &, float v) {
         auto size = static_cast<int>(v);
         grid_ptr->set_icon_size(size);
         if (auto size_label = size_label_ref.lock()) {
@@ -746,7 +746,7 @@ int main(int argc, char *argv[]) {
         }
     });
 
-    auto scaling_cb = std::make_unique<toolkit::Checkbox>("Scale Icons");
+    auto scaling_cb = std::make_unique<svision3::Checkbox>("Scale Icons");
     scaling_cb->on_toggle = [grid_ptr](bool checked) { grid_ptr->set_scale_icons(checked); };
     grid_controls->add_widget(std::move(scaling_cb));
 
@@ -754,38 +754,38 @@ int main(int argc, char *argv[]) {
     tab_grid->add_widget(std::move(grid), 1);
 
     // ── Tab: Songs ─────────────────────────────────────────────────────
-    auto tab3 = std::make_unique<toolkit::VBoxLayout>();
+    auto tab3 = std::make_unique<svision3::VBoxLayout>();
     tab3->set_margins({20, 20, 20, 20});
     tab3->set_spacing(12);
 
-    auto songs_adapter = std::make_shared<toolkit::StringListModel>(beatlesSongs);
+    auto songs_adapter = std::make_shared<svision3::StringListModel>(beatlesSongs);
 
-    auto filter_adapter = std::make_shared<toolkit::FilterAdapter>(songs_adapter);
+    auto filter_adapter = std::make_shared<svision3::FilterAdapter>(songs_adapter);
     filter_adapter->set_simulated_delay_ms(10);
 
-    auto filter_row = std::make_unique<toolkit::HBoxLayout>();
+    auto filter_row = std::make_unique<svision3::HBoxLayout>();
     filter_row->set_spacing(8);
 
-    auto filter_input = std::make_unique<toolkit::LineInput>("Filter songs...");
+    auto filter_input = std::make_unique<svision3::LineInput>("Filter songs...");
     filter_input->set_tooltip("Type to filter the song list");
     filter_input->on_change = [filter_adapter](std::string const &text, auto &) {
         filter_adapter->set_filter(text);
     };
     filter_row->add_widget(std::move(filter_input), 1);
 
-    auto delay_spin = std::make_unique<toolkit::SpinBox>(10, 0, 200, 5);
-    delay_spin->on_change = [filter_adapter](int val, toolkit::SpinBox &) {
+    auto delay_spin = std::make_unique<svision3::SpinBox>(10, 0, 200, 5);
+    delay_spin->on_change = [filter_adapter](int val, svision3::SpinBox &) {
         filter_adapter->set_simulated_delay_ms(val);
     };
     delay_spin->set_tooltip("Simulated delay per item (ms)");
-    auto delay_label = std::make_unique<toolkit::Label>("Delay (ms):");
+    auto delay_label = std::make_unique<svision3::Label>("Delay (ms):");
     delay_label->set_buddy(delay_spin.get());
     filter_row->add_widget(std::move(delay_label));
     filter_row->add_widget(std::move(delay_spin));
 
     tab3->add_widget(std::move(filter_row));
 
-    auto filter_progress = std::make_unique<toolkit::ProgressBar>();
+    auto filter_progress = std::make_unique<svision3::ProgressBar>();
     auto *filter_progress_ptr = filter_progress.get();
     filter_progress->set_visible(false);
     tab3->add_widget(std::move(filter_progress));
@@ -803,7 +803,7 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    auto songs_list = std::make_unique<toolkit::ListView>(filter_adapter);
+    auto songs_list = std::make_unique<svision3::ListView>(filter_adapter);
     songs_list->set_alternating_row_colors(true);
     songs_list->set_multi_select(true);
     songs_list->on_selection_changed = [filter_adapter](std::optional<size_t> idx) {
@@ -816,14 +816,14 @@ int main(int argc, char *argv[]) {
     tab3->add_widget(std::move(songs_list), 1);
 
     // ── Tab: Table ──────────────────────────────────────────────────────
-    auto tab4 = std::make_unique<toolkit::VBoxLayout>();
+    auto tab4 = std::make_unique<svision3::VBoxLayout>();
     tab4->set_margins({20, 20, 20, 20});
     tab4->set_spacing(12);
 
-    auto table_model = std::make_shared<toolkit::StringTableModel>(
+    auto table_model = std::make_shared<svision3::StringTableModel>(
         std::vector<std::string>{"Song", "Album", "Year", "Duration"}, beatlesSongsLength);
 
-    auto table = std::make_unique<toolkit::TableView>(table_model);
+    auto table = std::make_unique<svision3::TableView>(table_model);
     auto *table_ptr = table.get();
     table->set_alternating_row_colors(true);
     table->set_multi_select(true);
@@ -838,8 +838,8 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    auto table_toggle_row = std::make_unique<toolkit::HBoxLayout>();
-    auto header_toggle = std::make_unique<toolkit::Checkbox>("Show Header");
+    auto table_toggle_row = std::make_unique<svision3::HBoxLayout>();
+    auto header_toggle = std::make_unique<svision3::Checkbox>("Show Header");
     header_toggle->set_checked(true);
     header_toggle->on_toggle = [table_ptr](bool checked) { table_ptr->set_show_header(checked); };
     table_toggle_row->add_widget(std::move(header_toggle));
@@ -848,24 +848,24 @@ int main(int argc, char *argv[]) {
     tab4->add_widget(std::move(table), 1);
 
     // ── Tab: Editor ─────────────────────────────────────────────────────
-    auto tab5 = std::make_unique<toolkit::VBoxLayout>();
+    auto tab5 = std::make_unique<svision3::VBoxLayout>();
     tab5->set_margins({20, 20, 20, 20});
     tab5->set_spacing(12);
 
-    auto editor_toolbar = std::make_unique<toolkit::HBoxLayout>();
+    auto editor_toolbar = std::make_unique<svision3::HBoxLayout>();
     editor_toolbar->set_spacing(8);
 
-    auto open_btn = std::make_unique<toolkit::Button>("Open...");
+    auto open_btn = std::make_unique<svision3::Button>("Open...");
     open_btn->set_tooltip("Open a text file (F3)");
     open_btn->set_command(open_menu_cmd);
     editor_toolbar->add_widget(std::move(open_btn));
 
-    auto save_btn = std::make_unique<toolkit::Button>("Save As...");
+    auto save_btn = std::make_unique<svision3::Button>("Save As...");
     save_btn->set_tooltip("Save the file (Ctrl+S)");
     save_btn->set_command(save_cmd);
     editor_toolbar->add_widget(std::move(save_btn));
 
-    auto choose_dir_btn = std::make_unique<toolkit::Button>("Choose Directory...");
+    auto choose_dir_btn = std::make_unique<svision3::Button>("Choose Directory...");
     if (directory_icon) {
         choose_dir_btn->set_icon(directory_icon);
     }
@@ -875,7 +875,7 @@ int main(int argc, char *argv[]) {
         if (!window) {
             return;
         }
-        toolkit::DirectoryDialog(window.get())
+        svision3::DirectoryDialog(window.get())
             .title("Choose Directory")
             .use_native(use_native_cb->checked())
             .choose()
@@ -889,83 +889,83 @@ int main(int argc, char *argv[]) {
     };
     editor_toolbar->add_widget(std::move(choose_dir_btn));
 
-    editor_toolbar->add_widget(std::unique_ptr<toolkit::Checkbox>(use_native_cb));
+    editor_toolbar->add_widget(std::unique_ptr<svision3::Checkbox>(use_native_cb));
 
-    auto toolbar_spacer = std::make_unique<toolkit::Label>("");
+    auto toolbar_spacer = std::make_unique<svision3::Label>("");
     editor_toolbar->add_widget(std::move(toolbar_spacer), 1);
 
     tab5->add_widget(std::move(editor_toolbar));
-    tab5->add_widget(std::unique_ptr<toolkit::TextEdit>(editor), 1);
+    tab5->add_widget(std::unique_ptr<svision3::TextEdit>(editor), 1);
 
     // ── Tab 6: Tree ───────────────────────────────────────────────────────
-    auto tab_tree = std::make_unique<toolkit::VBoxLayout>();
+    auto tab_tree = std::make_unique<svision3::VBoxLayout>();
     tab_tree->set_margins({20, 20, 20, 20});
     tab_tree->set_spacing(12);
 
-    auto tree_data = std::vector<toolkit::TreeNode>{
-        toolkit::TreeNode{
+    auto tree_data = std::vector<svision3::TreeNode>{
+        svision3::TreeNode{
             .text = "Documents",
             .children =
                 {
-                    toolkit::TreeNode{.text = "resume.pdf"},
-                    toolkit::TreeNode{.text = "cover_letter.pdf"},
-                    toolkit::TreeNode{
+                    svision3::TreeNode{.text = "resume.pdf"},
+                    svision3::TreeNode{.text = "cover_letter.pdf"},
+                    svision3::TreeNode{
                         .text = "Projects",
                         .children =
                             {
-                                toolkit::TreeNode{.text = "svision"},
-                                toolkit::TreeNode{.text = "toolkit"},
-                                toolkit::TreeNode{.text = "web"},
+                                svision3::TreeNode{.text = "svision"},
+                                svision3::TreeNode{.text = "toolkit"},
+                                svision3::TreeNode{.text = "web"},
                             },
                         .expanded = true,
                     },
                 },
             .expanded = true,
         },
-        toolkit::TreeNode{
+        svision3::TreeNode{
             .text = "Music",
             .children =
                 {
-                    toolkit::TreeNode{
+                    svision3::TreeNode{
                         .text = "Beatles",
                         .children =
                             {
-                                toolkit::TreeNode{.text = "Abbey Road"},
-                                toolkit::TreeNode{.text = "Revolver"},
-                                toolkit::TreeNode{.text = "Sgt. Pepper's"},
+                                svision3::TreeNode{.text = "Abbey Road"},
+                                svision3::TreeNode{.text = "Revolver"},
+                                svision3::TreeNode{.text = "Sgt. Pepper's"},
                             },
                     },
-                    toolkit::TreeNode{.text = "Pink Floyd"},
-                    toolkit::TreeNode{.text = "Queen"},
+                    svision3::TreeNode{.text = "Pink Floyd"},
+                    svision3::TreeNode{.text = "Queen"},
                 },
         },
-        toolkit::TreeNode{
+        svision3::TreeNode{
             .text = "Pictures",
             .children =
                 {
-                    toolkit::TreeNode{
+                    svision3::TreeNode{
                         .text = "2024",
                         .children =
                             {
-                                toolkit::TreeNode{.text = "vacation.jpg"},
-                                toolkit::TreeNode{.text = "family.png"},
+                                svision3::TreeNode{.text = "vacation.jpg"},
+                                svision3::TreeNode{.text = "family.png"},
                             },
                     },
-                    toolkit::TreeNode{.text = "2025"},
+                    svision3::TreeNode{.text = "2025"},
                 },
         },
-        toolkit::TreeNode{
+        svision3::TreeNode{
             .text = "Downloads",
             .children =
                 {
-                    toolkit::TreeNode{.text = "archive.tar.gz"},
-                    toolkit::TreeNode{.text = "installer.dmg"},
+                    svision3::TreeNode{.text = "archive.tar.gz"},
+                    svision3::TreeNode{.text = "installer.dmg"},
                 },
         },
     };
 
-    auto tree_model = std::make_shared<toolkit::SimpleTreeModel>(tree_data);
-    auto tree = std::make_unique<toolkit::TreeView>(tree_model);
+    auto tree_model = std::make_shared<svision3::SimpleTreeModel>(tree_data);
+    auto tree = std::make_unique<svision3::TreeView>(tree_model);
     tree->set_alternating_row_colors(true);
     tree->set_multi_select(true);
     tree->on_selection_changed = [tree_model](int idx) {
@@ -978,7 +978,7 @@ int main(int argc, char *argv[]) {
     // ── Tab: Preview (Markdown / HTML live editor) ─────────────────────
     static constexpr float PREVIEW_DELAY_SEC = 5.0f;
 
-    auto preview_html = new toolkit::HtmlView();
+    auto preview_html = new svision3::HtmlView();
     preview_html->set_draw_frame(false);
     preview_html->set_css(GITHUB_MARKDOWN_CSS_LIGHT, GITHUB_MARKDOWN_CSS_DARK);
     preview_html->set_markdown(PREVIEW_DEFAULT_MD);
@@ -986,21 +986,21 @@ int main(int argc, char *argv[]) {
         spdlog::info("Preview link clicked: {}", url);
     };
 
-    auto preview_scroll = std::make_unique<toolkit::ScrollArea>();
-    preview_scroll->set_content(std::unique_ptr<toolkit::HtmlView>(preview_html));
+    auto preview_scroll = std::make_unique<svision3::ScrollArea>();
+    preview_scroll->set_content(std::unique_ptr<svision3::HtmlView>(preview_html));
 
-    auto preview_editor = new toolkit::TextEdit();
+    auto preview_editor = new svision3::TextEdit();
     preview_editor->set_frame(false);
     preview_editor->set_text(PREVIEW_DEFAULT_MD);
 
-    auto preview_columns = std::make_unique<toolkit::Splitter>(toolkit::Orientation::Horizontal);
-    preview_columns->add_child(std::unique_ptr<toolkit::TextEdit>(preview_editor));
+    auto preview_columns = std::make_unique<svision3::Splitter>(svision3::Orientation::Horizontal);
+    preview_columns->add_child(std::unique_ptr<svision3::TextEdit>(preview_editor));
     preview_columns->add_child(std::move(preview_scroll));
 
-    auto preview_progress = new toolkit::ProgressBar();
+    auto preview_progress = new svision3::ProgressBar();
     preview_progress->set_visible(false);
 
-    auto preview_mode_group = std::make_shared<toolkit::RadioGroup>();
+    auto preview_mode_group = std::make_shared<svision3::RadioGroup>();
     auto preview_is_markdown = std::make_shared<bool>(true);
     auto preview_pending = std::make_shared<bool>(false);
     auto preview_last_edit =
@@ -1055,11 +1055,11 @@ int main(int argc, char *argv[]) {
         apply_preview();
     };
 
-    auto rb_md = std::make_unique<toolkit::RadioButton>("Markdown", *preview_mode_group);
-    auto rb_html_mode = std::make_unique<toolkit::RadioButton>("HTML", *preview_mode_group);
+    auto rb_md = std::make_unique<svision3::RadioButton>("Markdown", *preview_mode_group);
+    auto rb_html_mode = std::make_unique<svision3::RadioButton>("HTML", *preview_mode_group);
     preview_mode_group->select(rb_md.get());
 
-    auto github_css_cb = std::make_unique<toolkit::Checkbox>("Use GitHub CSS");
+    auto github_css_cb = std::make_unique<svision3::Checkbox>("Use GitHub CSS");
     github_css_cb->set_checked(true);
     github_css_cb->on_toggle = [preview_html, apply_preview](bool checked) {
         if (checked) {
@@ -1070,92 +1070,92 @@ int main(int argc, char *argv[]) {
         apply_preview();
     };
 
-    auto preview_bottom = std::make_unique<toolkit::HBoxLayout>();
+    auto preview_bottom = std::make_unique<svision3::HBoxLayout>();
     preview_bottom->set_margins({4, 8, 4, 8});
     preview_bottom->set_spacing(16);
     preview_bottom->add_widget(std::move(rb_md));
     preview_bottom->add_widget(std::move(rb_html_mode));
     preview_bottom->add_widget(std::move(github_css_cb));
 
-    auto tab_preview = std::make_unique<toolkit::VBoxLayout>();
+    auto tab_preview = std::make_unique<svision3::VBoxLayout>();
     tab_preview->set_margins({0, 0, 0, 0});
     tab_preview->set_spacing(0);
     tab_preview->add_widget(std::move(preview_columns), 1);
-    tab_preview->add_widget(std::unique_ptr<toolkit::ProgressBar>(preview_progress));
+    tab_preview->add_widget(std::unique_ptr<svision3::ProgressBar>(preview_progress));
     tab_preview->add_widget(std::move(preview_bottom));
     // ── Tab: Tabs (Orientations) ────────────────────────────────────────
-    auto tab6 = std::make_unique<toolkit::VBoxLayout>();
+    auto tab6 = std::make_unique<svision3::VBoxLayout>();
     tab6->set_margins({0, 0, 0, 0});
     tab6->set_spacing(0);
     auto make_plus = []() {
-        auto b = std::make_unique<toolkit::Button>("+");
+        auto b = std::make_unique<svision3::Button>("+");
         b->set_flat(true);
         b->set_focusable(false);
         b->set_padding({2, 8, 2, 8});
         return b;
     };
     auto make_close = []() {
-        auto b = std::make_unique<toolkit::Button>("x");
+        auto b = std::make_unique<svision3::Button>("x");
         b->set_flat(true);
         b->set_focusable(false);
         b->set_padding({2, 8, 2, 8});
-        b->set_background_color(toolkit::Color::rgb(1.0f, 0.8f, 0.8f));
+        b->set_background_color(svision3::Color::rgb(1.0f, 0.8f, 0.8f));
         return b;
     };
 
-    auto south_tabs = std::make_unique<toolkit::TabWidget>();
-    south_tabs->set_orientation(toolkit::TabOrientation::South);
+    auto south_tabs = std::make_unique<svision3::TabWidget>();
+    south_tabs->set_orientation(svision3::TabOrientation::South);
     south_tabs->set_leading_widget(make_plus());
     south_tabs->set_trailing_widget(make_close());
     for (int i = 1; i <= 5; ++i) {
-        auto label = std::make_unique<toolkit::Label>(fmt::format("South Tab {} Content", i));
-        label->set_alignment(toolkit::Alignment::Center);
-        label->set_background_color(toolkit::Color::rgb(1.0f, 1.0f - i * 0.1f, 1.0f - i * 0.1f));
+        auto label = std::make_unique<svision3::Label>(fmt::format("South Tab {} Content", i));
+        label->set_alignment(svision3::Alignment::Center);
+        label->set_background_color(svision3::Color::rgb(1.0f, 1.0f - i * 0.1f, 1.0f - i * 0.1f));
         south_tabs->add_tab(fmt::format("South {}", i), std::move(label));
     }
 
-    auto side_row = std::make_unique<toolkit::HBoxLayout>();
+    auto side_row = std::make_unique<svision3::HBoxLayout>();
     side_row->set_margins({0, 0, 0, 0});
     side_row->set_spacing(0);
 
-    auto west_tabs = std::make_unique<toolkit::TabWidget>();
-    west_tabs->set_orientation(toolkit::TabOrientation::West);
+    auto west_tabs = std::make_unique<svision3::TabWidget>();
+    west_tabs->set_orientation(svision3::TabOrientation::West);
     west_tabs->set_leading_widget(make_plus());
     west_tabs->set_trailing_widget(make_close());
     for (int i = 1; i <= 5; ++i) {
-        auto label = std::make_unique<toolkit::Label>(fmt::format("West Tab {} Content", i));
-        label->set_alignment(toolkit::Alignment::Center);
-        label->set_background_color(toolkit::Color::rgb(1.0f - i * 0.1f, 1.0f, 1.0f - i * 0.1f));
+        auto label = std::make_unique<svision3::Label>(fmt::format("West Tab {} Content", i));
+        label->set_alignment(svision3::Alignment::Center);
+        label->set_background_color(svision3::Color::rgb(1.0f - i * 0.1f, 1.0f, 1.0f - i * 0.1f));
         west_tabs->add_tab(fmt::format("West {}", i), std::move(label));
     }
 
-    auto east_tabs = std::make_unique<toolkit::TabWidget>();
-    east_tabs->set_orientation(toolkit::TabOrientation::East);
+    auto east_tabs = std::make_unique<svision3::TabWidget>();
+    east_tabs->set_orientation(svision3::TabOrientation::East);
     east_tabs->set_leading_widget(make_plus());
     east_tabs->set_trailing_widget(make_close());
     for (int i = 1; i <= 5; ++i) {
-        auto label = std::make_unique<toolkit::Label>(fmt::format("East Tab {} Content", i));
-        label->set_alignment(toolkit::Alignment::Center);
-        label->set_background_color(toolkit::Color::rgb(1.0f - i * 0.1f, 1.0f - i * 0.1f, 1.0f));
+        auto label = std::make_unique<svision3::Label>(fmt::format("East Tab {} Content", i));
+        label->set_alignment(svision3::Alignment::Center);
+        label->set_background_color(svision3::Color::rgb(1.0f - i * 0.1f, 1.0f - i * 0.1f, 1.0f));
         east_tabs->add_tab(fmt::format("East {}", i), std::move(label));
     }
 
-    side_row->add_widget(std::move(west_tabs), 1, toolkit::Alignment::Fill);
-    side_row->add_widget(std::move(east_tabs), 1, toolkit::Alignment::Fill);
+    side_row->add_widget(std::move(west_tabs), 1, svision3::Alignment::Fill);
+    side_row->add_widget(std::move(east_tabs), 1, svision3::Alignment::Fill);
 
     tab6->add_widget(std::move(side_row), 1);
     tab6->add_widget(std::move(south_tabs), 0);
 
     // ── Tab: Image ───────────────────────────────────────────────────────
-    auto tab_image = std::make_unique<toolkit::VBoxLayout>();
+    auto tab_image = std::make_unique<svision3::VBoxLayout>();
     tab_image->set_margins({20, 20, 20, 20});
 
-    auto img_widget = std::make_unique<toolkit::ImageWidget>();
+    auto img_widget = std::make_unique<svision3::ImageWidget>();
     img_widget->set_show_checkerboard(true);
     img_widget->load("vampire-riding-a-dinozaur.png");
     auto *img_widget_ptr = img_widget.get();
 
-    auto load_btn = std::make_unique<toolkit::Button>("Load Image...");
+    auto load_btn = std::make_unique<svision3::Button>("Load Image...");
     if (icon) {
         load_btn->set_icon(icon);
     }
@@ -1164,7 +1164,7 @@ int main(int argc, char *argv[]) {
         if (!window) {
             return;
         }
-        toolkit::FileDialog(window.get())
+        svision3::FileDialog(window.get())
             .title("Load Image")
             .use_native(use_native_cb->checked())
             .open()
@@ -1176,7 +1176,7 @@ int main(int argc, char *argv[]) {
     };
     tab_image->add_widget(std::move(load_btn));
 
-    /*auto scroll = std::make_unique<toolkit::ScrollArea>();
+    /*auto scroll = std::make_unique<svision3::ScrollArea>();
     scroll->set_content(std::move(img_widget));
     tab_image->add_widget(std::move(scroll), 1); // Expand to fill tab*/
     tab_image->add_widget(std::move(img_widget), 1);
@@ -1195,31 +1195,31 @@ int main(int argc, char *argv[]) {
     root->add_widget(std::move(tabs), 1);
 
     // ── Button bar ───────────────────────────────────────────────────────
-    auto button_bar = std::make_unique<toolkit::HBoxLayout>();
+    auto button_bar = std::make_unique<svision3::HBoxLayout>();
     button_bar->set_margins({20, 10, 20, 10});
     button_bar->set_spacing(10);
 
-    auto about_btn = std::make_unique<toolkit::Button>("About");
+    auto about_btn = std::make_unique<svision3::Button>("About");
     about_btn->set_enabled(false);
     button_bar->add_widget(std::move(about_btn));
 
-    auto btn_spacer = std::make_unique<toolkit::Label>("");
+    auto btn_spacer = std::make_unique<svision3::Label>("");
     button_bar->add_widget(std::move(btn_spacer), 1);
 
-    auto toast_btn = std::make_unique<toolkit::Button>("Toast");
+    auto toast_btn = std::make_unique<svision3::Button>("Toast");
     toast_btn->on_click = [weak_window = std::weak_ptr(window)] {
         auto window = weak_window.lock();
         if (!window) {
             return;
         }
-        static const std::optional<toolkit::Color> colors[] = {
-            toolkit::Color::rgb(1.0f, 0.85f, 0.85f), toolkit::Color::rgb(0.85f, 1.0f, 0.85f),
-            toolkit::Color::rgb(0.85f, 0.85f, 1.0f), toolkit::Color::rgb(1.0f, 1.0f, 0.85f),
-            toolkit::Color::rgb(1.0f, 0.85f, 1.0f),  std::nullopt,
+        static const std::optional<svision3::Color> colors[] = {
+            svision3::Color::rgb(1.0f, 0.85f, 0.85f), svision3::Color::rgb(0.85f, 1.0f, 0.85f),
+            svision3::Color::rgb(0.85f, 0.85f, 1.0f), svision3::Color::rgb(1.0f, 1.0f, 0.85f),
+            svision3::Color::rgb(1.0f, 0.85f, 1.0f),  std::nullopt,
         };
         static int count = 0;
         auto title = fmt::format("Toast #{}", count++);
-        auto builder = toolkit::ToastBuilder().title(title).timeout(7);
+        auto builder = svision3::ToastBuilder().title(title).timeout(7);
         auto bg = colors[count % 6];
         if (count % 2 == 0) {
             builder.text(LOREM_IPSUM);
@@ -1233,13 +1233,13 @@ int main(int argc, char *argv[]) {
     };
     button_bar->add_widget(std::move(toast_btn));
 
-    auto export_btn = std::make_unique<toolkit::Button>("Export to JSON");
+    auto export_btn = std::make_unique<svision3::Button>("Export to JSON");
     export_btn->on_click = [use_native_cb, weak_window = std::weak_ptr(window)] {
         auto window = weak_window.lock();
         if (!window) {
             return;
         }
-        toolkit::FileDialog(window.get())
+        svision3::FileDialog(window.get())
             .title("Export Window to JSON")
             .use_native(use_native_cb->checked())
             .save()
@@ -1258,7 +1258,7 @@ int main(int argc, char *argv[]) {
     };
     button_bar->add_widget(std::move(export_btn));
 
-    auto quit_btn = std::make_unique<toolkit::Button>("&Quit");
+    auto quit_btn = std::make_unique<svision3::Button>("&Quit");
     quit_btn->on_click = [weak_window = std::weak_ptr(window)] {
         if (auto window = weak_window.lock()) {
             window->close();
@@ -1269,7 +1269,7 @@ int main(int argc, char *argv[]) {
 
     root->add_widget(std::move(button_bar));
 
-    auto status_bar = std::make_unique<toolkit::StatusBar>();
+    auto status_bar = std::make_unique<svision3::StatusBar>();
     status_bar->add_section("status", "Ready");
     status_bar->add_section("progress", "Connecting...").appear(250);
     status_bar->add_section("work", "Processing").spinner(100);

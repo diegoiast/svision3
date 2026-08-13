@@ -1,10 +1,10 @@
-#include "toolkit/utf8.hpp"
+#include "svision3/utf8.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <random>
 #include <string>
 
-using namespace toolkit;
+using namespace svision3;
 
 // ── html_escape unit tests ────────────────────────────────────────────────────
 

@@ -77,12 +77,12 @@ class SvisionRecipe(ConanFile):
     def build(self):
         skip_test = self.conf.get("tools.build:skip_test", default=True, check_type=bool)
         variables = {
-            "TOOLKIT_BUILD_DEMOS": "OFF",
-            "TOOLKIT_BUILD_TESTS": "OFF" if skip_test else "ON",
+            "SVISION3_BUILD_DEMOS": "OFF",
+            "SVISION3_BUILD_TESTS": "OFF" if skip_test else "ON",
         }
         if self.settings.os == "Linux":
-            variables["TOOLKIT_WITH_X11"] = "ON" if self.options.with_x11 else "OFF"
-            variables["TOOLKIT_WITH_WAYLAND"] = "ON" if self.options.with_wayland else "OFF"
+            variables["SVISION3_WITH_X11"] = "ON" if self.options.with_x11 else "OFF"
+            variables["SVISION3_WITH_WAYLAND"] = "ON" if self.options.with_wayland else "OFF"
         cmake = CMake(self)
         cmake.configure(variables=variables)
         cmake.build()
@@ -93,7 +93,7 @@ class SvisionRecipe(ConanFile):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["toolkit"]
+        self.cpp_info.libs = ["svision3"]
         self.cpp_info.includedirs = ["include"]
         if self.settings.os == "Linux":
             # dbus-1 is always needed: nfd's xdg-desktop-portal file dialog

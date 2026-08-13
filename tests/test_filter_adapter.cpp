@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/item_model.hpp"
-#include "toolkit/stopwatch.hpp"
+#include "svision3/item_model.hpp"
+#include "svision3/stopwatch.hpp"
 #include <thread>
 
-using namespace toolkit;
+using namespace svision3;
 
 static auto make_source() {
     return std::make_shared<StringListModel>(std::vector<std::string>{

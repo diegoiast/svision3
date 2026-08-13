@@ -1,12 +1,12 @@
-#include "toolkit/button.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/layout.hpp"
-#include "toolkit/tab_widget.hpp"
-#include "toolkit/widget_loader.hpp"
+#include "svision3/button.hpp"
+#include "svision3/label.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/tab_widget.hpp"
+#include "svision3/widget_loader.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("TabWidget default state", "[tabwidget]") {
     TabWidget tw;

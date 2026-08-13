@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/command.hpp"
-#include "toolkit/context_menu.hpp"
+#include "svision3/command.hpp"
+#include "svision3/context_menu.hpp"
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Command execute fires callback", "[command]") {
     int count = 0;

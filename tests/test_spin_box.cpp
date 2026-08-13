@@ -1,7 +1,7 @@
-#include "toolkit/spin_box.hpp"
+#include "svision3/spin_box.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("SpinBox default value", "[spinbox]") {
     SpinBox sb;

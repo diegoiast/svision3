@@ -7,7 +7,7 @@
 // the network counters from GetIfTable2.
 
 #include "process_info.hpp"
-#include "toolkit/win32/win32_utils.hpp"
+#include "svision3/win32/win32_utils.hpp"
 
 #include <fmt/format.h>
 
@@ -38,9 +38,9 @@ namespace {
 
 // Every wide string here comes from a fixed-size Win32 buffer (szExeFile,
 // LookupAccountSidW's out params, ...), i.e. NUL-terminated rather than
-// counted, so this adapts them to toolkit::wide_to_utf8's string_view.
+// counted, so this adapts them to svision3::wide_to_utf8's string_view.
 std::string to_utf8(wchar_t const *w) {
-    return w ? toolkit::wide_to_utf8(std::wstring_view{w}) : std::string{};
+    return w ? svision3::wide_to_utf8(std::wstring_view{w}) : std::string{};
 }
 
 // FILETIME is a count of 100-nanosecond intervals. Process CPU times use it as

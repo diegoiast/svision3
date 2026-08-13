@@ -1,8 +1,8 @@
-#include "toolkit/table_view.hpp"
+#include "svision3/table_view.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_tostring.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 static std::shared_ptr<StringTableModel> make_model() {
     return std::make_shared<StringTableModel>(std::vector<std::string>{"Name", "Age", "City"},

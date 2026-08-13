@@ -9,55 +9,55 @@
 //
 // Usage: widget_screenshot <widget-name|all> <output-dir>
 
-#include "toolkit/application.hpp"
-#include "toolkit/button.hpp"
-#include "toolkit/button_group.hpp"
-#include "toolkit/charts/area_chart.hpp"
-#include "toolkit/charts/bar_chart.hpp"
-#include "toolkit/charts/candlestick_chart.hpp"
-#include "toolkit/charts/histogram.hpp"
-#include "toolkit/charts/line_chart.hpp"
-#include "toolkit/charts/pie_chart.hpp"
-#include "toolkit/charts/scatter_plot.hpp"
-#include "toolkit/charts/stacked_bar_chart.hpp"
-#include "toolkit/checkbox.hpp"
-#include "toolkit/combobox.hpp"
-#include "toolkit/command.hpp"
-#include "toolkit/context_menu.hpp"
-#include "toolkit/dock_area.hpp"
-#include "toolkit/file_browser_widget.hpp"
-#include "toolkit/html_view.hpp"
-#include "toolkit/icon_grid.hpp"
-#include "toolkit/image.hpp"
-#include "toolkit/image_widget.hpp"
-#include "toolkit/item_model.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/layout.hpp"
-#include "toolkit/line_input.hpp"
-#include "toolkit/list_view.hpp"
-#include "toolkit/menu.hpp"
-#include "toolkit/menubar.hpp"
-#include "toolkit/painters/cairo_painter.hpp"
-#include "toolkit/platform.hpp"
-#include "toolkit/platform/dummy_platform.hpp"
-#include "toolkit/progress_bar.hpp"
-#include "toolkit/radio_button.hpp"
-#include "toolkit/rich_label.hpp"
-#include "toolkit/scroll_area.hpp"
-#include "toolkit/scrollbar.hpp"
-#include "toolkit/slider.hpp"
-#include "toolkit/spin_box.hpp"
-#include "toolkit/splitter.hpp"
-#include "toolkit/status_bar.hpp"
-#include "toolkit/table_view.hpp"
-#include "toolkit/tab_widget.hpp"
-#include "toolkit/text_edit.hpp"
-#include "toolkit/theme_factory.hpp"
-#include "toolkit/toast_widget.hpp"
-#include "toolkit/toolbar.hpp"
-#include "toolkit/tree_view.hpp"
-#include "toolkit/window.hpp"
-#include "toolkit/xdg_image_loader.hpp"
+#include "svision3/application.hpp"
+#include "svision3/button.hpp"
+#include "svision3/button_group.hpp"
+#include "svision3/charts/area_chart.hpp"
+#include "svision3/charts/bar_chart.hpp"
+#include "svision3/charts/candlestick_chart.hpp"
+#include "svision3/charts/histogram.hpp"
+#include "svision3/charts/line_chart.hpp"
+#include "svision3/charts/pie_chart.hpp"
+#include "svision3/charts/scatter_plot.hpp"
+#include "svision3/charts/stacked_bar_chart.hpp"
+#include "svision3/checkbox.hpp"
+#include "svision3/combobox.hpp"
+#include "svision3/command.hpp"
+#include "svision3/context_menu.hpp"
+#include "svision3/dock_area.hpp"
+#include "svision3/file_browser_widget.hpp"
+#include "svision3/html_view.hpp"
+#include "svision3/icon_grid.hpp"
+#include "svision3/image.hpp"
+#include "svision3/image_widget.hpp"
+#include "svision3/item_model.hpp"
+#include "svision3/label.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/line_input.hpp"
+#include "svision3/list_view.hpp"
+#include "svision3/menu.hpp"
+#include "svision3/menubar.hpp"
+#include "svision3/painters/cairo_painter.hpp"
+#include "svision3/platform.hpp"
+#include "svision3/platform/dummy_platform.hpp"
+#include "svision3/progress_bar.hpp"
+#include "svision3/radio_button.hpp"
+#include "svision3/rich_label.hpp"
+#include "svision3/scroll_area.hpp"
+#include "svision3/scrollbar.hpp"
+#include "svision3/slider.hpp"
+#include "svision3/spin_box.hpp"
+#include "svision3/splitter.hpp"
+#include "svision3/status_bar.hpp"
+#include "svision3/table_view.hpp"
+#include "svision3/tab_widget.hpp"
+#include "svision3/text_edit.hpp"
+#include "svision3/theme_factory.hpp"
+#include "svision3/toast_widget.hpp"
+#include "svision3/toolbar.hpp"
+#include "svision3/tree_view.hpp"
+#include "svision3/window.hpp"
+#include "svision3/xdg_image_loader.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -71,7 +71,7 @@
 #include <utility>
 #include <vector>
 
-using namespace toolkit;
+using namespace svision3;
 
 namespace {
 
@@ -88,7 +88,7 @@ std::shared_ptr<Widget> pad(std::shared_ptr<Widget> content) {
 // icon themes (XDG lookup) aren't available in this headless tool -- no
 // theme is loaded, so file_browser_widget's real filesystem icons come up
 // empty too -- so icon_grid gets a handful of hand-drawn geometric icons
-// via toolkit::parse_xpm() instead, which needs no icon theme at all.
+// via svision3::parse_xpm() instead, which needs no icon theme at all.
 constexpr std::string_view kIconSquareXpm = R"(/* XPM */
 static char *icon[] = {
 "16 16 2 1",
@@ -843,7 +843,7 @@ int main(int argc, char **argv) {
     }
 
     // One PNG per (widget, theme) combination, organized as
-    // <output-dir>/<theme-slug>/<widget>.png -- every theme this toolkit
+    // <output-dir>/<theme-slug>/<widget>.png -- every theme svision3
     // ships gets rendered automatically, no per-theme invocation needed.
     bool ok = true;
     for (auto const &theme : supported_themes()) {

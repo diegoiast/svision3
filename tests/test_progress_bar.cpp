@@ -1,7 +1,7 @@
-#include "toolkit/progress_bar.hpp"
+#include "svision3/progress_bar.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("ProgressBar default value is zero", "[progressbar]") {
     ProgressBar pb;

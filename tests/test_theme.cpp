@@ -1,8 +1,8 @@
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Theme::style_name returns correct names", "[theme]") {
     REQUIRE(std::string(Theme::style_name(ThemeStyle::MacOS)) == "macOS");

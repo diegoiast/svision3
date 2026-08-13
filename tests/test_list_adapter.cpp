@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/item_model.hpp"
+#include "svision3/item_model.hpp"
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("StringListModel empty", "[adapter]") {
     StringListModel model;

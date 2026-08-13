@@ -1,12 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/scroll_area.hpp"
-#include "toolkit/window.hpp"
-#include "toolkit/platform.hpp"
-#include "toolkit/platform/dummy_platform.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
+#include "svision3/scroll_area.hpp"
+#include "svision3/window.hpp"
+#include "svision3/platform.hpp"
+#include "svision3/platform/dummy_platform.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
 
-using namespace toolkit;
+using namespace svision3;
 
 namespace {
 

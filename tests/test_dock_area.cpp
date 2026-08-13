@@ -1,10 +1,10 @@
-#include "toolkit/button.hpp"
-#include "toolkit/dock_area.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/window.hpp"
+#include "svision3/button.hpp"
+#include "svision3/dock_area.hpp"
+#include "svision3/label.hpp"
+#include "svision3/window.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 // Regression test for a bug where a collapsed dock could never be
 // un-collapsed by clicking it. Root cause: Window::handle_mouse resolves a

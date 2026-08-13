@@ -12,22 +12,22 @@ find_package(lunasvg REQUIRED)
 find_package(CURL REQUIRED)
 
 if(UNIX AND NOT APPLE)
-    option(TOOLKIT_WITH_CAIRO "Build with Cairo support" ON)
+    option(SVISION3_WITH_CAIRO "Build with Cairo support" ON)
 else()
-    option(TOOLKIT_WITH_CAIRO "Build with Cairo support" OFF)
+    option(SVISION3_WITH_CAIRO "Build with Cairo support" OFF)
 endif()
-option(TOOLKIT_BUILD_DEMOS "Build demo applications and tools" ON)
-option(TOOLKIT_BUILD_TASK_MANAGER_DEMO "Build the task_manager demo (fetches hwinfo via FetchContent)" ON)
-option(TOOLKIT_BUILD_TESTS "Build the test suite" ON)
+option(SVISION3_BUILD_DEMOS "Build demo applications and tools" ON)
+option(SVISION3_BUILD_TASK_MANAGER_DEMO "Build the task_manager demo (fetches hwinfo via FetchContent)" ON)
+option(SVISION3_BUILD_TESTS "Build the test suite" ON)
 if(UNIX AND NOT APPLE)
-    option(TOOLKIT_WITH_X11 "Build the X11 backend if available" ON)
-    option(TOOLKIT_WITH_WAYLAND "Build the Wayland backend if available" ON)
+    option(SVISION3_WITH_X11 "Build the X11 backend if available" ON)
+    option(SVISION3_WITH_WAYLAND "Build the Wayland backend if available" ON)
 endif()
 
 find_package(litehtml REQUIRED)
 find_package(md4c REQUIRED)
 
-if(TOOLKIT_WITH_CAIRO)
+if(SVISION3_WITH_CAIRO)
     find_package(cairo QUIET)
     if(NOT cairo_FOUND)
         find_package(PkgConfig REQUIRED)
@@ -36,10 +36,10 @@ if(TOOLKIT_WITH_CAIRO)
         pkg_check_modules(FONTCONFIG REQUIRED IMPORTED_TARGET fontconfig)
         add_library(fontconfig::fontconfig ALIAS PkgConfig::FONTCONFIG)
     endif()
-    add_definitions(-DTOOLKIT_HAS_CAIRO)
+    add_definitions(-DSVISION3_HAS_CAIRO)
 
     # UNVERIFIED (see docs/design/cairo-shaper-handoff.md): harfbuzz + FreeType
-    # for src/toolkit/painters/cairo_shaper.cpp (RTL/bidi text shaping). harfbuzz
+    # for src/svision3/painters/cairo_shaper.cpp (RTL/bidi text shaping). harfbuzz
     # is already a Conan dependency on Linux (conanfile.py); FreeType is expected
     # to come in transitively via cairo's/harfbuzz's own dependencies, but that
     # was never confirmed against a real `conan install` run -- if find_package
@@ -67,137 +67,137 @@ elseif(WIN32)
     find_package(OpenGL REQUIRED)
 endif()
 
-set(TOOLKIT_SOURCES
-    src/toolkit/types.cpp
-    src/toolkit/painter.cpp
-    src/toolkit/command.cpp
-    src/toolkit/xdg_image_loader.cpp
-    src/toolkit/image_widget.cpp
-    src/toolkit/lunasvg_image_loader.cpp
-    src/toolkit/toolbar.cpp
-    src/toolkit/button.cpp
-    src/toolkit/button_group.cpp
-    src/toolkit/button_state.cpp
-    src/toolkit/checkbox.cpp
-    src/toolkit/combobox.cpp
-    src/toolkit/radio_button.cpp
-    src/toolkit/label.cpp
-    src/toolkit/progress_bar.cpp
-    src/toolkit/tab_widget.cpp
-    src/toolkit/image.cpp
-    src/toolkit/item_model.cpp
-    src/toolkit/list_view.cpp
-    src/toolkit/icon_grid.cpp
-    src/toolkit/file_browser_widget.cpp
-    src/toolkit/file_dialog.cpp
-    src/toolkit/directory_dialog.cpp
-    src/toolkit/undo_stack.cpp
-    src/toolkit/slider.cpp
-    src/toolkit/splitter.cpp
-    src/toolkit/spin_box.cpp
-    src/toolkit/line_input.cpp
-    src/toolkit/line_input_undo.cpp
-    src/toolkit/text/bidi.cpp
-    src/toolkit/text/text_layout.cpp
-    src/toolkit/text_edit.cpp
-    src/toolkit/table_view.cpp
-    src/toolkit/tree_view.cpp
-    src/toolkit/file_tree_model.cpp
-    src/toolkit/context_menu.cpp
-    src/toolkit/menu.cpp
-    src/toolkit/menubar.cpp
-    src/toolkit/message_box.cpp
-    src/toolkit/layout.cpp
-    src/toolkit/dock_area.cpp
-    src/toolkit/theme.cpp
-    src/toolkit/theme_base.cpp
-    src/toolkit/theme_macos.cpp
-    src/toolkit/theme_factory.cpp
-    src/toolkit/theme_plasma.cpp
-    src/toolkit/theme_win11.cpp
-    src/toolkit/theme_win95.cpp
-    src/toolkit/window.cpp
-    src/toolkit/widget.cpp
-    src/toolkit/widget_loader.cpp
-    src/toolkit/platform_factory.cpp
-    src/toolkit/platform/dummy_platform.cpp
-    src/toolkit/painters/gl_painter.cpp
-    src/toolkit/painters/gl_offscreen.cpp
-    src/toolkit/html_view.cpp
-    src/toolkit/rich_label.cpp
-    src/toolkit/scroll_area.cpp
-    src/toolkit/scrollbar.cpp
-    src/toolkit/scrollable_widget.cpp
-    src/toolkit/toast_widget.cpp
-    src/toolkit/tray_icon_builder.cpp
-    src/toolkit/status_bar.cpp
-    src/toolkit/window_title_bar.cpp
-    src/toolkit/net/http.cpp
-    src/toolkit/charts/area_chart.cpp
-    src/toolkit/charts/bar_chart.cpp
-    src/toolkit/charts/candlestick_chart.cpp
-    src/toolkit/charts/chart_interaction.cpp
-    src/toolkit/charts/histogram.cpp
-    src/toolkit/charts/line_chart.cpp
-    src/toolkit/charts/pie_chart.cpp
-    src/toolkit/charts/scatter_plot.cpp
-    src/toolkit/charts/stacked_bar_chart.cpp
+set(SVISION3_SOURCES
+    src/svision3/types.cpp
+    src/svision3/painter.cpp
+    src/svision3/command.cpp
+    src/svision3/xdg_image_loader.cpp
+    src/svision3/image_widget.cpp
+    src/svision3/lunasvg_image_loader.cpp
+    src/svision3/toolbar.cpp
+    src/svision3/button.cpp
+    src/svision3/button_group.cpp
+    src/svision3/button_state.cpp
+    src/svision3/checkbox.cpp
+    src/svision3/combobox.cpp
+    src/svision3/radio_button.cpp
+    src/svision3/label.cpp
+    src/svision3/progress_bar.cpp
+    src/svision3/tab_widget.cpp
+    src/svision3/image.cpp
+    src/svision3/item_model.cpp
+    src/svision3/list_view.cpp
+    src/svision3/icon_grid.cpp
+    src/svision3/file_browser_widget.cpp
+    src/svision3/file_dialog.cpp
+    src/svision3/directory_dialog.cpp
+    src/svision3/undo_stack.cpp
+    src/svision3/slider.cpp
+    src/svision3/splitter.cpp
+    src/svision3/spin_box.cpp
+    src/svision3/line_input.cpp
+    src/svision3/line_input_undo.cpp
+    src/svision3/text/bidi.cpp
+    src/svision3/text/text_layout.cpp
+    src/svision3/text_edit.cpp
+    src/svision3/table_view.cpp
+    src/svision3/tree_view.cpp
+    src/svision3/file_tree_model.cpp
+    src/svision3/context_menu.cpp
+    src/svision3/menu.cpp
+    src/svision3/menubar.cpp
+    src/svision3/message_box.cpp
+    src/svision3/layout.cpp
+    src/svision3/dock_area.cpp
+    src/svision3/theme.cpp
+    src/svision3/theme_base.cpp
+    src/svision3/theme_macos.cpp
+    src/svision3/theme_factory.cpp
+    src/svision3/theme_plasma.cpp
+    src/svision3/theme_win11.cpp
+    src/svision3/theme_win95.cpp
+    src/svision3/window.cpp
+    src/svision3/widget.cpp
+    src/svision3/widget_loader.cpp
+    src/svision3/platform_factory.cpp
+    src/svision3/platform/dummy_platform.cpp
+    src/svision3/painters/gl_painter.cpp
+    src/svision3/painters/gl_offscreen.cpp
+    src/svision3/html_view.cpp
+    src/svision3/rich_label.cpp
+    src/svision3/scroll_area.cpp
+    src/svision3/scrollbar.cpp
+    src/svision3/scrollable_widget.cpp
+    src/svision3/toast_widget.cpp
+    src/svision3/tray_icon_builder.cpp
+    src/svision3/status_bar.cpp
+    src/svision3/window_title_bar.cpp
+    src/svision3/net/http.cpp
+    src/svision3/charts/area_chart.cpp
+    src/svision3/charts/bar_chart.cpp
+    src/svision3/charts/candlestick_chart.cpp
+    src/svision3/charts/chart_interaction.cpp
+    src/svision3/charts/histogram.cpp
+    src/svision3/charts/line_chart.cpp
+    src/svision3/charts/pie_chart.cpp
+    src/svision3/charts/scatter_plot.cpp
+    src/svision3/charts/stacked_bar_chart.cpp
 )
 
-if(TOOLKIT_WITH_CAIRO)
-    list(APPEND TOOLKIT_SOURCES src/toolkit/painters/cairo_painter.cpp)
-    list(APPEND TOOLKIT_SOURCES src/toolkit/painters/cairo_shaper.cpp)
+if(SVISION3_WITH_CAIRO)
+    list(APPEND SVISION3_SOURCES src/svision3/painters/cairo_painter.cpp)
+    list(APPEND SVISION3_SOURCES src/svision3/painters/cairo_shaper.cpp)
 endif()
 
 if(APPLE)
     enable_language(OBJCXX)
     set(CMAKE_OBJCXX_STANDARD 20)
-    list(APPEND TOOLKIT_SOURCES
-        src/toolkit/platform/macos/macos_application_base.mm
-        src/toolkit/platform/macos/macos_native_platform.mm
-        src/toolkit/platform/macos/macos_opengl_platform.mm
+    list(APPEND SVISION3_SOURCES
+        src/svision3/platform/macos/macos_application_base.mm
+        src/svision3/platform/macos/macos_native_platform.mm
+        src/svision3/platform/macos/macos_opengl_platform.mm
     )
-    if(TOOLKIT_WITH_CAIRO)
-        list(APPEND TOOLKIT_SOURCES
-            src/toolkit/platform/macos/macos_cairo_platform.mm)
+    if(SVISION3_WITH_CAIRO)
+        list(APPEND SVISION3_SOURCES
+            src/svision3/platform/macos/macos_cairo_platform.mm)
     endif()
 elseif(WIN32)
-    list(APPEND TOOLKIT_SOURCES
-        src/toolkit/platform/win32/win32_platform.cpp
-        src/toolkit/platform/win32/win32_image_loader.cpp
-        src/toolkit/painters/win32_painter.cpp
-        src/toolkit/painters/win32_shaper.cpp
+    list(APPEND SVISION3_SOURCES
+        src/svision3/platform/win32/win32_platform.cpp
+        src/svision3/platform/win32/win32_image_loader.cpp
+        src/svision3/painters/win32_painter.cpp
+        src/svision3/painters/win32_shaper.cpp
     )
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
     find_package(OpenGL REQUIRED)
-    list(APPEND TOOLKIT_SOURCES
-        src/toolkit/platform/linux_utils.cpp
-        src/toolkit/stb_image_loader.cpp
+    list(APPEND SVISION3_SOURCES
+        src/svision3/platform/linux_utils.cpp
+        src/svision3/stb_image_loader.cpp
     )
 
     # --- X11 (optional) ---
-    if(TOOLKIT_WITH_X11)
+    if(SVISION3_WITH_X11)
         find_package(X11 QUIET)
         if(X11_FOUND)
-            set(TOOLKIT_HAS_X11 ON)
+            set(SVISION3_HAS_X11 ON)
             pkg_check_modules(XEXT REQUIRED xext)
-            list(APPEND TOOLKIT_SOURCES
-                src/toolkit/platform/x11/x11_platform.cpp
+            list(APPEND SVISION3_SOURCES
+                src/svision3/platform/x11/x11_platform.cpp
             )
         endif()
     endif()
 
     # --- Wayland (optional) ---
-    if(TOOLKIT_WITH_WAYLAND)
+    if(SVISION3_WITH_WAYLAND)
         pkg_check_modules(WAYLAND QUIET wayland-client wayland-cursor wayland-egl egl)
         pkg_check_modules(WAYLAND_PROTOCOLS QUIET wayland-protocols)
         pkg_check_modules(XKBCOMMON QUIET xkbcommon)
         find_program(WAYLAND_SCANNER wayland-scanner)
     endif()
 
-    if(TOOLKIT_WITH_WAYLAND AND WAYLAND_FOUND AND WAYLAND_PROTOCOLS_FOUND AND XKBCOMMON_FOUND AND WAYLAND_SCANNER)
-        set(TOOLKIT_HAS_WAYLAND ON)
+    if(SVISION3_WITH_WAYLAND AND WAYLAND_FOUND AND WAYLAND_PROTOCOLS_FOUND AND XKBCOMMON_FOUND AND WAYLAND_SCANNER)
+        set(SVISION3_HAS_WAYLAND ON)
 
         pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
         set(XDG_SHELL_XML ${WAYLAND_PROTOCOLS_DIR}/stable/xdg-shell/xdg-shell.xml)
@@ -324,8 +324,8 @@ elseif(UNIX)
             DEPENDS ${RELATIVE_POINTER_XML}
         )
 
-        list(APPEND TOOLKIT_SOURCES
-            src/toolkit/platform/wayland/wl_platform.cpp
+        list(APPEND SVISION3_SOURCES
+            src/svision3/platform/wayland/wl_platform.cpp
             ${WL_GEN_DIR}/xdg-shell-protocol.c
             ${WL_GEN_DIR}/xdg-shell-client-protocol.h
             ${WL_GEN_DIR}/fractional-scale-v1-protocol.c
@@ -346,64 +346,65 @@ elseif(UNIX)
         )
     endif()
 
-    if(NOT TOOLKIT_HAS_X11 AND NOT TOOLKIT_HAS_WAYLAND)
+    if(NOT SVISION3_HAS_X11 AND NOT SVISION3_HAS_WAYLAND)
         message(FATAL_ERROR "No display backend found. Install X11 or Wayland dev packages.")
     endif()
 endif()
 
-add_library(toolkit STATIC ${TOOLKIT_SOURCES})
-target_include_directories(toolkit PUBLIC include PRIVATE src src/nfd)
-target_link_libraries(toolkit PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus litehtml md4c::md4c-html nlohmann_json::nlohmann_json lunasvg::lunasvg CURL::libcurl)
+add_library(svision3 STATIC ${SVISION3_SOURCES})
+add_library(svision3::svision3 ALIAS svision3)
+target_include_directories(svision3 PUBLIC include PRIVATE src src/nfd)
+target_link_libraries(svision3 PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus litehtml md4c::md4c-html nlohmann_json::nlohmann_json lunasvg::lunasvg CURL::libcurl)
 
 if(NOT MSVC)
     # One function/variable per section, so --gc-sections (enabled per-executable
     # below) can drop unused code instead of only unreferenced whole object files.
-    target_compile_options(toolkit PRIVATE -ffunction-sections -fdata-sections)
+    target_compile_options(svision3 PRIVATE -ffunction-sections -fdata-sections)
 endif()
 
-if(TOOLKIT_WITH_CAIRO)
-    target_link_libraries(toolkit PUBLIC cairo::cairo)
+if(SVISION3_WITH_CAIRO)
+    target_link_libraries(svision3 PUBLIC cairo::cairo)
     if(TARGET fontconfig::fontconfig)
-        target_link_libraries(toolkit PUBLIC fontconfig::fontconfig)
+        target_link_libraries(svision3 PUBLIC fontconfig::fontconfig)
     endif()
-    # For src/toolkit/painters/cairo_shaper.cpp -- see the harfbuzz/Freetype
+    # For src/svision3/painters/cairo_shaper.cpp -- see the harfbuzz/Freetype
     # find_package block above and docs/design/cairo-shaper-handoff.md.
     if(TARGET harfbuzz::harfbuzz)
-        target_link_libraries(toolkit PUBLIC harfbuzz::harfbuzz)
+        target_link_libraries(svision3 PUBLIC harfbuzz::harfbuzz)
     endif()
     if(TARGET Freetype::Freetype)
-        target_link_libraries(toolkit PUBLIC Freetype::Freetype)
+        target_link_libraries(svision3 PUBLIC Freetype::Freetype)
     endif()
 endif()
 
 if(APPLE)
-    target_link_libraries(toolkit PUBLIC
+    target_link_libraries(svision3 PUBLIC
         "-framework Cocoa" "-framework CoreGraphics"
         "-framework CoreText" "-framework ImageIO" "-framework OpenGL"
         "-framework AppKit" "-framework UniformTypeIdentifiers")
-    target_compile_options(toolkit PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
-    target_include_directories(toolkit PRIVATE
-        src/toolkit/platform/macos)
+    target_compile_options(svision3 PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
+    target_include_directories(svision3 PRIVATE
+        src/svision3/platform/macos)
 elseif(WIN32)
-    target_link_libraries(toolkit PUBLIC user32 gdi32 msimg32 gdiplus opengl32 shlwapi usp10 shell32)
-    target_include_directories(toolkit PRIVATE src/toolkit/platform/win32)
+    target_link_libraries(svision3 PUBLIC user32 gdi32 msimg32 gdiplus opengl32 shlwapi usp10 shell32)
+    target_include_directories(svision3 PRIVATE src/svision3/platform/win32)
 elseif(UNIX)
-    target_include_directories(toolkit PRIVATE ${stb_INCLUDE_DIRS})
-    target_link_libraries(toolkit PUBLIC OpenGL::GL stb::stb)
-    if(TOOLKIT_HAS_X11)
-        target_link_libraries(toolkit PUBLIC X11::X11 ${XEXT_LIBRARIES})
-        target_include_directories(toolkit PRIVATE src/toolkit/platform/x11 ${XEXT_INCLUDE_DIRS})
-        target_compile_definitions(toolkit PRIVATE TOOLKIT_HAS_X11)
+    target_include_directories(svision3 PRIVATE ${stb_INCLUDE_DIRS})
+    target_link_libraries(svision3 PUBLIC OpenGL::GL stb::stb)
+    if(SVISION3_HAS_X11)
+        target_link_libraries(svision3 PUBLIC X11::X11 ${XEXT_LIBRARIES})
+        target_include_directories(svision3 PRIVATE src/svision3/platform/x11 ${XEXT_INCLUDE_DIRS})
+        target_compile_definitions(svision3 PRIVATE SVISION3_HAS_X11)
     endif()
 
-    if(TOOLKIT_HAS_WAYLAND)
-        target_link_libraries(toolkit PUBLIC
+    if(SVISION3_HAS_WAYLAND)
+        target_link_libraries(svision3 PUBLIC
             ${WAYLAND_LIBRARIES} ${XKBCOMMON_LIBRARIES})
-        target_include_directories(toolkit PRIVATE
-            src/toolkit/platform/wayland
+        target_include_directories(svision3 PRIVATE
+            src/svision3/platform/wayland
             ${WAYLAND_INCLUDE_DIRS} ${XKBCOMMON_INCLUDE_DIRS}
             ${WL_GEN_DIR})
-        target_compile_definitions(toolkit PRIVATE TOOLKIT_HAS_WAYLAND)
+        target_compile_definitions(svision3 PRIVATE SVISION3_HAS_WAYLAND)
     endif()
 endif()
 
@@ -429,9 +430,9 @@ file(MAKE_DIRECTORY ${I18N_GEN_DIR})
 
 # Collect source files to scan for tr()/tr_n() calls
 file(GLOB_RECURSE I18N_SCAN_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/toolkit/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/toolkit/*.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/toolkit/*.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/svision3/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/svision3/*.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/svision3/*.hpp
 )
 
 # Step 1: Extract .pot from sources
@@ -481,26 +482,26 @@ else()
     set(I18N_BUILTIN_SRC ${I18N_GEN_DIR}/builtin_translations.cpp)
 endif()
 
-# Bake i18n objects directly into toolkit
-target_sources(toolkit PRIVATE $<TARGET_OBJECTS:i18n_core> ${I18N_BUILTIN_SRC})
+# Bake i18n objects directly into svision3
+target_sources(svision3 PRIVATE $<TARGET_OBJECTS:i18n_core> ${I18N_BUILTIN_SRC})
 
 # ── db ────────────────────────────────────────────────────────────────────────
 add_library(db OBJECT
-    src/toolkit/db/registry.cpp
-    src/toolkit/db/sqlite_connection.cpp
-    src/toolkit/db/sqlite/sqlite3.c
+    src/svision3/db/registry.cpp
+    src/svision3/db/sqlite_connection.cpp
+    src/svision3/db/sqlite/sqlite3.c
 )
-target_include_directories(db PUBLIC include PRIVATE src/toolkit/db)
+target_include_directories(db PUBLIC include PRIVATE src/svision3/db)
 target_compile_features(db PUBLIC cxx_std_20)
 if(UNIX)
-    target_link_libraries(toolkit PUBLIC pthread dl)
+    target_link_libraries(svision3 PUBLIC pthread dl)
 endif()
 
-# Bake db objects directly into toolkit
-target_sources(toolkit PRIVATE $<TARGET_OBJECTS:db>)
+# Bake db objects directly into svision3
+target_sources(svision3 PRIVATE $<TARGET_OBJECTS:db>)
 
-if(TOOLKIT_BUILD_DEMOS)
-    if(TOOLKIT_BUILD_TASK_MANAGER_DEMO)
+if(SVISION3_BUILD_DEMOS)
+    if(SVISION3_BUILD_TASK_MANAGER_DEMO)
         # ── hwinfo (task_manager demo only: live CPU/RAM monitoring) ───────────
         include(FetchContent)
         set(HWINFO_OS OFF CACHE BOOL "" FORCE)
@@ -539,7 +540,7 @@ if(TOOLKIT_BUILD_DEMOS)
         if(WIN32)
             set_target_properties(task_manager PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
         endif()
-        target_link_libraries(task_manager PRIVATE toolkit lfreist-hwinfo::hwinfo)
+        target_link_libraries(task_manager PRIVATE svision3 lfreist-hwinfo::hwinfo)
         if(WIN32)
             # process_info_win32.cpp: psapi = GetProcessMemoryInfo,
             # iphlpapi = GetIfTable2, advapi32 = the token/SID lookup behind
@@ -556,24 +557,24 @@ if(TOOLKIT_BUILD_DEMOS)
     if(WIN32)
         set_target_properties(demo PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
     endif()
-    target_link_libraries(demo PRIVATE toolkit)
+    target_link_libraries(demo PRIVATE svision3)
 
     add_executable(demo_declarative demo/demo_declarative.cpp)
     set_target_properties(demo_declarative PROPERTIES WIN32_EXECUTABLE ON)
     if(WIN32)
         set_target_properties(demo_declarative PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
     endif()
-    target_link_libraries(demo_declarative PRIVATE toolkit)
+    target_link_libraries(demo_declarative PRIVATE svision3)
 
     add_executable(stock_viewer demo/stock_viewer.cpp)
     set_target_properties(stock_viewer PROPERTIES WIN32_EXECUTABLE ON)
     if(WIN32)
         set_target_properties(stock_viewer PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
     endif()
-    target_link_libraries(stock_viewer PRIVATE toolkit)
+    target_link_libraries(stock_viewer PRIVATE svision3)
 
     if(NOT MSVC)
-        # Drop unreferenced sections from libtoolkit.a (and any statically-linked
+        # Drop unreferenced sections from libsvision3.a (and any statically-linked
         # deps) at link time -- the library itself stays complete, this only
         # trims what each demo doesn't actually use.
         target_link_options(demo PRIVATE -Wl,--gc-sections)
@@ -585,14 +586,14 @@ if(TOOLKIT_BUILD_DEMOS)
     if(WIN32)
         set_target_properties(demo_dock PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
     endif()
-    target_link_libraries(demo_dock PRIVATE toolkit)
+    target_link_libraries(demo_dock PRIVATE svision3)
 
     # Scratch tool for the documentation site: renders each widget offscreen
     # (dummy platform + Cairo image surface, no display needed) to a PNG.
     # Not WIN32_EXECUTABLE -- it's a console tool, not a demo app.
     add_executable(widget_screenshot tools/widget_screenshot.cpp)
     target_include_directories(widget_screenshot PRIVATE src)
-    target_link_libraries(widget_screenshot PRIVATE toolkit)
+    target_link_libraries(widget_screenshot PRIVATE svision3)
 endif()
 
 # ── nfd (Native File Dialog) ──────────────────────────────────────────────────
@@ -602,63 +603,63 @@ if(APPLE)
     target_compile_options(nfd PRIVATE -fno-objc-arc)
 
     # No NSStatusItem-based tray icon backend yet -- stub keeps
-    # toolkit::TrayIcon linkable (build() just returns nullptr) so callers
-    # don't need to #ifdef around it. See include/toolkit/tray_icon.hpp.
-    target_sources(toolkit PRIVATE src/toolkit/tray_icon_stub.cpp)
+    # svision3::TrayIcon linkable (build() just returns nullptr) so callers
+    # don't need to #ifdef around it. See include/svision3/tray_icon.hpp.
+    target_sources(svision3 PRIVATE src/svision3/tray_icon_stub.cpp)
 elseif(WIN32)
     add_library(nfd OBJECT src/nfd/nfd_win.cpp)
 
     # Shell_NotifyIcon-based tray icon, self-contained in the Win32 shell API
     # (shell32, linked above) -- no extra dependency the way the Linux
     # backend needs dbus-1.
-    target_sources(toolkit PRIVATE src/toolkit/win32/tray_icon.cpp)
+    target_sources(svision3 PRIVATE src/svision3/win32/tray_icon.cpp)
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(DBUS REQUIRED dbus-1)
     add_library(nfd OBJECT src/nfd/nfd_portal.cpp)
     target_include_directories(nfd PRIVATE ${DBUS_INCLUDE_DIRS})
-    target_link_libraries(toolkit PUBLIC ${DBUS_LIBRARIES})
+    target_link_libraries(svision3 PUBLIC ${DBUS_LIBRARIES})
 
     # dbus-1 is already a required dependency on Linux (nfd_portal.cpp, above)
     # -- reuse it for the tray icon's own D-Bus service wrapper
-    # (toolkit::dbus::Service, hosting org.kde.StatusNotifierItem).
-    set(TOOLKIT_HAS_DBUS ON)
-    target_sources(toolkit PRIVATE
-        src/toolkit/linux/dbus_service.cpp
-        src/toolkit/linux/tray_icon.cpp
+    # (svision3::dbus::Service, hosting org.kde.StatusNotifierItem).
+    set(SVISION3_HAS_DBUS ON)
+    target_sources(svision3 PRIVATE
+        src/svision3/linux/dbus_service.cpp
+        src/svision3/linux/tray_icon.cpp
     )
-    target_include_directories(toolkit PRIVATE ${DBUS_INCLUDE_DIRS})
-    target_compile_definitions(toolkit PUBLIC TOOLKIT_HAS_DBUS)
+    target_include_directories(svision3 PRIVATE ${DBUS_INCLUDE_DIRS})
+    target_compile_definitions(svision3 PUBLIC SVISION3_HAS_DBUS)
 endif()
 
-# Bake nfd objects directly into toolkit — it is an implementation detail.
-target_sources(toolkit PRIVATE $<TARGET_OBJECTS:nfd>)
+# Bake nfd objects directly into svision3 — it is an implementation detail.
+target_sources(svision3 PRIVATE $<TARGET_OBJECTS:nfd>)
 
-if(TOOLKIT_BUILD_DEMOS)
+if(SVISION3_BUILD_DEMOS)
     add_executable(sqlite_viewer demo/sqlite_viewer.cpp)
     set_target_properties(sqlite_viewer PROPERTIES WIN32_EXECUTABLE ON)
     if(WIN32)
         set_target_properties(sqlite_viewer PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
     endif()
-    target_link_libraries(sqlite_viewer PRIVATE toolkit)
+    target_link_libraries(sqlite_viewer PRIVATE svision3)
 
     add_executable(json_ui_viewer tools/json_ui_viewer.cpp)
-    target_link_libraries(json_ui_viewer PRIVATE toolkit)
+    target_link_libraries(json_ui_viewer PRIVATE svision3)
 
     # Builds everywhere: TrayIcon::create() always links (real backend on
     # Linux and Windows, no-op stub on macOS -- see
-    # include/toolkit/tray_icon.hpp), and this demo already handles a nullptr
+    # include/svision3/tray_icon.hpp), and this demo already handles a nullptr
     # result gracefully.
     add_executable(demo_tray demo/demo_tray.cpp)
     set_target_properties(demo_tray PROPERTIES WIN32_EXECUTABLE ON)
     if(WIN32)
         set_target_properties(demo_tray PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
     endif()
-    target_link_libraries(demo_tray PRIVATE toolkit)
+    target_link_libraries(demo_tray PRIVATE svision3)
 endif()
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
-if(TOOLKIT_BUILD_TESTS)
+if(SVISION3_BUILD_TESTS)
 find_package(Catch2 REQUIRED)
 add_executable(tests
     tests/test_bidi.cpp
@@ -708,7 +709,7 @@ add_executable(tests
     tests/repro_tab_orientation.cpp
     tests/test_window_title_bar.cpp
 )
-target_link_libraries(tests PRIVATE toolkit Catch2::Catch2)
+target_link_libraries(tests PRIVATE svision3 Catch2::Catch2)
 # A few tests need private headers (e.g. painters/cairo_painter.hpp) that aren't part of the
 # public include/ surface, to render off-screen for pixel-level assertions.
 target_include_directories(tests PRIVATE src)
@@ -716,14 +717,14 @@ target_include_directories(tests PRIVATE src)
 if(WIN32)
     target_sources(tests PRIVATE tests/test_win32_shaper.cpp)
 endif()
-if(TOOLKIT_HAS_DBUS)
+if(SVISION3_HAS_DBUS)
     target_sources(tests PRIVATE tests/test_dbus_service.cpp)
 endif()
 endif()
 
 # ── Install (for Conan packaging and manual installs) ─────────────────────────
 include(GNUInstallDirs)
-install(TARGETS toolkit
+install(TARGETS svision3
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

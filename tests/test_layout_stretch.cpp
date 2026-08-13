@@ -1,17 +1,17 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/layout.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/widget_loader.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/label.hpp"
+#include "svision3/widget_loader.hpp"
 #include <nlohmann/json.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/layout.hpp"
-#include "toolkit/label.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/label.hpp"
 #include <nlohmann/json.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Layout Stretch Serialization", "[serialization]") {
     // Manually testing the JSON structure without triggering the full layout engine

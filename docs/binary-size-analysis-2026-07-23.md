@@ -30,13 +30,13 @@ actually references — an archive with 50 object files might only contribute
    `CMakeFiles/demo.dir/link.txt`), without stripping, to get an unstripped
    binary with a full symbol table.
 2. Built a symbol → source-library map by running `nm -C` over each static
-   archive (`libtoolkit.a`, `liblitehtml.a`, `libgumbo.a`, `liblunasvg.a`,
+   archive (`libsvision3.a`, `liblitehtml.a`, `libgumbo.a`, `liblunasvg.a`,
    `libplutovg.a`, `libspdlog.a`, `libfmt.a`, `libmd4c*.a`) individually.
 3. Ran `nm --print-size --size-sort -C` on the final linked binary and
    looked up every defined symbol against that map, summing sizes per
    library. This reflects reality: e.g. it correctly shows the bundled
    sqlite3 module contributes **0 bytes** to `demo`, even though
-   `sqlite3.c.o` is the single largest object file inside `libtoolkit.a`
+   `sqlite3.c.o` is the single largest object file inside `libsvision3.a`
    (1.78 MB) — nothing in `demo1.cpp` references it, so the linker never
    pulls that member in.
 
@@ -44,7 +44,7 @@ actually references — an archive with 50 object files might only contribute
 
 | Library | Size | % of attributed `.text` | What it is |
 |---|---:|---:|---|
-| **toolkit** (our widgets/platform/theme code) | 1663.7 KB | 41.1% | Everything under `src/toolkit/` |
+| **toolkit** (our widgets/platform/theme code) | 1663.7 KB | 41.1% | Everything under `src/svision3/` |
 | litehtml | 581.6 KB | 14.4% | HTML/CSS layout+render engine (`HtmlView`, Markdown preview) |
 | app / libc / libstdc++ / other | 387.0 KB | 9.6% | `main()`, exception tables, **`std::regex`** (see below) |
 | toolkit (vendored **stb_image**) | 307.1 KB | 7.6% | Bundled `stb_image.h`/`stb_image_write.h` (PNG/JPEG/BMP codecs) |

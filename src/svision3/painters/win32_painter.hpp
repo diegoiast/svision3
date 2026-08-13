@@ -1,0 +1,80 @@
+#pragma once
+
+#include "svision3/painters/gl_painter.hpp"
+#include "svision3/text_rasterizer.hpp"
+#include <memory>
+#include <string>
+
+namespace Gdiplus {
+class Graphics;
+}
+
+namespace svision3 {
+
+class Window;
+
+class Win32TextRasterizer : public TextRasterizer {
+  public:
+    Win32TextRasterizer();
+    ~Win32TextRasterizer() override;
+
+    RasterizedText rasterize(std::string_view text, float font_size, float scale,
+                             Color const &color, FontFamily font = FontFamily::System,
+                             bool bold = false, bool italic = false) override;
+    Size measure(std::string_view text, float font_size, FontFamily font = FontFamily::System,
+                 bool bold = false, bool italic = false) override;
+    Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) override;
+    void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
+                   float font_size, FontFamily font, Painter::TextOrientation orientation,
+                   bool bold, bool italic) override;
+
+  private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
+class GDIPainter : public Painter {
+  public:
+    // FIXME: can we remove one of these constructors?
+    explicit GDIPainter(void *hdc, float scale, TextRasterizer *rasterizer);
+    GDIPainter(Gdiplus::Graphics *g, float scale, TextRasterizer *rasterizer); // Internal use
+    ~GDIPainter() override;
+    void push_clip(Rect const &rect) override;
+    void push_clip(Rect const &rect, float radius) override;
+    void pop_clip() override;
+
+    void push_translation(Point p) override;
+    void pop_translation() override;
+
+    void push_rotation(float degrees) override;
+    void pop_rotation() override;
+
+    void set_line_style(LineStyle style) override;
+    void fill_rect(Rect const &rect, Color const &color) override;
+    void draw_rect(Rect const &rect, Color const &color, float line_width) override;
+    void fill_rounded_rect(Rect const &rect, Color const &color, float radius) override;
+    void draw_rounded_rect(Rect const &rect, Color const &color, float radius,
+                           float line_width) override;
+    void fill_triangle(Point a, Point b, Point c, Color const &color) override;
+    void fill_polygon(std::vector<Point> const &points, Color const &color) override;
+    void draw_line(Point from, Point to, Color const &color, float line_width) override;
+    void draw_polyline(std::vector<Point> const &points, Color const &color,
+                       float line_width) override;
+    void fill_circle(Point center, float radius, Color const &color) override;
+    void draw_circle(Point center, float radius, Color const &color, float line_width) override;
+    void draw_image(ImageData const &image, Point position) override;
+    void draw_image_scaled(ImageData const &image, Rect const &dest) override;
+
+    static Icon capture(Window *window);
+
+    std::string_view name() const override { return "GDI+"; }
+
+    float scale() const;
+    void *graphics(); // Actually Gdiplus::Graphics*
+
+  private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
+} // namespace svision3

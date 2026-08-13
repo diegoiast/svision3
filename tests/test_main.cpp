@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/platform/dummy_platform.hpp"
-#include "toolkit/text_rasterizer.hpp"
+#include "svision3/platform/dummy_platform.hpp"
+#include "svision3/text_rasterizer.hpp"
 #include <catch2/catch_session.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 int main(int argc, char *argv[]) {
     DummyPlatformApplication app;

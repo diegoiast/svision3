@@ -1,7 +1,7 @@
-#include "toolkit/toast_widget.hpp"
+#include "svision3/toast_widget.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("ToastBuilder builds toast with plain text", "[toast]") {
     auto toast = ToastBuilder().text("Hello").title("Title").timeout(5.0f).build();

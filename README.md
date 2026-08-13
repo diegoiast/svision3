@@ -1,4 +1,4 @@
-# Toolkit
+# svision3
 
 A C++20 GUI toolkit with Cairo-based rendering and native platform backends for
 macOS, Windows, and Linux (X11 and Wayland).
@@ -30,7 +30,7 @@ Homepage: https://diegoiast.github.io/get-svision3/
 - Keyboard navigation (Tab/Shift-Tab), mnemonics (`&ok` renders as underlined `o`),
   focus management
 - Menus, toolbars. popups and dialogs (including using native file dialogs, or
-  toolkit dialogs on request).
+  svision3 dialogs on request).
 - Clipboard (copy/paste), timers, tooltips, cursor shapes
 - Markdown support, using [litethtml](https://github.com/litehtml/litehtml), meaning
   you can also display simple HTML documents.
@@ -192,7 +192,7 @@ cmake --build --preset conan-debug
 ## Project structure
 
 ```text
-include/toolkit/         Public headers
+include/svision3/         Public headers
   application.hpp        Application lifecycle, window creation
   window.hpp             Window: widget tree, events, timers, tooltips
   widget.hpp             Base widget class
@@ -217,7 +217,7 @@ include/toolkit/         Public headers
   command.hpp            Keyboard shortcut commands
   stopwatch.hpp          High-resolution timer utility
 
-src/toolkit/             Implementation
+src/svision3/             Implementation
   platform_factory.cpp   Backend selection + Application/Clipboard impl
   window.cpp             Shared window logic (delegates to platform)
   platform/
@@ -256,33 +256,33 @@ The factory function `create_platform_application()` in `platform_factory.cpp`
 instantiates the correct backend. On Linux, this happens at runtime based on
 environment detection. On macOS and Windows, it's a compile-time decision.
 
-All rendering goes through the abstract `Painter` interface. The toolkit provides two main implementations:
+All rendering goes through the abstract `Painter` interface. svision3 provides two main implementations:
 
 - `CairoPainter`: Uses the Cairo graphics library for high-quality 2D vector graphics.
 - `GLPainter`: A hardware-accelerated OpenGL 2.1 implementation.
 
-For text rendering in OpenGL, the toolkit utilizes a `TextRasterizer` interface with platform-specific implementations (CoreText on macOS, Cairo on Linux).
+For text rendering in OpenGL, svision3 utilizes a `TextRasterizer` interface with platform-specific implementations (CoreText on macOS, Cairo on Linux).
 
 ## Usage example
 
 ```cpp
-#include "toolkit/application.hpp"
-#include "toolkit/button.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/layout.hpp"
-#include "toolkit/window.hpp"
+#include "svision3/application.hpp"
+#include "svision3/button.hpp"
+#include "svision3/label.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/window.hpp"
 
 int main() {
-    toolkit::Application app;
+    svision3::Application app;
     auto *window = app.create_window("Hello", {400, 200});
 
-    auto root = std::make_unique<toolkit::VBoxLayout>();
+    auto root = std::make_unique<svision3::VBoxLayout>();
     root->set_margins({20, 20, 20, 20});
     root->set_spacing(12);
 
-    root->add_widget(std::make_unique<toolkit::Label>("Hello, world!"));
+    root->add_widget(std::make_unique<svision3::Label>("Hello, world!"));
 
-    auto btn = std::make_unique<toolkit::Button>("&Quit");
+    auto btn = std::make_unique<svision3::Button>("&Quit");
     btn->on_click = [window] { window->close(); };
     root->add_widget(std::move(btn));
 

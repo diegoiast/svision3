@@ -1,7 +1,7 @@
-#include "toolkit/label.hpp"
+#include "svision3/label.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Label stores text", "[label]") {
     Label l("Hello");

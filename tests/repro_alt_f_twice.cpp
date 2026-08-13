@@ -1,12 +1,12 @@
-#include "toolkit/menubar.hpp"
-#include "toolkit/layout.hpp"
-#include "toolkit/platform/dummy_platform.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
-#include "toolkit/window.hpp"
+#include "svision3/menubar.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/platform/dummy_platform.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
+#include "svision3/window.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Alt+F twice should not crash", "[menubar][crash]") {
     Theme::set_current(ThemeFactory::create(ThemeStyle::Win11, ColorScheme::Light));

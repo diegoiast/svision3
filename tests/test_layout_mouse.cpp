@@ -1,14 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
-#include "toolkit/layout.hpp"
-#include "toolkit/button.hpp"
-#include "toolkit/window.hpp"
-#include "toolkit/platform.hpp"
-#include "toolkit/platform/dummy_platform.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/button.hpp"
+#include "svision3/window.hpp"
+#include "svision3/platform.hpp"
+#include "svision3/platform/dummy_platform.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
 #include <cstdio>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("Layout mouse interaction relative", "[layout]") {
     Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));

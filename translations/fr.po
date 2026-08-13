@@ -1,4 +1,4 @@
-# French translations for toolkit built-in strings
+# French translations for svision3 built-in strings
 msgid ""
 msgstr ""
 "Language: fr\n"

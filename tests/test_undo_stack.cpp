@@ -1,8 +1,8 @@
-#include "toolkit/undo_stack.hpp"
+#include "svision3/undo_stack.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
-using namespace toolkit;
+using namespace svision3;
 
 class MockCommand : public UndoCommand {
   public:

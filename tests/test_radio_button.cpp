@@ -1,7 +1,7 @@
-#include "toolkit/radio_button.hpp"
+#include "svision3/radio_button.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("RadioButton default not selected", "[radio]") {
     RadioGroup group;

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include "toolkit/text/text_layout.hpp"
-#include "toolkit/utf8.hpp"
+#include "svision3/text/text_layout.hpp"
+#include "svision3/utf8.hpp"
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
-using namespace toolkit::text;
+using namespace svision3;
+using namespace svision3::text;
 
 namespace {
 
 // Deterministic per-character shaper: every Unicode scalar is its own
 // cluster, advance = 8px, regardless of script/font. Mirrors DummyRasterizer
-// (toolkit/text_rasterizer.hpp) so geometry assertions are exact integers.
+// (svision3/text_rasterizer.hpp) so geometry assertions are exact integers.
 class DummyTextShaper : public TextShaper {
   public:
     static constexpr float kCharWidth = 8.0f;

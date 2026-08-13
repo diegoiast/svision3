@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
+
+#pragma once
+
+#include "svision3/painter.hpp"
+#include "svision3/types.hpp"
+#include <cstdint>
+#include <string_view>
+#include <vector>
+
+namespace svision3 {
+
+struct RasterizedText {
+    std::vector<uint8_t> pixels; // RGBA, top-to-bottom, premultiplied
+    int width = 0;               // pixel width
+    int height = 0;              // pixel height
+    float ascent = 0;            // font ascent in points
+    float x_offset = 0;          // horizontal offset in points (for bearing)
+};
+
+class TextRasterizer {
+  public:
+    virtual ~TextRasterizer() = default;
+
+    virtual RasterizedText rasterize(std::string_view text, float font_size, float scale,
+                                     Color const &color, FontFamily font = FontFamily::System,
+                                     bool bold = false, bool italic = false) = 0;
+
+    // FIXME: those functions seem very similar. We could merge them
+    // FIXME: Maybe cache the font metrics, instead of computing them?
+    // FIXME: all platforms (win32, cairo) create a font and delete on each call
+    //        It would be cool to tell the metric which font to use so they would
+    //        cache.
+    virtual Size measure(std::string_view text, float font_size,
+                         FontFamily font = FontFamily::System,
+                         bool bold = false, bool italic = false) = 0;
+    virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) = 0;
+
+    virtual void draw_text(Painter &p, std::string_view text, Point position, Color const &color,
+                           float font_size, FontFamily font, Painter::TextOrientation orientation,
+                           bool bold, bool italic) = 0;
+};
+
+class DummyRasterizer : public TextRasterizer {
+  public:
+    virtual RasterizedText rasterize(std::string_view t, float font_size, float scale,
+                                     Color const & /*color*/, FontFamily f, bool /*bold*/ = false,
+                                     bool /*italic*/ = false) {
+        auto r = RasterizedText{};
+        auto m = measure(t, font_size, f);
+        r.width = m.width;
+        r.height = m.height;
+        r.ascent = 0;
+        return r;
+    };
+
+    virtual Size measure(std::string_view text, float font_size,
+                         FontFamily font = FontFamily::System,
+                         bool bold = false, bool italic = false) {
+        auto x = 8.0f;
+        auto y = 16.0f;
+        return {x * text.size(), y};
+    };
+
+    virtual Painter::FontMetrics metrics(float font_size, FontFamily font = FontFamily::System) {
+        return {0, 0, 0};
+    };
+
+    virtual void draw_text(Painter &, std::string_view, Point, Color const &, float, FontFamily,
+                           Painter::TextOrientation, bool, bool) {}
+};
+
+} // namespace svision3

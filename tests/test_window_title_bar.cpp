@@ -3,18 +3,18 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
-#include "toolkit/window.hpp"
-#include "toolkit/layout.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
+#include "svision3/window.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/label.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
 
-#ifdef TOOLKIT_HAS_CAIRO
-#include "toolkit/painters/cairo_painter.hpp"
+#ifdef SVISION3_HAS_CAIRO
+#include "svision3/painters/cairo_painter.hpp"
 #include <cairo/cairo.h>
 #endif
 
-using namespace toolkit;
+using namespace svision3;
 
 // Regression test: every theme's WindowTitleBar subclass builds its own internal HBoxLayout for
 // the icon/title/min/max/close row (each overrides initializeTitleBar() separately -- there is
@@ -136,7 +136,7 @@ TEST_CASE("CSD title bar double-click-to-maximize works when clicking the title 
     REQUIRE(win.is_maximized() != was_maximized);
 }
 
-#ifdef TOOLKIT_HAS_CAIRO
+#ifdef SVISION3_HAS_CAIRO
 // Regression test: WindowTitleBar::sync_button_states() only ever updated the maximize/restore
 // button's *tooltip* text -- the icon glyph itself was fixed forever to whichever DecorationButton
 // the theme constructed TitlebarButton with (always ::Maximize), so it never actually switched to

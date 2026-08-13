@@ -1,7 +1,7 @@
-#include "toolkit/events.hpp"
+#include "svision3/events.hpp"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace toolkit;
+using namespace svision3;
 
 TEST_CASE("MouseEvent defaults", "[events]") {
     MouseEvent e{};

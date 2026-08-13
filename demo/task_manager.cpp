@@ -14,14 +14,14 @@
 #include "declarative_charts.hpp"
 #include "process_info.hpp"
 
-#include "toolkit/application.hpp"
-#include "toolkit/clipboard.hpp"
-#include "toolkit/context_menu.hpp"
-#include "toolkit/item_model.hpp"
-#include "toolkit/menu.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/theme_factory.hpp"
-#include "toolkit/tray_icon.hpp"
+#include "svision3/application.hpp"
+#include "svision3/clipboard.hpp"
+#include "svision3/context_menu.hpp"
+#include "svision3/item_model.hpp"
+#include "svision3/menu.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
+#include "svision3/tray_icon.hpp"
 
 #include <hwinfo/monitoring/cpu.h>
 #include <hwinfo/monitoring/ram.h>
@@ -50,16 +50,16 @@ constexpr auto kProcessRefreshIntervalSec = 2.0f;
 // oldest sample once the window is full, rebuilds the chart's series from the
 // remaining points, and requests a redraw -- everything a new sample needs.
 struct SlidingChart {
-    toolkit::AreaChart *chart;
+    svision3::AreaChart *chart;
     // Weak, not a raw Window*: these SlidingCharts are function-local statics
     // driven by a timer and a background monitor thread, so they outlive the
     // window at shutdown. lock() turns that into a no-op instead of a dangling
     // deref.
-    std::weak_ptr<toolkit::Window> window;
+    std::weak_ptr<svision3::Window> window;
     std::string series_name;
-    toolkit::Color line_color;
-    toolkit::Color fill_color;
-    std::deque<toolkit::AreaDataPoint> points;
+    svision3::Color line_color;
+    svision3::Color fill_color;
+    std::deque<svision3::AreaDataPoint> points;
     float next_x = 0;
 
     void append(float y) {
@@ -69,7 +69,7 @@ struct SlidingChart {
             points.pop_front();
         }
 
-        auto series = toolkit::AreaSeries{};
+        auto series = svision3::AreaSeries{};
         series.name = series_name;
         series.line_color = line_color;
         series.fill_color = fill_color;
@@ -86,7 +86,7 @@ struct SlidingChart {
 // "Logical processors" grid. AreaChart/LineChart's fixed chart_defaults
 // margins (title/axis/legend space) don't leave any room to work with at
 // this size, so this paints directly with Painter instead of wrapping one.
-class CoreSparkline : public toolkit::Widget, public toolkit::Fluent<CoreSparkline> {
+class CoreSparkline : public svision3::Widget, public svision3::Fluent<CoreSparkline> {
     DECLARE_WIDGET(CoreSparkline)
   public:
     explicit CoreSparkline(int core_index) : core_index_(core_index) {}
@@ -101,13 +101,13 @@ class CoreSparkline : public toolkit::Widget, public toolkit::Fluent<CoreSparkli
         }
     }
 
-    void paint(toolkit::Painter &painter) override {
-        auto const &palette = toolkit::Theme::current().palette;
+    void paint(svision3::Painter &painter) override {
+        auto const &palette = svision3::Theme::current().palette;
         // Widget::draw() already pushes a translation for rect_'s position
         // before calling paint(), so drawing happens in *local* coordinates
         // (origin at the widget's own top-left) -- reusing rect_.x/y here
         // would double-apply the offset for every card but the first.
-        auto r = toolkit::Rect{0, 0, rect_.width, rect_.height};
+        auto r = svision3::Rect{0, 0, rect_.width, rect_.height};
 
         painter.fill_rounded_rect(r, palette.base, 6.0f);
         painter.draw_rounded_rect(r, palette.border, 6.0f, 1.0f);
@@ -122,14 +122,14 @@ class CoreSparkline : public toolkit::Widget, public toolkit::Fluent<CoreSparkli
         painter.draw_text(pct_text, {r.x + r.width - 10 - pct_w, r.y + 8 + fm.ascent},
                           palette.text_disabled, label_size);
 
-        auto plot = toolkit::Rect{r.x + 8, r.y + fm.height + 16, r.width - 16,
+        auto plot = svision3::Rect{r.x + 8, r.y + fm.height + 16, r.width - 16,
                                   r.height - fm.height - 26};
         if (samples_.size() < 2 || plot.width <= 0 || plot.height <= 0) {
             return;
         }
 
         auto n = samples_.size();
-        auto points = std::vector<toolkit::Point>{};
+        auto points = std::vector<svision3::Point>{};
         points.reserve(n);
         for (size_t i = 0; i < n; i++) {
             auto x = plot.x + plot.width * static_cast<float>(i) / static_cast<float>(n - 1);
@@ -144,20 +144,20 @@ class CoreSparkline : public toolkit::Widget, public toolkit::Fluent<CoreSparkli
         painter.draw_polyline(points, line_color_, 2.0f);
     }
 
-    bool handle_mouse(toolkit::MouseEvent const &) override { return false; }
+    bool handle_mouse(svision3::MouseEvent const &) override { return false; }
     // A floor, not a target -- add_widget()'s stretch=1 (see main()) grows
     // these to fill the tab, so this only matters as the minimum before that
     // kicks in and as the size when there are few enough cores that stretch
     // has little to work with.
-    toolkit::Size size_hint() const override { return {200, 140}; }
+    svision3::Size size_hint() const override { return {200, 140}; }
 
   private:
     static constexpr size_t kMaxSamples = 60; // 1 minute at 1 sample/sec
 
     int core_index_;
     std::deque<float> samples_;
-    toolkit::Color line_color_ = toolkit::Color::rgb(0.20f, 0.55f, 0.90f);
-    toolkit::Color fill_color_ = toolkit::Color::rgba(0.20f, 0.55f, 0.90f, 0.25f);
+    svision3::Color line_color_ = svision3::Color::rgb(0.20f, 0.55f, 0.90f);
+    svision3::Color fill_color_ = svision3::Color::rgba(0.20f, 0.55f, 0.90f, 0.25f);
 };
 
 } // namespace
@@ -171,10 +171,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    toolkit::Theme::set_current(
-        toolkit::ThemeFactory::create(toolkit::ThemeStyle::MacOS, toolkit::ColorScheme::Light));
+    svision3::Theme::set_current(
+        svision3::ThemeFactory::create(svision3::ThemeStyle::MacOS, svision3::ColorScheme::Light));
 
-    auto app = toolkit::Application{};
+    auto app = svision3::Application{};
     auto window = app.create_window("Task Manager", {820, 520});
 
     auto cpu_chart = ui::area_chart();
@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
         for (auto i = row_start; i < std::min(row_start + cols, num_cores); i++) {
             auto spark = std::make_unique<CoreSparkline>(static_cast<int>(i));
             core_sparklines.push_back(spark.get());
-            row.w->add_widget(std::move(spark), 1, toolkit::Alignment::Fill);
+            row.w->add_widget(std::move(spark), 1, svision3::Alignment::Fill);
         }
         cores_grid.w->add_widget(std::move(row.w), 1);
     }
@@ -233,7 +233,7 @@ int main(int argc, char *argv[]) {
     // showing a scrollbar even when everything already fits on screen.
     auto cores_view = std::move(cores_grid);
 
-    auto process_model = std::make_shared<toolkit::StringTableModel>(
+    auto process_model = std::make_shared<svision3::StringTableModel>(
         std::vector<std::string>{"PID", "Name", "CPU %", "Memory (MB)", "Threads", "State"});
     auto process_table = ui::table_view(process_model);
     process_table->set_alternating_row_colors(true);
@@ -258,38 +258,38 @@ int main(int argc, char *argv[]) {
     // outlive the popup -- a function-local static (like the *_series charts
     // below) gives it the same "lives for the app's run" lifetime, and simply
     // gets replaced on the next right click.
-    static auto process_context_menu = std::unique_ptr<toolkit::ContextMenu>{};
+    static auto process_context_menu = std::unique_ptr<svision3::ContextMenu>{};
     process_table->set_row_context_menu_handler(
         [weak_window = std::weak_ptr(window), process_model](size_t model_row,
-                                                             toolkit::Point window_pos) {
+                                                             svision3::Point window_pos) {
             auto const &pid_text = process_model->cell_text(model_row, 0);
             auto pid = std::atoi(pid_text.c_str());
 
-            auto signal_menu = std::make_shared<toolkit::Menu>("Send Signal");
+            auto signal_menu = std::make_shared<svision3::Menu>("Send Signal");
             for (auto const &sig : process_info::available_signals()) {
                 signal_menu->add_action(sig.name, [pid, value = sig.value] {
                     process_info::send_signal(pid, value);
                 });
             }
 
-            auto items = std::vector<toolkit::MenuItem>{};
-            items.push_back(toolkit::MenuItem::submenu_item("Send Signal", signal_menu));
-            items.push_back(toolkit::MenuItem::sep());
-            items.push_back(toolkit::MenuItem::action("Goto Exe", [] {
+            auto items = std::vector<svision3::MenuItem>{};
+            items.push_back(svision3::MenuItem::submenu_item("Send Signal", signal_menu));
+            items.push_back(svision3::MenuItem::sep());
+            items.push_back(svision3::MenuItem::action("Goto Exe", [] {
                 // TODO: reveal process_info::get_process_detail(pid).exe_path in
                 // the platform's file manager (xdg-open/explorer /select).
             }));
-            items.push_back(toolkit::MenuItem::sep());
-            items.push_back(toolkit::MenuItem::action("Copy Details", [pid] {
+            items.push_back(svision3::MenuItem::sep());
+            items.push_back(svision3::MenuItem::action("Copy Details", [pid] {
                 auto text = process_info::format_tooltip(process_info::get_process_detail(pid));
-                toolkit::Clipboard::set_text(text);
+                svision3::Clipboard::set_text(text);
             }));
 
             auto window = weak_window.lock();
             if (!window) {
                 return;
             }
-            process_context_menu = std::make_unique<toolkit::ContextMenu>(std::move(items));
+            process_context_menu = std::make_unique<svision3::ContextMenu>(std::move(items));
             process_context_menu->show(window.get(), window_pos);
         });
 
@@ -300,7 +300,7 @@ int main(int argc, char *argv[]) {
         ui::vbox().add(process_filter_input).add(std::move(process_table), ui::expand);
 
     auto tabs = ui::tab_widget()
-                    .orientation(toolkit::TabOrientation::WestVertical)
+                    .orientation(svision3::TabOrientation::WestVertical)
                     .tabs_closable(false)
                     .tabs_movable(false)
                     .add_tab("CPU", std::move(cpu_chart))
@@ -311,17 +311,17 @@ int main(int argc, char *argv[]) {
     window->set_root(std::move(tabs));
 
     static auto cpu_series =
-        SlidingChart{cpu_chart_ptr, window, "CPU", toolkit::Color::rgb(0.20f, 0.55f, 0.90f),
-                     toolkit::Color::rgba(0.20f, 0.55f, 0.90f, 0.25f)};
+        SlidingChart{cpu_chart_ptr, window, "CPU", svision3::Color::rgb(0.20f, 0.55f, 0.90f),
+                     svision3::Color::rgba(0.20f, 0.55f, 0.90f, 0.25f)};
     static auto mem_series =
-        SlidingChart{mem_chart_ptr, window, "Memory", toolkit::Color::rgb(0.60f, 0.30f, 0.85f),
-                     toolkit::Color::rgba(0.60f, 0.30f, 0.85f, 0.25f)};
+        SlidingChart{mem_chart_ptr, window, "Memory", svision3::Color::rgb(0.60f, 0.30f, 0.85f),
+                     svision3::Color::rgba(0.60f, 0.30f, 0.85f, 0.25f)};
     static auto network_series =
-        SlidingChart{network_chart_ptr, window, "Network", toolkit::Color::rgb(0.20f, 0.75f, 0.35f),
-                     toolkit::Color::rgba(0.20f, 0.75f, 0.35f, 0.25f)};
+        SlidingChart{network_chart_ptr, window, "Network", svision3::Color::rgb(0.20f, 0.75f, 0.35f),
+                     svision3::Color::rgba(0.20f, 0.75f, 0.35f, 0.25f)};
 
     // Memory reads are cheap syscalls (no artificial delay), so poll it
-    // directly from the toolkit's own timer on the main thread.
+    // directly from svision3's own timer on the main thread.
     //
     // last_network_bytes is a static local (not a `mutable` capture) so it
     // survives regardless of how the platform stores/invokes this callback --
@@ -350,13 +350,13 @@ int main(int argc, char *argv[]) {
     // (default 200ms) to measure a utilization delta, so it runs on its own
     // background thread via hwinfo's Monitor; the result is marshaled onto
     // the main thread before touching any widget, same pattern as
-    // toolkit::net::fetch_async.
+    // svision3::net::fetch_async.
     auto cpu_monitor = hwinfo::monitoring::cpu::Monitor(
         [] { return hwinfo::monitoring::cpu::fetch(); },
         [](hwinfo::monitoring::cpu::Data const &data) {
             auto utilization_percent = static_cast<float>(data.utilization) * 100.0f;
             auto thread_utilization = data.thread_utilization;
-            toolkit::Application::post_to_main_thread([utilization_percent, thread_utilization] {
+            svision3::Application::post_to_main_thread([utilization_percent, thread_utilization] {
                 cpu_series.append(utilization_percent);
                 for (size_t i = 0; i < thread_utilization.size() && i < core_sparklines.size(); i++) {
                     core_sparklines[i]->append(static_cast<float>(thread_utilization[i]) * 100.0f);
@@ -406,7 +406,7 @@ int main(int argc, char *argv[]) {
 
     process_filter_input_ptr->on_change = [&process_filter, &latest_process_rows,
                                            render_process_table,
-                                           window](std::string const &text, toolkit::LineInput &) {
+                                           window](std::string const &text, svision3::LineInput &) {
         process_filter = text;
         render_process_table(latest_process_rows, process_filter);
         window->request_redraw();
@@ -422,22 +422,22 @@ int main(int argc, char *argv[]) {
             window->request_redraw();
         });
 
-    window->on_key = [&app](toolkit::KeyEvent const &e) -> bool {
-        if (e.type == toolkit::KeyEvent::Type::Press && e.super && e.text == "q") {
+    window->on_key = [&app](svision3::KeyEvent const &e) -> bool {
+        if (e.type == svision3::KeyEvent::Type::Press && e.super && e.text == "q") {
             app.quit();
             return true;
         }
         return false;
     };
 
-    auto tray_actions = std::vector<toolkit::Command::Ptr>{};
-    auto quit_cmd = toolkit::Command::create("Quit", [&app] { app.quit(); });
+    auto tray_actions = std::vector<svision3::Command::Ptr>{};
+    auto quit_cmd = svision3::Command::create("Quit", [&app] { app.quit(); });
     quit_cmd->set_icon("application-exit");
     tray_actions.push_back(std::move(quit_cmd));
 
     // icon() is the bitmap every backend draws; icon_name() is the extra hint a
     // Linux tray host uses to theme and size it to the panel.
-    auto tray = toolkit::TrayIcon::builder()
+    auto tray = svision3::TrayIcon::builder()
                     .icon(app.load_icon("utilities-system-monitor", 22, ""))
                     .icon_name("utilities-system-monitor")
                     .tooltip("Task Manager")

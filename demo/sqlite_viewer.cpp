@@ -1,15 +1,15 @@
-#include "toolkit/application.hpp"
-#include "toolkit/button.hpp"
-#include "toolkit/combobox.hpp"
-#include "toolkit/label.hpp"
-#include "toolkit/layout.hpp"
-#include "toolkit/line_input.hpp"
-#include "toolkit/table_view.hpp"
-#include "toolkit/theme.hpp"
-#include "toolkit/window.hpp"
+#include "svision3/application.hpp"
+#include "svision3/button.hpp"
+#include "svision3/combobox.hpp"
+#include "svision3/label.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/line_input.hpp"
+#include "svision3/table_view.hpp"
+#include "svision3/theme.hpp"
+#include "svision3/window.hpp"
 
 #include "db/connection.hpp"
-#include "toolkit/file_dialog.hpp"
+#include "svision3/file_dialog.hpp"
 
 #include <spdlog/spdlog.h>
 #include <memory>
@@ -67,7 +67,7 @@ static std::vector<std::string> get_tables(std::string const &schema) {
 }
 
 static void run_query(std::string const &sql,
-                      std::shared_ptr<toolkit::StringTableModel> &model) {
+                      std::shared_ptr<svision3::StringTableModel> &model) {
     if (!g_db) {
         model->set_data({"Error"}, {{"No database open"}});
         return;
@@ -105,12 +105,12 @@ static void run_query(std::string const &sql,
 
 
 struct ViewerState {
-    toolkit::Window *window = nullptr;
-    toolkit::Combobox *schema_combo = nullptr;
-    toolkit::Combobox *table_combo = nullptr;
-    toolkit::LineInput *query_input = nullptr;
-    toolkit::Label *status = nullptr;
-    std::shared_ptr<toolkit::StringTableModel> table_model;
+    svision3::Window *window = nullptr;
+    svision3::Combobox *schema_combo = nullptr;
+    svision3::Combobox *table_combo = nullptr;
+    svision3::LineInput *query_input = nullptr;
+    svision3::Label *status = nullptr;
+    std::shared_ptr<svision3::StringTableModel> table_model;
 };
 
 static void open_database(ViewerState &vs, std::string const &path) {
@@ -150,7 +150,7 @@ static void open_database(ViewerState &vs, std::string const &path) {
 int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
 
-    toolkit::Application app;
+    svision3::Application app;
     // Raw pointer for ViewerState and the callbacks below: Application owns the
     // window for the process lifetime, and several of these end up on widgets
     // the window itself owns, where a shared capture would be a cycle.
@@ -159,40 +159,40 @@ int main(int argc, char *argv[]) {
 
     ViewerState vs;
     vs.window = window;
-    vs.table_model = std::make_shared<toolkit::StringTableModel>(
+    vs.table_model = std::make_shared<svision3::StringTableModel>(
         std::vector<std::string>{"(no data)"});
 
-    auto root = std::make_unique<toolkit::VBoxLayout>();
+    auto root = std::make_unique<svision3::VBoxLayout>();
     root->set_margins({12, 12, 12, 12});
     root->set_spacing(8);
 
     // Toolbar row: Open button, schema combo, table combo
-    auto toolbar = std::make_unique<toolkit::HBoxLayout>();
+    auto toolbar = std::make_unique<svision3::HBoxLayout>();
     toolbar->set_spacing(8);
 
-    auto open_btn = std::make_unique<toolkit::Button>("&Open...");
+    auto open_btn = std::make_unique<svision3::Button>("&Open...");
     open_btn->on_click = [&vs] {
-        toolkit::FileDialog(vs.window)
+        svision3::FileDialog(vs.window)
             .add_filter("SQLite databases", "*.db *.sqlite *.sqlite3 *.db3")
             .use_native()
             .open()
-            .then([&vs](toolkit::FileDialog::Result path) {
+            .then([&vs](svision3::FileDialog::Result path) {
                 if (path)
                     open_database(vs, *path);
             });
     };
     toolbar->add_widget(std::move(open_btn));
 
-    auto schema_combo = std::make_unique<toolkit::Combobox>();
+    auto schema_combo = std::make_unique<svision3::Combobox>();
     vs.schema_combo = schema_combo.get();
-    auto schema_label = std::make_unique<toolkit::Label>("&Schema:");
+    auto schema_label = std::make_unique<svision3::Label>("&Schema:");
     schema_label->set_buddy(vs.schema_combo);
     toolbar->add_widget(std::move(schema_label));
     toolbar->add_widget(std::move(schema_combo));
 
-    auto table_combo = std::make_unique<toolkit::Combobox>();
+    auto table_combo = std::make_unique<svision3::Combobox>();
     vs.table_combo = table_combo.get();
-    auto table_label = std::make_unique<toolkit::Label>("&Table:");
+    auto table_label = std::make_unique<svision3::Label>("&Table:");
     table_label->set_buddy(vs.table_combo);
     toolbar->add_widget(std::move(table_label));
     toolbar->add_widget(std::move(table_combo), 1);
@@ -200,24 +200,24 @@ int main(int argc, char *argv[]) {
     root->add_widget(std::move(toolbar));
 
     // Query input
-    auto query_input = std::make_unique<toolkit::LineInput>();
+    auto query_input = std::make_unique<svision3::LineInput>();
     vs.query_input = query_input.get();
     root->add_widget(std::move(query_input));
 
     // Results table
-    auto table_view = std::make_unique<toolkit::TableView>(vs.table_model);
+    auto table_view = std::make_unique<svision3::TableView>(vs.table_model);
     table_view->set_alternating_row_colors(true);
     root->add_widget(std::move(table_view), 1);
 
     // Bottom bar
-    auto bottom = std::make_unique<toolkit::HBoxLayout>();
+    auto bottom = std::make_unique<svision3::HBoxLayout>();
     bottom->set_spacing(8);
 
-    auto status = std::make_unique<toolkit::Label>("");
+    auto status = std::make_unique<svision3::Label>("");
     vs.status = status.get();
     bottom->add_widget(std::move(status), 1);
 
-    auto quit_btn = std::make_unique<toolkit::Button>("&Quit");
+    auto quit_btn = std::make_unique<svision3::Button>("&Quit");
     quit_btn->on_click = [window] { window->close(); };
     bottom->add_widget(std::move(quit_btn));
 

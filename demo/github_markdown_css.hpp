@@ -12,7 +12,7 @@
 // silently (box-sizing, overflow, word-wrap) have been removed to keep the
 // strings compact.
 //
-// Usage (demo code only — not part of the toolkit library):
+// Usage (demo code only — not part of the svision3 library):
 //   view->set_markdown_css(GITHUB_MARKDOWN_CSS_LIGHT, GITHUB_MARKDOWN_CSS_DARK);
 //   view->set_markdown(text);  // picks the right variant automatically
 
