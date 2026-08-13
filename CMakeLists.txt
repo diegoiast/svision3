@@ -486,11 +486,11 @@ target_sources(toolkit PRIVATE $<TARGET_OBJECTS:i18n_core> ${I18N_BUILTIN_SRC})
 
 # ── db ────────────────────────────────────────────────────────────────────────
 add_library(db OBJECT
-    src/db/registry.cpp
-    src/db/sqlite_connection.cpp
-    src/db/sqlite/sqlite3.c
+    src/toolkit/db/registry.cpp
+    src/toolkit/db/sqlite_connection.cpp
+    src/toolkit/db/sqlite/sqlite3.c
 )
-target_include_directories(db PUBLIC include PRIVATE src/db)
+target_include_directories(db PUBLIC include PRIVATE src/toolkit/db)
 target_compile_features(db PUBLIC cxx_std_20)
 if(UNIX)
     target_link_libraries(toolkit PUBLIC pthread dl)
