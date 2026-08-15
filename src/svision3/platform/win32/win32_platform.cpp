@@ -608,6 +608,24 @@ LRESULT CALLBACK tk_wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         win->handle_scale_changed(static_cast<float>(HIWORD(wp)) / 96.0f);
         return 0;
     }
+    case WM_DISPLAYCHANGE: {
+        // A monitor was added/removed/resized. If this window no longer
+        // intersects any connected monitor (e.g. it was sitting on a
+        // display that just got unplugged), pull it back onto the nearest
+        // remaining one instead of leaving it stranded off-screen.
+        if (!IsIconic(hwnd) && !MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL)) {
+            auto nearest = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            auto mi = MONITORINFO{sizeof(MONITORINFO)};
+            auto r = RECT{};
+            if (nearest && GetMonitorInfoW(nearest, &mi) && GetWindowRect(hwnd, &r)) {
+                auto w = std::min(r.right - r.left, mi.rcWork.right - mi.rcWork.left);
+                auto h = std::min(r.bottom - r.top, mi.rcWork.bottom - mi.rcWork.top);
+                SetWindowPos(hwnd, nullptr, mi.rcWork.left, mi.rcWork.top, w, h,
+                             SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+        }
+        break;
+    }
     case WM_CLOSE:
         DestroyWindow(hwnd);
         return 0;
