@@ -723,10 +723,16 @@ endif()
 endif()
 
 # ── Install (for Conan packaging and manual installs) ─────────────────────────
-include(GNUInstallDirs)
-install(TARGETS svision3
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# Guarded so consumers that vendor svision3 via add_subdirectory/FetchContent
+# don't get its headers/library pulled into their own install()/CPack output --
+# only install when svision3 is the top-level project being configured
+# directly (a standalone build, or conan's own build of this package).
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(GNUInstallDirs)
+    install(TARGETS svision3
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+    install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+endif()
