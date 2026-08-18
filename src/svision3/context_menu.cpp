@@ -77,21 +77,24 @@ void ContextMenu::show(Window *win, Point position) {
         width += max_shortcut_w + 20.0f; // Add gap and shortcut width
     }
     auto height = menu_total_height(items_, item_height_, separator_height_);
-    auto win_size = window_->size();
+    // Clamp to the window's client area, not its raw size() -- size() includes the CSD
+    // shadow/border margin, so clamping against it lets the menu hang out over the shadow
+    // instead of against the window's actual visible edge.
+    auto content = window_->content_rect();
     auto x = position.x;
     auto y = position.y;
 
-    if (x + width > win_size.width) {
-        x = win_size.width - width;
+    if (x + width > content.x + content.width) {
+        x = content.x + content.width - width;
     }
-    if (y + height > win_size.height) {
+    if (y + height > content.y + content.height) {
         y = position.y - height;
     }
-    if (x < 0) {
-        x = 0;
+    if (x < content.x) {
+        x = content.x;
     }
-    if (y < 0) {
-        y = 0;
+    if (y < content.y) {
+        y = content.y;
     }
 
     bounds_ = {x, y, width, height};

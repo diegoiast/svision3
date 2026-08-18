@@ -23,11 +23,18 @@ class Win95TitleBar : public WindowTitleBar {
     void initializeTitleBar() override {
         layout = create_title_layout();
         layout->set_spacing(2.0f);
-        layout->set_margins({2, 2, 2, 2});
+        layout->set_margins({2, 2, 2, 0});
+
+        icon_widget = new TitleBarIcon(window_);
+        icon_widget->set_window(window_);
+        icon_widget->set_min_size({16, 16});
+        icon_widget->set_max_size({16, 16});
+        icon_widget->set_image(window_->get_icon());
 
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Start).set_shrinkable(true).set_elide(true);
 
+        layout->add_widget(std::unique_ptr<Widget>(icon_widget));
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
 
         auto const &decoration = Theme::current().style.window_decoration;

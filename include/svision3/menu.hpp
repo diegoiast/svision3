@@ -59,6 +59,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
     std::string const &display_title() const { return display_title_; }
     std::string const &mnemonic_key() const { return mnemonic_key_; }
     int hovered_item() const { return hovered_; }
+    Rect bounds() const { return bounds_; }
     std::vector<MenuItem> const &items() const { return items_; }
     void set_parent_menu(Menu *parent) { parent_menu_ = parent; }
 

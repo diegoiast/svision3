@@ -1708,6 +1708,137 @@ void WaylandPlatformWindow::set_title(std::string_view t) {
     xdg_toplevel_set_title(xdg_toplevel_, std::string(t).c_str());
 }
 
+// Generic "no icon available" placeholder for Wayland specifically: a
+// stylized W on a warm amber badge, echoing the convention Qt (and other
+// toolkits) use on Wayland sessions of falling back to the Wayland
+// project's own logo mark rather than a generic X (which is what
+// x11_platform.cpp's equivalent uses -- X11 has its own separate,
+// unrelated "no icon" convention). Traced from the Wayland logo, same
+// technique as default_x11_icon_xpm: downsampled with premultiplied-alpha
+// resizing from a higher-resolution source, alpha-thresholded since XPM
+// has no partial transparency. 32x32, matching that icon's resolution.
+static constexpr std::string_view default_wayland_icon_xpm = R"(/* XPM */
+static char *icon[] = {
+"32 32 70 2",
+"   c None",
+".. c #ffff40",
+".: c #fff820",
+".- c #ffe030",
+".= c #ffe038",
+".+ c #ffff38",
+".* c #ffff50",
+".# c #ffff68",
+".% c #ffd038",
+".@ c #ffc808",
+".o c #ffd018",
+".O c #ffd020",
+".X c #ffc008",
+".0 c #ffc000",
+".1 c #ffc800",
+".2 c #ffc010",
+".3 c #ffff60",
+".4 c #ffc838",
+".5 c #ffc828",
+".6 c #ffd040",
+".7 c #ffc020",
+".8 c #ffb800",
+".9 c #ffc810",
+".a c #fff838",
+".b c #ffc018",
+".c c #ffc818",
+".d c #ffc028",
+".e c #ffff88",
+".f c #ffc820",
+".g c #ffd010",
+".h c #ffff20",
+".i c #ffe048",
+".j c #ffc848",
+".k c #ffffc8",
+".l c #ffe830",
+".m c #fff018",
+".n c #ffd838",
+".o c #ffe820",
+".p c #ffd028",
+".q c #ffd048",
+".r c #ffe828",
+".s c #fff030",
+".t c #ffff90",
+".u c #fff828",
+".v c #ffd008",
+".w c #ffd818",
+".x c #ffff48",
+".y c #fff840",
+".z c #ffd840",
+".A c #ffe018",
+".B c #ffff58",
+".C c #ffd828",
+".D c #fff038",
+".E c #ffffe8",
+".F c #ffff30",
+".G c #ffd830",
+".H c #ffffd8",
+".I c #ffe028",
+".J c #ffffe0",
+".K c #ffff80",
+".L c #fff830",
+".M c #ffff70",
+".N c #ffd000",
+".O c #fff040",
+".P c #ffd030",
+".Q c #fff028",
+".R c #ffff98",
+".S c #ffffa0",
+".T c #fff020",
+".U c #ffe020",
+"                                                                ",
+"                          ...:.-.=.+.*                          ",
+"                    .#.%.@.o.O.X.0.1.1.@.2.3                    ",
+"                ...%.%.4.0.5.6.7.0.0.0.0.8.@.9.a                ",
+"                .@.0.0.8.0.8.8.8.8.b.7.8.0.0.0.0.c              ",
+"                .3.1.0.0.0.8.8.2.d.2.2.0.0.0.0.0.1              ",
+"        .3.e      .f.0.8.X.4.2.b.7.8.8.0.0.0.0.0.@              ",
+"        .g.h      .i.0.8.d.j.X.8.8.0.7.0.0.X.X.0.o    .k        ",
+"      .l.1.m        .n.0.8.8.0.0.0.0.2.0.0.X.X.1..    .c.o      ",
+"      .@.8.c        .p.0.0.8.0.2.X.0.8.X.q.8.0.@      .X.@      ",
+"    .r.0.0.2        .f.0.0.0.s  .e.@.0.0.0.0.2.o    .t.1.0.u    ",
+"    .9.0.8.2        .-.0.0.v      .w.f.b.8.0.1.x    ...1.0.9    ",
+"    .1.0.0.9        .y.0.0.9      .3.g.X.b.z.y      .A.0.0.1    ",
+"  ...1.0.0.o        .x.1.0.B        .@.0.0.0.C      .9.0.0.1..  ",
+"  .D.0.0.8.g.E        .1.X          .-.0.0.1.B    .e.1.0.0.1.F  ",
+"  .G.0.X.4.@.H        .v.I    .a.x    .1.0.X      .h.1.0.0.0.l  ",
+"  .G.0.b.%.1.J        .5.K    .g.+    .C.0.f      .L.0.0.0.0.l  ",
+"  .l.0.0.8.1.K              .M.1.o    .K.N.+      .O.0.0.0.1.F  ",
+"  ...1.0.0.1.F              .O.0.1      .C        .v.0.0.0.1.x  ",
+"    .1.0.0.0.I              .c.X.@.*              .I.0.8.0.1    ",
+"    .9.0.0.0.2              .1.4.c.F              .9.0.0.8.2    ",
+"    .o.0.0.0.p            .J.P.0.0.p            .K.@.0.0.1.Q    ",
+"      .v.0.0.O.3          .-.b.2.2.@            .*.0.0.0.@      ",
+"      .I.0.0.0.C          .X.8.X.X.1.3        .R.N.0.0.0.l      ",
+"        .@.0.0.@          .9.0.0.0.0.g        .g.0.0.0.9        ",
+"          .v.0.0.u      .S.1.0.0.0.0.@      .x.1.0.0.@          ",
+"          .M.v.0.0.L    .F.1.0.0.0.0.1.t    .@.0.0.g.R          ",
+"              .9.0.0.9.x.X.0.0.0.0.0.0.T  .U.1.0.9              ",
+"                .u.@.0.0.0.0.0.8.8.0.0.0.2.1.@.a                ",
+"                    .s.9.1.1.0.0.0.0.1.1.9.L                    ",
+"                          .x.a.=.=.a.x                          ",
+"                                                                "
+};)";
+
+void WaylandPlatformWindow::set_icon(Icon const &icon) {
+    // No Wayland protocol carries a client-set window icon (compositors
+    // resolve one themselves from app_id), so this only feeds our own CSD
+    // title bar -- there's nothing to push out to the compositor/taskbar
+    // the way X11's _NET_WM_ICON property does.
+    icon_ = icon;
+}
+
+Icon WaylandPlatformWindow::get_icon() {
+    if (!icon_) {
+        icon_ = parse_xpm(default_wayland_icon_xpm, PixelFormat::BGRA);
+    }
+    return icon_;
+}
+
 void WaylandPlatformWindow::set_cursor(CursorShape shape) {
     if (current_cursor == shape) {
         return;
@@ -1754,6 +1885,19 @@ void WaylandPlatformWindow::start_system_resize(WindowEdge edge, uint32_t serial
     }
     xdg_toplevel_resize(xdg_toplevel_, app_->seat, serial, edges);
 }
+
+void WaylandPlatformWindow::show_system_menu(Point p) {
+    // xdg_toplevel::show_window_menu has no return-value/serial-out to thread through a caller,
+    // so unlike start_system_move()/start_system_resize() (which take the triggering press's
+    // serial as a parameter), this reuses the application's most recently observed input serial
+    // -- kept current on every pointer button and keyboard key event (see pointer_button() and
+    // keyboard_key() below), so it's valid whether this was triggered by a click on the CSD icon
+    // or by the Alt+Space shortcut (the protocol explicitly allows either as the triggering
+    // action).
+    xdg_toplevel_show_window_menu(xdg_toplevel_, app_->seat, app_->input_serial,
+                                  static_cast<int32_t>(p.x), static_cast<int32_t>(p.y));
+}
+
 void WaylandPlatformWindow::show_tooltip_window(std::string const &text, Point pos) {
     if (!xdg_surface_ || !configured) {
         return;

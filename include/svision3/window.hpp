@@ -128,6 +128,10 @@ class Window {
     Size max_size() const { return max_size_; }
     Size content_min_size() const;
     Size size() const { return size_; }
+    // The window's client area, excluding the CSD border/shadow that surrounds it -- popups
+    // (menus, dropdowns, tooltips) must clamp to this, not to size(), or they end up positioned
+    // out over the shadow instead of against the window's actual visible edge.
+    Rect content_rect() const;
 
     int start_timer(float interval_sec, std::function<void()> callback, bool repeats = true);
     void stop_timer(int timer_id);
@@ -194,6 +198,12 @@ class Window {
     CursorShape current_cursor_ = CursorShape::Arrow;
     Widget *hovered_widget_ = nullptr;
     Widget *captured_widget_ = nullptr;
+    // Only tracked while debug_show_inspector is on. Unlike hovered_widget_ (which must respect
+    // each widget's widget_at()/blocks_hit_test() so real dispatch -- e.g. window dragging via a
+    // title bar's label -- keeps working), this resolves the deepest widget geometrically under
+    // the pointer regardless of blocks_hit_test(), so the inspector can still show details for
+    // purely-decorative widgets like Label. See draw_widget_inspector().
+    Widget *inspector_widget_ = nullptr;
 
     Widget *tooltip_widget_ = nullptr;
     int tooltip_timer_id_ = 0;

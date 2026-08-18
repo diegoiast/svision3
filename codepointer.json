@@ -9,7 +9,7 @@
                 "linux": "SVISION_PAINT=cairo SVISION_BACKEND=x11 build/Debug/demo",
                 "windows": "build\\Debug\\demo.exe"
             },
-            "name": "Demo (native)",
+            "name": "Demo (X11)",
             "runDirectory": "${source_directory}"
         },
         {
@@ -34,6 +34,14 @@
                 "windows": "build\\Debug\\demo_declarative.exe"
             },
             "name": "Demo declarative (cairo/wayland)",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "executables": {
+                "linux": "SVISION_BACKEND=x11 build/Debug/demo_declarative",
+                "windows": "build\\Debug\\demo_declarative.exe"
+            },
+            "name": "Demo declarative (cairo/X11)",
             "runDirectory": "${source_directory}"
         },
         {

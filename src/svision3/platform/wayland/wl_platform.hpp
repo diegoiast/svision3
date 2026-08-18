@@ -190,9 +190,9 @@ class WaylandPlatformWindow : public PlatformWindow {
     int start_timer(float interval_sec, std::function<void()> callback, bool repeats) override;
     void stop_timer(int timer_id) override;
     void set_cursor(CursorShape shape) override;
-    void set_icon(Icon const &) override {}
-    Icon get_icon() override { return nullptr; }
-    void show_system_menu(Point) override {}
+    void set_icon(Icon const &icon) override;
+    Icon get_icon() override;
+    void show_system_menu(Point p) override;
     void start_system_move(uint32_t serial) override;
     void start_system_resize(WindowEdge edge, uint32_t serial) override;
     void show_tooltip_window(std::string const &text, Point pos) override;
@@ -275,6 +275,13 @@ class WaylandPlatformWindow : public PlatformWindow {
         int width = 0, height = 0;
     };
     std::unique_ptr<TooltipData> tooltip_data;
+
+    // Wayland has no protocol-level way to set/query a window icon (icons
+    // are resolved by the compositor from app_id -> .desktop lookup, never
+    // supplied by the client) -- this only backs our own CSD title bar
+    // icon, set explicitly via set_icon() or falling back to a generic
+    // placeholder in get_icon().
+    Icon icon_;
 };
 
 } // namespace svision3

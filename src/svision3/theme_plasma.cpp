@@ -12,6 +12,7 @@
 #include "svision3/widget.hpp"
 #include "svision3/window.hpp"
 #include "svision3/window_title_bar.hpp"
+#include <algorithm>
 #include <memory>
 
 namespace svision3 {
@@ -24,12 +25,15 @@ class PlasmaTitleBar : public WindowTitleBar {
         layout = create_title_layout();
         layout->set_window(window_);
         layout->set_spacing(8.0f);
-        layout->set_margins({8, 12, 8, 12.0f});
+        layout->set_margins({8, 4, 8, 4});
 
         icon_widget = new TitleBarIcon(window_);
         icon_widget->set_window(window_);
-        icon_widget->set_min_size({16, 16});
-        icon_widget->set_max_size({16, 16});
+        // Matches the titlebar buttons' own 20x20 default size_hint (see TitlebarButton) --
+        // KWin's own Breeze decoration renders the window icon close to that size, and at 16x16
+        // it visibly shrank next to it.
+        icon_widget->set_min_size({22, 22});
+        icon_widget->set_max_size({22, 22});
         icon_widget->set_image(window_->get_icon());
 
         close_btn = new TitlebarButton(DecorationButton::Close, "Close");

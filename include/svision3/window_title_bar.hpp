@@ -16,6 +16,8 @@ class Window;
 
 class TitlebarButton : public Button {
   public:
+    DECLARE_WIDGET(TitlebarButton)
+
     TitlebarButton(DecorationButton type, std::string tooltip, Size size_hint = {20, 20});
     void paint(Painter &painter) override;
     Size size_hint() const override { return custom_size_hint; }
@@ -32,6 +34,8 @@ class TitlebarButton : public Button {
 
 class TitleBarIcon : public Button {
   public:
+    DECLARE_WIDGET(TitleBarIcon)
+
     TitleBarIcon(Window *w);
     bool handle_mouse(MouseEvent const &event) override;
     Size size_hint() const override { return custom_size_hint_; }
@@ -48,6 +52,8 @@ class TitleBarIcon : public Button {
 
 class WindowTitleBar : public Widget {
   public:
+    DECLARE_WIDGET(WindowTitleBar)
+
     WindowTitleBar(Window *window);
 
     void paint(Painter &painter) override;
@@ -58,6 +64,9 @@ class WindowTitleBar : public Widget {
     // why the minimise/maximise/close buttons never showed one despite setting it.
     Widget *widget_at(Point p) override;
     Size size_hint() const override;
+    // Exposes icon/title/buttons -- otherwise generic tree walks (debug-frame overlay,
+    // collect_focusables, etc.) stop at the bar itself and never see what's inside `layout`.
+    void for_each_child(std::function<void(Widget *)> const &callback) override;
 
     // consusmers of this class should derive *this* method
     virtual void initializeTitleBar();

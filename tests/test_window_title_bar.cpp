@@ -8,6 +8,7 @@
 #include "svision3/label.hpp"
 #include "svision3/theme.hpp"
 #include "svision3/theme_factory.hpp"
+#include "svision3/platform/dummy_platform.hpp"
 
 #ifdef SVISION3_HAS_CAIRO
 #include "svision3/painters/cairo_painter.hpp"
@@ -270,3 +271,108 @@ TEST_CASE("Maximize button icon changes between maximize and restore glyphs", "[
     REQUIRE(differing_bytes > 0);
 }
 #endif
+
+namespace {
+class MenuTrackingPlatformWindow : public DummyPlatformWindow {
+  public:
+    void show_system_menu(Point p) override {
+        last_pos = p;
+        call_count++;
+    }
+    Point last_pos{-1, -1};
+    int call_count = 0;
+};
+
+class MenuTrackingPlatformApplication : public DummyPlatformApplication {
+  public:
+    std::unique_ptr<PlatformWindow> create_window(std::string_view title, Size size, Window *owner,
+                                                  WindowOptions options) override {
+        auto w = std::make_unique<MenuTrackingPlatformWindow>();
+        last_window = w.get();
+        return w;
+    }
+    MenuTrackingPlatformWindow *last_window = nullptr;
+};
+
+struct MenuTrackingPlatformGuard {
+    MenuTrackingPlatformApplication app;
+    MenuTrackingPlatformGuard() { detail::set_current_platform(&app); }
+    ~MenuTrackingPlatformGuard() { detail::set_current_platform(nullptr); }
+};
+} // namespace
+
+// Regression test: clicking the title bar icon used to anchor the native system menu's x position
+// to the raw window canvas's left edge (x=0) -- which, for a CSD window, is the outer edge of the
+// invisible shadow/border padding, not the visible window's own edge. See
+// TitleBarIcon::handle_mouse() and Window::handle_key()'s Alt+Space handling, both in
+// window_title_bar.cpp/window.cpp -- both now anchor to content_rect().x instead.
+TEST_CASE("System menu anchors to the visible window edge, not the shadow's outer edge",
+          "[window][titlebar]") {
+    MenuTrackingPlatformGuard guard;
+    auto style = GENERATE(ThemeStyle::Win11, ThemeStyle::Win95, ThemeStyle::Plasma6,
+                          ThemeStyle::MacOS);
+    CAPTURE(static_cast<int>(style));
+    Theme::set_current(ThemeFactory::create(style, ColorScheme::Light));
+
+    WindowOptions opts{};
+    opts.csd = true;
+    Window win("Test", {800, 600}, opts);
+    win.set_root(std::make_unique<Label>("hello"));
+
+    REQUIRE(guard.app.last_window != nullptr);
+    auto *platform_window = guard.app.last_window;
+
+    auto const &s = Theme::current().style;
+    REQUIRE(s.border_width + s.shadow.size > 0.0f);
+
+    auto titlebar_top = s.border_width + s.shadow.size;
+    auto titlebar_h = s.window_decoration.top;
+    REQUIRE(titlebar_h > 0.0f);
+
+    // Click every pixel of the title bar row until the menu opens -- same scanning technique
+    // used elsewhere in this file, so this doesn't have to duplicate each theme's exact icon
+    // layout math (which, notably, is *not* consistent across themes: MacOS puts its icon on the
+    // trailing/right edge of the bar, unlike every other theme here).
+    //
+    // This inevitably also clicks through close/min/max along the way, which is fine (close() and
+    // minimize() are no-ops on the dummy platform) except for maximize, which does flip
+    // is_maximized() -- accounted for below by re-deriving the expected inset from
+    // content_rect() *after* the scan and forcing the window back to restored, rather than
+    // assuming the pre-scan inset still applies.
+    for (float y = titlebar_top; y < titlebar_top + titlebar_h && platform_window->call_count == 0;
+        y += 1.0f) {
+        for (float x = 0; x < win.size().width; x += 1.0f) {
+            // Paired with a release even on a miss: TitleBarIcon::handle_mouse() fires on press
+            // alone, but any other button hit along the way would otherwise be left stuck
+            // mid-press, which throws off later assertions in this same test.
+            MouseEvent press{};
+            press.type = MouseEvent::Type::Press;
+            press.position = {x, y};
+            win.handle_mouse(press);
+            MouseEvent release = press;
+            release.type = MouseEvent::Type::Release;
+            win.handle_mouse(release);
+            if (platform_window->call_count > 0) {
+                break;
+            }
+        }
+    }
+    REQUIRE(platform_window->call_count == 1);
+
+    if (win.is_maximized()) {
+        win.restore();
+    }
+    auto expected_x = win.content_rect().x;
+    CAPTURE(platform_window->last_pos.x, platform_window->last_pos.y, expected_x);
+    REQUIRE(platform_window->last_pos.x >= expected_x - 0.01f);
+
+    // Alt+Space should anchor the same way.
+    platform_window->call_count = 0;
+    KeyEvent alt_space{};
+    alt_space.type = KeyEvent::Type::Press;
+    alt_space.alt = true;
+    alt_space.key = Key::Space;
+    win.handle_key(alt_space);
+    REQUIRE(platform_window->call_count == 1);
+    REQUIRE(platform_window->last_pos.x >= expected_x - 0.01f);
+}

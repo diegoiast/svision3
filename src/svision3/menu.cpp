@@ -96,21 +96,24 @@ void Menu::show(Window *win, Point position) {
         width += max_icon_w + 4.0f; // Icon plus the gap before the text
     }
     auto height = menu_total_height(items_, item_height_, separator_height_) + 4.0f;
-    auto win_size = window_->size();
+    // Clamp to the window's client area, not its raw size() -- size() includes the CSD
+    // shadow/border margin, so clamping against it lets the menu hang out over the shadow
+    // instead of against the window's actual visible edge.
+    auto content = window_->content_rect();
     auto x = position.x;
     auto y = position.y;
 
     if (max_shortcut_w > 0) {
         width += max_shortcut_w + 20.0f; // Add gap and shortcut width
     }
-    if (x + width > win_size.width) {
-        x = win_size.width - width;
+    if (x + width > content.x + content.width) {
+        x = content.x + content.width - width;
     }
-    if (y + height > win_size.height) {
-        y = win_size.height - height;
+    if (y + height > content.y + content.height) {
+        y = content.y + content.height - height;
     }
-    x = std::max(0.0f, x);
-    y = std::max(0.0f, y);
+    x = std::max(content.x, x);
+    y = std::max(content.y, y);
 
     bounds_ = {x, y, width, height};
     hovered_ = -1;

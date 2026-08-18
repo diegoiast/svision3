@@ -23,7 +23,7 @@ class Win11TitleBar : public WindowTitleBar {
         layout = create_title_layout();
         layout->set_window(window_);
         layout->set_spacing(8.0f);
-        layout->set_margins({0, 0, 0, 8.0f});
+        layout->set_margins({0, 0, 0, 0});
 
         icon_widget = new TitleBarIcon(window_);
         icon_widget->set_window(window_);

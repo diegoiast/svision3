@@ -17,6 +17,7 @@ class ContextMenu {
     explicit ContextMenu(std::vector<MenuItem> items);
 
     void show(Window *window, Point position);
+    Rect bounds() const { return bounds_; }
 
   private:
     void paint(Painter &painter);

@@ -17,6 +17,7 @@
 namespace svision3 {
 
 static void draw_size_hint_guides_recursive(Painter &painter, Widget *widget, float font_size);
+static Widget *inspector_widget_at_recursive(Widget *widget, Point p);
 
 static auto is_descendant_of(Widget *descendant, Widget *ancestor) -> bool {
     while (descendant) {
@@ -1092,6 +1093,25 @@ void Window::handle_mouse(MouseEvent const &event) {
         if (!has_popup()) {
             update_tooltip(under, event.position);
         }
+
+        if (Widget::debug_show_inspector) {
+            inspector_widget_ = nullptr;
+            for (auto &w : widgets_) {
+                auto p = event.position;
+                p.x -= w->rect().x;
+                p.y -= w->rect().y;
+                inspector_widget_ = inspector_widget_at_recursive(w.get(), p);
+                if (inspector_widget_) {
+                    break;
+                }
+            }
+            if (!inspector_widget_ && root_) {
+                auto p = event.position;
+                p.x -= root_->rect().x;
+                p.y -= root_->rect().y;
+                inspector_widget_ = inspector_widget_at_recursive(root_.get(), p);
+            }
+        }
     }
 
     if (hovered_widget_) {
@@ -1115,6 +1135,20 @@ void Window::handle_key(KeyEvent const &event) {
             request_redraw("event");
             return;
         }
+    }
+
+    // Alt+Space: the traditional "open the window's system menu" shortcut, honored regardless of
+    // focus (matching Tab's handling just below) since it's a window-level accelerator, not
+    // something an individual widget should be able to swallow. Anchored near where the title
+    // bar icon itself sits so it lands in roughly the same spot on screen as a click on the icon.
+    if (event.type == KeyEvent::Type::Press && event.alt && event.key == Key::Space) {
+        // content_rect(), not (0, decoration.top): the raw window canvas starts at the outer
+        // edge of the (invisible) CSD shadow/border, so anchoring to x=0/y=0 there instead of
+        // the visible window's own edge would land the menu out past the actual window edge.
+        auto const &decoration = Theme::current().style.window_decoration;
+        auto content = content_rect();
+        platform_window()->show_system_menu({content.x, content.y + decoration.top});
+        return;
     }
 
     if (event.type == KeyEvent::Type::Press && event.key == Key::Tab) {
@@ -1238,13 +1272,17 @@ void Window::handle_activate(bool active) {
     request_redraw("window activate");
 }
 
+Rect Window::content_rect() const {
+    auto const &s = Theme::current().style;
+    auto bw = options_.csd ? s.border_width : 0.0f;
+    auto shadow = (options_.csd && !is_maximized_) ? s.shadow.size : 0.0f;
+    auto inset = bw + shadow;
+    return {inset, inset, size_.width - 2 * inset, size_.height - 2 * inset};
+}
+
 void Window::relayout() {
     if (root_) {
-        auto const &s = Theme::current().style;
-        auto bw = options_.csd ? s.border_width : 0.0f;
-        auto shadow = (options_.csd && !is_maximized_) ? s.shadow.size : 0.0f;
-        auto inset = bw + shadow;
-        root_->set_rect({inset, inset, size_.width - 2 * inset, size_.height - 2 * inset});
+        root_->set_rect(content_rect());
         // Keep the compositor's minimum in sync with the content whenever it
         // is not overridden by an explicit set_min_size() call.
         if (impl_->platform && !(min_size_.width > 0 || min_size_.height > 0)) {
@@ -1261,11 +1299,9 @@ Window &Window::resize_to_fit() {
     // First pass: layout at the current width so height-dependent widgets
     // (e.g. RichLabel/HtmlView) render at their actual allocated width
     // before we query their size_hint for the final height.
-    auto const &s = Theme::current().style;
-    auto bw = options_.csd ? s.border_width : 0.0f;
-    auto shadow = (options_.csd && !is_maximized_) ? s.shadow.size : 0.0f;
-    auto inset = bw + shadow;
-    root_->set_rect({inset, inset, size_.width - 2 * inset, size_.height - 2 * inset});
+    auto rect = content_rect();
+    auto inset = rect.x;
+    root_->set_rect(rect);
     auto hint = root_->size_hint();
     auto changed = false;
     if (hint.width + 2 * inset > size_.width) {
@@ -1506,6 +1542,30 @@ static void draw_size_hint_guides_recursive(Painter &painter, Widget *widget, fl
     painter.pop_translation();
 }
 
+// Deepest widget under `p` (widget-local space, same convention as Widget::widget_at()), but
+// unlike the real widget_at()/hovered_widget_ resolution, this ignores every widget's own
+// widget_at() override and blocks_hit_test() opt-out. WindowTitleBar's title label, for
+// instance, deliberately fails blocks_hit_test() so a press on it falls through to the title
+// bar to start a window drag (see WindowTitleBar::widget_at()) -- real dispatch must keep
+// honoring that, but the debug inspector still wants to be able to point at the label itself
+// and see its own to_json() details. Used only by draw_widget_inspector()'s hover tracking.
+static Widget *inspector_widget_at_recursive(Widget *widget, Point p) {
+    if (!widget || !widget->is_visible() || !widget->hit_test(p)) {
+        return nullptr;
+    }
+    Widget *deepest = nullptr;
+    widget->for_each_child([&](Widget *child) {
+        if (deepest || !child->is_visible()) {
+            return;
+        }
+        auto child_p = p;
+        child_p.x -= child->rect().x;
+        child_p.y -= child->rect().y;
+        deepest = inspector_widget_at_recursive(child, child_p);
+    });
+    return deepest ? deepest : widget;
+}
+
 static auto json_value_to_string(nlohmann::json const &value) -> std::string {
     if (value.is_string()) {
         return value.get<std::string>();
@@ -1518,7 +1578,7 @@ static auto json_value_to_string(nlohmann::json const &value) -> std::string {
 }
 
 void Window::draw_widget_inspector(Painter &painter) {
-    auto *widget = hovered_widget_;
+    auto *widget = inspector_widget_ ? inspector_widget_ : hovered_widget_;
     if (!widget) {
         return;
     }

@@ -37,7 +37,7 @@ void TitlebarButton::paint(Painter &painter) {
         .focused = is_focused(),
         .enabled = is_enabled(),
         .window_active = window_ ? window_->is_active() : true,
-        .checked = false,
+        .checked = is_checked(),
     };
     Theme::current().draw_window_button(painter, {0, 0, rect_.width, rect_.height}, type_, wstate);
 }
@@ -62,10 +62,16 @@ void TitleBarIcon::paint(Painter &painter) {
     if (!icon_image_ || icon_image_->width <= 0 || icon_image_->height <= 0) {
         return;
     }
+    // Scaled rather than drawn at native size: platform default icons aren't all 16x16 (X11's is
+    // 32x32, for a crisper _NET_WM_ICON/taskbar image), and Widget::draw() clips to rect_, so a
+    // larger source would otherwise just get cropped to its center instead of shrunk to fit.
     auto iw = static_cast<float>(icon_image_->width);
     auto ih = static_cast<float>(icon_image_->height);
-    painter.draw_image(*icon_image_,
-                       {(rect_.width - iw) / 2.0f, (rect_.height - ih) / 2.0f});
+    auto scale = std::min(rect_.width / iw, rect_.height / ih);
+    auto dw = iw * scale;
+    auto dh = ih * scale;
+    painter.draw_image_scaled(
+        *icon_image_, {(rect_.width - dw) / 2.0f, (rect_.height - dh) / 2.0f, dw, dh});
 }
 
 bool TitleBarIcon::handle_mouse(MouseEvent const &event) {
@@ -75,8 +81,14 @@ bool TitleBarIcon::handle_mouse(MouseEvent const &event) {
     if (event.type == MouseEvent::Type::Press && hit_test(event.position)) {
         // map_to_window() walks the real parent chain (icon -> layout -> WindowTitleBar ->
         // root_), so it already lands in full window-local coordinates, shadow included --
-        // no separate compensation needed (see WindowTitleBar::create_title_layout()).
+        // no separate compensation needed (see WindowTitleBar::create_title_layout()). The x
+        // component is then pinned to the visible window's own left edge (content_rect().x,
+        // past the CSD shadow/border) rather than kept as the icon's mapped position: native
+        // window menus (KWin/Breeze included) anchor to the window edge when triggered from
+        // the icon, not to wherever the icon happens to sit -- and not to the outer edge of
+        // the invisible shadow padding either, which x=0 would land on.
         auto menu_pos = map_to_window({0, rect_.height});
+        menu_pos.x = window_->content_rect().x;
         window_->platform_window()->show_system_menu(menu_pos);
         return true;
     }
@@ -94,8 +106,8 @@ auto WindowTitleBar::create_title_layout() -> HBoxLayout * {
 void WindowTitleBar::initializeTitleBar() {
     layout = create_title_layout();
     layout->set_window(window_);
-    layout->set_margins(Margins{8.0f, 12.0, 8.0, 12.0f});
-    layout->set_spacing(8.0f);
+    layout->set_margins(Margins{4.0f, 12.0, 4.0, 12.0f});
+    layout->set_spacing(4.0f);
 
     icon_widget = new TitleBarIcon(window_);
     icon_widget->set_min_size({16, 16});
@@ -188,7 +200,7 @@ void WindowTitleBar::sync_button_states() {
         // a TitlebarButton, so this cast is safe.
         if (auto *titlebar_btn = dynamic_cast<TitlebarButton *>(max_btn)) {
             titlebar_btn->set_type(window_->is_maximized() ? DecorationButton::Restore
-                                                            : DecorationButton::Maximize);
+                                                           : DecorationButton::Maximize);
         }
     }
     if (close_btn) {
@@ -248,6 +260,12 @@ Widget *WindowTitleBar::widget_at(Point p) {
     return this;
 }
 
+void WindowTitleBar::for_each_child(std::function<void(Widget *)> const &callback) {
+    if (layout) {
+        layout->for_each_child(callback);
+    }
+}
+
 void WindowTitleBar::set_icon(Icon const &icon) {
     if (icon_widget) {
         icon_widget->set_image(icon);
@@ -287,8 +305,8 @@ void WindowTitleBar::pull_loose_from_maximized(MouseEvent const &event) {
     auto ratio = rect_.width > 0 ? press_position.x / rect_.width : 0.5f;
     auto grab_x = inset + ratio * std::max(0.0f, restored_size.width - 2 * inset);
     auto grab_y = inset + press_position.y;
-    platform->set_position({origin.x + pointer_in_window.x - grab_x,
-                            origin.y + pointer_in_window.y - grab_y});
+    platform->set_position(
+        {origin.x + pointer_in_window.x - grab_x, origin.y + pointer_in_window.y - grab_y});
 }
 
 bool WindowTitleBar::handle_mouse(MouseEvent const &event) {

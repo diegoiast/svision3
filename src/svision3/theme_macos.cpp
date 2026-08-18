@@ -24,7 +24,7 @@ class MacOSTitleBar : public WindowTitleBar {
         layout = create_title_layout();
         layout->set_window(window_);
         layout->set_spacing(8.0f);
-        layout->set_margins({11, 72, 11, 12.0f});
+        layout->set_margins({8, 4, 11, 12.0f});
 
         close_btn = new TitlebarButton(DecorationButton::Close, "Close");
         close_btn->on_click = [this] { window_->close(); };
