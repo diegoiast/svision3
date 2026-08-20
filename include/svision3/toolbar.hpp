@@ -28,6 +28,9 @@ class Toolbar : public Widget, public Fluent<Toolbar> {
     void remove_range(int index, int count);
     int item_count() const;
 
+    Toolbar &set_orientation(Orientation o);
+    Orientation orientation() const { return orientation_; }
+
     void clear();
 
     void paint(Painter &painter) override;
@@ -40,9 +43,23 @@ class Toolbar : public Widget, public Fluent<Toolbar> {
     void for_each_child(std::function<void(Widget *)> const &callback) override;
 
   private:
-    std::unique_ptr<HBoxLayout> layout_;
+    // The toolbar owns its items rather than the layout, because flipping
+    // orientation swaps HBoxLayout for VBoxLayout -- two unrelated types with no
+    // common item list to migrate.
+    struct Entry {
+        std::shared_ptr<Widget> widget;
+        int stretch = 0;
+    };
+
+    void rebuild_layout();
+    std::weak_ptr<Widget> insert_entry(int index, std::shared_ptr<Widget> w, int stretch);
+
+    std::vector<Entry> entries_;
+    std::unique_ptr<AbstractLayout> layout_;
+    Orientation orientation_ = Orientation::Horizontal;
 };
 
-auto create_toolbar_separator() -> std::unique_ptr<Widget>;
+auto create_toolbar_separator(Orientation toolbar_orientation = Orientation::Horizontal)
+    -> std::unique_ptr<Widget>;
 
 } // namespace svision3
