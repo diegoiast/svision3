@@ -49,6 +49,9 @@ struct Style {
 
     struct {
         Margins padding = {6, 8, 6, 8};
+        // Themes from the era before mnemonics were hidden until Alt is pressed
+        // (Win95 and friends) underline them unconditionally.
+        bool always_show_mnemonics = false;
     } menuBar;
 
     struct TabWidgetStyle {
@@ -247,23 +250,24 @@ class Theme {
     // passes a non-zero inset; the other stays 0. Keeps the theme agnostic
     // to which side that is, so a future mirrored layout (buttons on the
     // left) is just a different inset value from the caller.
-    virtual void draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
-                                 std::string_view placeholder, int cursor_pos, int selection_start,
-                                 int selection_end, WidgetState const &state,
-                                 bool password_mode = false, float scroll_offset = 0.0f,
-                                 std::optional<Color> background = std::nullopt,
-                                 bool cursor_visible = true,
-                                 text::TextLayout const *layout = nullptr,
-                                 float button_inset_left = 0.0f,
-                                 float button_inset_right = 0.0f) const = 0;
+    virtual void
+    draw_line_input(Painter &painter, Rect const &rect, std::string_view text,
+                    std::string_view placeholder, int cursor_pos, int selection_start,
+                    int selection_end, WidgetState const &state, bool password_mode = false,
+                    float scroll_offset = 0.0f, std::optional<Color> background = std::nullopt,
+                    bool cursor_visible = true, text::TextLayout const *layout = nullptr,
+                    float button_inset_left = 0.0f, float button_inset_right = 0.0f) const = 0;
     virtual void draw_menubar_item(Painter &painter, Rect const &rect, std::string_view title,
                                    bool hovered, bool active, bool show_mnemonics) const = 0;
     virtual void draw_menubar_background(Painter &painter, Rect const &rect,
                                          WidgetState const &state) const = 0;
     virtual void draw_menu_background(Painter &painter, Rect const &rect) const = 0;
+    // text is the raw label: when show_mnemonics is set the '&' marker is drawn
+    // as an underline, otherwise it is stripped.
     virtual void draw_menu_item(Painter &painter, Rect const &rect, std::string_view text,
                                 Icon const &icon, std::string_view shortcut, bool hovered,
-                                bool enabled, bool checkable, bool checked) const = 0;
+                                bool enabled, bool checkable, bool checked,
+                                bool show_mnemonics) const = 0;
     virtual void draw_menu_separator(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_menu_indicator(Painter &painter, Rect const &rect, bool enabled) const = 0;
     virtual void draw_progress_bar(Painter &painter, Rect const &rect, float progress,

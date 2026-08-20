@@ -102,6 +102,7 @@ Win95Theme::Win95Theme(ColorScheme scheme, std::optional<Palette> p)
     style.window_decoration = {26, 0, 0, 0};
     style.tabWidget.tab_radius = 0.0f;
     style.corner_radius = 0.0f;
+    style.menuBar.always_show_mnemonics = true;
 }
 
 std::unique_ptr<Widget> Win95Theme::create_title_bar(Window *window) const {

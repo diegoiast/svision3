@@ -132,8 +132,8 @@ void BaseTheme::draw_button(Painter &painter, Rect const &rect, std::string_view
     auto bg = background.value_or(palette.base);
     auto dark = bg.luma() < 0.5f;
     if (!background && flat && state.interaction != ButtonState::Hovered) {
-        bg = state.window_active ? palette.window
-                                 : palette.window_inactive.value_or(palette.window);
+        bg =
+            state.window_active ? palette.window : palette.window_inactive.value_or(palette.window);
     }
     if (enabled) {
         if (pressed) {
@@ -432,7 +432,8 @@ void BaseTheme::draw_menu_background(Painter &painter, Rect const &rect) const {
 
 void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_view text,
                                Icon const &icon, std::string_view shortcut, bool hovered,
-                               bool enabled, bool checkable, bool checked) const {
+                               bool enabled, bool checkable, bool checked,
+                               bool show_mnemonics) const {
     auto fm = painter.font_metrics(palette.fonts.size);
     auto baseline = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto text_col = palette.text;
@@ -459,7 +460,11 @@ void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_v
         // FIXME: remove this alpha channel changing
         text_col.a *= 0.4f;
     }
-    painter.draw_text(text, {text_x, baseline}, text_col, palette.fonts.size);
+    if (show_mnemonics) {
+        painter.draw_mnemonic_text(text, {text_x, baseline}, text_col, palette.fonts.size);
+    } else {
+        painter.draw_text(strip_mnemonic(text), {text_x, baseline}, text_col, palette.fonts.size);
+    }
 
     if (!shortcut.empty()) {
         auto shortcut_w = painter.measure_text(shortcut, palette.fonts.size).width;
@@ -652,7 +657,8 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
     if (vertical) {
         if (orientation == TabOrientation::West || orientation == TabOrientation::East) {
             if (orientation == TabOrientation::West) {
-                text_x = effective_rect.x + (effective_rect.width - fm.cell_height()) / 2.0f + fm.ascent;
+                text_x =
+                    effective_rect.x + (effective_rect.width - fm.cell_height()) / 2.0f + fm.ascent;
                 baseline_y =
                     effective_rect.y + effective_rect.height - style.tabWidget.tab_padding_h;
             } else {
@@ -670,8 +676,8 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
             if (orientation == TabOrientation::WestVertical) {
                 // Bar on the left, content on the right. Button on the right.
                 text_x = effective_rect.x + style.tabWidget.tab_padding_h;
-                baseline_y =
-                    effective_rect.y + (effective_rect.height - fm.cell_height()) / 2.0f + fm.ascent;
+                baseline_y = effective_rect.y + (effective_rect.height - fm.cell_height()) / 2.0f +
+                             fm.ascent;
                 close_cx = effective_rect.x + effective_rect.width - style.tabWidget.tab_padding_h -
                            close_btn_size / 2.0f;
                 close_cy = effective_rect.y + effective_rect.height / 2.0f;
@@ -685,14 +691,15 @@ void BaseTheme::draw_tab(Painter &painter, Rect const &rect, std::string_view te
                 } else {
                     text_x = effective_rect.x + style.tabWidget.tab_padding_h;
                 }
-                baseline_y =
-                    effective_rect.y + (effective_rect.height - fm.cell_height()) / 2.0f + fm.ascent;
+                baseline_y = effective_rect.y + (effective_rect.height - fm.cell_height()) / 2.0f +
+                             fm.ascent;
                 close_cy = effective_rect.y + effective_rect.height / 2.0f;
             }
         }
     } else {
         text_x = effective_rect.x + style.tabWidget.tab_padding_h;
-        baseline_y = effective_rect.y + (effective_rect.height - fm.cell_height()) / 2.0f + fm.ascent;
+        baseline_y =
+            effective_rect.y + (effective_rect.height - fm.cell_height()) / 2.0f + fm.ascent;
         close_cx = effective_rect.x + style.tabWidget.tab_padding_h + text_w + close_btn_gap +
                    close_btn_size / 2.0f;
         close_cy = effective_rect.y + effective_rect.height / 2.0f;

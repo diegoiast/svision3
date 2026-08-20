@@ -43,12 +43,26 @@ struct MenuItem {
 
 class Menu : public std::enable_shared_from_this<Menu> {
   public:
+    // Why a menu went away. The menubar needs to tell these apart: Escape hands
+    // control back to the menubar with the title still highlighted, while running
+    // a command or clicking elsewhere leaves menu navigation altogether.
+    enum class CloseReason { Dismissed, ActionTriggered, EscapePressed };
+
     explicit Menu(std::string title = "");
 
     void add_action(std::shared_ptr<Command> cmd);
     void add_action(std::string name, std::function<void()> execute, bool enabled = true);
     void add_separator();
     void add_submenu(std::string name, std::shared_ptr<Menu> submenu);
+
+    // Positional editing, for menus whose contents depend on what the application
+    // is doing -- contextual commands that belong to the focused widget, recent
+    // file lists, and so on. Sizing happens in show(), so edit a closed menu.
+    void insert_action(int index, std::shared_ptr<Command> cmd);
+    void insert_separator(int index);
+    void remove_range(int index, int count);
+    int item_count() const { return static_cast<int>(items_.size()); }
+    void clear();
 
     void show(Window *window, Point position);
     void close();
@@ -62,6 +76,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
     Rect bounds() const { return bounds_; }
     std::vector<MenuItem> const &items() const { return items_; }
     void set_parent_menu(Menu *parent) { parent_menu_ = parent; }
+    CloseReason last_close_reason() const { return close_reason_; }
 
     std::function<void()> on_request_next_menu;
     std::function<void()> on_request_prev_menu;
@@ -88,6 +103,7 @@ class Menu : public std::enable_shared_from_this<Menu> {
     float item_height_ = 0;
     float separator_height_ = 7.0f;
     Menu *parent_menu_ = nullptr;
+    CloseReason close_reason_ = CloseReason::Dismissed;
 };
 
 } // namespace svision3

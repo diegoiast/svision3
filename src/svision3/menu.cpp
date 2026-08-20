@@ -42,6 +42,39 @@ void Menu::add_submenu(std::string name, std::shared_ptr<Menu> submenu) {
     items_.push_back(MenuItem::submenu_item(std::move(name), std::move(submenu)));
 }
 
+static auto clamp_index(int index, size_t size) -> size_t {
+    if (index < 0) {
+        return 0;
+    }
+    return std::min(static_cast<size_t>(index), size);
+}
+
+void Menu::insert_action(int index, std::shared_ptr<Command> cmd) {
+    items_.insert(items_.begin() + clamp_index(index, items_.size()),
+                  MenuItem::action(std::move(cmd)));
+}
+
+void Menu::insert_separator(int index) {
+    items_.insert(items_.begin() + clamp_index(index, items_.size()), MenuItem::sep());
+}
+
+void Menu::remove_range(int index, int count) {
+    if (index < 0 || count <= 0 || index >= static_cast<int>(items_.size())) {
+        return;
+    }
+    count = std::min(count, static_cast<int>(items_.size()) - index);
+    items_.erase(items_.begin() + index, items_.begin() + index + count);
+    // The removed items may have been the hovered one, or shifted it.
+    hovered_ = -1;
+    open_submenu_index_ = -1;
+}
+
+void Menu::clear() {
+    items_.clear();
+    hovered_ = -1;
+    open_submenu_index_ = -1;
+}
+
 static auto menu_total_height(std::vector<MenuItem> const &items, float item_h, float sep_h)
     -> float {
     auto h = 0.0f;
@@ -71,7 +104,7 @@ void Menu::show(Window *win, Point position) {
             continue;
         }
         auto name_w = detail::current_platform()
-                          ->measure_text(item.command->name(), palette.fonts.size)
+                          ->measure_text(strip_mnemonic(item.command->name()), palette.fonts.size)
                           .width;
         if (item.is_submenu()) {
             // Room for the ">" indicator drawn at the right edge of the item.
@@ -117,6 +150,7 @@ void Menu::show(Window *win, Point position) {
 
     bounds_ = {x, y, width, height};
     hovered_ = -1;
+    close_reason_ = CloseReason::Dismissed;
 
     auto popup = Popup{};
     popup.bounds = bounds_;
@@ -188,10 +222,11 @@ void Menu::paint(Painter &painter) {
         auto item_rect = Rect{2, y, bounds_.width - 4, item_height_};
         auto icon_data = item.command->icon_image();
         auto shortcut = item.command->printable_shortcut();
-        auto text = strip_mnemonic(item.command->name());
 
-        theme.draw_menu_item(painter, item_rect, text, icon_data, shortcut, i == hovered_, enabled,
-                             false, false);
+        // An open menu always underlines its own mnemonics -- reaching an item by
+        // typing its letter only works if you can see which letter that is.
+        theme.draw_menu_item(painter, item_rect, item.command->name(), icon_data, shortcut,
+                             i == hovered_, enabled, false, false, true);
         if (item.type == MenuItem::Type::Submenu) {
             auto const &style = Theme::current().style.combo;
             auto fm = painter.font_metrics(palette.fonts.size);
@@ -250,7 +285,9 @@ bool Menu::handle_mouse(MouseEvent const &event) {
             auto &existing = items_[open_submenu_index_].submenu;
             if (existing && existing->is_shown()) {
                 existing->on_close_callback = nullptr;
-                if (window_) { window_->close_popup(); }
+                if (window_) {
+                    window_->close_popup();
+                }
             }
             open_submenu_index_ = -1;
         }
@@ -277,6 +314,7 @@ bool Menu::handle_mouse(MouseEvent const &event) {
         if (state_handler_.button_state == ButtonState::ClickedInside && idx == pressed_item_) {
             if (idx >= 0 && items_[idx].is_action() && items_[idx].command->is_enabled()) {
                 auto cmd = items_[idx].command;
+                close_reason_ = CloseReason::ActionTriggered;
                 close();
                 cmd->execute();
             }
@@ -338,6 +376,7 @@ bool Menu::handle_key(KeyEvent const &event) {
         }
         return true;
     case Key::Escape:
+        close_reason_ = CloseReason::EscapePressed;
         close();
         return true;
     case Key::Enter:
@@ -348,6 +387,7 @@ bool Menu::handle_key(KeyEvent const &event) {
         if (hovered_ >= 0 && items_[hovered_].is_action() &&
             items_[hovered_].command->is_enabled()) {
             auto cmd = items_[hovered_].command;
+            close_reason_ = CloseReason::ActionTriggered;
             close();
             cmd->execute();
         }
@@ -362,6 +402,7 @@ bool Menu::handle_key(KeyEvent const &event) {
                 if (parse_mnemonic(items_[i].command->name()).key == key) {
                     if (items_[i].is_action()) {
                         auto cmd = items_[i].command;
+                        close_reason_ = CloseReason::ActionTriggered;
                         close();
                         cmd->execute();
                         return true;
@@ -399,7 +440,8 @@ void Menu::open_submenu(int index) {
     // Close parent when child submenu is dismissed (action selected or Escape)
     auto closing = std::make_shared<bool>(false);
     auto old_callback = item.submenu->on_close_callback;
-    item.submenu->on_close_callback = [this, closing, old_callback] {
+    auto submenu = item.submenu;
+    item.submenu->on_close_callback = [this, closing, old_callback, submenu] {
         if (*closing) {
             return;
         }
@@ -407,6 +449,9 @@ void Menu::open_submenu(int index) {
         if (old_callback) {
             old_callback();
         }
+        // Carry the child's reason upward so Escape in a submenu still reads as
+        // Escape by the time the menubar sees it.
+        close_reason_ = submenu->last_close_reason();
         close();
     };
 
