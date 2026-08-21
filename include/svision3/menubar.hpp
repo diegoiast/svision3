@@ -44,6 +44,12 @@ class MenuBar : public Widget, public Fluent<MenuBar> {
     // An empty menu is not drawn and cannot be reached: it has nothing to show, so
     // its title would be a dead word in the menubar.
     bool is_menu_shown(int index) const;
+    // The nearest menu in direction `dir` (+1/-1 from `from`) that has something to
+    // show, wrapping around. Returns -1 when no menu qualifies. Every sideways
+    // move goes through this, so a menu that is empty for the current context --
+    // one filled from the active tab, say -- is stepped over rather than becoming
+    // a dead end that strands keyboard navigation.
+    int next_shown_menu(int from, int dir) const;
     // Enters or leaves keyboard navigation, taking and releasing the window's
     // keyboard grab with it.
     void set_keyboard_active(bool active);

@@ -102,6 +102,21 @@ bool MenuBar::is_menu_shown(int index) const {
     return !menus_[index]->items().empty();
 }
 
+int MenuBar::next_shown_menu(int from, int dir) const {
+    auto n = static_cast<int>(menus_.size());
+    if (n == 0) {
+        return -1;
+    }
+    auto index = ((from + dir) % n + n) % n;
+    for (auto step = 0; step < n; ++step) {
+        if (is_menu_shown(index)) {
+            return index;
+        }
+        index = ((index + dir) % n + n) % n;
+    }
+    return -1;
+}
+
 void MenuBar::paint(Painter &painter) {
     auto const &theme = Theme::current();
     auto wstate = WidgetState{
@@ -271,13 +286,10 @@ bool MenuBar::handle_key(KeyEvent const &event) {
             // With nothing selected yet, Right starts at the first menu and Left
             // wraps around to the last one.
             auto base = (active_ == -1) ? ((dir == 1) ? -1 : 0) : active_;
-            auto next_index = ((base + dir) % n + n) % n;
-            // Step over menus that are currently empty, so the arrows only visit
+            // Steps over menus that are currently empty, so the arrows only visit
             // titles the user can actually see.
-            for (auto step = 0; step < n && !is_menu_shown(next_index); ++step) {
-                next_index = ((next_index + dir) % n + n) % n;
-            }
-            if (!is_menu_shown(next_index)) {
+            auto next_index = next_shown_menu(base, dir);
+            if (next_index < 0) {
                 return true;
             }
 
@@ -400,13 +412,23 @@ void MenuBar::toggle_menu(int index) {
     auto pos = map_to_window({x, rect_.height});
     auto menu = menus_[index];
     menu->set_parent_menu(nullptr);
+    // Left/Right inside an open dropdown walks the menubar the same way the
+    // menubar's own arrow handling does -- skipping empty menus. Stepping by a
+    // plain +/-1 would hand toggle_menu() an empty neighbour, which it refuses to
+    // open, leaving navigation stuck one move away from where it started. Landing
+    // back on the menu already open (the only one with content) is left alone
+    // rather than toggled shut.
     menu->on_request_next_menu = [this, index] {
-        auto next_index = (index + 1) % menus_.size();
-        toggle_menu(next_index);
+        auto next_index = next_shown_menu(index, 1);
+        if (next_index >= 0 && next_index != index) {
+            toggle_menu(next_index);
+        }
     };
     menu->on_request_prev_menu = [this, index] {
-        auto prev_index = (index - 1 + menus_.size()) % menus_.size();
-        toggle_menu(prev_index);
+        auto prev_index = next_shown_menu(index, -1);
+        if (prev_index >= 0 && prev_index != index) {
+            toggle_menu(prev_index);
+        }
     };
     menu->on_close_callback = [this, index] {
         hovered_ = -1;
