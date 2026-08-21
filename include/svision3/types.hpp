@@ -91,17 +91,17 @@ struct Color {
     // Inverse of from_argb: pack into 0xAARRGGBB.
     constexpr uint32_t to_argb32() const {
         return (static_cast<uint32_t>(a * 255.0f + 0.5f) << 24) |
-              (static_cast<uint32_t>(r * 255.0f + 0.5f) << 16) |
-              (static_cast<uint32_t>(g * 255.0f + 0.5f) << 8) |
-              static_cast<uint32_t>(b * 255.0f + 0.5f);
+               (static_cast<uint32_t>(r * 255.0f + 0.5f) << 16) |
+               (static_cast<uint32_t>(g * 255.0f + 0.5f) << 8) |
+               static_cast<uint32_t>(b * 255.0f + 0.5f);
     }
 
     // Inverse of from_bgra: pack into 0xBBGGRRAA.
     constexpr uint32_t to_bgra32() const {
         return (static_cast<uint32_t>(b * 255.0f + 0.5f) << 24) |
-              (static_cast<uint32_t>(g * 255.0f + 0.5f) << 16) |
-              (static_cast<uint32_t>(r * 255.0f + 0.5f) << 8) |
-              static_cast<uint32_t>(a * 255.0f + 0.5f);
+               (static_cast<uint32_t>(g * 255.0f + 0.5f) << 16) |
+               (static_cast<uint32_t>(r * 255.0f + 0.5f) << 8) |
+               static_cast<uint32_t>(a * 255.0f + 0.5f);
     }
 
     static constexpr Color mid(Color a, Color b) { return Color::lerp(a, b, 0.5); }
@@ -213,14 +213,15 @@ enum class DecorationButton { Minimize, Maximize, Restore, Close, Menu };
 
 struct MnemonicInfo {
     std::string text; // display text with & removed
-    std::string key;  // UTF-8 mnemonic character, ASCII-lowercased (empty if none)
+    std::string key;  // UTF-8 mnemonic character, lowercased (empty if none)
 };
 
 MnemonicInfo parse_mnemonic(std::string_view text);
 std::string strip_mnemonic(std::string_view text);
-// Extracts the first UTF-8 codepoint from char_text and returns it lowercased
-// (ASCII only; non-ASCII codepoints are returned as-is). Used to normalize a
-// raw key-event character so it can be compared against a stored mnemonic_key_.
+// Extracts the first UTF-8 codepoint from char_text and returns it lowercased.
+// Covers Latin, Greek and Cyrillic; other scripts are returned unchanged. Used
+// to normalize a raw key-event character so it can be compared against a stored
+// mnemonic_key_.
 std::string normalize_mnemonic_key(std::string_view char_text);
 
 std::string format_size(std::uintmax_t bytes);
