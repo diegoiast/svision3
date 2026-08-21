@@ -42,6 +42,16 @@ void ScrollableWidget::set_window(Window *w) {
     }
 }
 
+void ScrollableWidget::set_rect(Rect const &rect) {
+    Widget::set_rect(rect);
+    // Without this the bars keep whatever geometry they were given at the last
+    // content or theme change, so they drift away from the widget's edges as it
+    // resizes -- and a widget whose content was set before it was ever laid out
+    // ends up with its bars parked outside the widget entirely.
+    layout_scrollbars();
+    clamp_scroll();
+}
+
 void ScrollableWidget::on_theme_changed() {
     Widget::on_theme_changed();
     if (vscroll_) {

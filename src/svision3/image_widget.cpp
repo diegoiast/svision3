@@ -15,6 +15,33 @@ namespace svision3 {
 ImageWidget::ImageWidget() {
     state.focusable = true;
     state.non_focus_input = true;
+
+    zoom_in_cmd = Command::create("Zoom In", [this] { set_zoom(zoom_ * 1.25f); });
+    zoom_in_cmd->set_shortcut("Std+=");
+    zoom_in_cmd->set_group("view");
+    add_command(zoom_in_cmd);
+
+    zoom_out_cmd = Command::create("Zoom Out", [this] { set_zoom(zoom_ / 1.25f); });
+    zoom_out_cmd->set_shortcut("Std+-");
+    zoom_out_cmd->set_group("view");
+    add_command(zoom_out_cmd);
+
+    actual_size_cmd = Command::create("Actual Size", [this] { set_zoom(1.0f); });
+    actual_size_cmd->set_shortcut("Std+0");
+    actual_size_cmd->set_group("view");
+    add_command(actual_size_cmd);
+
+    fit_cmd = Command::create("Fit to Window", [this] { fit_to_widget(); });
+    fit_cmd->set_group("view");
+    add_command(fit_cmd);
+
+    checkerboard_cmd = Command::create("Transparency Grid", [this] {
+        set_show_checkerboard(!show_checkerboard_);
+        checkerboard_cmd->set_checked(show_checkerboard_);
+    });
+    checkerboard_cmd->set_checked(show_checkerboard_);
+    checkerboard_cmd->set_group("view");
+    add_command(checkerboard_cmd);
 }
 
 nlohmann::json ImageWidget::to_json() const {

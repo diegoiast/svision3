@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "svision3/command.hpp"
 #include "svision3/scrollable_widget.hpp"
 #include <memory>
 
@@ -27,6 +28,15 @@ class ImageWidget : public ScrollableWidget {
     float zoom() const { return zoom_; }
     void fit_to_widget();
 
+    // The commands this widget contributes to whatever is showing the active
+    // tab's actions. All tagged "view", so they land in a View menu rather than
+    // in the Edit menu a text widget fills.
+    Command::Ptr zoom_in_cmd;
+    Command::Ptr zoom_out_cmd;
+    Command::Ptr actual_size_cmd;
+    Command::Ptr fit_cmd;
+    Command::Ptr checkerboard_cmd;
+
     void paint(Painter &painter) override;
     bool handle_mouse(MouseEvent const &event) override;
     bool handle_key(KeyEvent const &event) override;
@@ -42,7 +52,6 @@ class ImageWidget : public ScrollableWidget {
     bool dragging_ = false;
     Point last_mouse_pos_;
 
-    void update_size();
     float content_w() const;
     float content_h() const;
     void on_scroll(float x, float y) override;
