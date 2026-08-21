@@ -322,7 +322,15 @@ bool ListView::handle_key(KeyEvent const &event) {
         scroll_to(last);
         return true;
     }
+    // A page key carrying Ctrl/Alt/Super is not ours: Ctrl+PageUp/PageDown belongs
+    // to whatever is holding this list (a TabWidget switching tabs, typically),
+    // and the event only reaches it if we decline it here. Plain and shifted
+    // PageUp/PageDown still move the selection by a page -- Shift is our own, and
+    // extends the selection rather than forming a different chord.
     case Key::PageDown: {
+        if (event.has_accel_modifier()) {
+            return false;
+        }
         auto bw = Theme::current().Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
@@ -341,6 +349,9 @@ bool ListView::handle_key(KeyEvent const &event) {
         return true;
     }
     case Key::PageUp: {
+        if (event.has_accel_modifier()) {
+            return false;
+        }
         auto bw = Theme::current().Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));

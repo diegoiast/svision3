@@ -95,29 +95,38 @@ TextEdit::TextEdit(std::string text) {
     set_focusable(true);
     cursor_blink_time_ = std::chrono::steady_clock::now();
 
-    select_all_cmd = Command::create("Select All", [this] { select_all(); });
-    select_all_cmd->set_shortcut("Std+A");
-    add_command(select_all_cmd);
-
-    cut_cmd = Command::create("Cut", [this] { cut(); });
-    cut_cmd->set_shortcut("Std+X");
-    add_command(cut_cmd);
-
-    copy_cmd = Command::create("Copy", [this] { copy(); });
-    copy_cmd->set_shortcut("Std+C");
-    add_command(copy_cmd);
-
-    paste_cmd = Command::create("Paste", [this] { paste(); });
-    paste_cmd->set_shortcut("Std+V");
-    add_command(paste_cmd);
-
+    // All of these are tagged "edit" so that an application routing commands by
+    // group -- a CommandAnchor filling an Edit menu, typically -- picks them up
+    // without having to know that this particular tab holds a TextEdit.
     undo_cmd = Command::create("Undo", [this] { undo(); });
     undo_cmd->set_shortcut("Std+Z");
+    undo_cmd->set_group("edit");
     add_command(undo_cmd);
 
     redo_cmd = Command::create("Redo", [this] { redo(); });
     redo_cmd->set_shortcut("Std+Y");
+    redo_cmd->set_group("edit");
     add_command(redo_cmd);
+
+    cut_cmd = Command::create("Cut", [this] { cut(); });
+    cut_cmd->set_shortcut("Std+X");
+    cut_cmd->set_group("edit");
+    add_command(cut_cmd);
+
+    copy_cmd = Command::create("Copy", [this] { copy(); });
+    copy_cmd->set_shortcut("Std+C");
+    copy_cmd->set_group("edit");
+    add_command(copy_cmd);
+
+    paste_cmd = Command::create("Paste", [this] { paste(); });
+    paste_cmd->set_shortcut("Std+V");
+    paste_cmd->set_group("edit");
+    add_command(paste_cmd);
+
+    select_all_cmd = Command::create("Select All", [this] { select_all(); });
+    select_all_cmd->set_shortcut("Std+A");
+    select_all_cmd->set_group("edit");
+    add_command(select_all_cmd);
 
     set_text(text);
 }
@@ -1091,7 +1100,16 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         }
         return true;
 
+    // A page key carrying Ctrl/Alt/Super is not ours: Ctrl+PageUp/PageDown belongs
+    // to whatever is holding this editor (a TabWidget switching documents,
+    // typically), and the event only reaches it if we decline it here. Plain and
+    // shifted PageUp/PageDown still page the view -- Shift is our own, and extends
+    // the selection rather than forming a different chord. That split is the one
+    // every editor uses.
     case Key::PageUp: {
+        if (event.has_accel_modifier()) {
+            return false;
+        }
         auto lh = line_height();
         auto vr = viewport_rect();
         auto page_lines =
@@ -1103,6 +1121,9 @@ bool TextEdit::handle_key(KeyEvent const &event) {
     }
 
     case Key::PageDown: {
+        if (event.has_accel_modifier()) {
+            return false;
+        }
         auto lh = line_height();
         auto vr = viewport_rect();
         auto page_lines =

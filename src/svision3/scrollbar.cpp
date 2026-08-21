@@ -331,10 +331,20 @@ bool Scrollbar::handle_key(KeyEvent const &event) {
     case Key::End:
         go_to_max();
         return true;
+    // A page key carrying Ctrl/Alt/Super is not ours: Ctrl+PageUp/PageDown belongs
+    // to whatever is holding this scrollbar (a TabWidget switching tabs,
+    // typically), and the event only reaches it if we decline it here. Plain
+    // PageUp/PageDown still pages.
     case Key::PageUp:
+        if (event.has_accel_modifier()) {
+            return false;
+        }
         step_by(-step_page_);
         return true;
     case Key::PageDown:
+        if (event.has_accel_modifier()) {
+            return false;
+        }
         step_by(step_page_);
         return true;
     default:

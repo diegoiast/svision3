@@ -788,7 +788,15 @@ bool TableView::handle_key(KeyEvent const &event) {
         }
         scroll_to_row(last);
         return true;
+        // A page key carrying Ctrl/Alt/Super is not ours: Ctrl+PageUp/PageDown
+        // belongs to whatever is holding this table (a TabWidget switching tabs,
+        // typically), and the event only reaches it if we decline it here. Plain
+        // and shifted PageUp/PageDown still move the selection by a page -- Shift
+        // is our own, and extends the selection rather than forming a chord.
     } else if (event.key == Key::PageDown) {
+        if (event.has_accel_modifier()) {
+            return false;
+        }
         auto bw = Theme::current().Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / row_height()));
@@ -806,6 +814,9 @@ bool TableView::handle_key(KeyEvent const &event) {
         scroll_to_row(*cursor_row_);
         return true;
     } else if (event.key == Key::PageUp) {
+        if (event.has_accel_modifier()) {
+            return false;
+        }
         auto bw = Theme::current().Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / row_height()));

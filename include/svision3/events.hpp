@@ -86,6 +86,17 @@ struct KeyEvent {
     bool ctrl = false;
     bool alt = false;
     bool super = false;
+
+    // True when any modifier beyond Shift is held.
+    //
+    // Shift is set apart because it modifies a binding rather than replacing it:
+    // a widget that moves by a page on PageDown extends the selection by a page
+    // on Shift+PageDown, and both are its own. Ctrl/Alt/Super instead form
+    // separate chords that usually belong to somebody else -- a container, or the
+    // application -- and a widget that handles them anyway swallows the event
+    // before it can bubble up. Widgets implementing a bare (and optionally
+    // shifted) binding use this to decline everything else.
+    bool has_accel_modifier() const { return ctrl || alt || super; }
 };
 
 } // namespace svision3
