@@ -15,6 +15,10 @@ class ScrollableWidget : public Widget {
     ~ScrollableWidget() override = default;
 
     void set_window(Window *w) override;
+    // Scrollbar geometry is derived from rect_, so a resize has to re-run the
+    // layout. Subclasses that override this must chain to it (not straight to
+    // Widget::set_rect) unless they recompute the scrollbars themselves.
+    void set_rect(Rect const &rect) override;
     void on_theme_changed() override;
     bool handle_mouse(MouseEvent const &event) override;
     Widget *find_focusable_at(Point p) override;
