@@ -110,11 +110,17 @@ TabWidget &TabWidget::remove_tab(int index) {
         return *this;
     }
     auto old_current = current_;
+    // The window keeps raw pointers into this tab's content, which is about to be
+    // destroyed. Drop them before it goes.
+    if (window_) {
+        window_->forget_widget(get_widget(index));
+    }
     tabs_.erase(tabs_.begin() + index);
     content_layout_->remove_widget(index);
     current_ = content_layout_->current();
 
     layout_content();
+    focus_content();
     if (window_) {
         window_->request_redraw("tab removed");
     }
@@ -175,8 +181,31 @@ TabWidget &TabWidget::set_current(int index) {
         content_layout_->set_current(index);
         scroll_to_tab(index);
         layout_content();
+        focus_content();
     }
     return *this;
+}
+
+void TabWidget::focus_content() {
+    // No window yet means we are still being assembled, and there is no focus to
+    // move. A collapsed tab widget has nothing on screen to move it to.
+    if (!focus_content_on_change_ || !window_ || collapsed_) {
+        return;
+    }
+    auto *content = get_current_widget();
+    if (!content) {
+        return;
+    }
+
+    // The content is usually a layout rather than something focusable itself, so
+    // take the first focusable thing inside it -- the same order Tab navigation
+    // would visit.
+    auto focusables = std::vector<Widget *>{};
+    content->collect_focusables(focusables);
+    if (focusables.empty()) {
+        return;
+    }
+    window_->set_focused_widget(focusables.front());
 }
 
 void TabWidget::scroll_by(float delta) {

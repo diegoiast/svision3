@@ -61,6 +61,23 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     }
     bool focus_on_tab_click() const { return focus_on_tab_click_; }
 
+    // When the active tab changes, move focus to the first focusable widget inside
+    // the new tab. Keeps the focused widget pointing at the document the user is
+    // actually looking at, which is what everything following focus -- contextual
+    // commands, most of all -- depends on. Switch it off for a tab widget whose
+    // content should not take focus on its own.
+    TabWidget &set_focus_content_on_change(bool f) {
+        focus_content_on_change_ = f;
+        return *this;
+    }
+    bool focus_content_on_change() const { return focus_content_on_change_; }
+
+    // Puts focus on the first focusable widget inside the active tab. Called
+    // automatically when the active tab changes; call it directly to hand the tab
+    // widget initial focus once the window is up, which a window otherwise starts
+    // without.
+    void focus_content();
+
     // Collapsed tab widget, show only the tab headers. They are used mainly
     // in dock areas.
     // When true, clicking the currently-active tab collapses the content area,
@@ -151,6 +168,7 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     float tab_font_size_ = 0.0f;
     bool tabs_movable_ = true;
     bool focus_on_tab_click_ = true;
+    bool focus_content_on_change_ = true;
     bool collapsible_ = false;
     bool collapsed_ = false;
 
