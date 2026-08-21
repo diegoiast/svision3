@@ -664,17 +664,17 @@ find_package(Catch2 REQUIRED)
 add_executable(tests
     tests/test_bidi.cpp
     tests/test_text_layout.cpp
+    tests/test_button.cpp
     tests/test_button_serialization.cpp
     tests/test_catalog.cpp
+    tests/test_checkbox.cpp
     tests/test_command.cpp
+    tests/test_combobox_popup.cpp
+    tests/test_combobox.cpp
     tests/test_context_menu.cpp
     tests/test_db.cpp
     tests/test_events.cpp
-    tests/test_widget.cpp
-    tests/test_button.cpp
     tests/test_label.cpp
-    tests/test_checkbox.cpp
-    tests/test_combobox.cpp
     tests/test_dock_area.cpp
     tests/test_filter_adapter.cpp
     tests/test_html_view.cpp
@@ -705,6 +705,7 @@ add_executable(tests
     tests/test_types.cpp
     tests/test_utf8.cpp
     tests/test_undo_stack.cpp
+    tests/test_widget.cpp
     tests/test_xdg_image_loader.cpp
     tests/repro_tab_orientation.cpp
     tests/test_window_title_bar.cpp

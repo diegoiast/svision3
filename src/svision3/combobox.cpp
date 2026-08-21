@@ -131,14 +131,29 @@ void Combobox::open_dropdown() {
     popup.on_paint = [this](Painter &p) { paint_dropdown(p); };
     popup.on_mouse = [this](MouseEvent const &e) { return handle_dropdown_mouse(e); };
     popup.on_key = [this](KeyEvent const &e) { return handle_dropdown_key(e); };
+    // on_close is the single place that clears open_, so a dismissal that comes
+    // from outside the combobox -- close_all_popups(), a click elsewhere, a parent
+    // menu closing -- leaves the same state behind as close_dropdown() does.
+    popup.on_close = [this] {
+        open_ = false;
+        if (window()) {
+            window()->request_redraw("combobox dropdown closed");
+        }
+    };
     window()->open_popup(std::move(popup));
 }
 
 void Combobox::close_dropdown() {
-    open_ = false;
-    if (window()) {
-        window()->close_popup();
+    if (!open_) {
+        return;
     }
+    if (!window()) {
+        open_ = false;
+        return;
+    }
+    // Let close_popup() fire popup.on_close, which clears open_ -- the same path
+    // an external dismiss takes.
+    window()->close_popup();
 }
 
 void Combobox::paint(Painter &painter) {

@@ -28,11 +28,15 @@ class Combobox : public Widget, public Fluent<Combobox> {
     int selected() const { return selected_index_; }
     std::string selected_text() const;
 
+    void open_dropdown();
+    void close_dropdown();
+    // True while the dropdown popup is on screen. Cleared by any dismissal,
+    // including one the window drives rather than the combobox.
+    bool is_open() const { return open_; }
+
     std::function<void(int)> on_change;
 
   private:
-    void open_dropdown();
-    void close_dropdown();
     void paint_dropdown(Painter &painter);
     bool handle_dropdown_mouse(MouseEvent const &event);
     bool handle_dropdown_key(KeyEvent const &event);
