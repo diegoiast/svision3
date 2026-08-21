@@ -649,6 +649,48 @@ void Window::set_focused_widget(Widget *w) {
     }
 }
 
+static auto widget_contains(Widget *root, Widget *needle) -> bool {
+    if (!root || !needle) {
+        return false;
+    }
+    if (root == needle) {
+        return true;
+    }
+    auto found = false;
+    root->for_each_child([&](Widget *child) {
+        if (!found && widget_contains(child, needle)) {
+            found = true;
+        }
+    });
+    return found;
+}
+
+void Window::forget_widget(Widget *widget) {
+    if (!widget) {
+        return;
+    }
+    if (widget_contains(widget, focused_widget_)) {
+        // Straight to the member: set_focused_widget() would call on_blur() on a
+        // widget whose destruction is precisely what we are here to survive.
+        focused_widget_ = nullptr;
+    }
+    if (widget_contains(widget, saved_focus_)) {
+        saved_focus_ = nullptr;
+    }
+    if (widget_contains(widget, key_grab_)) {
+        key_grab_ = nullptr;
+    }
+    if (widget_contains(widget, hovered_widget_)) {
+        hovered_widget_ = nullptr;
+    }
+    if (widget_contains(widget, captured_widget_)) {
+        captured_widget_ = nullptr;
+    }
+    if (widget_contains(widget, inspector_widget_)) {
+        inspector_widget_ = nullptr;
+    }
+}
+
 void Window::handle_paint(Painter &painter) {
     auto draw_start = std::chrono::steady_clock::now();
     impl_->stats.total_draws++;
@@ -1135,6 +1177,12 @@ void Window::handle_key(KeyEvent const &event) {
             request_redraw("event");
             return;
         }
+    }
+    // Then whoever holds the keyboard: a menubar being driven by the arrow keys is
+    // not the focused widget, so without this the focused widget eats them.
+    if (key_grab_ && key_grab_->dispatch_key_event(event)) {
+        request_redraw("event");
+        return;
     }
 
     // Alt+Space: the traditional "open the window's system menu" shortcut, honored regardless of

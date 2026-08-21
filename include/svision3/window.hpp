@@ -149,6 +149,19 @@ class Window {
     void set_focused_widget(Widget *w);
     Widget *focused_widget() const { return focused_widget_; }
 
+    // Drops every reference the window holds to this widget and anything nested
+    // inside it. Call before destroying a widget that may be focused or hovered:
+    // the window keeps raw pointers, and ~Widget() does not announce itself, so
+    // otherwise they are left dangling.
+    void forget_widget(Widget *widget);
+
+    // A widget that receives keys ahead of the focused widget, for as long as it
+    // holds the keyboard. A menubar navigated from the keyboard needs this: it is
+    // not focused itself, and without it the arrow keys go to whatever widget is,
+    // which is usually happy to consume them.
+    void set_key_grab(Widget *widget) { key_grab_ = widget; }
+    Widget *key_grab() const { return key_grab_; }
+
     struct Statistics {
         uint64_t total_draws = 0;
         double avg_fps = 0;
@@ -194,6 +207,7 @@ class Window {
     std::shared_ptr<bool> theme_observer_alive_ = std::make_shared<bool>(true);
     Widget *focused_widget_ = nullptr;
     Widget *saved_focus_ = nullptr;
+    Widget *key_grab_ = nullptr;
     std::vector<Popup> popups_;
     CursorShape current_cursor_ = CursorShape::Arrow;
     Widget *hovered_widget_ = nullptr;
