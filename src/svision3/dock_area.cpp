@@ -145,6 +145,33 @@ std::weak_ptr<Widget> DockArea::add_dock(DockPosition pos, const std::string &ti
     return result;
 }
 
+bool DockArea::remove_dock(std::weak_ptr<Widget> const &content) {
+    auto target = content.lock();
+    if (!target) {
+        return false;
+    }
+
+    for (auto pos : {DockPosition::West, DockPosition::South, DockPosition::East}) {
+        auto tab = dock_tab_widget(pos).lock();
+        if (!tab) {
+            continue;
+        }
+        for (auto i = 0; i < static_cast<int>(tab->get_tab_count()); ++i) {
+            if (tab->get_widget(i) != target.get()) {
+                continue;
+            }
+            tab->remove_tab(i);
+            if (tab->get_tab_count() == 0) {
+                // Nothing left to show, so give the space back -- apply_dock_size()
+                // treats an empty dock as hidden regardless of the collapsed flag.
+                apply_dock_size(pos, false);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 DockArea &DockArea::set_dock_size(DockPosition pos, float size) {
     dock_sizes_[int(pos)] = std::max(50.0f, size);
 

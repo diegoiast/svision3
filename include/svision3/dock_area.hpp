@@ -34,6 +34,20 @@ class DockArea : public Splitter {
     std::weak_ptr<Widget> add_dock(DockPosition pos, const std::string &title,
                                    std::shared_ptr<Widget> content);
 
+    // Takes a dock back out, identified by the content widget add_dock() handed
+    // back. Returns false if it is not docked here (or has already gone).
+    //
+    // By handle rather than by title, because a title identifies nothing: two
+    // panels may share one, and a component removing "Outline" would happily take
+    // out an Outline somebody else added. A handle removes exactly what its owner
+    // put in -- which is what a plugin needs, since leaving anything of its own
+    // behind is not untidiness but a dangling pointer into an unloaded library.
+    //
+    // No position argument: a widget is docked in exactly one place, so the caller
+    // should not have to remember which. The slot collapses back to nothing once
+    // its last panel leaves, mirroring add_dock() revealing it on the first.
+    bool remove_dock(std::weak_ptr<Widget> const &content);
+
     // The pixel size of a dock along its splitter's axis. Applied immediately
     // if the dock is currently visible; otherwise remembered for the next
     // time it's uncollapsed. This is a soft request, not a guarantee: like
