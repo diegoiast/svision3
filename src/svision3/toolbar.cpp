@@ -112,6 +112,13 @@ void Toolbar::rebuild_layout() {
     layout_->set_spacing(2);
     layout_->set_window(window_);
     layout_->set_rect({0, 0, rect_.width, rect_.height});
+
+    // Toolbar::size_hint() is the layout's, so every add, removal and reorientation
+    // changes what this widget asks for -- ancestors have to re-measure, not just
+    // repaint. Every mutation funnels through here, so this is the one place that
+    // needs to say so. It also schedules the redraw the callers used to ask for
+    // individually, and that some of them (add_command, add_widget) never did.
+    invalidate_layout();
 }
 
 Toolbar &Toolbar::set_orientation(Orientation o) {
@@ -125,9 +132,6 @@ Toolbar &Toolbar::set_orientation(Orientation o) {
         }
     }
     rebuild_layout();
-    if (window_) {
-        window_->request_redraw("toolbar orientation changed");
-    }
     return *this;
 }
 
@@ -153,16 +157,10 @@ void Toolbar::add_separator() {
 
 void Toolbar::insert_command(int index, Command::Ptr cmd) {
     insert_entry(index, std::make_shared<ToolButton>(std::move(cmd)), 0);
-    if (window_) {
-        window_->request_redraw("toolbar command inserted");
-    }
 }
 
 void Toolbar::insert_separator(int index) {
     insert_entry(index, std::make_shared<ToolbarSeparator>(orientation_), 0);
-    if (window_) {
-        window_->request_redraw("toolbar separator inserted");
-    }
 }
 
 void Toolbar::remove_range(int index, int count) {
@@ -172,9 +170,6 @@ void Toolbar::remove_range(int index, int count) {
     count = std::min(count, static_cast<int>(entries_.size()) - index);
     entries_.erase(entries_.begin() + index, entries_.begin() + index + count);
     rebuild_layout();
-    if (window_) {
-        window_->request_redraw("toolbar items removed");
-    }
 }
 
 int Toolbar::item_count() const { return static_cast<int>(entries_.size()); }

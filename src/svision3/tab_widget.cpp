@@ -156,10 +156,11 @@ TabWidget &TabWidget::set_tab_tooltip(int index, std::string tooltip) {
 TabWidget &TabWidget::set_tabs_closable(bool closable) {
     if (tabs_closable_ != closable) {
         tabs_closable_ = closable;
-        layout_content();
-        if (window_) {
-            window_->request_redraw("tabs closability changed");
-        }
+        // Close buttons widen every tab, and in a vertical strip the strip's
+        // thickness is the widest tab -- so this reaches size_hint() and ancestors
+        // have to re-measure, not just repaint. invalidate_layout() marks them and
+        // schedules the redraw; paint() re-runs layout_content() off the same flag.
+        invalidate_layout();
     }
     return *this;
 }
@@ -167,10 +168,7 @@ TabWidget &TabWidget::set_tabs_closable(bool closable) {
 TabWidget &TabWidget::set_min_tab_width(float width) {
     if (min_tab_width_ != width) {
         min_tab_width_ = width;
-        layout_content();
-        if (window_) {
-            window_->request_redraw("tabs min width changed");
-        }
+        invalidate_layout();
     }
     return *this;
 }
@@ -349,7 +347,12 @@ TabWidget &TabWidget::set_orientation(TabOrientation o) {
         prev_button_->set_text("^");
         next_button_->set_text("v");
     }
-    layout_content();
+    // Orientation moves the tab strip between the top edge and a side, which
+    // changes tab_bar_thickness() and with it size_hint(). layout_content() alone
+    // laid out this widget's own children and nothing else: no ancestor was told
+    // to re-measure and no repaint was requested, so the flip only appeared once
+    // some unrelated event happened to redraw the window.
+    invalidate_layout();
     return *this;
 }
 
@@ -384,12 +387,15 @@ TabWidget &TabWidget::set_collapsed(bool c) {
         return *this;
     }
     collapsed_ = c;
-    layout_content();
+    // Set directly rather than leaving it to layout_content(): whether the content
+    // is on screen is observable before the next paint -- focus traversal walks it
+    // -- while its geometry is not.
+    content_layout_->set_visible(!collapsed_);
+    // Collapsing drops the content out of size_hint() altogether, so of the four
+    // this is the one that most needs ancestors to re-measure.
+    invalidate_layout();
     if (on_collapsed) {
         on_collapsed(collapsed_);
-    }
-    if (window_) {
-        window_->request_redraw("tab collapse");
     }
     return *this;
 }
