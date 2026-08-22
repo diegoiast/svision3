@@ -6,6 +6,7 @@
 #include "svision3/command.hpp"
 #include "svision3/scrollable_widget.hpp"
 #include <memory>
+#include <string>
 
 namespace svision3 {
 
@@ -20,6 +21,17 @@ class ImageWidget : public ScrollableWidget {
     void load(std::string_view path);
     void load(const uint8_t *data, size_t size);
     void set_image(std::shared_ptr<ImageData> image);
+
+    // The pixels on show, or null when nothing is loaded. Exposed so an
+    // application can report on the image -- dimensions, format, memory -- without
+    // this widget having to decide what such a report looks like or how it is
+    // presented; that is an application's business, not a widget's.
+    std::shared_ptr<ImageData> const &image() const { return image_; }
+
+    // Where the image was loaded from, or empty for one handed over directly as
+    // pixels. Only load(path) sets it -- there is nothing to report for an image
+    // that never came from a file.
+    std::string const &source_path() const { return source_path_; }
 
     void set_show_checkerboard(bool show);
     bool show_checkerboard() const { return show_checkerboard_; }
@@ -45,6 +57,7 @@ class ImageWidget : public ScrollableWidget {
 
   private:
     std::shared_ptr<ImageData> image_;
+    std::string source_path_;
     bool show_checkerboard_ = true;
     float zoom_ = 1.0f;
 

@@ -104,6 +104,25 @@ inline constexpr const char *dialogApply = "dialog-apply";
 inline constexpr const char *dialogNo = "dialog-no";
 inline constexpr const char *dialogOk = "dialog-ok";
 inline constexpr const char *dialogYes = "dialog-yes";
+
+inline constexpr const char *editClear = "edit-clear";
+
+inline constexpr const char *helpAbout = "help-about";
+inline constexpr const char *helpContents = "help-contents";
+
+inline constexpr const char *systemRun = "system-run";
+
+inline constexpr const char *viewRefresh = "view-refresh";
+inline constexpr const char *viewFullscreen = "view-fullscreen";
+inline constexpr const char *viewRestore = "view-restore";
+
+inline constexpr const char *windowClose = "window-close";
+inline constexpr const char *windowNew = "window-new";
+
+inline constexpr const char *zoomIn = "zoom-in";
+inline constexpr const char *zoomOut = "zoom-out";
+inline constexpr const char *zoomOriginal = "zoom-original";
+inline constexpr const char *zoomFitBest = "zoom-fit-best";
 } // namespace IconActions
 
 namespace IconApplications {

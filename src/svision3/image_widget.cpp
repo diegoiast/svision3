@@ -7,6 +7,7 @@
 #include "svision3/painter.hpp"
 #include "svision3/platform.hpp"
 #include "svision3/theme.hpp"
+#include "svision3/xdg_icons.hpp"
 #include <algorithm>
 #include <nlohmann/json.hpp>
 
@@ -15,23 +16,30 @@ namespace svision3 {
 ImageWidget::ImageWidget() {
     state.focusable = true;
     state.non_focus_input = true;
+    // Like TextEdit: a document rather than chrome, so it supplies the menus while
+    // it has focus.
+    set_command_context(true);
 
     zoom_in_cmd = Command::create("Zoom In", [this] { set_zoom(zoom_ * 1.25f); });
     zoom_in_cmd->set_shortcut("Std+=");
+    zoom_in_cmd->set_icon(XDG::IconActions::zoomIn);
     zoom_in_cmd->set_group("view");
     add_command(zoom_in_cmd);
 
     zoom_out_cmd = Command::create("Zoom Out", [this] { set_zoom(zoom_ / 1.25f); });
     zoom_out_cmd->set_shortcut("Std+-");
+    zoom_out_cmd->set_icon(XDG::IconActions::zoomOut);
     zoom_out_cmd->set_group("view");
     add_command(zoom_out_cmd);
 
     actual_size_cmd = Command::create("Actual Size", [this] { set_zoom(1.0f); });
     actual_size_cmd->set_shortcut("Std+0");
+    actual_size_cmd->set_icon(XDG::IconActions::zoomOriginal);
     actual_size_cmd->set_group("view");
     add_command(actual_size_cmd);
 
     fit_cmd = Command::create("Fit to Window", [this] { fit_to_widget(); });
+    fit_cmd->set_icon(XDG::IconActions::zoomFitBest);
     fit_cmd->set_group("view");
     add_command(fit_cmd);
 
@@ -39,9 +47,11 @@ ImageWidget::ImageWidget() {
         set_show_checkerboard(!show_checkerboard_);
         checkerboard_cmd->set_checked(show_checkerboard_);
     });
+    checkerboard_cmd->set_checkable(true);
     checkerboard_cmd->set_checked(show_checkerboard_);
     checkerboard_cmd->set_group("view");
     add_command(checkerboard_cmd);
+
 }
 
 nlohmann::json ImageWidget::to_json() const {
@@ -68,7 +78,10 @@ void ImageWidget::from_json(nlohmann::json const &j) {
 
 void ImageWidget::load(std::string_view path) {
     auto loader = detail::current_platform()->get_image_loader();
+    // set_image() clears source_path_, since in general it has no idea where the
+    // pixels came from. Record it afterwards -- here we do know.
     set_image(loader->load(path));
+    source_path_ = std::string(path);
 }
 
 void ImageWidget::load(const uint8_t *data, size_t size) {
@@ -78,6 +91,7 @@ void ImageWidget::load(const uint8_t *data, size_t size) {
 
 void ImageWidget::set_image(std::shared_ptr<ImageData> image) {
     image_ = image;
+    source_path_.clear();
     update_scrollbars({content_w(), content_h()});
     if (window_) {
         window_->request_redraw("ImageWidget::set_image");

@@ -16,6 +16,7 @@
 #include "svision3/clipboard.hpp"
 #include "svision3/theme.hpp"
 #include "svision3/utf8.hpp"
+#include "svision3/xdg_icons.hpp"
 #include "svision3/window.hpp"
 #include <algorithm>
 #include <cctype>
@@ -93,6 +94,8 @@ class TextEditCommand : public UndoCommand {
 TextEdit::TextEdit(std::string text) {
     set_frame(true, true);
     set_focusable(true);
+    // A text editor is a document: focusing one makes it the command context, so
+    // the Edit menu acts on the buffer the user is actually in -- whether that is
     cursor_blink_time_ = std::chrono::steady_clock::now();
 
     // All of these are tagged "edit" so that an application routing commands by
@@ -100,32 +103,32 @@ TextEdit::TextEdit(std::string text) {
     // without having to know that this particular tab holds a TextEdit.
     undo_cmd = Command::create("Undo", [this] { undo(); });
     undo_cmd->set_shortcut("Std+Z");
-    undo_cmd->set_group("edit");
+    undo_cmd->set_icon(XDG::IconActions::editUndo);
     add_command(undo_cmd);
 
     redo_cmd = Command::create("Redo", [this] { redo(); });
     redo_cmd->set_shortcut("Std+Y");
-    redo_cmd->set_group("edit");
+    redo_cmd->set_icon(XDG::IconActions::editRedo);
     add_command(redo_cmd);
 
     cut_cmd = Command::create("Cut", [this] { cut(); });
     cut_cmd->set_shortcut("Std+X");
-    cut_cmd->set_group("edit");
+    cut_cmd->set_icon(XDG::IconActions::editCut);
     add_command(cut_cmd);
 
     copy_cmd = Command::create("Copy", [this] { copy(); });
     copy_cmd->set_shortcut("Std+C");
-    copy_cmd->set_group("edit");
+    copy_cmd->set_icon(XDG::IconActions::editCopy);
     add_command(copy_cmd);
 
     paste_cmd = Command::create("Paste", [this] { paste(); });
     paste_cmd->set_shortcut("Std+V");
-    paste_cmd->set_group("edit");
+    paste_cmd->set_icon(XDG::IconActions::editPaste);
     add_command(paste_cmd);
 
     select_all_cmd = Command::create("Select All", [this] { select_all(); });
     select_all_cmd->set_shortcut("Std+A");
-    select_all_cmd->set_group("edit");
+    select_all_cmd->set_icon(XDG::IconActions::editSelectAll);
     add_command(select_all_cmd);
 
     set_text(text);

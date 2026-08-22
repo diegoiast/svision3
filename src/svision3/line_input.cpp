@@ -1166,13 +1166,18 @@ void LineInput::show_context_menu(Point pos) {
 
     items.push_back(MenuItem::sep());
     auto direction_menu = std::make_shared<Menu>("Text Direction");
+    // A radio group: each carries a mark, so each is declared checkable before its
+    // state is set -- set_checked() on a command that is not is ignored.
     auto auto_cmd = Command::create("Auto", [this] { set_text_direction(TextDirection::Auto); });
+    auto_cmd->set_checkable(true);
     auto_cmd->set_checked(direction_mode_ == TextDirection::Auto);
     auto ltr_cmd =
         Command::create("Left to Right", [this] { set_text_direction(TextDirection::LTR); });
+    ltr_cmd->set_checkable(true);
     ltr_cmd->set_checked(direction_mode_ == TextDirection::LTR);
     auto rtl_cmd =
         Command::create("Right to Left", [this] { set_text_direction(TextDirection::RTL); });
+    rtl_cmd->set_checkable(true);
     rtl_cmd->set_checked(direction_mode_ == TextDirection::RTL);
     direction_menu->add_action(auto_cmd);
     direction_menu->add_action(ltr_cmd);
