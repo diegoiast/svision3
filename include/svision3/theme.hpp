@@ -45,6 +45,10 @@ struct Style {
     struct {
         float item_padding = 4.0f;
         Margins padding = {2, 2, 2, 2};
+        // Width of the gutter a checkable item's mark sits in. Reserved for every
+        // item in a menu that has any checkable item, so labels line up and do not
+        // shift sideways as one is toggled.
+        float check_column = 18.0f;
     } menu;
 
     struct {
@@ -262,12 +266,21 @@ class Theme {
     virtual void draw_menubar_background(Painter &painter, Rect const &rect,
                                          WidgetState const &state) const = 0;
     virtual void draw_menu_background(Painter &painter, Rect const &rect) const = 0;
+    // The indent columns a menu reserves ahead of its labels. Both are decided
+    // once for the whole menu, not per item: a single checkable item, or a single
+    // item carrying an icon, indents every label in that menu so they all line up
+    // -- and a menu with both gets both, one after the other.
+    struct MenuColumns {
+        float check = 0.0f; // 0 when nothing in the menu is checkable
+        float icon = 0.0f;  // 0 when nothing in the menu has an icon
+    };
+
     // text is the raw label: when show_mnemonics is set the '&' marker is drawn
     // as an underline, otherwise it is stripped.
     virtual void draw_menu_item(Painter &painter, Rect const &rect, std::string_view text,
                                 Icon const &icon, std::string_view shortcut, bool hovered,
-                                bool enabled, bool checkable, bool checked,
-                                bool show_mnemonics) const = 0;
+                                bool enabled, bool checkable, bool checked, bool show_mnemonics,
+                                MenuColumns const &columns) const = 0;
     virtual void draw_menu_separator(Painter &painter, Rect const &rect) const = 0;
     virtual void draw_menu_indicator(Painter &painter, Rect const &rect, bool enabled) const = 0;
     virtual void draw_progress_bar(Painter &painter, Rect const &rect, float progress,

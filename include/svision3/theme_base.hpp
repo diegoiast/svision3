@@ -37,7 +37,8 @@ class BaseTheme : public Theme {
     void draw_menu_background(Painter &painter, Rect const &rect) const override;
     void draw_menu_item(Painter &painter, Rect const &rect, std::string_view text, Icon const &icon,
                         std::string_view shortcut, bool hovered, bool enabled, bool checkable,
-                        bool checked, bool show_mnemonics) const override;
+                        bool checked, bool show_mnemonics,
+                        MenuColumns const &columns) const override;
     void draw_menu_separator(Painter &painter, Rect const &rect) const override;
     void draw_menu_indicator(Painter &painter, Rect const &rect, bool enabled) const override;
 

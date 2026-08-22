@@ -21,6 +21,27 @@ class MenuBar : public Widget, public Fluent<MenuBar> {
     void add_menu(std::shared_ptr<Menu> menu);
     std::shared_ptr<Menu> add_menu(std::string title);
 
+    // Places a menu at a chosen position rather than at the end. A component
+    // merging a menu in at runtime needs this: appending would put its menu after
+    // Help, which by convention is always last.
+    void insert_menu(int index, std::shared_ptr<Menu> menu);
+
+    // Takes a whole menu back out of the bar. Returns false if it was not there.
+    //
+    // The counterpart to add_menu() for anything that contributes a top-level menu
+    // at runtime: a plugin's menu has to leave with the plugin, and any anchor
+    // filling it has to be destroyed first, since the anchor holds a reference to
+    // the menu it writes into.
+    //
+    // By handle, and only by handle. A title is not an identity -- two menus may
+    // share one, and removing "Help" by name would take out whichever came first,
+    // possibly one somebody else contributed. To go from a name, be explicit:
+    // remove_menu(menu_at(find_menu("Help"))).
+    bool remove_menu(std::shared_ptr<Menu> const &menu);
+
+    int menu_count() const { return static_cast<int>(menus_.size()); }
+    std::shared_ptr<Menu> menu_at(int index) const;
+
     void toggle_menu(int index);
     int find_menu(std::string_view title) const;
 

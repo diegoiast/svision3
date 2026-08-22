@@ -5,6 +5,7 @@
 
 #include "svision3/button_state.hpp"
 #include "svision3/menu.hpp"
+#include "svision3/theme.hpp"
 #include <memory>
 #include <vector>
 
@@ -34,6 +35,8 @@ class ContextMenu {
     int pressed_item_ = -1;
     int open_submenu_index_ = -1;
     float item_height_ = 0;
+    // Same menu-wide indents as Menu; see Theme::MenuColumns.
+    Theme::MenuColumns columns_;
     float separator_height_ = 7.0f;
     ButtonStateHandler state_handler_;
 };

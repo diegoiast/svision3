@@ -432,8 +432,8 @@ void BaseTheme::draw_menu_background(Painter &painter, Rect const &rect) const {
 
 void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_view text,
                                Icon const &icon, std::string_view shortcut, bool hovered,
-                               bool enabled, bool checkable, bool checked,
-                               bool show_mnemonics) const {
+                               bool enabled, bool /*checkable*/, bool checked,
+                               bool show_mnemonics, MenuColumns const &columns) const {
     auto fm = painter.font_metrics(palette.fonts.size);
     auto baseline = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto text_col = palette.text;
@@ -443,23 +443,37 @@ void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_v
         painter.fill_rounded_rect(rect, palette.highlight, style.corner_radius * 0.5f);
     }
 
-    if (checkable && checked) {
-        auto check_rect = Rect{rect.x + 4, rect.y + (rect.height - 12) / 2, 12, 12};
-        painter.fill_rounded_rect(check_rect, palette.border, 2.0f);
-    }
-
-    auto icon_x = rect.x + style.menu.padding.left + 4;
-    if (icon) {
-        auto icon_y = rect.y + (rect.height - static_cast<float>(icon->height)) / 2.0f;
-        painter.draw_image(*icon, Point{icon_x, icon_y});
-        icon_x += static_cast<float>(icon->width) + 4;
-    }
-
-    auto text_x = icon_x;
     if (!enabled) {
         // FIXME: remove this alpha channel changing
         text_col.a *= 0.4f;
     }
+
+    // Both columns are the menu's, not this item's: an item with no check mark
+    // still steps over the check column, and one with no icon still steps over the
+    // icon column, so every label in the menu starts at the same x.
+    auto content_x = rect.x + style.menu.padding.left + 4;
+
+    if (columns.check > 0) {
+        if (checked) {
+            // A tick, not a filled block, and inside its own column: drawn at the
+            // text's own x it lands behind the first letter.
+            auto cx = content_x;
+            auto cy = rect.y + rect.height / 2.0f;
+            painter.draw_line({cx + 1.0f, cy}, {cx + 4.0f, cy + 3.5f}, text_col, 1.5f);
+            painter.draw_line({cx + 4.0f, cy + 3.5f}, {cx + 10.0f, cy - 4.5f}, text_col, 1.5f);
+        }
+        content_x += columns.check;
+    }
+
+    if (columns.icon > 0) {
+        if (icon) {
+            auto icon_y = rect.y + (rect.height - static_cast<float>(icon->height)) / 2.0f;
+            painter.draw_image(*icon, Point{content_x, icon_y});
+        }
+        content_x += columns.icon;
+    }
+
+    auto text_x = content_x;
     if (show_mnemonics) {
         painter.draw_mnemonic_text(text, {text_x, baseline}, text_col, palette.fonts.size);
     } else {

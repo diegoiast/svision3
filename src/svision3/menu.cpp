@@ -28,18 +28,24 @@ Menu::Menu(std::string title) : title_(std::move(title)) {
     };
 }
 
-void Menu::add_action(std::shared_ptr<Command> cmd) {
+Menu &Menu::add_action(std::shared_ptr<Command> cmd) {
     items_.push_back(MenuItem::action(std::move(cmd)));
+    return *this;
 }
 
-void Menu::add_action(std::string name, std::function<void()> execute, bool enabled) {
+Menu &Menu::add_action(std::string name, std::function<void()> execute, bool enabled) {
     items_.push_back(MenuItem::action(std::move(name), std::move(execute), enabled));
+    return *this;
 }
 
-void Menu::add_separator() { items_.push_back(MenuItem::sep()); }
+Menu &Menu::add_separator() {
+    items_.push_back(MenuItem::sep());
+    return *this;
+}
 
-void Menu::add_submenu(std::string name, std::shared_ptr<Menu> submenu) {
+Menu &Menu::add_submenu(std::string name, std::shared_ptr<Menu> submenu) {
     items_.push_back(MenuItem::submenu_item(std::move(name), std::move(submenu)));
+    return *this;
 }
 
 static auto clamp_index(int index, size_t size) -> size_t {
@@ -49,9 +55,10 @@ static auto clamp_index(int index, size_t size) -> size_t {
     return std::min(static_cast<size_t>(index), size);
 }
 
-void Menu::insert_action(int index, std::shared_ptr<Command> cmd) {
+Menu &Menu::insert_action(int index, std::shared_ptr<Command> cmd) {
     items_.insert(items_.begin() + clamp_index(index, items_.size()),
                   MenuItem::action(std::move(cmd)));
+    return *this;
 }
 
 void Menu::insert_separator(int index) {
@@ -69,10 +76,11 @@ void Menu::remove_range(int index, int count) {
     open_submenu_index_ = -1;
 }
 
-void Menu::clear() {
+Menu &Menu::clear() {
     items_.clear();
     hovered_ = -1;
     open_submenu_index_ = -1;
+    return *this;
 }
 
 static auto menu_total_height(std::vector<MenuItem> const &items, float item_h, float sep_h)
@@ -87,6 +95,9 @@ static auto menu_total_height(std::vector<MenuItem> const &items, float item_h, 
 
 void Menu::show(Window *win, Point position) {
     window_ = win;
+    if (on_about_to_show) {
+        on_about_to_show();
+    }
     if (!window_ || items_.empty()) {
         return;
     }
@@ -96,6 +107,7 @@ void Menu::show(Window *win, Point position) {
     auto max_name_w = 0.0f;
     auto max_shortcut_w = 0.0f;
     auto max_icon_w = 0.0f;
+    auto any_checkable = false;
 
     item_height_ = detail::current_platform()->font_metrics(palette.fonts.size).height +
                    style.item_padding * 2.0f + 4.0f;
@@ -115,6 +127,7 @@ void Menu::show(Window *win, Point position) {
         if (auto const &icon = item.command->icon_image()) {
             max_icon_w = std::max(max_icon_w, static_cast<float>(icon->width));
         }
+        any_checkable = any_checkable || item.command->is_checkable();
 
         auto shortcut = item.command->printable_shortcut();
         if (!shortcut.empty()) {
@@ -124,10 +137,13 @@ void Menu::show(Window *win, Point position) {
         }
     }
 
+    // One checkable item indents the whole menu, and so does one icon; the widths
+    // are worked out here so paint() and this measurement cannot disagree.
+    columns_.check = any_checkable ? style.check_column : 0.0f;
+    columns_.icon = max_icon_w > 0 ? max_icon_w + 4.0f : 0.0f; // icon plus its gap
+
     auto width = max_name_w + style.padding.left + style.padding.right + 20.0f;
-    if (max_icon_w > 0) {
-        width += max_icon_w + 4.0f; // Icon plus the gap before the text
-    }
+    width += columns_.check + columns_.icon;
     auto height = menu_total_height(items_, item_height_, separator_height_) + 4.0f;
     // Clamp to the window's client area, not its raw size() -- size() includes the CSD
     // shadow/border margin, so clamping against it lets the menu hang out over the shadow
@@ -226,7 +242,8 @@ void Menu::paint(Painter &painter) {
         // An open menu always underlines its own mnemonics -- reaching an item by
         // typing its letter only works if you can see which letter that is.
         theme.draw_menu_item(painter, item_rect, item.command->name(), icon_data, shortcut,
-                             i == hovered_, enabled, false, false, true);
+                             i == hovered_, enabled, item.command->is_checkable(),
+                             item.command->is_checked(), true, columns_);
         if (item.type == MenuItem::Type::Submenu) {
             auto const &style = Theme::current().style.combo;
             auto fm = painter.font_metrics(palette.fonts.size);

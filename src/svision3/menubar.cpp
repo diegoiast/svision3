@@ -56,6 +56,58 @@ std::shared_ptr<Menu> MenuBar::add_menu(std::string title) {
     return m;
 }
 
+void MenuBar::insert_menu(int index, std::shared_ptr<Menu> menu) {
+    if (!menu) {
+        return;
+    }
+    auto at = std::clamp(index, 0, static_cast<int>(menus_.size()));
+    menus_.insert(menus_.begin() + at, std::move(menu));
+    if (active_ >= at) {
+        ++active_;
+    }
+    hovered_ = -1;
+    invalidate_layout();
+    if (window()) {
+        window()->request_redraw("menu inserted");
+    }
+}
+
+bool MenuBar::remove_menu(std::shared_ptr<Menu> const &menu) {
+    if (!menu) {
+        return false;
+    }
+    for (auto i = 0; i < static_cast<int>(menus_.size()); ++i) {
+        if (menus_[i] != menu) {
+            continue;
+        }
+        // A menu on its way out must not be left open, or its popup outlives the
+        // bar entry it belongs to.
+        menus_[i]->close();
+        menus_.erase(menus_.begin() + i);
+        if (active_ == i) {
+            active_ = -1;
+            set_keyboard_active(false);
+            set_show_mnemonics(false);
+        } else if (active_ > i) {
+            --active_;
+        }
+        hovered_ = -1;
+        invalidate_layout();
+        if (window()) {
+            window()->request_redraw("menu removed");
+        }
+        return true;
+    }
+    return false;
+}
+
+std::shared_ptr<Menu> MenuBar::menu_at(int index) const {
+    if (index < 0 || index >= static_cast<int>(menus_.size())) {
+        return nullptr;
+    }
+    return menus_[index];
+}
+
 static auto find_shortcut_in(Menu const &menu, KeyEvent const &event) -> Command::Ptr {
     for (auto const &item : menu.items()) {
         if (item.is_submenu() && item.submenu) {

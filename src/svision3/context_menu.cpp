@@ -40,6 +40,7 @@ void ContextMenu::show(Window *win, Point position) {
     auto max_name_w = 0.0f;
     auto max_shortcut_w = 0.0f;
     auto max_icon_w = 0.0f;
+    auto any_checkable = false;
 
     item_height_ = detail::current_platform()->font_metrics(palette.fonts.size).height +
                    style.item_padding * 2.0f;
@@ -59,6 +60,7 @@ void ContextMenu::show(Window *win, Point position) {
         if (auto const &icon = item.command->icon_image()) {
             max_icon_w = std::max(max_icon_w, static_cast<float>(icon->width));
         }
+        any_checkable = any_checkable || item.command->is_checkable();
 
         auto shortcut = item.command->printable_shortcut();
         if (!shortcut.empty()) {
@@ -69,10 +71,15 @@ void ContextMenu::show(Window *win, Point position) {
     }
 
     // FIXME: what is this extra 20.0f padding?
+    // One checkable item indents the whole menu, and so does one icon; the widths
+    // are worked out here so paint() and this measurement cannot disagree.
+    // check_column lives on style.menu; ContextMenu measures its padding from
+    // style.combo, which is a separate oddity.
+    columns_.check = any_checkable ? Theme::current().style.menu.check_column : 0.0f;
+    columns_.icon = max_icon_w > 0 ? max_icon_w + 4.0f : 0.0f; // icon plus its gap
+
     auto width = max_name_w + style.padding.left + style.padding.right + 20.0f;
-    if (max_icon_w > 0) {
-        width += max_icon_w + 4.0f; // Icon plus the gap before the text
-    }
+    width += columns_.check + columns_.icon;
     if (max_shortcut_w > 0) {
         width += max_shortcut_w + 20.0f; // Add gap and shortcut width
     }
@@ -155,7 +162,8 @@ void ContextMenu::paint(Painter &painter) {
         auto shortcut = item.command->printable_shortcut();
 
         theme.draw_menu_item(painter, item_rect, item.command->name(), icon_data, shortcut,
-                             i == hovered_, enabled, false, false, true);
+                             i == hovered_, enabled, item.command->is_checkable(),
+                             item.command->is_checked(), true, columns_);
 
         if (item.type == MenuItem::Type::Submenu) {
             auto const &style = Theme::current().style.combo;
