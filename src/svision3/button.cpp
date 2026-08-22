@@ -240,7 +240,14 @@ bool Button::trigger_mnemonic(std::string_view key) {
     if (!is_enabled() || mnemonic_key_.empty() || mnemonic_key_ != key) {
         return false;
     }
-    fire_click();
+    // Whatever a click would do. On a button carrying a menu that is to drop the
+    // menu down, not to fire the click handlers -- which on such a button are
+    // usually unset, so the mnemonic did nothing at all.
+    if (menu_) {
+        show_menu();
+    } else {
+        fire_click();
+    }
     return true;
 }
 
