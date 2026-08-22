@@ -461,3 +461,34 @@ TEST_CASE("TabWidget StackedLayout child rect is offset below tab bar", "[tabwid
     REQUIRE(stacked->rect().height < 300.0f);
     REQUIRE(stacked->rect().y + stacked->rect().height == 300.0f);
 }
+
+// set_orientation moves the tab strip between the top edge and a side, which
+// changes tab_bar_thickness() and so this widget's size_hint(). It used to lay
+// out its own content and stop there: nothing marked the ancestors dirty and
+// nothing asked for a repaint, so flipping orientation only became visible once
+// some unrelated event happened to redraw the window.
+TEST_CASE("TabWidget orientation change invalidates layout", "[tabwidget]") {
+    auto parent = std::make_shared<VBoxLayout>();
+    auto tabs = std::make_shared<TabWidget>();
+    parent->add_widget(tabs);
+
+    tabs->add_tab("a", std::make_shared<Label>("A"));
+    tabs->set_rect({0, 0, 400, 300});
+
+    parent->set_layout_dirty(false);
+    tabs->set_layout_dirty(false);
+    REQUIRE_FALSE(tabs->is_layout_dirty());
+    REQUIRE_FALSE(parent->is_layout_dirty());
+
+    tabs->set_orientation(TabOrientation::West);
+    REQUIRE(tabs->is_layout_dirty());
+    REQUIRE(parent->is_layout_dirty()); // ancestors have to re-measure too
+
+    // Setting the orientation it already has changes nothing, and must not
+    // schedule work either.
+    parent->set_layout_dirty(false);
+    tabs->set_layout_dirty(false);
+    tabs->set_orientation(TabOrientation::West);
+    REQUIRE_FALSE(tabs->is_layout_dirty());
+    REQUIRE_FALSE(parent->is_layout_dirty());
+}

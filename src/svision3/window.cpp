@@ -1208,8 +1208,15 @@ void Window::handle_key(KeyEvent const &event) {
         return;
     }
 
-    auto mnemonic_mod = event.alt || event.super || event.ctrl;
-    if (event.type == KeyEvent::Type::Press && mnemonic_mod && !event.text.empty()) {
+    // Alt, and only Alt. Ctrl and Super are the accelerator namespace: a menu
+    // claiming them would swallow every shortcut whose letter happens to match a
+    // menu title -- Ctrl+E never reaching a command because an "&Edit" menu is on
+    // the bar, Ctrl+V opening "&View" instead of pasting. Adding Ctrl or Super to
+    // Alt makes a separate chord too (Ctrl+Alt+M), which this must also decline.
+    // Mnemonics are checked ahead of the command dispatch below, which is what
+    // makes such a collision silent rather than merely ambiguous.
+    if (event.type == KeyEvent::Type::Press && event.alt && !event.ctrl && !event.super &&
+        !event.text.empty()) {
         auto key = normalize_mnemonic_key(event.text);
         auto targets = std::vector<Widget *>{};
 

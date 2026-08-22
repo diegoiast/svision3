@@ -178,6 +178,11 @@ nlohmann::json Command::to_json() const {
     if (!enabled_) {
         j["enabled"] = false;
     }
+    // Both, and independently: a checkable command that happens to be unchecked
+    // would otherwise come back as a plain action, and could then never be checked.
+    if (checkable_) {
+        j["checkable"] = true;
+    }
     if (checked_) {
         j["checked"] = true;
     }
@@ -200,7 +205,12 @@ void Command::from_json(nlohmann::json const &j) {
     if (j.contains("enabled")) {
         enabled_ = j["enabled"];
     }
+    if (j.contains("checkable")) {
+        checkable_ = j["checkable"];
+    }
     if (j.contains("checked")) {
+        // A document written before "checkable" existed still restores its state.
+        checkable_ = checkable_ || j["checked"].get<bool>();
         checked_ = j["checked"];
     }
 }

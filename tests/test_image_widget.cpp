@@ -128,3 +128,32 @@ TEST_CASE("ImageWidget keeps its scrollbars at the edges across resizes",
         REQUIRE(h.y + h.height > 380.0f);
     }
 }
+
+// Describing an image is presentation: what to mention, how to word it, and
+// whether it appears in a dialog at all are the application's decisions. The
+// widget supplies the facts and stays out of it.
+TEST_CASE("ImageWidget exposes its image rather than describing it", "[image_widget]") {
+    ImageWidget w;
+    REQUIRE(w.image() == nullptr);
+    REQUIRE(w.source_path().empty());
+
+    auto data = std::make_shared<ImageData>();
+    data->width = 640;
+    data->height = 480;
+    data->channels = 4;
+    data->format = PixelFormat::BGRA;
+    data->pixels.resize(size_t{640} * 480 * 4);
+    w.set_image(data);
+
+    // Everything an application needs to report on the image, and nothing that
+    // decides how the report should read.
+    REQUIRE(w.image() == data);
+    REQUIRE(w.image()->width == 640);
+    REQUIRE(w.image()->height == 480);
+    REQUIRE(w.image()->pixels.size() == size_t{640} * 480 * 4);
+    REQUIRE(w.zoom() == 1.0f);
+
+    // The widget offers commands of its own; which menu each belongs to is not
+    // something it decides, so there is nothing here to assert about grouping.
+    REQUIRE_FALSE(w.commands().empty());
+}

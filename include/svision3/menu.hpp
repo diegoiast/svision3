@@ -42,7 +42,7 @@ struct MenuItem {
     static MenuItem submenu_item(std::string name, std::shared_ptr<class Menu> menu);
 };
 
-class Menu : public std::enable_shared_from_this<Menu>, public CommandSink {
+class Menu : public std::enable_shared_from_this<Menu> {
   public:
     // Why a menu went away. The menubar needs to tell these apart: Escape hands
     // control back to the menubar with the title still highlighted, while running
@@ -71,14 +71,13 @@ class Menu : public std::enable_shared_from_this<Menu>, public CommandSink {
 
     // CommandSink's own editing points. These stay void: the interface declares
     // them that way, and an override cannot widen its return type.
-    void insert_separator(int index) override;
-    void remove_range(int index, int count) override;
-    int item_count() const override { return static_cast<int>(items_.size()); }
+    void insert_separator(int index);
+    void remove_range(int index, int count);
+    int item_count() const { return static_cast<int>(items_.size()); }
 
-    // CommandSink. An action is the only thing a generic command source can
-    // contribute, so this is just insert_action() under the name the sink
-    // interface uses.
-    void insert_command(int index, Command::Ptr cmd) override {
+    // An action is the only thing a generic command source can contribute, so
+    // this is just insert_action() under the name the sink interface uses.
+    void insert_command(int index, Command::Ptr cmd) {
         insert_action(index, std::move(cmd));
     }
 

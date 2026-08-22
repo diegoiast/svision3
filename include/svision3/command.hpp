@@ -54,8 +54,23 @@ class Command {
     bool is_enabled() const { return enabled_; }
     void set_enabled(bool e) { enabled_ = e; }
 
+    // A checkable command draws a check mark slot wherever it is shown, whether or
+    // not it currently is checked -- so toggling one does not shift its label
+    // sideways, and so a menu holding one is measured wide enough for the mark.
+    bool is_checkable() const { return checkable_; }
+    void set_checkable(bool c) { checkable_ = c; }
+
+    // Following QAction: only a checkable command can be checked, and asking to
+    // check one that is not is ignored rather than quietly making it checkable.
+    // Reserving the mark's column is a layout decision, and it should be made
+    // where the command is declared -- not as a side effect of setting state.
     bool is_checked() const { return checked_; }
-    void set_checked(bool c) { checked_ = c; }
+    void set_checked(bool c) {
+        if (!checkable_) {
+            return;
+        }
+        checked_ = c;
+    }
 
     void set_execute_func(std::function<void()> func) { execute_ = std::move(func); }
 
@@ -85,6 +100,7 @@ class Command {
     std::string shortcut_string_;
     Shortcut shortcut_;
     bool enabled_ = true;
+    bool checkable_ = false;
     bool checked_ = false;
     std::function<void()> execute_;
 };
