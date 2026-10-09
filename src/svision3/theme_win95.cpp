@@ -230,7 +230,7 @@ void Win95Theme::draw_splitter_handle(Painter &painter, float pos, Rect const &s
             auto y = start + i * s.dot_spacing;
             // 2px shadow + 2px highlight = one bevel groove
             painter.fill_rect({pos - 1.0f, y, 1.0f, s.dot_size}, shadow);
-            painter.fill_rect({pos,         y, 1.0f, s.dot_size}, highlight);
+            painter.fill_rect({pos, y, 1.0f, s.dot_size}, highlight);
         }
     } else {
         auto const mid = splitter_rect.x + splitter_rect.width / 2.0f;
@@ -238,7 +238,7 @@ void Win95Theme::draw_splitter_handle(Painter &painter, float pos, Rect const &s
         for (int i = 0; i < s.dot_count; ++i) {
             auto x = start + i * s.dot_spacing;
             painter.fill_rect({x, pos - 1.0f, s.dot_size, 1.0f}, shadow);
-            painter.fill_rect({x, pos,         s.dot_size, 1.0f}, highlight);
+            painter.fill_rect({x, pos, s.dot_size, 1.0f}, highlight);
         }
     }
 }

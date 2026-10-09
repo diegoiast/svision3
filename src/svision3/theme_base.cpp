@@ -432,8 +432,8 @@ void BaseTheme::draw_menu_background(Painter &painter, Rect const &rect) const {
 
 void BaseTheme::draw_menu_item(Painter &painter, Rect const &rect, std::string_view text,
                                Icon const &icon, std::string_view shortcut, bool hovered,
-                               bool enabled, bool /*checkable*/, bool checked,
-                               bool show_mnemonics, MenuColumns const &columns) const {
+                               bool enabled, bool /*checkable*/, bool checked, bool show_mnemonics,
+                               MenuColumns const &columns) const {
     auto fm = painter.font_metrics(palette.fonts.size);
     auto baseline = rect.y + (rect.height - fm.cell_height()) / 2.0f + fm.ascent;
     auto text_col = palette.text;

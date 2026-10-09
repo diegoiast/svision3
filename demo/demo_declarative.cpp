@@ -153,7 +153,8 @@ int main(int argc, char *argv[]) {
     });
 
     auto status_bar_elem = ui::status_bar();
-    auto *status_bar_ptr = status_bar_elem.get();
+    // fixme: naked pointer
+    auto status_bar_ptr = status_bar_elem.get();
     status_bar_ptr->add_section("status", "Ready");
     status_bar_ptr->add_section("progress", "Connecting...").appear(350);
     status_bar_ptr->add_section("work", "Processing").spinner(350);
@@ -163,9 +164,8 @@ int main(int argc, char *argv[]) {
     // each Element into its container -- the container takes over the shared
     // ownership, so these weak_ptrs keep tracking the same widgets.
     auto sync_ui = [t_combo_ref = toolbar_theme_combo.ref(),
-                    t_toggle_ref = toolbar_theme_toggle.ref(),
-                    m_combo_ref = main_theme_combo.ref(), group,
-                    rb_light_ref = rb_light.ref(),
+                    t_toggle_ref = toolbar_theme_toggle.ref(), m_combo_ref = main_theme_combo.ref(),
+                    group, rb_light_ref = rb_light.ref(),
                     rb_dark_ref = rb_dark.ref()](const svision3::Theme &theme) {
         auto t_combo_ptr = t_combo_ref.lock();
         auto t_toggle_ptr = t_toggle_ref.lock();
@@ -176,8 +176,8 @@ int main(int argc, char *argv[]) {
             return;
         }
 
-        int selected = -1;
-        for (int i = 0; i < svision3::theme_style_count; i++) {
+        auto selected = -1;
+        for (auto i = 0; i < svision3::theme_style_count; i++) {
             if (theme.name == svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i))) {
                 selected = i;
                 break;
@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
         t_combo_ptr->set_selected(selected);
         m_combo_ptr->set_selected(selected);
 
-        bool light = theme.palette.window.luma() > 0.5f;
+        auto light = theme.palette.window.luma() > 0.5f;
         t_toggle_ptr->set_checked(light);
         group.group->select(light ? rb_light_ptr.get() : rb_dark_ptr.get());
     };
@@ -773,16 +773,16 @@ int main(int argc, char *argv[]) {
                                                             .alignment(svision3::Alignment::Center))
                                      .add_tab("West 2", ui::label("West 2 Content")
                                                             .alignment(svision3::Alignment::Center)
-                                                            .background_color(
-                                                                svision3::Color::rgb(0.8, 1.0, 0.8)))
+                                                            .background_color(svision3::Color::rgb(
+                                                                0.8, 1.0, 0.8)))
                                      .add_tab("West 3", ui::label("West 3 Content")
                                                             .alignment(svision3::Alignment::Center)
-                                                            .background_color(
-                                                                svision3::Color::rgb(0.7, 1.0, 0.7)))
+                                                            .background_color(svision3::Color::rgb(
+                                                                0.7, 1.0, 0.7)))
                                      .add_tab("West 4", ui::label("West 4 Content")
                                                             .alignment(svision3::Alignment::Center)
-                                                            .background_color(
-                                                                svision3::Color::rgb(0.6, 1.0, 0.6)))
+                                                            .background_color(svision3::Color::rgb(
+                                                                0.6, 1.0, 0.6)))
                                      .add_tab("West 5", ui::label("West 5 Content")
                                                             .alignment(svision3::Alignment::Center)
                                                             .background_color(svision3::Color::rgb(
@@ -796,16 +796,16 @@ int main(int argc, char *argv[]) {
                                                             .alignment(svision3::Alignment::Center))
                                      .add_tab("East 2", ui::label("East 2 Content")
                                                             .alignment(svision3::Alignment::Center)
-                                                            .background_color(
-                                                                svision3::Color::rgb(0.8, 0.8, 1.0)))
+                                                            .background_color(svision3::Color::rgb(
+                                                                0.8, 0.8, 1.0)))
                                      .add_tab("East 3", ui::label("East 3 Content")
                                                             .alignment(svision3::Alignment::Center)
-                                                            .background_color(
-                                                                svision3::Color::rgb(0.7, 0.7, 1.0)))
+                                                            .background_color(svision3::Color::rgb(
+                                                                0.7, 0.7, 1.0)))
                                      .add_tab("East 4", ui::label("East 4 Content")
                                                             .alignment(svision3::Alignment::Center)
-                                                            .background_color(
-                                                                svision3::Color::rgb(0.6, 0.6, 1.0)))
+                                                            .background_color(svision3::Color::rgb(
+                                                                0.6, 0.6, 1.0)))
                                      .add_tab("East 5", ui::label("East 5 Content")
                                                             .alignment(svision3::Alignment::Center)
                                                             .background_color(svision3::Color::rgb(
@@ -816,9 +816,8 @@ int main(int argc, char *argv[]) {
                              .orientation(svision3::TabOrientation::South)
                              .leading_widget(make_plus())
                              .trailing_widget(make_close())
-                             .add_tab(
-                                 "South 1",
-                                 ui::label("South 1 Content").alignment(svision3::Alignment::Center))
+                             .add_tab("South 1", ui::label("South 1 Content")
+                                                     .alignment(svision3::Alignment::Center))
                              .add_tab("South 2",
                                       ui::label("South 2 Content")
                                           .alignment(svision3::Alignment::Center)

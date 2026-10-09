@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "svision3/application.hpp"
-#include "svision3/tray_icon.hpp"
 #include "svision3/rich_label.hpp"
+#include "svision3/tray_icon.hpp"
 #include "svision3/window.hpp"
 #include "svision3/xdg_image_loader.hpp"
 #include <spdlog/spdlog.h>

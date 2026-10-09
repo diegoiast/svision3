@@ -342,8 +342,9 @@ int main(int argc, char *argv[]) {
         auto scheme = svision3::Theme::current().palette.window.luma() < 0.5f
                           ? svision3::ColorScheme::Dark
                           : svision3::ColorScheme::Light;
-        auto style = (index < svision3::theme_style_count) ? static_cast<svision3::ThemeStyle>(index)
-                                                          : svision3::ThemeStyle::Material;
+        auto style = (index < svision3::theme_style_count)
+                         ? static_cast<svision3::ThemeStyle>(index)
+                         : svision3::ThemeStyle::Material;
         auto new_theme = svision3::ThemeFactory::create(style, scheme);
         svision3::Theme::set_current(std::move(new_theme));
         if (auto window = weak_window.lock()) {
@@ -452,25 +453,25 @@ int main(int argc, char *argv[]) {
             apply_theme(app, window.get());
         }
     };
-    svision3::Theme::add_theme_observer(
-        [combo_ref = std::weak_ptr(combo)](const svision3::Theme &theme) {
-            auto combo = combo_ref.lock();
-            if (!combo) {
-                return;
+    svision3::Theme::add_theme_observer([combo_ref =
+                                             std::weak_ptr(combo)](const svision3::Theme &theme) {
+        auto combo = combo_ref.lock();
+        if (!combo) {
+            return;
+        }
+        int selected = -1;
+        for (int i = 0; i < svision3::theme_style_count; i++) {
+            if (theme.name == svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i))) {
+                selected = i;
+                break;
             }
-            int selected = -1;
-            for (int i = 0; i < svision3::theme_style_count; i++) {
-                if (theme.name == svision3::Theme::style_name(static_cast<svision3::ThemeStyle>(i))) {
-                    selected = i;
-                    break;
-                }
-            }
-            if (selected != -1) {
-                combo->set_selected(selected);
-            } else {
-                combo->set_selected(svision3::theme_style_count); // "Other"
-            }
-        });
+        }
+        if (selected != -1) {
+            combo->set_selected(selected);
+        } else {
+            combo->set_selected(svision3::theme_style_count); // "Other"
+        }
+    });
     tab_main->add_widget(std::move(combo));
 
     auto rb_light = std::make_unique<svision3::RadioButton>("&Light", scheme_group);
@@ -480,7 +481,7 @@ int main(int argc, char *argv[]) {
     scheme_group.select(rb_light.get());
     scheme_group.on_change = [&app, weak_window = std::weak_ptr(window)](int index) {
         constexpr svision3::ColorScheme schemes[] = {svision3::ColorScheme::Light,
-                                                    svision3::ColorScheme::Dark};
+                                                     svision3::ColorScheme::Dark};
         current_scheme = schemes[index];
         if (auto window = weak_window.lock()) {
             apply_theme(app, window.get());
@@ -662,8 +663,8 @@ int main(int argc, char *argv[]) {
     slider->set_range(0, 100);
     slider_val_ref.lock()->set_text(fmt::format("{:.0f}%", slider->value()));
 
-    slider->set_on_change([progress_ptr, slider_val_ref, weak_window = std::weak_ptr(window)](
-                              svision3::Slider &, float v) {
+    slider->set_on_change([progress_ptr, slider_val_ref,
+                           weak_window = std::weak_ptr(window)](svision3::Slider &, float v) {
         if (auto_progress_timer != 0) {
             if (auto window = weak_window.lock()) {
                 window->stop_timer(auto_progress_timer);

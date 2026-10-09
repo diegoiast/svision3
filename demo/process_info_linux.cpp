@@ -107,8 +107,8 @@ std::vector<int> list_pids() {
 
 std::string read_proc_exe(int pid) {
     auto buf = std::array<char, 4096>{};
-    auto len = ::readlink(("/proc/" + std::to_string(pid) + "/exe").c_str(), buf.data(),
-                          buf.size() - 1);
+    auto len =
+        ::readlink(("/proc/" + std::to_string(pid) + "/exe").c_str(), buf.data(), buf.size() - 1);
     if (len <= 0) {
         return "(unavailable)";
     }
@@ -163,7 +163,8 @@ std::vector<ProcessRow> list_processes(std::unordered_map<int, uint64_t> &prev_t
         auto cpu_percent = 0.0f;
         if (auto it = prev_ticks.find(pid); it != prev_ticks.end() && total_ticks >= it->second) {
             auto delta_ticks = total_ticks - it->second;
-            cpu_percent = (static_cast<float>(delta_ticks) / clock_ticks_per_sec) / elapsed_sec * 100.0f;
+            cpu_percent =
+                (static_cast<float>(delta_ticks) / clock_ticks_per_sec) / elapsed_sec * 100.0f;
         }
         new_prev[pid] = total_ticks;
         rows.push_back({pid, sample->name, cpu_percent, sample->rss_kb, sample->threads,
@@ -171,7 +172,7 @@ std::vector<ProcessRow> list_processes(std::unordered_map<int, uint64_t> &prev_t
     }
     prev_ticks = std::move(new_prev);
     std::sort(rows.begin(), rows.end(),
-             [](auto const &a, auto const &b) { return a.cpu_percent > b.cpu_percent; });
+              [](auto const &a, auto const &b) { return a.cpu_percent > b.cpu_percent; });
     return rows;
 }
 
@@ -243,9 +244,9 @@ ProcessDetail get_process_detail(int pid) {
     auto boot_time = read_boot_time_epoch();
     if (boot_time > 0) {
         static auto const clock_ticks_per_sec = static_cast<float>(sysconf(_SC_CLK_TCK));
-        auto start_epoch =
-            static_cast<time_t>(boot_time + static_cast<uint64_t>(
-                                                static_cast<float>(starttime_ticks) / clock_ticks_per_sec));
+        auto start_epoch = static_cast<time_t>(
+            boot_time +
+            static_cast<uint64_t>(static_cast<float>(starttime_ticks) / clock_ticks_per_sec));
         auto tm_buf = std::tm{};
         localtime_r(&start_epoch, &tm_buf);
         auto buf = std::array<char, 32>{};
@@ -262,18 +263,18 @@ std::string format_tooltip(ProcessDetail const &d) {
     // separators on one line -- list items always render on their own line,
     // whereas a single '\n' inside a paragraph is just a soft break (a space)
     // under CommonMark, so a "joined" version would collapse back to one line.
-    return fmt::format(
-        "**{}**  (pid {})\n\n"
-        "- **Exe:** {}\n"
-        "- **User:** {}\n"
-        "- **Parent:** {}\n"
-        "- **Priority:** {} (nice {})\n"
-        "- **Memory:** {:.1f} MB (peak {:.1f} MB, swap {:.1f} MB)\n"
-        "- **Started:** {}\n"
-        "- **Cmd:** {}\n",
-        d.name, d.pid, d.exe_path, d.user, d.parent, d.priority, d.nice,
-        static_cast<float>(d.vm_size_kb) / 1024.0f, static_cast<float>(d.vm_peak_kb) / 1024.0f,
-        static_cast<float>(d.vm_swap_kb) / 1024.0f, d.started, d.cmdline);
+    return fmt::format("**{}**  (pid {})\n\n"
+                       "- **Exe:** {}\n"
+                       "- **User:** {}\n"
+                       "- **Parent:** {}\n"
+                       "- **Priority:** {} (nice {})\n"
+                       "- **Memory:** {:.1f} MB (peak {:.1f} MB, swap {:.1f} MB)\n"
+                       "- **Started:** {}\n"
+                       "- **Cmd:** {}\n",
+                       d.name, d.pid, d.exe_path, d.user, d.parent, d.priority, d.nice,
+                       static_cast<float>(d.vm_size_kb) / 1024.0f,
+                       static_cast<float>(d.vm_peak_kb) / 1024.0f,
+                       static_cast<float>(d.vm_swap_kb) / 1024.0f, d.started, d.cmdline);
 }
 
 // The standard (non-realtime) POSIX/Linux signal set from signal(7); the

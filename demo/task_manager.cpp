@@ -117,13 +117,14 @@ class CoreSparkline : public svision3::Widget, public svision3::Fluent<CoreSpark
         auto fm = painter.font_metrics(label_size);
         painter.draw_text(label, {r.x + 10, r.y + 8 + fm.ascent}, palette.text, label_size);
 
-        auto pct_text = samples_.empty() ? std::string("--") : fmt::format("{:.0f}%", samples_.back());
+        auto pct_text =
+            samples_.empty() ? std::string("--") : fmt::format("{:.0f}%", samples_.back());
         auto pct_w = painter.measure_text(pct_text, label_size).width;
         painter.draw_text(pct_text, {r.x + r.width - 10 - pct_w, r.y + 8 + fm.ascent},
                           palette.text_disabled, label_size);
 
-        auto plot = svision3::Rect{r.x + 8, r.y + fm.height + 16, r.width - 16,
-                                  r.height - fm.height - 26};
+        auto plot =
+            svision3::Rect{r.x + 8, r.y + fm.height + 16, r.width - 16, r.height - fm.height - 26};
         if (samples_.size() < 2 || plot.width <= 0 || plot.height <= 0) {
             return;
         }
@@ -211,11 +212,10 @@ int main(int argc, char *argv[]) {
     // the same vector the per-core data itself comes from, so it can't
     // disagree with what's actually fed into the sparklines below.
     static auto core_sparklines = std::vector<CoreSparkline *>{};
-    auto num_cores =
-        static_cast<unsigned>(hwinfo::monitoring::cpu::thread_utilization().size());
+    auto num_cores = static_cast<unsigned>(hwinfo::monitoring::cpu::thread_utilization().size());
     auto cols = num_cores > 0
-                   ? static_cast<unsigned>(std::ceil(std::sqrt(static_cast<double>(num_cores))))
-                   : 1u;
+                    ? static_cast<unsigned>(std::ceil(std::sqrt(static_cast<double>(num_cores))))
+                    : 1u;
 
     auto cores_grid = ui::vbox();
     for (auto row_start = 0u; row_start < num_cores; row_start += cols) {
@@ -248,11 +248,12 @@ int main(int argc, char *argv[]) {
     process_table->set_column_comparator(2, numeric_less); // CPU %
     process_table->set_column_comparator(3, numeric_less); // Memory (MB)
     process_table->set_column_comparator(4, numeric_less); // Threads
-    process_table->set_row_markdown_tooltip_provider([process_model](size_t model_row) -> std::string {
-        auto const &pid_text = process_model->cell_text(model_row, 0);
-        return process_info::format_tooltip(
-            process_info::get_process_detail(std::atoi(pid_text.c_str())));
-    });
+    process_table->set_row_markdown_tooltip_provider(
+        [process_model](size_t model_row) -> std::string {
+            auto const &pid_text = process_model->cell_text(model_row, 0);
+            return process_info::format_tooltip(
+                process_info::get_process_detail(std::atoi(pid_text.c_str())));
+        });
 
     // ContextMenu::show() stashes `this` into the window's popup, so it must
     // outlive the popup -- a function-local static (like the *_series charts
@@ -267,9 +268,8 @@ int main(int argc, char *argv[]) {
 
             auto signal_menu = std::make_shared<svision3::Menu>("Send Signal");
             for (auto const &sig : process_info::available_signals()) {
-                signal_menu->add_action(sig.name, [pid, value = sig.value] {
-                    process_info::send_signal(pid, value);
-                });
+                signal_menu->add_action(
+                    sig.name, [pid, value = sig.value] { process_info::send_signal(pid, value); });
             }
 
             auto items = std::vector<svision3::MenuItem>{};
@@ -316,9 +316,9 @@ int main(int argc, char *argv[]) {
     static auto mem_series =
         SlidingChart{mem_chart_ptr, window, "Memory", svision3::Color::rgb(0.60f, 0.30f, 0.85f),
                      svision3::Color::rgba(0.60f, 0.30f, 0.85f, 0.25f)};
-    static auto network_series =
-        SlidingChart{network_chart_ptr, window, "Network", svision3::Color::rgb(0.20f, 0.75f, 0.35f),
-                     svision3::Color::rgba(0.20f, 0.75f, 0.35f, 0.25f)};
+    static auto network_series = SlidingChart{network_chart_ptr, window, "Network",
+                                              svision3::Color::rgb(0.20f, 0.75f, 0.35f),
+                                              svision3::Color::rgba(0.20f, 0.75f, 0.35f, 0.25f)};
 
     // Memory reads are cheap syscalls (no artificial delay), so poll it
     // directly from svision3's own timer on the main thread.
@@ -330,16 +330,16 @@ int main(int argc, char *argv[]) {
     // since app start" instead of "bytes since the last tick".
     auto sample_timer = window->start_timer(kSampleIntervalSec, [total_bytes] {
         auto mem_data = hwinfo::monitoring::ram::fetch();
-        auto used_gb = total_bytes > 0 ? static_cast<float>(total_bytes - mem_data.available_bytes) /
-                                              (1024.0f * 1024.0f * 1024.0f)
-                                       : 0.0f;
+        auto used_gb = total_bytes > 0
+                           ? static_cast<float>(total_bytes - mem_data.available_bytes) /
+                                 (1024.0f * 1024.0f * 1024.0f)
+                           : 0.0f;
         mem_series.append(used_gb);
 
         static auto last_network_bytes = process_info::total_network_bytes();
         auto now_network_bytes = process_info::total_network_bytes();
-        auto delta_bytes = now_network_bytes >= last_network_bytes
-                               ? now_network_bytes - last_network_bytes
-                               : 0;
+        auto delta_bytes =
+            now_network_bytes >= last_network_bytes ? now_network_bytes - last_network_bytes : 0;
         last_network_bytes = now_network_bytes;
         auto mbps =
             static_cast<float>(delta_bytes) * 8.0f / (1000.0f * 1000.0f) / kSampleIntervalSec;
@@ -358,7 +358,8 @@ int main(int argc, char *argv[]) {
             auto thread_utilization = data.thread_utilization;
             svision3::Application::post_to_main_thread([utilization_percent, thread_utilization] {
                 cpu_series.append(utilization_percent);
-                for (size_t i = 0; i < thread_utilization.size() && i < core_sparklines.size(); i++) {
+                for (size_t i = 0; i < thread_utilization.size() && i < core_sparklines.size();
+                     i++) {
                     core_sparklines[i]->append(static_cast<float>(thread_utilization[i]) * 100.0f);
                 }
             });
@@ -400,8 +401,8 @@ int main(int argc, char *argv[]) {
                 std::string(r.state),
             });
         }
-        process_model->set_data(
-            {"PID", "Name", "CPU %", "Memory (MB)", "Threads", "State"}, std::move(table_rows));
+        process_model->set_data({"PID", "Name", "CPU %", "Memory (MB)", "Threads", "State"},
+                                std::move(table_rows));
     };
 
     process_filter_input_ptr->on_change = [&process_filter, &latest_process_rows,

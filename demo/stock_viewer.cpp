@@ -204,11 +204,11 @@ int main() {
         req.url = url;
         req.headers.push_back({"User-Agent", "Mozilla/5.0"});
 
-        svision3::net::fetch_async(req, [ticker, price_chart_ptr, volume_chart_ptr, candle_chart_ptr,
-                                        returns_chart_ptr, pie_chart_ptr, scatter_ptr,
-                                        histogram_ptr, stacked_vol_ptr, status_ptr, progress_ptr,
-                                        window, &loaded_tickers,
-                                        &all_returns](svision3::net::HttpResponse resp) {
+        svision3::net::fetch_async(req, [ticker, price_chart_ptr, volume_chart_ptr,
+                                         candle_chart_ptr, returns_chart_ptr, pie_chart_ptr,
+                                         scatter_ptr, histogram_ptr, stacked_vol_ptr, status_ptr,
+                                         progress_ptr, window, &loaded_tickers,
+                                         &all_returns](svision3::net::HttpResponse resp) {
             if (progress_ptr) {
                 progress_ptr->hide();
             }

@@ -11,8 +11,8 @@
 #include "db/connection.hpp"
 #include "svision3/file_dialog.hpp"
 
-#include <spdlog/spdlog.h>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <vector>
 
@@ -22,8 +22,11 @@ static std::vector<std::string> g_known_schemas;
 static std::string quote_id(std::string const &id) {
     std::string q = "\"";
     for (char c : id) {
-        if (c == '"') q += "\"\"";
-        else q += c;
+        if (c == '"') {
+            q += "\"\"";
+        } else {
+            q += c;
+        }
     }
     q += '"';
     return q;
@@ -31,22 +34,30 @@ static std::string quote_id(std::string const &id) {
 
 static std::vector<std::string> get_schemas() {
     g_known_schemas.clear();
-    if (!g_db) return {};
+    if (!g_db) {
+        return {};
+    }
     auto stmt = g_db->prepare("PRAGMA database_list");
     auto rs = stmt->execute();
-    while (rs->next())
+    while (rs->next()) {
         g_known_schemas.push_back(rs->get_string(1));
+    }
     return g_known_schemas;
 }
 
 static bool is_known_schema(std::string const &schema) {
-    for (auto const &s : g_known_schemas)
-        if (s == schema) return true;
+    for (auto const &s : g_known_schemas) {
+        if (s == schema) {
+            return true;
+        }
+    }
     return false;
 }
 
 static std::vector<std::string> get_tables(std::string const &schema) {
-    if (!g_db) return {};
+    if (!g_db) {
+        return {};
+    }
     if (!is_known_schema(schema)) {
         spdlog::error("unknown schema: {}", schema);
         return {};
@@ -58,16 +69,16 @@ static std::vector<std::string> get_tables(std::string const &schema) {
     try {
         auto stmt = g_db->prepare(sql);
         auto rs = stmt->execute();
-        while (rs->next())
+        while (rs->next()) {
             results.push_back(rs->get_string(0));
+        }
     } catch (db::Error const &e) {
         spdlog::error("query error: {}", e.what());
     }
     return results;
 }
 
-static void run_query(std::string const &sql,
-                      std::shared_ptr<svision3::StringTableModel> &model) {
+static void run_query(std::string const &sql, std::shared_ptr<svision3::StringTableModel> &model) {
     if (!g_db) {
         model->set_data({"Error"}, {{"No database open"}});
         return;
@@ -80,18 +91,20 @@ static void run_query(std::string const &sql,
         int ncols = rs->column_count();
         std::vector<std::string> headers;
         headers.reserve(ncols);
-        for (int c = 0; c < ncols; c++)
+        for (int c = 0; c < ncols; c++) {
             headers.push_back(rs->column_name(c));
+        }
 
         std::vector<std::vector<std::string>> rows;
         while (rs->next()) {
             std::vector<std::string> row;
             row.reserve(ncols);
             for (int c = 0; c < ncols; c++) {
-                if (rs->is_null(c))
+                if (rs->is_null(c)) {
                     row.emplace_back("NULL");
-                else
+                } else {
                     row.push_back(rs->get_string(c));
+                }
             }
             rows.push_back(std::move(row));
         }
@@ -102,7 +115,6 @@ static void run_query(std::string const &sql,
         model->set_data({"Error"}, {{e.what()}});
     }
 }
-
 
 struct ViewerState {
     svision3::Window *window = nullptr;
@@ -129,7 +141,9 @@ static void open_database(ViewerState &vs, std::string const &path) {
     vs.schema_combo->set_selected(0);
 
     auto schema = vs.schema_combo->selected_text();
-    if (schema.empty()) schema = "main";
+    if (schema.empty()) {
+        schema = "main";
+    }
     vs.table_combo->set_items(get_tables(schema));
     vs.table_combo->set_selected(0);
 
@@ -159,8 +173,8 @@ int main(int argc, char *argv[]) {
 
     ViewerState vs;
     vs.window = window;
-    vs.table_model = std::make_shared<svision3::StringTableModel>(
-        std::vector<std::string>{"(no data)"});
+    vs.table_model =
+        std::make_shared<svision3::StringTableModel>(std::vector<std::string>{"(no data)"});
 
     auto root = std::make_unique<svision3::VBoxLayout>();
     root->set_margins({12, 12, 12, 12});
@@ -177,8 +191,9 @@ int main(int argc, char *argv[]) {
             .use_native()
             .open()
             .then([&vs](svision3::FileDialog::Result path) {
-                if (path)
+                if (path) {
                     open_database(vs, *path);
+                }
             });
     };
     toolbar->add_widget(std::move(open_btn));
@@ -226,7 +241,9 @@ int main(int argc, char *argv[]) {
     // Execute query callback
     auto execute_query = [&vs]() {
         auto sql = vs.query_input->text();
-        if (sql.empty()) return;
+        if (sql.empty()) {
+            return;
+        }
         run_query(sql, vs.table_model);
         vs.status->set_text(std::to_string(vs.table_model->row_count()) + " row(s), " +
                             std::to_string(vs.table_model->column_count()) + " column(s)");
@@ -237,15 +254,20 @@ int main(int argc, char *argv[]) {
     // Wire up combos
     auto update_tables = [&vs]() {
         auto schema = vs.schema_combo->selected_text();
-        if (schema.empty()) schema = "main";
+        if (schema.empty()) {
+            schema = "main";
+        }
         vs.table_combo->set_items(get_tables(schema));
-        if (vs.table_combo->selected() < 0)
+        if (vs.table_combo->selected() < 0) {
             vs.table_combo->set_selected(0);
+        }
     };
 
     auto on_table_selected = [&vs, execute_query](int) {
         auto table = vs.table_combo->selected_text();
-        if (table.empty()) return;
+        if (table.empty()) {
+            return;
+        }
         vs.query_input->set_text("SELECT * FROM " + quote_id(table) + " LIMIT 1000");
         execute_query();
     };
@@ -258,8 +280,9 @@ int main(int argc, char *argv[]) {
     vs.table_combo->on_change = on_table_selected;
 
     // If a path was given on command line, open it immediately
-    if (argc >= 2)
+    if (argc >= 2) {
         open_database(vs, argv[1]);
+    }
 
     window->set_root(std::move(root));
     window->show();

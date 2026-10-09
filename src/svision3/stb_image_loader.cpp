@@ -98,11 +98,9 @@ auto StbImageLoader::save(ImageData const &image, std::string_view path) -> bool
         ok = stbi_write_jpg(s_path.c_str(), image.width, image.height, image.channels, pixels,
                             90) != 0;
     } else if (ext == ".bmp") {
-        ok = stbi_write_bmp(s_path.c_str(), image.width, image.height, image.channels, pixels) !=
-             0;
+        ok = stbi_write_bmp(s_path.c_str(), image.width, image.height, image.channels, pixels) != 0;
     } else if (ext == ".tga") {
-        ok = stbi_write_tga(s_path.c_str(), image.width, image.height, image.channels, pixels) !=
-             0;
+        ok = stbi_write_tga(s_path.c_str(), image.width, image.height, image.channels, pixels) != 0;
     } else {
         // Default to PNG
         ok = stbi_write_png(s_path.c_str(), image.width, image.height, image.channels, pixels,

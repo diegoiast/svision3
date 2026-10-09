@@ -66,8 +66,8 @@ auto AbstractLayout::handle_mouse(MouseEvent const &event) -> bool {
     // "click on track" fallback) would misinterpret it. Move/Drag are left unguarded:
     // widgets rely on receiving those even when out of bounds to clear local hover state.
     auto const bounded = event.type == MouseEvent::Type::Press ||
-                        event.type == MouseEvent::Type::Release ||
-                        event.type == MouseEvent::Type::Scroll;
+                         event.type == MouseEvent::Type::Release ||
+                         event.type == MouseEvent::Type::Scroll;
 
     // Move/Drag/Leave are broadcast to every child rather than stopping at the first one
     // that reports the event as handled: they are how a child clears its own hover state,

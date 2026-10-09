@@ -24,7 +24,9 @@ nlohmann::json Splitter::to_json() const {
     j["ratios"] = ratios_;
     auto arr = nlohmann::json::array();
     for (auto const &child : children_) {
-        if (child) arr.push_back(child->to_json());
+        if (child) {
+            arr.push_back(child->to_json());
+        }
     }
     j["children"] = arr;
     return j;
@@ -76,12 +78,16 @@ std::weak_ptr<Widget> Splitter::insert_child(size_t index, std::shared_ptr<Widge
 }
 
 std::weak_ptr<Widget> Splitter::child_at(size_t index) const {
-    if (index >= children_.size()) return {};
+    if (index >= children_.size()) {
+        return {};
+    }
     return children_[index];
 }
 
 Splitter &Splitter::remove_child(size_t index) {
-    if (index >= children_.size()) return *this;
+    if (index >= children_.size()) {
+        return *this;
+    }
 
     if (!ratios_.empty()) {
         auto divider = index == 0 ? size_t{0} : index - 1;
@@ -97,7 +103,9 @@ Splitter &Splitter::remove_child(size_t index) {
     cursor_ = CursorShape::Arrow;
 
     layout_children();
-    if (window_) window_->request_redraw("splitter child removed");
+    if (window_) {
+        window_->request_redraw("splitter child removed");
+    }
     return *this;
 }
 
@@ -106,45 +114,63 @@ Splitter &Splitter::remove_child(size_t index) {
 // ---------------------------------------------------------------------------
 
 Splitter &Splitter::set_ratio(int divider, float r) {
-    if (divider < 0 || divider >= (int)ratios_.size()) return *this;
+    if (divider < 0 || divider >= (int)ratios_.size()) {
+        return *this;
+    }
     ratios_[divider] = std::clamp(r, 0.0f, 1.0f);
     // Force a locked divider to re-anchor from the new ratio.
     locked_dividers_[divider].px = std::numeric_limits<float>::quiet_NaN();
     layout_children();
-    if (window_) window_->request_redraw("splitter ratio");
+    if (window_) {
+        window_->request_redraw("splitter ratio");
+    }
     return *this;
 }
 
 float Splitter::ratio(int divider) const {
-    if (divider < 0 || divider >= (int)ratios_.size()) return 0.5f;
+    if (divider < 0 || divider >= (int)ratios_.size()) {
+        return 0.5f;
+    }
     return ratios_[divider];
 }
 
 Splitter &Splitter::set_divider_locked(int divider, bool locked) {
-    if (divider < 0 || divider >= (int)locked_dividers_.size()) return *this;
+    if (divider < 0 || divider >= (int)locked_dividers_.size()) {
+        return *this;
+    }
     locked_dividers_[divider].locked = locked ? 1u : 0u;
     locked_dividers_[divider].px = std::numeric_limits<float>::quiet_NaN();
-    if (locked && dragging_divider_ == divider) dragging_divider_.reset();
+    if (locked && dragging_divider_ == divider) {
+        dragging_divider_.reset();
+    }
     cursor_ = CursorShape::Arrow;
     hovered_divider_.reset();
     layout_children();
-    if (window_) window_->request_redraw("splitter lock");
+    if (window_) {
+        window_->request_redraw("splitter lock");
+    }
     return *this;
 }
 
 bool Splitter::is_divider_locked(int divider) const {
-    if (divider < 0 || divider >= (int)locked_dividers_.size()) return false;
+    if (divider < 0 || divider >= (int)locked_dividers_.size()) {
+        return false;
+    }
     return locked_dividers_[divider].locked != 0;
 }
 
 Splitter &Splitter::set_stretch_factor(int child, float factor) {
-    if (child < 0 || child >= (int)stretch_factors_.size()) return *this;
+    if (child < 0 || child >= (int)stretch_factors_.size()) {
+        return *this;
+    }
     stretch_factors_[child] = std::max(0.0f, factor);
     return *this;
 }
 
 float Splitter::stretch_factor(int child) const {
-    if (child < 0 || child >= (int)stretch_factors_.size()) return 1.0f;
+    if (child < 0 || child >= (int)stretch_factors_.size()) {
+        return 1.0f;
+    }
     return stretch_factors_[child];
 }
 
@@ -157,17 +183,23 @@ Splitter &Splitter::set_locked(bool locked) {
         lk.locked = locked ? 1u : 0u;
         lk.px = std::numeric_limits<float>::quiet_NaN();
     }
-    if (locked) dragging_divider_.reset();
+    if (locked) {
+        dragging_divider_.reset();
+    }
     cursor_ = CursorShape::Arrow;
     hovered_divider_.reset();
     layout_children();
-    if (window_) window_->request_redraw("splitter lock");
+    if (window_) {
+        window_->request_redraw("splitter lock");
+    }
     return *this;
 }
 
 bool Splitter::locked() const {
     for (auto const &lk : locked_dividers_) {
-        if (lk.locked) return true;
+        if (lk.locked) {
+            return true;
+        }
     }
     return false;
 }
@@ -177,20 +209,25 @@ bool Splitter::locked() const {
 // ---------------------------------------------------------------------------
 
 float Splitter::effective_thickness(int divider) const {
-    if (is_divider_locked(divider)) return 0.0f;
+    if (is_divider_locked(divider)) {
+        return 0.0f;
+    }
     return Theme::current().style.splitter.thickness;
 }
 
 std::vector<float> Splitter::compute_positions() const {
     auto const N = (int)children_.size();
-    if (N <= 1) return {};
+    if (N <= 1) {
+        return {};
+    }
 
     auto const M = N - 1;
-    auto const total =
-        (orientation_ == Orientation::Horizontal) ? rect_.width : rect_.height;
+    auto const total = (orientation_ == Orientation::Horizontal) ? rect_.width : rect_.height;
 
     auto child_min = [&](int i) -> float {
-        if (i < 0 || i >= N || !children_[i]) return 0.0f;
+        if (i < 0 || i >= N || !children_[i]) {
+            return 0.0f;
+        }
         auto h = children_[i]->size_hint();
         return (orientation_ == Orientation::Horizontal) ? h.width : h.height;
     };
@@ -201,7 +238,7 @@ std::vector<float> Splitter::compute_positions() const {
     for (int i = 0; i < M; i++) {
         float hs = effective_thickness(i);
         float r = (i < (int)ratios_.size()) ? ratios_[i]
-                                             : static_cast<float>(i + 1) / static_cast<float>(N);
+                                            : static_cast<float>(i + 1) / static_cast<float>(N);
         float raw = total * r - hs / 2.0f;
 
         if (is_divider_locked(i)) {
@@ -226,7 +263,9 @@ std::vector<float> Splitter::compute_positions() const {
             float min_after = 0.0f;
             for (int j = i + 1; j < N; j++) {
                 min_after += child_min(j);
-                if (j < N - 1) min_after += effective_thickness(j);
+                if (j < N - 1) {
+                    min_after += effective_thickness(j);
+                }
             }
             raw = std::max(raw, prev_end + min_i);
             raw = std::min(raw, total - hs - min_after);
@@ -239,7 +278,9 @@ std::vector<float> Splitter::compute_positions() const {
 }
 
 Rect Splitter::handle_rect(int divider, std::vector<float> const &positions) const {
-    if (divider < 0 || divider >= (int)positions.size()) return {};
+    if (divider < 0 || divider >= (int)positions.size()) {
+        return {};
+    }
     auto const pos = positions[divider];
     auto const hs = effective_thickness(divider);
     if (orientation_ == Orientation::Horizontal) {
@@ -252,7 +293,9 @@ Rect Splitter::handle_rect(int divider, std::vector<float> const &positions) con
 void Splitter::redistribute_stretch(float new_total) {
     auto const N = (int)children_.size();
     auto const M = N - 1;
-    if (M <= 0 || last_total_ <= 0.0f) return;
+    if (M <= 0 || last_total_ <= 0.0f) {
+        return;
+    }
 
     // Reconstruct each child's current pixel size from ratios_ + the old total.
     std::vector<float> old_size(N, 0.0f);
@@ -260,7 +303,7 @@ void Splitter::redistribute_stretch(float new_total) {
     for (int i = 0; i < M; i++) {
         float hs = effective_thickness(i);
         float r = (i < (int)ratios_.size()) ? ratios_[i]
-                                             : static_cast<float>(i + 1) / static_cast<float>(N);
+                                            : static_cast<float>(i + 1) / static_cast<float>(N);
         float pos = last_total_ * r - hs / 2.0f;
         old_size[i] = pos - prev_end;
         prev_end = pos + hs;
@@ -298,7 +341,9 @@ void Splitter::redistribute_stretch(float new_total) {
 
 void Splitter::layout_children() {
     auto const N = (int)children_.size();
-    if (N == 0) return;
+    if (N == 0) {
+        return;
+    }
 
     auto const total = (orientation_ == Orientation::Horizontal) ? rect_.width : rect_.height;
     if (total > 0.0f) {
@@ -339,7 +384,9 @@ void Splitter::layout_children() {
 
 void Splitter::paint(Painter &painter) {
     for (auto const &child : children_) {
-        if (child) child->draw(painter);
+        if (child) {
+            child->draw(painter);
+        }
     }
 
     auto const positions = compute_positions();
@@ -347,7 +394,9 @@ void Splitter::paint(Painter &painter) {
     auto const &pal = Theme::current().palette;
 
     for (int i = 0; i < M; i++) {
-        if (is_divider_locked(i)) continue;
+        if (is_divider_locked(i)) {
+            continue;
+        }
 
         auto const pos = positions[i];
         auto const hs = effective_thickness(i);
@@ -359,8 +408,7 @@ void Splitter::paint(Painter &painter) {
             painter.fill_rect({0.0f, pos, rect_.width, hs}, pal.window);
         }
 
-        auto const line_color =
-            hovered ? pal.accent.with_alpha(0.6f) : pal.border.with_alpha(0.5f);
+        auto const line_color = hovered ? pal.accent.with_alpha(0.6f) : pal.border.with_alpha(0.5f);
         if (orientation_ == Orientation::Horizontal) {
             painter.draw_line({pos, 0.0f}, {pos, rect_.height}, line_color, 1.0f);
             painter.draw_line({pos + hs, 0.0f}, {pos + hs, rect_.height}, line_color, 1.0f);
@@ -372,7 +420,6 @@ void Splitter::paint(Painter &painter) {
         auto const center = pos + hs / 2.0f;
         Theme::current().draw_splitter_handle(painter, center, rect_, orientation_, hovered);
     }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -385,7 +432,9 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
 
     auto find_hit = [&](Point p) -> std::optional<int> {
         for (int i = 0; i < M; i++) {
-            if (!is_divider_locked(i) && handle_rect(i, positions).contains(p)) return i;
+            if (!is_divider_locked(i) && handle_rect(i, positions).contains(p)) {
+                return i;
+            }
         }
         return std::nullopt;
     };
@@ -397,9 +446,11 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
             if (hit != hovered_divider_) {
                 hovered_divider_ = hit;
                 cursor_ = hit ? (orientation_ == Orientation::Horizontal ? CursorShape::ResizeEW
-                                                                          : CursorShape::ResizeNS)
+                                                                         : CursorShape::ResizeNS)
                               : CursorShape::Arrow;
-                if (window_) window_->request_redraw("splitter cursor");
+                if (window_) {
+                    window_->request_redraw("splitter cursor");
+                }
             }
         }
         break;
@@ -409,7 +460,7 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
         if (hit) {
             dragging_divider_ = hit;
             cursor_ = (orientation_ == Orientation::Horizontal) ? CursorShape::ResizeEW
-                                                                 : CursorShape::ResizeNS;
+                                                                : CursorShape::ResizeNS;
             return true;
         }
         break;
@@ -417,15 +468,16 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
 
     case MouseEvent::Type::Drag:
         if (dragging_divider_ && *dragging_divider_ < (int)ratios_.size()) {
-            auto total =
-                (orientation_ == Orientation::Horizontal) ? rect_.width : rect_.height;
+            auto total = (orientation_ == Orientation::Horizontal) ? rect_.width : rect_.height;
             auto centre =
                 (orientation_ == Orientation::Horizontal) ? event.position.x : event.position.y;
             if (total > 0.0f) {
                 ratios_[*dragging_divider_] = std::clamp(centre / total, 0.05f, 0.95f);
             }
             layout_children();
-            if (window_) window_->request_redraw("splitter drag");
+            if (window_) {
+                window_->request_redraw("splitter drag");
+            }
             return true;
         }
         break;
@@ -434,7 +486,9 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
         if (dragging_divider_) {
             dragging_divider_.reset();
             cursor_ = CursorShape::Arrow;
-            if (window_) window_->request_redraw("splitter release");
+            if (window_) {
+                window_->request_redraw("splitter release");
+            }
             return true;
         }
         break;
@@ -453,10 +507,14 @@ bool Splitter::handle_mouse(MouseEvent const &event) {
     // Forward to children when not dragging a handle.
     if (!dragging_divider_) {
         auto focused_inside = [&](Widget *container) -> bool {
-            if (!window_) return false;
+            if (!window_) {
+                return false;
+            }
             auto *fw = window_->focused_widget();
             while (fw) {
-                if (fw == container) return true;
+                if (fw == container) {
+                    return true;
+                }
                 fw = fw->parent();
             }
             return false;
@@ -487,7 +545,9 @@ void Splitter::set_rect(Rect const &rect) {
 void Splitter::set_window(Window *w) {
     Widget::set_window(w);
     for (auto &child : children_) {
-        if (child) child->set_window(w);
+        if (child) {
+            child->set_window(w);
+        }
     }
 }
 
@@ -516,7 +576,9 @@ Widget *Splitter::find_focusable_at(Point p) {
     auto const positions = compute_positions();
     auto const M = (int)positions.size();
     for (int i = 0; i < M; i++) {
-        if (!is_divider_locked(i) && handle_rect(i, positions).contains(p)) return this;
+        if (!is_divider_locked(i) && handle_rect(i, positions).contains(p)) {
+            return this;
+        }
     }
     for (auto const &child : children_) {
         if (child && child->rect().contains(p)) {
@@ -534,7 +596,9 @@ Widget *Splitter::widget_at(Point p) {
     auto const positions = compute_positions();
     auto const M = (int)positions.size();
     for (int i = 0; i < M; i++) {
-        if (!is_divider_locked(i) && handle_rect(i, positions).contains(p)) return this;
+        if (!is_divider_locked(i) && handle_rect(i, positions).contains(p)) {
+            return this;
+        }
     }
     for (auto const &child : children_) {
         if (child && child->rect().contains(p)) {
@@ -547,26 +611,34 @@ Widget *Splitter::widget_at(Point p) {
 
 void Splitter::collect_focusables(std::vector<Widget *> &out) {
     for (auto const &child : children_) {
-        if (child) child->collect_focusables(out);
+        if (child) {
+            child->collect_focusables(out);
+        }
     }
 }
 
 void Splitter::collect_mnemonics(std::vector<Widget *> &out) {
     for (auto const &child : children_) {
-        if (child) child->collect_mnemonics(out);
+        if (child) {
+            child->collect_mnemonics(out);
+        }
     }
 }
 
 void Splitter::for_each_child(std::function<void(Widget *)> const &callback) {
     for (auto const &child : children_) {
-        if (child) callback(child.get());
+        if (child) {
+            callback(child.get());
+        }
     }
 }
 
 void Splitter::on_theme_changed() {
     Widget::on_theme_changed();
     for (auto const &child : children_) {
-        if (child) child->on_theme_changed();
+        if (child) {
+            child->on_theme_changed();
+        }
     }
 }
 

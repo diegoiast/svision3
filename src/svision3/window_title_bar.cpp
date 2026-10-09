@@ -70,8 +70,8 @@ void TitleBarIcon::paint(Painter &painter) {
     auto scale = std::min(rect_.width / iw, rect_.height / ih);
     auto dw = iw * scale;
     auto dh = ih * scale;
-    painter.draw_image_scaled(
-        *icon_image_, {(rect_.width - dw) / 2.0f, (rect_.height - dh) / 2.0f, dw, dh});
+    painter.draw_image_scaled(*icon_image_,
+                              {(rect_.width - dw) / 2.0f, (rect_.height - dh) / 2.0f, dw, dh});
 }
 
 bool TitleBarIcon::handle_mouse(MouseEvent const &event) {

@@ -87,8 +87,8 @@ auto LunasvgImageLoader::load_from_memory(const uint8_t *data, size_t size, Pixe
     return load_svg_from_memory(data, size, 0, 0, format);
 }
 
-auto LunasvgImageLoader::load_svg(std::string_view path, int width, int height,
-                                  PixelFormat format) -> Icon {
+auto LunasvgImageLoader::load_svg(std::string_view path, int width, int height, PixelFormat format)
+    -> Icon {
     auto document = lunasvg::Document::loadFromFile(std::string(path));
     if (!document) {
         spdlog::error("lunasvg: failed to load SVG from file: {}", path);

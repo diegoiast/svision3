@@ -207,7 +207,8 @@ auto XdgImageLoader::find_icon_path(std::string_view icon_name, int size, std::s
         return std::nullopt;
     }
 
-    auto search_theme = [&](const IconTheme &t, std::string_view name) -> std::optional<std::string> {
+    auto search_theme = [&](const IconTheme &t,
+                            std::string_view name) -> std::optional<std::string> {
         std::string best_path;
         int best_score = std::numeric_limits<int>::max();
 
