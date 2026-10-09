@@ -372,7 +372,7 @@ void FileBrowserWidget::setup_ui() {
     toolbar->set_spacing(5);
 
     auto make_icon_btn = [&](std::string_view icon_name, std::string_view fallback,
-                              std::string_view context = XDG::IconContexts::actions) {
+                             std::string_view context = XDG::IconContexts::actions) {
         auto btn = std::make_unique<Button>(std::string(fallback));
         auto icon = app.load_icon(icon_name, 16, context);
         if (icon) {

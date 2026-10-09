@@ -46,6 +46,13 @@ class Command {
     void set_icon(std::string icon);
     auto icon_image() const -> Icon;
 
+    // A freeform tag letting one flat command list feed several differently
+    // filtered consumers -- a toolbar showing everything, an "Edit" menu showing
+    // only the edit-related ones. Deliberately not an enum: the set of groups an
+    // application (or a plugin) cares about is not knowable by the library.
+    std::string const &group() const { return group_; }
+    void set_group(std::string group) { group_ = std::move(group); }
+
     std::string const &shortcut_string() const { return shortcut_string_; }
     Shortcut const &shortcut() const { return shortcut_; }
     void set_shortcut(std::string s);
@@ -95,6 +102,7 @@ class Command {
   private:
     std::string name_;
     std::string tooltip_;
+    std::string group_;
     std::string icon_;
     mutable Icon icon_image_;
     std::string shortcut_string_;
@@ -103,6 +111,21 @@ class Command {
     bool checkable_ = false;
     bool checked_ = false;
     std::function<void()> execute_;
+};
+
+// A place commands can be inserted into and removed from by index -- a toolbar,
+// a menu. Deliberately minimal: it exists so that whatever generates a run of
+// commands does not have to know which of the two it is filling, and so that it
+// can confine itself to the slice of items it owns and leave neighbouring static
+// content untouched.
+class CommandSink {
+  public:
+    virtual ~CommandSink() = default;
+
+    virtual void insert_command(int index, Command::Ptr cmd) = 0;
+    virtual void insert_separator(int index) = 0;
+    virtual void remove_range(int index, int count) = 0;
+    virtual int item_count() const = 0;
 };
 
 } // namespace svision3

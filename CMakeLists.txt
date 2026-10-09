@@ -84,6 +84,9 @@ set(SVISION3_SOURCES
     src/svision3/label.cpp
     src/svision3/progress_bar.cpp
     src/svision3/tab_widget.cpp
+    src/svision3/tab_command_anchor.cpp
+    src/svision3/command_source.cpp
+    src/svision3/plugin.cpp
     src/svision3/image.cpp
     src/svision3/item_model.cpp
     src/svision3/list_view.cpp
@@ -698,6 +701,10 @@ add_executable(tests
     tests/test_splitter.cpp
     tests/test_toolbar.cpp
     tests/test_tab_widget.cpp
+    tests/test_tab_command_anchor.cpp
+    tests/test_command_source.cpp
+    tests/test_plugin.cpp
+    tests/test_tab_key_navigation.cpp
     tests/test_table_view.cpp
     tests/test_text_edit.cpp
     tests/test_toast.cpp

@@ -4,11 +4,9 @@
 #pragma once
 
 #include "svision3/image.hpp"
-#include "svision3/xdg_icons.hpp"
 #include <filesystem>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
 #include <vector>

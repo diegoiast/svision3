@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "svision3/subscription.hpp"
 #include "svision3/widget.hpp"
 #include <functional>
 #include <memory>
@@ -14,6 +15,8 @@ namespace svision3 {
 class TabWidget : public Widget, public Fluent<TabWidget> {
     DECLARE_WIDGET(TabWidget)
   public:
+    using Subscription = svision3::Subscription;
+
     TabWidget();
     nlohmann::json to_json() const override;
     void from_json(nlohmann::json const &j) override;
@@ -106,9 +109,13 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
 
     std::function<void(int index, std::string const &title)> on_tab_close;
 
-    // Fired whenever the active tab changes, whether via a click, keyboard
-    // navigation, set_current(), or a tab close that shifts the current index.
-    std::function<void(int index)> on_current_changed;
+    // Fires whenever the active tab changes, whether via a click, keyboard
+    // navigation, set_current(), or a tab close. Any number of listeners may
+    // register -- a toolbar and each menu tracking the active tab is already
+    // three -- so this hands back a Subscription rather than overwriting a single
+    // callback slot. The returned handle must be kept alive for as long as the
+    // callback should keep firing.
+    [[nodiscard]] Subscription on_current_changed(std::function<void(int index)> callback);
 
     void scroll_to_tab(int index);
     void scroll_by(float delta);
@@ -133,6 +140,8 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
         bool closable = true;
     };
 
+    void notify_current_changed(int index);
+
     static constexpr float close_btn_size_ = 14.0f;
     static constexpr float close_btn_gap_ = 6.0f;
 
@@ -148,6 +157,7 @@ class TabWidget : public Widget, public Fluent<TabWidget> {
     };
     HitResult hit_test_tab(Point p) const;
 
+    Signal<int> current_changed_;
     std::unique_ptr<class StackedLayout> content_layout_;
     std::vector<Tab> tabs_;
     TabOrientation orientation_ = TabOrientation::North;

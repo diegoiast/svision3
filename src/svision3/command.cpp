@@ -169,6 +169,9 @@ nlohmann::json Command::to_json() const {
     if (!tooltip_.empty()) {
         j["tooltip"] = tooltip_;
     }
+    if (!group_.empty()) {
+        j["group"] = group_;
+    }
     if (!icon_.empty()) {
         j["icon"] = icon_;
     }
@@ -196,6 +199,9 @@ void Command::from_json(nlohmann::json const &j) {
     if (j.contains("tooltip")) {
         tooltip_ = j["tooltip"];
     }
+    if (j.contains("group")) {
+        group_ = j["group"];
+    }
     if (j.contains("icon")) {
         set_icon(j["icon"]);
     }
@@ -209,7 +215,8 @@ void Command::from_json(nlohmann::json const &j) {
         checkable_ = j["checkable"];
     }
     if (j.contains("checked")) {
-        // A document written before "checkable" existed still restores its state.
+        // An older document may carry "checked" without "checkable"; honour it
+        // rather than dropping the state on the floor.
         checkable_ = checkable_ || j["checked"].get<bool>();
         checked_ = j["checked"];
     }

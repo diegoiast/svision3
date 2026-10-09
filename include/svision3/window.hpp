@@ -7,6 +7,7 @@
 #include "svision3/events.hpp"
 #include "svision3/image.hpp"
 #include "svision3/painter.hpp"
+#include "svision3/subscription.hpp"
 #include "svision3/toast_widget.hpp"
 #include "svision3/types.hpp"
 #include "svision3/widget.hpp"
@@ -149,6 +150,24 @@ class Window {
     void set_focused_widget(Widget *w);
     Widget *focused_widget() const { return focused_widget_; }
 
+    // Fires after the focused widget changes, with the new one (which may be
+    // null). This is how anything that tracks "what is the user working on" stays
+    // current without polling -- see CommandSource.
+    [[nodiscard]] Subscription on_focus_changed(std::function<void(Widget *)> callback) {
+        return focus_changed_.connect(std::move(callback));
+    }
+
+    // Fires from forget_widget(), with the root of the subtree being dropped.
+    // Anything caching a raw Widget* of its own needs this for the same reason
+    // the window does: ~Widget() does not announce itself.
+    [[nodiscard]] Subscription on_widget_forgotten(std::function<void(Widget *)> callback) {
+        return widget_forgotten_.connect(std::move(callback));
+    }
+
+    // True when `needle` is `root` or nested anywhere inside it. Exposed because
+    // every listener of on_widget_forgotten() has to ask exactly this question.
+    static bool contains_widget(Widget *root, Widget *needle);
+
     // Drops every reference the window holds to this widget and anything nested
     // inside it. Call before destroying a widget that may be focused or hovered:
     // the window keeps raw pointers, and ~Widget() does not announce itself, so
@@ -208,6 +227,8 @@ class Window {
     Widget *focused_widget_ = nullptr;
     Widget *saved_focus_ = nullptr;
     Widget *key_grab_ = nullptr;
+    Signal<Widget *> focus_changed_;
+    Signal<Widget *> widget_forgotten_;
     std::vector<Popup> popups_;
     CursorShape current_cursor_ = CursorShape::Arrow;
     Widget *hovered_widget_ = nullptr;

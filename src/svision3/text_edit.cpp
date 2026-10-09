@@ -16,8 +16,8 @@
 #include "svision3/clipboard.hpp"
 #include "svision3/theme.hpp"
 #include "svision3/utf8.hpp"
-#include "svision3/xdg_icons.hpp"
 #include "svision3/window.hpp"
+#include "svision3/xdg_icons.hpp"
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -96,6 +96,10 @@ TextEdit::TextEdit(std::string text) {
     set_focusable(true);
     // A text editor is a document: focusing one makes it the command context, so
     // the Edit menu acts on the buffer the user is actually in -- whether that is
+    // a centre tab or a log pane docked at the bottom.
+    set_command_context(true);
+    // A text editor is a document: focusing one makes it the command context, so
+    // the Edit menu acts on the buffer the user is actually in -- whether that is
     cursor_blink_time_ = std::chrono::steady_clock::now();
 
     // All of these are tagged "edit" so that an application routing commands by
@@ -104,31 +108,37 @@ TextEdit::TextEdit(std::string text) {
     undo_cmd = Command::create("Undo", [this] { undo(); });
     undo_cmd->set_shortcut("Std+Z");
     undo_cmd->set_icon(XDG::IconActions::editUndo);
+    undo_cmd->set_group("edit");
     add_command(undo_cmd);
 
     redo_cmd = Command::create("Redo", [this] { redo(); });
     redo_cmd->set_shortcut("Std+Y");
     redo_cmd->set_icon(XDG::IconActions::editRedo);
+    redo_cmd->set_group("edit");
     add_command(redo_cmd);
 
     cut_cmd = Command::create("Cut", [this] { cut(); });
     cut_cmd->set_shortcut("Std+X");
     cut_cmd->set_icon(XDG::IconActions::editCut);
+    cut_cmd->set_group("edit");
     add_command(cut_cmd);
 
     copy_cmd = Command::create("Copy", [this] { copy(); });
     copy_cmd->set_shortcut("Std+C");
     copy_cmd->set_icon(XDG::IconActions::editCopy);
+    copy_cmd->set_group("edit");
     add_command(copy_cmd);
 
     paste_cmd = Command::create("Paste", [this] { paste(); });
     paste_cmd->set_shortcut("Std+V");
     paste_cmd->set_icon(XDG::IconActions::editPaste);
+    paste_cmd->set_group("edit");
     add_command(paste_cmd);
 
     select_all_cmd = Command::create("Select All", [this] { select_all(); });
     select_all_cmd->set_shortcut("Std+A");
     select_all_cmd->set_icon(XDG::IconActions::editSelectAll);
+    select_all_cmd->set_group("edit");
     add_command(select_all_cmd);
 
     set_text(text);
@@ -977,7 +987,7 @@ void TextEdit::indent_selection(bool unindent, int spaces) {
         for (auto i = first_line; i <= last_line; i++) {
             size_t sp = 0;
             while (sp < static_cast<size_t>(spaces) && sp < lines_[i].size() &&
-                  lines_[i][sp] == ' ') {
+                   lines_[i][sp] == ' ') {
                 sp++;
             }
             if (sp > 0) {
@@ -1115,8 +1125,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         }
         auto lh = line_height();
         auto vr = viewport_rect();
-        auto page_lines =
-            static_cast<size_t>(std::max(1, static_cast<int>(vr.height / lh) - 1));
+        auto page_lines = static_cast<size_t>(std::max(1, static_cast<int>(vr.height / lh) - 1));
         auto new_line = (page_lines > cursor_.line) ? size_t{0} : cursor_.line - page_lines;
         auto col = std::min(cursor_.col, lines_[new_line].size());
         move_cursor({new_line, col}, event.shift);
@@ -1129,8 +1138,7 @@ bool TextEdit::handle_key(KeyEvent const &event) {
         }
         auto lh = line_height();
         auto vr = viewport_rect();
-        auto page_lines =
-            static_cast<size_t>(std::max(1, static_cast<int>(vr.height / lh) - 1));
+        auto page_lines = static_cast<size_t>(std::max(1, static_cast<int>(vr.height / lh) - 1));
         auto new_line = std::min(nlines - 1, cursor_.line + page_lines);
         auto col = std::min(cursor_.col, lines_[new_line].size());
         move_cursor({new_line, col}, event.shift);

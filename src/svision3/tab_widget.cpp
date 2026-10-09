@@ -105,11 +105,16 @@ std::weak_ptr<Widget> TabWidget::add_tab(std::string title, std::shared_ptr<Widg
     return ref;
 }
 
+Subscription TabWidget::on_current_changed(std::function<void(int index)> callback) {
+    return current_changed_.connect(std::move(callback));
+}
+
+void TabWidget::notify_current_changed(int index) { current_changed_.emit(index); }
+
 TabWidget &TabWidget::remove_tab(int index) {
     if (index < 0 || index >= static_cast<int>(tabs_.size())) {
         return *this;
     }
-    auto old_current = current_;
     // The window keeps raw pointers into this tab's content, which is about to be
     // destroyed. Drop them before it goes.
     if (window_) {
@@ -124,9 +129,10 @@ TabWidget &TabWidget::remove_tab(int index) {
     if (window_) {
         window_->request_redraw("tab removed");
     }
-    if (current_ != old_current && on_current_changed) {
-        on_current_changed(current_);
-    }
+    // Unconditionally, not just when the index moved: removing the tab at the
+    // current index leaves the number alone but puts a different widget behind it,
+    // which is exactly what the listeners care about.
+    notify_current_changed(current_);
     return *this;
 }
 
@@ -175,11 +181,15 @@ TabWidget &TabWidget::set_min_tab_width(float width) {
 
 TabWidget &TabWidget::set_current(int index) {
     if (index >= 0 && index < static_cast<int>(tabs_.size())) {
+        auto changed = current_ != index;
         current_ = index;
         content_layout_->set_current(index);
         scroll_to_tab(index);
         layout_content();
         focus_content();
+        if (changed) {
+            notify_current_changed(current_);
+        }
     }
     return *this;
 }

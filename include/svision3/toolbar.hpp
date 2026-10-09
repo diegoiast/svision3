@@ -11,7 +11,7 @@
 
 namespace svision3 {
 
-class Toolbar : public Widget, public Fluent<Toolbar> {
+class Toolbar : public Widget, public Fluent<Toolbar>, public CommandSink {
     DECLARE_WIDGET(Toolbar)
   public:
     Toolbar();
@@ -23,10 +23,10 @@ class Toolbar : public Widget, public Fluent<Toolbar> {
     std::weak_ptr<Widget> add_widget(std::shared_ptr<Widget> w, float stretch = 0);
     void add_separator();
 
-    void insert_command(int index, Command::Ptr cmd);
-    void insert_separator(int index);
-    void remove_range(int index, int count);
-    int item_count() const;
+    void insert_command(int index, Command::Ptr cmd) override;
+    void insert_separator(int index) override;
+    void remove_range(int index, int count) override;
+    int item_count() const override;
 
     Toolbar &set_orientation(Orientation o);
     Orientation orientation() const { return orientation_; }

@@ -96,6 +96,21 @@ class Widget {
     // FIXME: really? is this a good API?
     bool can_get_non_focus_input() const { return state.non_focus_input; }
 
+    // Whether focusing this widget makes it the application's command context --
+    // the thing whose commands() fill the menus and toolbars (see CommandSource).
+    //
+    // Opt-in, and deliberately so. Most focusable widgets are chrome rather than
+    // documents: a toolbar combobox, a button, a dock header's filter field. If
+    // every focused widget became the context, clicking a button would empty the
+    // Edit menu, and a LineInput in a toolbar -- which registers its own
+    // cut/copy/paste -- would quietly hijack it. Document-shaped widgets turn this
+    // on for themselves; anything else focuses without disturbing the menus.
+    bool is_command_context() const { return state.command_context; }
+    Widget &set_command_context(bool enabled) {
+        state.command_context = enabled;
+        return *this;
+    }
+
     virtual void on_focus() {}
     virtual void on_blur() {}
     virtual void on_theme_changed();
@@ -196,6 +211,7 @@ class Widget {
         bool visible = true;
         bool focusable = false;
         bool non_focus_input = false;
+        bool command_context = false;
         bool on_top = false;
         std::string tooltip;
         bool tooltip_markdown = false;

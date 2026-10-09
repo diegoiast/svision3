@@ -647,6 +647,7 @@ void Window::set_focused_widget(Widget *w) {
         focused_widget_->set_focused(true);
         focused_widget_->on_focus();
     }
+    focus_changed_.emit(focused_widget_);
 }
 
 static auto widget_contains(Widget *root, Widget *needle) -> bool {
@@ -689,7 +690,11 @@ void Window::forget_widget(Widget *widget) {
     if (widget_contains(widget, inspector_widget_)) {
         inspector_widget_ = nullptr;
     }
+    // Last, so listeners see a window that has already let go of the subtree.
+    widget_forgotten_.emit(widget);
 }
+
+bool Window::contains_widget(Widget *root, Widget *needle) { return widget_contains(root, needle); }
 
 void Window::handle_paint(Painter &painter) {
     auto draw_start = std::chrono::steady_clock::now();
