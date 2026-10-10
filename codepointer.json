@@ -75,11 +75,11 @@
             "commands": {
                 "linux": [
                     "~/.local/bin/conan install . --output-folder=. --build=missing -s build_type=Debug",
-                    "cmake --preset conan-debug -G Ninja"
+                    "cmake --preset conan-debug -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=1"
                 ],
                 "windows": [
                     "conan install . --output-folder=. --build=missing -pr:h conan-debug",
-                    "cmake --preset conan-default"
+                    "cmake --preset conan-debug -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=1"
                 ]
             },
             "isBuild": true,
@@ -90,7 +90,7 @@
             "commands": {
                 "linux": [
                     "~/.local/bin/conan install . --output-folder=. --build=missing -s build_type=Release",
-                    "cmake --preset conan-release -G Ninja"
+                    "cmake --preset conan-release -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=1"
                 ],
                 "windows": [
                     "conan install . --output-folder=. --build=missing -pr:h default",

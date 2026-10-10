@@ -151,6 +151,10 @@ class PlatformApplication {
     // platform. Empty by default; Linux backends override this.
     virtual std::string system_icon_theme() const { return {}; }
 
+    // Live Caps Lock toggle state, if the platform can report it. Queried on
+    // every call -- no caching; platforms without that signal answer false.
+    virtual bool caps_lock_on() const { return false; }
+
     // True only when we know for a fact the WM/compositor cannot decorate a plain top-level
     // window itself (e.g. a Wayland compositor that doesn't implement the xdg-decoration
     // protocol, such as GNOME/mutter) -- in which case Application::create_window forces CSD on

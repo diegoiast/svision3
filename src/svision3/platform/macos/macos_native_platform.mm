@@ -502,6 +502,9 @@ static CoreGraphicsTextRasterizer s_mac_rasterizer;
     ke.alt = (mods & NSEventModifierFlagOption) != 0;
     ke.super = (mods & NSEventModifierFlagCommand) != 0;
     switch ([event keyCode]) {
+    case 57:
+        ke.key = svision3::Key::CapsLock;
+        break;
     case 49:
         ke.key = svision3::Key::Space;
         break;

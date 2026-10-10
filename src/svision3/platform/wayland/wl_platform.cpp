@@ -310,6 +310,8 @@ static Key xkb_to_key(xkb_keysym_t sym) {
         return Key::LeftSuper;
     case XKB_KEY_Super_R:
         return Key::RightSuper;
+    case XKB_KEY_Caps_Lock:
+        return Key::CapsLock;
     default:
         if (128 < sym) {
             spdlog::debug("Key {} - not parsed by wayland", sym);
@@ -760,6 +762,12 @@ static void keyboard_key(void *data, wl_keyboard *, uint32_t serial, uint32_t, u
         ke.super = (ke.type == KeyEvent::Type::Press);
     }
 
+    // Keep the xkb state in sync with the key stream so caps_lock_on() reads
+    // the post-toggle state while the widget handles this very event -- the
+    // event being delivered here may be the Caps Lock press itself.
+    xkb_state_update_key(app->xkb_st, keycode,
+                          state == WL_KEYBOARD_KEY_STATE_PRESSED ? XKB_KEY_DOWN : XKB_KEY_UP);
+
     app->keyboard_focus->owner_->handle_key(ke);
 
     // Stop and start repeat timers only if it's a press event and not a modifier
@@ -831,6 +839,13 @@ static void keyboard_modifiers(void *data, wl_keyboard *, uint32_t, uint32_t dep
         xkb_state_mod_name_is_active(app->xkb_st, XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE);
     app->mod_super =
         xkb_state_mod_name_is_active(app->xkb_st, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE);
+}
+
+bool WaylandPlatformApplication::caps_lock_on() const {
+    if (!xkb_st) {
+        return false;
+    }
+    return xkb_state_mod_name_is_active(xkb_st, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_EFFECTIVE);
 }
 
 // --- Data device (clipboard) ---

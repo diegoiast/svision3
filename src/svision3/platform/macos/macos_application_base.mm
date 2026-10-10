@@ -84,6 +84,12 @@ float MacOSPlatformApplicationBase::scale_factor() const {
     return static_cast<float>([[NSScreen mainScreen] backingScaleFactor]);
 }
 
+bool MacOSPlatformApplicationBase::caps_lock_on() const {
+    // kVK_CapsLock (0x39) from <Carbon/Carbon.h>, spelled out to avoid pulling
+    // Carbon into every translation unit that touches the platform.
+    return CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, 0x39) != 0;
+}
+
 SystemFonts MacOSPlatformApplicationBase::system_fonts() const {
     NSFont *sys = [NSFont systemFontOfSize:0];
     NSFont *mono = [NSFont userFixedPitchFontOfSize:0];

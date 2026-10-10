@@ -76,6 +76,7 @@ class WaylandPlatformApplication : public PlatformApplication {
     bool needs_csd() const override { return decoration_manager == nullptr; }
     void add_fd_source(int fd, bool want_read, bool want_write, std::function<void()> callback) override;
     void remove_fd_source(int fd) override;
+    bool caps_lock_on() const override;
 
     wl_display *display = nullptr;
     wl_compositor *compositor = nullptr;

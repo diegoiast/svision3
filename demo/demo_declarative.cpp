@@ -588,7 +588,7 @@ int main(int argc, char *argv[]) {
                             .add(ui::label("&Username:").buddy(input_ptr))
                             .add(std::move(username_input), ui::expand);
                     }())
-                    .add(ui::line_input("Regular input"))
+                    .add(ui::line_input("Regular input").show_caps_lock(false))
                     .add(ui::line_input("Password").password_mode(true))
                     .add(ui::line_input().text("This text cannot be edited").read_only(true))
                     .add(ui::line_input("Numbers only (blocking)")

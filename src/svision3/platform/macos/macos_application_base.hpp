@@ -22,6 +22,7 @@ class MacOSPlatformApplicationBase : public PlatformApplication {
     std::string_view painter_name() const override;
     float scale_factor() const override;
     SystemFonts system_fonts() const override;
+    bool caps_lock_on() const override;
 
   private:
     struct Impl;

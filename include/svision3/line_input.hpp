@@ -13,8 +13,26 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace svision3 {
+
+class LineInput;
+
+// One icon slot on a LineInput's edge. Within each side, icons lay out in
+// vector order starting from the text: `trailing_icons_[0]` is the leftmost
+// icon on the right edge (nearest the text), `leading_icons_[0]` the
+// rightmost on the left edge (nearest the text). `visible` gates both painting and the space
+// reserved from the text; a null `click` makes the icon a passive indicator
+// (hover cursor falls back to IBeam). The built-ins (caps lock, clear, peek)
+// all live on the trailing side; the leading side is currently empty and
+// exposed via add_leading_icon() for applications that want it.
+struct InputIcon {
+    std::function<bool(LineInput const &)> visible;
+    std::function<void(Painter &, Rect const &, LineInput const &, bool hovered, bool pressed)>
+        paint;
+    std::function<bool(LineInput &)> click;
+};
 
 class LineInput : public Widget, public Fluent<LineInput> {
     DECLARE_WIDGET(LineInput)
@@ -32,9 +50,38 @@ class LineInput : public Widget, public Fluent<LineInput> {
 
     Size size_hint() const override;
     CursorShape cursor() const override {
-        return (clear_hovered_ || peek_hovered_) ? CursorShape::Hand : CursorShape::IBeam;
+        if (hovered_icon_) {
+            auto const &icons = hovered_icon_->leading ? leading_icons_ : trailing_icons_;
+            auto const &icon = icons[hovered_icon_->index];
+            if (icon.click) {
+                return CursorShape::Hand;
+            }
+        }
+        return CursorShape::IBeam;
     }
     LineInput &set_focused(bool focused) override;
+
+    // Appends to the trailing (right) side; the icon lands rightmost of the
+    // group, beyond any icons added before it.
+    LineInput &add_trailing_icon(InputIcon icon);
+    // Appends to the leading (left) side; the icon lands leftmost of that
+    // group, beyond any leading icons added before it.
+    LineInput &add_leading_icon(InputIcon icon);
+
+    // Which drawing the caps lock icon uses; switch to compare variants.
+    enum class CapsLockIcon { Letter, FilledCircle, ChevronBar, OutlineCircle };
+    LineInput &set_caps_lock_icon(CapsLockIcon style) {
+        caps_lock_icon_style_ = style;
+        return *this;
+    }
+    CapsLockIcon caps_lock_icon() const { return caps_lock_icon_style_; }
+
+    // Per-widget opt-out: hide the caps lock icon on this input only.
+    LineInput &set_show_caps_lock_icon(bool show) {
+        show_caps_lock_icon_ = show;
+        return *this;
+    }
+    bool is_show_caps_lock_icon() const { return show_caps_lock_icon_; }
 
     LineInput &set_text(std::string const &text);
     std::string const &text() const { return text_; }
@@ -92,13 +139,28 @@ class LineInput : public Widget, public Fluent<LineInput> {
     void select_word_at(size_t pos);
     void select_all();
 
-    bool hit_clear_btn(Point pos) const;
-    float clear_btn_size() const;
-    bool hit_peek_btn(Point pos) const;
-    float peek_btn_size() const;
+    struct IconHit {
+        bool leading;
+        size_t index;
+        bool operator==(IconHit const &) const = default;
+    };
+    std::optional<IconHit> hit_icon(Point pos) const;
+    Rect icon_slot_rect(size_t from_right) const;
+    Rect leading_icon_slot_rect(size_t from_left) const;
+    float icon_size() const;
+    float icon_spacing() const;
+    float leading_inset() const;
     float content_right_inset() const;
+    float content_left_inset() const;
     float content_available_width() const;
     void show_context_menu(Point pos);
+    void paint_clear_icon(Painter &painter, Rect const &slot, bool hovered, bool pressed) const;
+    void paint_peek_icon(Painter &painter, Rect const &slot, bool hovered, bool pressed) const;
+    void paint_caps_lock_icon(Painter &painter, Rect const &slot, bool hovered, bool pressed) const;
+    void paint_caps_lock_letter(Painter &painter, Rect const &slot, bool hovered) const;
+    void paint_caps_lock_filled_circle(Painter &painter, Rect const &slot, bool hovered) const;
+    void paint_caps_lock_chevron_bar(Painter &painter, Rect const &slot, bool hovered) const;
+    void paint_caps_lock_outline_circle(Painter &painter, Rect const &slot, bool hovered) const;
     void cut();
     void copy();
     void paste();
@@ -115,10 +177,10 @@ class LineInput : public Widget, public Fluent<LineInput> {
     size_t sel_anchor_ = 0;
     float scroll_offset_ = 0.0f;
     bool dragging_ = false;
-    bool clear_hovered_ = false;
-    bool clear_pressed_ = false;
-    bool peek_hovered_ = false;
-    bool peek_pressed_ = false;
+    std::optional<IconHit> hovered_icon_;
+    std::optional<IconHit> pressed_icon_;
+    CapsLockIcon caps_lock_icon_style_ = CapsLockIcon::Letter;
+    bool show_caps_lock_icon_ = true;
     bool is_password_field_ = false;
     ValidationMode validation_mode_ = ValidationMode::None;
     std::function<bool(std::string const &, LineInput const &)> validator_;
@@ -127,6 +189,8 @@ class LineInput : public Widget, public Fluent<LineInput> {
     std::unique_ptr<ContextMenu> context_menu_;
     UndoStack undo_stack_;
     TextDirection direction_mode_ = TextDirection::Auto;
+    std::vector<InputIcon> trailing_icons_;
+    std::vector<InputIcon> leading_icons_;
 };
 
 } // namespace svision3

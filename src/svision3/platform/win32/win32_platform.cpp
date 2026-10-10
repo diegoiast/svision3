@@ -183,6 +183,8 @@ static Key vk_to_key(WPARAM vk) {
         return Key::LeftControl;
     case VK_RCONTROL:
         return Key::RightControl;
+    case VK_CAPITAL:
+        return Key::CapsLock;
     case VK_CONTROL:
         return Key::LeftControl;
     case VK_LMENU:

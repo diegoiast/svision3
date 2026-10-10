@@ -41,6 +41,8 @@ class Win32PlatformApplication : public PlatformApplication {
     std::string_view name() const override { return "Win32"; }
     float scale_factor() const override;
     SystemFonts system_fonts() const override;
+    // GetKeyState reports the toggle in the low bit; queried per call.
+    bool caps_lock_on() const override { return (GetKeyState(VK_CAPITAL) & 0x0001) != 0; }
 
     HINSTANCE hinstance = nullptr;
     DWORD main_thread_id = 0;

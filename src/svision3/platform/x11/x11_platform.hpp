@@ -30,6 +30,7 @@ class X11PlatformApplication : public PlatformApplication {
     float scale_factor() const override;
     SystemFonts system_fonts() const override;
     std::string system_icon_theme() const override;
+    bool caps_lock_on() const override;
     void add_fd_source(int fd, bool want_read, bool want_write, std::function<void()> callback) override;
     void remove_fd_source(int fd) override;
 

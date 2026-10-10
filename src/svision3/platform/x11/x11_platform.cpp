@@ -17,6 +17,7 @@
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
+#include <X11/XKBlib.h>
 #include <cairo-xlib.h>
 #include <cairo.h>
 #include <fontconfig/fontconfig.h>
@@ -266,6 +267,8 @@ static Key keysym_to_key(KeySym ks) {
         return Key::LeftSuper;
     case XK_Super_R:
         return Key::RightSuper;
+    case XK_Caps_Lock:
+        return Key::CapsLock;
     case XK_KP_Equal:
     case XK_equal:
         return Key::Equals;
@@ -312,6 +315,18 @@ static Key keysym_to_key(KeySym ks) {
         }
         return Key::NoKey;
     }
+}
+
+bool X11PlatformApplication::caps_lock_on() const {
+    auto *display = static_cast<Display *>(impl_->display);
+    if (!display) {
+        return false;
+    }
+    XkbStateRec xkb_state;
+    if (XkbGetState(display, XkbUseCoreKbd, &xkb_state) != Success) {
+        return false;
+    }
+    return (xkb_state.locked_mods & LockMask) != 0;
 }
 
 static int detect_click_count(X11PlatformApplication::Impl::WindowData &data, XButtonEvent &btn) {

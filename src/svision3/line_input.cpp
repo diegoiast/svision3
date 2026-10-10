@@ -83,7 +83,61 @@ LineInput::LineInput(std::string placeholder)
     redo_cmd->set_shortcut("Std+Y");
     add_command(redo_cmd);
 
+    // macOS shows the caps lock glyph in a field while it is being edited, so
+    // visibility is focus-gated; the predicate is evaluated live at paint time.
+    // First in the vector: the trailing group lays out left-to-right in vector
+    // order, so this is the leftmost icon on the right edge, nearest the text.
+    trailing_icons_.push_back({
+        .visible =
+            [this](LineInput const &) {
+                auto *plat = detail::current_platform();
+                return show_caps_lock_icon_ && is_focused() && plat && plat->caps_lock_on();
+            },
+        .paint = [this](Painter &painter, Rect const &slot, LineInput const &, bool hovered,
+                        bool pressed) { paint_caps_lock_icon(painter, slot, hovered, pressed); },
+    });
+
+    trailing_icons_.push_back({
+        .visible = [this](LineInput const &) { return !text_.empty() && !read_only_; },
+        .paint = [this](Painter &painter, Rect const &slot, LineInput const &, bool hovered,
+                        bool pressed) { paint_clear_icon(painter, slot, hovered, pressed); },
+        .click =
+            [this](LineInput &) {
+                text_.clear();
+                cursor_pos_ = 0;
+                sel_anchor_ = 0;
+                scroll_offset_ = 0;
+                sync_commands();
+                if (on_change) {
+                    on_change(text_, *this);
+                }
+                return true;
+            },
+    });
+
+    trailing_icons_.push_back({
+        .visible = [this](LineInput const &) { return is_password_field_; },
+        .paint = [this](Painter &painter, Rect const &slot, LineInput const &, bool hovered,
+                        bool pressed) { paint_peek_icon(painter, slot, hovered, pressed); },
+        .click =
+            [this](LineInput &) {
+                password_mode_ = !password_mode_;
+                sync_commands();
+                return true;
+            },
+    });
+
     sync_commands();
+}
+
+LineInput &LineInput::add_trailing_icon(InputIcon icon) {
+    trailing_icons_.push_back(std::move(icon));
+    return *this;
+}
+
+LineInput &LineInput::add_leading_icon(InputIcon icon) {
+    leading_icons_.push_back(std::move(icon));
+    return *this;
 }
 
 nlohmann::json LineInput::to_json() const {
@@ -334,62 +388,94 @@ void LineInput::redo() {
     }
 }
 
-float LineInput::clear_btn_size() const {
+float LineInput::icon_size() const {
     auto const &palette = Theme::current().palette;
     return palette.fonts.size + 2.0f;
 }
+float LineInput::icon_spacing() const {
+    return 4.0f;
+}
 
-float LineInput::peek_btn_size() const {
-    auto const &palette = Theme::current().palette;
-    return palette.fonts.size + 2.0f;
+float LineInput::leading_inset() const {
+    float inset = 0.0f;
+
+    for (auto const &icon : leading_icons_) {
+        if (!icon.visible || icon.visible(*this)) {
+            inset += icon_size() + icon_spacing();
+        }
+    }
+    return inset;
 }
 
 float LineInput::content_right_inset() const {
     auto const &style = Theme::current().style.lineInput;
     auto inset = style.padding.right;
-    auto clear_visible = !text_.empty() && !read_only_;
 
-    if (clear_visible) {
-        inset += clear_btn_size() + 4.0f;
-    }
-    if (is_password_field_) {
-        inset += peek_btn_size() + 4.0f;
+    for (auto const &icon : trailing_icons_) {
+        if (!icon.visible || icon.visible(*this)) {
+            inset += icon_size() + icon_spacing();
+        }
     }
     return inset;
 }
 
+float LineInput::content_left_inset() const {
+    auto const &style = Theme::current().style.lineInput;
+    return style.padding.left + leading_inset();
+}
+
 float LineInput::content_available_width() const {
-    auto const &style = Theme::current().style.lineInput;
-    return rect_.width - style.padding.left - content_right_inset();
+    return rect_.width - content_left_inset() - content_right_inset();
 }
 
-bool LineInput::hit_clear_btn(Point pos) const {
-    if (text_.empty() || read_only_) {
-        return false;
-    }
-    auto sz = clear_btn_size();
+Rect LineInput::icon_slot_rect(size_t from_right) const {
     auto const &style = Theme::current().style.lineInput;
-    auto bx = rect_.width - style.padding.right - sz;
-    auto by = (rect_.height - sz) / 2.0f;
+    auto sz = icon_size();
+    auto x = rect_.width - style.padding.right -
+             static_cast<float>(from_right) * (sz + icon_spacing()) - sz;
+    auto y = (rect_.height - sz) / 2.0f;
 
-    return pos.x >= bx && pos.x <= bx + sz && pos.y >= by && pos.y <= by + sz;
+    return Rect{x, y, sz, sz};
 }
 
-bool LineInput::hit_peek_btn(Point pos) const {
-    if (!is_password_field_) {
-        return false;
-    }
-    auto sz = peek_btn_size();
+Rect LineInput::leading_icon_slot_rect(size_t from_left) const {
     auto const &style = Theme::current().style.lineInput;
-    float bx = rect_.width - style.padding.right - sz;
-    bool clear_visible = !text_.empty() && !read_only_;
-    if (clear_visible) {
-        bx -= clear_btn_size() + 4.0f;
-    }
-    auto by = (rect_.height - sz) / 2.0f;
-    return pos.x >= bx && pos.x <= bx + sz && pos.y >= by && pos.y <= by + sz;
+    auto sz = icon_size();
+    auto x = style.padding.left + static_cast<float>(from_left) * (sz + icon_spacing());
+    auto y = (rect_.height - sz) / 2.0f;
+
+    return Rect{x, y, sz, sz};
 }
 
+// Trailing icons are painted from the right edge inward, so that vector is
+// walked in reverse -- the last visible icon occupies slot 0; leading icons
+// mirror it from the left edge forward.
+std::optional<LineInput::IconHit> LineInput::hit_icon(Point pos) const {
+    auto visible_index = 0;
+    for (size_t i = trailing_icons_.size(); i-- > 0;) {
+        auto const &icon = trailing_icons_[i];
+        if (icon.visible && !icon.visible(*this)) {
+            continue;
+        }
+        if (icon_slot_rect(visible_index).contains(pos)) {
+            return IconHit{false, i};
+        }
+        visible_index++;
+    }
+
+    visible_index = 0;
+    for (size_t i = leading_icons_.size(); i-- > 0;) {
+        auto const &icon = leading_icons_[i];
+        if (icon.visible && !icon.visible(*this)) {
+            continue;
+        }
+        if (leading_icon_slot_rect(visible_index).contains(pos)) {
+            return IconHit{true, i};
+        }
+        visible_index++;
+    }
+    return std::nullopt;
+}
 std::optional<text::TextLayout> LineInput::build_layout() const {
     if (password_mode_) {
         return std::nullopt;
@@ -418,7 +504,7 @@ size_t LineInput::pos_from_x(float x) const {
     }
 
     auto const &palette = Theme::current().palette;
-    auto click_x = x - style.padding.left + scroll_offset_;
+    auto click_x = x - content_left_inset() + scroll_offset_;
     size_t current_pos = 0;
 
     if (click_x <= 0) {
@@ -482,93 +568,196 @@ void LineInput::paint(Painter &painter) {
         .enabled = !read_only_,
         .window_active = window_ ? window_->is_active() : true,
     };
-    // Buttons (clear/peek) live on the right today; content_right_inset()
-    // already accounts for them on top of style.padding.right. Kept as a
-    // separate left/right pair (left always 0 for now) so a future mirrored
-    // layout can move the reservation to the left without touching the theme.
+    // content_right_inset()/leading_inset() already account for the icons on
+    // top of style.padding on each side; the theme keeps text/caret/selection
+    // clear of them via these insets.
     auto button_inset_right = content_right_inset() - style.padding.right;
+    auto button_inset_left = leading_inset();
     theme.draw_line_input(painter, rect, d_text, placeholder_, static_cast<int>(cursor_pos_),
                           sel_start_pos, sel_end_pos, wstate, password_mode_, scroll_offset_, bg,
-                          cursor_visible, layout ? &*layout : nullptr, 0.0f, button_inset_right);
+                          cursor_visible, layout ? &*layout : nullptr, button_inset_left,
+                          button_inset_right);
 
     paint_buttons(painter);
 }
 
 // FIXME: move this to use the theme paint buttons primitives
 void LineInput::paint_buttons(Painter &painter) {
-    auto const &palette = Theme::current().palette;
-    auto clear_visible = !text_.empty() && !read_only_;
-    if (clear_visible || is_password_field_) {
-        auto const &style = Theme::current().style.lineInput;
-
-        if (clear_visible) {
-            auto sz = clear_btn_size();
-            auto bx = rect_.width - style.padding.right - sz;
-            auto by = (rect_.height - sz) / 2.0f;
-            auto cx = bx + sz / 2.0f;
-            auto cy = by + sz / 2.0f;
-            auto r = sz / 2.0f;
-
-            if (clear_hovered_ || clear_pressed_) {
-                Color circle_bg = palette.text;
-                circle_bg.a = clear_pressed_ ? 0.22f : 0.12f;
-                painter.fill_rounded_rect({bx, by, sz, sz}, circle_bg, r);
-            }
-
-            auto x_col = palette.text;
-            auto half = sz * 0.22f;
-            x_col.a = clear_hovered_ ? 0.8f : 0.45f;
-            painter.draw_line({cx - half, cy - half}, {cx + half, cy + half}, x_col, 1.5f);
-            painter.draw_line({cx - half, cy + half}, {cx + half, cy - half}, x_col, 1.5f);
+    auto visible_index = 0;
+    for (size_t i = trailing_icons_.size(); i-- > 0;) {
+        auto const &icon = trailing_icons_[i];
+        if (icon.visible && !icon.visible(*this)) {
+            continue;
         }
-
-        if (is_password_field_) {
-            auto sz = peek_btn_size();
-            auto bx = rect_.width - style.padding.right - sz;
-            if (clear_visible) {
-                bx -= clear_btn_size() + 4.0f;
-            }
-            auto by = (rect_.height - sz) / 2.0f;
-            auto cx = bx + sz / 2.0f;
-            auto cy = by + sz / 2.0f;
-            auto r = sz / 2.0f;
-
-            if (peek_hovered_ || peek_pressed_) {
-                Color circle_bg = palette.text;
-                circle_bg.a = peek_pressed_ ? 0.22f : 0.12f;
-                painter.fill_rounded_rect({bx, by, sz, sz}, circle_bg, r);
-            }
-
-            auto eye_col = palette.text;
-            eye_col.a = peek_hovered_ ? 0.8f : 0.45f;
-
-            auto eye_radius = sz * 0.35f;
-            auto pupil_radius = sz * 0.15f;
-
-            painter.draw_circle({cx, cy}, eye_radius, eye_col, 1.2f);
-
-            if (password_mode_) {
-                painter.fill_circle({cx, cy}, pupil_radius * 0.6f, eye_col);
-            } else {
-                painter.fill_circle({cx, cy}, pupil_radius, eye_col);
-            }
-        }
+        auto slot = icon_slot_rect(visible_index);
+        auto hovered = hovered_icon_ == IconHit{false, i};
+        auto pressed = pressed_icon_ == IconHit{false, i};
+        icon.paint(painter, slot, *this, hovered, pressed);
+        visible_index++;
     }
+
+    visible_index = 0;
+    for (size_t i = leading_icons_.size(); i-- > 0;) {
+        auto const &icon = leading_icons_[i];
+        if (icon.visible && !icon.visible(*this)) {
+            continue;
+        }
+        auto slot = leading_icon_slot_rect(visible_index);
+        auto hovered = hovered_icon_ == IconHit{true, i};
+        auto pressed = pressed_icon_ == IconHit{true, i};
+        icon.paint(painter, slot, *this, hovered, pressed);
+        visible_index++;
+    }
+}
+
+void LineInput::paint_clear_icon(Painter &painter, Rect const &slot, bool hovered,
+                                 bool pressed) const {
+    auto const &palette = Theme::current().palette;
+    auto sz = slot.width;
+    auto cx = slot.x + sz / 2.0f;
+    auto cy = slot.y + sz / 2.0f;
+    auto r = sz / 2.0f;
+
+    if (hovered || pressed) {
+        Color circle_bg = palette.text;
+        circle_bg.a = pressed ? 0.22f : 0.12f;
+        painter.fill_rounded_rect(slot, circle_bg, r);
+    }
+
+    auto x_col = palette.text;
+    auto half = sz * 0.22f;
+    x_col.a = hovered ? 0.8f : 0.45f;
+    painter.draw_line({cx - half, cy - half}, {cx + half, cy + half}, x_col, 1.5f);
+    painter.draw_line({cx - half, cy + half}, {cx + half, cy - half}, x_col, 1.5f);
+}
+
+void LineInput::paint_peek_icon(Painter &painter, Rect const &slot, bool hovered,
+                                bool pressed) const {
+    auto const &palette = Theme::current().palette;
+    auto sz = slot.width;
+    auto cx = slot.x + sz / 2.0f;
+    auto cy = slot.y + sz / 2.0f;
+    auto r = sz / 2.0f;
+
+    if (hovered || pressed) {
+        Color circle_bg = palette.text;
+        circle_bg.a = pressed ? 0.22f : 0.12f;
+        painter.fill_rounded_rect(slot, circle_bg, r);
+    }
+
+    auto eye_col = palette.text;
+    eye_col.a = hovered ? 0.8f : 0.45f;
+
+    auto eye_radius = sz * 0.35f;
+    auto pupil_radius = sz * 0.15f;
+
+    painter.draw_circle({cx, cy}, eye_radius, eye_col, 1.2f);
+
+    if (password_mode_) {
+        painter.fill_circle({cx, cy}, pupil_radius * 0.6f, eye_col);
+    } else {
+        painter.fill_circle({cx, cy}, pupil_radius, eye_col);
+    }
+}
+
+void LineInput::paint_caps_lock_icon(Painter &painter, Rect const &slot, bool hovered,
+                                      bool pressed) const {
+    switch (caps_lock_icon_style_) {
+    case CapsLockIcon::FilledCircle:
+        paint_caps_lock_filled_circle(painter, slot, hovered);
+        break;
+    case CapsLockIcon::ChevronBar:
+        paint_caps_lock_chevron_bar(painter, slot, hovered);
+        break;
+    case CapsLockIcon::OutlineCircle:
+        paint_caps_lock_outline_circle(painter, slot, hovered);
+        break;
+    case CapsLockIcon::Letter:
+    default:
+        paint_caps_lock_letter(painter, slot, hovered);
+        break;
+    }
+}
+
+// The letter caps produces, knocked out of a filled circle.
+void LineInput::paint_caps_lock_letter(Painter &painter, Rect const &slot, bool hovered) const {
+    auto const &palette = Theme::current().palette;
+    auto sz = slot.width;
+    auto cx = slot.x + sz / 2.0f;
+    auto cy = slot.y + sz / 2.0f;
+
+    auto circle_col = palette.text;
+    circle_col.a = hovered ? 0.85f : 0.55f;
+    painter.fill_circle({cx, cy}, sz * 0.42f, circle_col);
+
+    // draw_text takes the baseline, so center via the font's own metrics.
+    auto font_sz = palette.fonts.size * 0.6f;
+    auto fm = painter.font_metrics(font_sz);
+    auto m = painter.measure_text("A", font_sz);
+    painter.draw_text("A", {cx - m.width / 2.0f, cy + (fm.ascent - fm.descent) / 2.0f},
+                      palette.base, font_sz);
+}
+
+// A filled circle with the up chevron knocked out -- the macOS key glyph.
+void LineInput::paint_caps_lock_filled_circle(Painter &painter, Rect const &slot,
+                                              bool hovered) const {
+    auto const &palette = Theme::current().palette;
+    auto sz = slot.width;
+    auto cx = slot.x + sz / 2.0f;
+    auto cy = slot.y + sz / 2.0f;
+
+    auto circle_col = palette.text;
+    circle_col.a = hovered ? 0.85f : 0.55f;
+    painter.fill_circle({cx, cy}, sz * 0.42f, circle_col);
+
+    auto chevron_col = palette.base;
+    auto w = sz * 0.20f;
+    auto h = sz * 0.16f;
+    painter.draw_line({cx - w, cy + h * 0.5f}, {cx, cy - h}, chevron_col, 1.4f);
+    painter.draw_line({cx, cy - h}, {cx + w, cy + h * 0.5f}, chevron_col, 1.4f);
+}
+
+// The bare key glyph: an up chevron over a horizontal bar, no circle.
+void LineInput::paint_caps_lock_chevron_bar(Painter &painter, Rect const &slot,
+                                             bool hovered) const {
+    auto const &palette = Theme::current().palette;
+    auto sz = slot.width;
+    auto cx = slot.x + sz / 2.0f;
+    auto cy = slot.y + sz / 2.0f;
+
+    auto col = palette.text;
+    col.a = hovered ? 0.8f : 0.45f;
+
+    auto w = sz * 0.26f;
+    auto h = sz * 0.20f;
+    painter.draw_line({cx - w, cy}, {cx, cy - h}, col, 1.4f);
+    painter.draw_line({cx, cy - h}, {cx + w, cy}, col, 1.4f);
+    painter.draw_line({cx - w * 0.8f, cy + h * 0.7f}, {cx + w * 0.8f, cy + h * 0.7f}, col, 1.4f);
+}
+
+// An outlined circle with an up chevron inside.
+void LineInput::paint_caps_lock_outline_circle(Painter &painter, Rect const &slot,
+                                               bool hovered) const {
+    auto const &palette = Theme::current().palette;
+    auto sz = slot.width;
+    auto cx = slot.x + sz / 2.0f;
+    auto cy = slot.y + sz / 2.0f;
+
+    auto col = palette.text;
+    col.a = hovered ? 0.8f : 0.45f;
+
+    painter.draw_circle({cx, cy}, sz * 0.38f, col, 1.2f);
+    auto w = sz * 0.20f;
+    auto h = sz * 0.16f;
+    painter.draw_line({cx - w, cy + h * 0.5f}, {cx, cy - h}, col, 1.2f);
+    painter.draw_line({cx, cy - h}, {cx + w, cy + h * 0.5f}, col, 1.2f);
 }
 
 bool LineInput::handle_mouse(MouseEvent const &event) {
     if (event.type == MouseEvent::Type::Move) {
-        bool over_clear = hit_clear_btn(event.position);
-        bool changed = false;
-        if (over_clear != clear_hovered_) {
-            clear_hovered_ = over_clear;
-            changed = true;
-        }
-        bool over_peek = hit_peek_btn(event.position);
-        if (over_peek != peek_hovered_) {
-            peek_hovered_ = over_peek;
-            changed = true;
-        }
+        auto over = hit_icon(event.position);
+        bool changed = (over != hovered_icon_);
+        hovered_icon_ = over;
         if (changed && window()) {
             window()->request_redraw("input state");
         }
@@ -576,9 +765,8 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Leave) {
-        if (clear_hovered_ || peek_hovered_) {
-            clear_hovered_ = false;
-            peek_hovered_ = false;
+        if (hovered_icon_) {
+            hovered_icon_ = std::nullopt;
             if (window()) {
                 window()->request_redraw("input state");
             }
@@ -598,18 +786,14 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
             return true;
         }
 
-        if (hit_clear_btn(event.position)) {
-            clear_pressed_ = true;
-            if (window()) {
-                window()->request_redraw("input state");
-            }
-            return true;
-        }
-
-        if (hit_peek_btn(event.position)) {
-            peek_pressed_ = true;
-            if (window()) {
-                window()->request_redraw("input state");
+        if (auto hit = hit_icon(event.position)) {
+            auto const &icons = hit->leading ? leading_icons_ : trailing_icons_;
+            auto const &icon = icons[hit->index];
+            if (icon.click) {
+                pressed_icon_ = hit;
+                if (window()) {
+                    window()->request_redraw("input state");
+                }
             }
             return true;
         }
@@ -631,28 +815,15 @@ bool LineInput::handle_mouse(MouseEvent const &event) {
     }
 
     if (event.type == MouseEvent::Type::Release) {
-        if (clear_pressed_) {
-            clear_pressed_ = false;
-            if (hit_clear_btn(event.position)) {
-                text_.clear();
-                cursor_pos_ = 0;
-                sel_anchor_ = 0;
-                scroll_offset_ = 0;
-                sync_commands();
-                if (on_change) {
-                    on_change(text_, *this);
+        if (pressed_icon_) {
+            auto hit = *pressed_icon_;
+            pressed_icon_ = std::nullopt;
+            if (hit_icon(event.position) == hit) {
+                auto const &icons = hit.leading ? leading_icons_ : trailing_icons_;
+                auto const &icon = icons[hit.index];
+                if (icon.click) {
+                    icon.click(*this);
                 }
-            }
-            if (window()) {
-                window()->request_redraw("input state");
-            }
-            return true;
-        }
-        if (peek_pressed_) {
-            peek_pressed_ = false;
-            if (hit_peek_btn(event.position)) {
-                password_mode_ = !password_mode_;
-                sync_commands();
             }
             if (window()) {
                 window()->request_redraw("input state");
@@ -705,6 +876,12 @@ bool LineInput::handle_key(KeyEvent const &event) {
         return false;
     }
     reset_cursor_blink();
+
+    // A caps lock toggle changes the leading icon set; the visibility
+    // predicate is evaluated live at paint time, so a repaint is all it needs.
+    if (event.key == Key::CapsLock && window()) {
+        window()->request_redraw("caps lock");
+    }
 
     switch (event.key) {
     case Key::Backspace:

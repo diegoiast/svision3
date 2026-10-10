@@ -85,7 +85,8 @@ template <typename T> struct Element {
         return std::move(*this);
     }
     Element checked(bool c = true) {
-        if constexpr (std::is_same_v<T, svision3::Checkbox> || std::is_same_v<T, svision3::Button>) {
+        if constexpr (std::is_same_v<T, svision3::Checkbox> ||
+                      std::is_same_v<T, svision3::Button>) {
             w->set_checked(c);
         } else {
             static_assert(std::is_same_v<T, void>, "checked only works on Checkbox or Button");
@@ -111,7 +112,8 @@ template <typename T> struct Element {
         return std::move(*this);
     }
     Element selected(int i) {
-        static_assert(std::is_same_v<T, svision3::Combobox>, "selected(int) only works on Combobox");
+        static_assert(std::is_same_v<T, svision3::Combobox>,
+                      "selected(int) only works on Combobox");
         w->set_selected(i);
         return std::move(*this);
     }
@@ -286,6 +288,10 @@ template <typename T> struct Element {
         w->set_read_only(r);
         return std::move(*this);
     }
+    Element show_caps_lock(bool show = true) {
+        w->set_show_caps_lock_icon(show);
+        return std::move(*this);
+    }
 
     T *operator->() const { return w.get(); }
     operator T *() const { return w.get(); }
@@ -341,7 +347,8 @@ template <typename T> struct Element {
         } else if constexpr (std::is_same_v<T, svision3::Button>) {
             w->set_command(std::move(cmd));
         } else {
-            static_assert(std::is_same_v<T, svision3::Toolbar> || std::is_same_v<T, svision3::Button>,
+            static_assert(std::is_same_v<T, svision3::Toolbar> ||
+                              std::is_same_v<T, svision3::Button>,
                           "command only works on Toolbar or Button");
         }
         return std::move(*this);
@@ -430,8 +437,13 @@ template <typename T> struct Element {
         return std::move(*this);
     }
 
-    Element
-    validator(std::function<bool(std::string const &, svision3::LineInput const &input)> validator) {
+    Element caps_lock_icon(svision3::LineInput::CapsLockIcon style) {
+        w->set_caps_lock_icon(style);
+        return std::move(*this);
+    }
+
+    Element validator(
+        std::function<bool(std::string const &, svision3::LineInput const &input)> validator) {
         w->set_validator(validator);
         return std::move(*this);
     }
@@ -621,7 +633,8 @@ inline Element<svision3::ProgressBar> progress_bar(float value = 0) {
     return Element<svision3::ProgressBar>(std::move(p));
 }
 
-inline Element<svision3::SpinBox> spin_box(int value = 0, int min = 0, int max = 100, int step = 1) {
+inline Element<svision3::SpinBox> spin_box(int value = 0, int min = 0, int max = 100,
+                                           int step = 1) {
     return Element<svision3::SpinBox>(std::make_unique<svision3::SpinBox>(value, min, max, step));
 }
 
@@ -655,19 +668,20 @@ struct RadioGroupWrapper {
 
 inline RadioGroupWrapper radio_group() { return RadioGroupWrapper(); }
 
-inline Element<svision3::RadioButton> radio_button(std::string_view text, RadioGroupWrapper &group) {
+inline Element<svision3::RadioButton> radio_button(std::string_view text,
+                                                   RadioGroupWrapper &group) {
     return Element<svision3::RadioButton>(
         std::make_unique<svision3::RadioButton>(std::string(text), *group.group));
 }
 
 inline Element<svision3::RadioButton> radio_button(std::string_view text,
-                                                  std::shared_ptr<svision3::RadioGroup> group) {
+                                                   std::shared_ptr<svision3::RadioGroup> group) {
     return Element<svision3::RadioButton>(
         std::make_unique<svision3::RadioButton>(std::string(text), *group));
 }
 
 inline Element<svision3::RadioButton> radio_button(std::string_view text,
-                                                  svision3::RadioGroup &group) {
+                                                   svision3::RadioGroup &group) {
     return Element<svision3::RadioButton>(
         std::make_unique<svision3::RadioButton>(std::string(text), group));
 }

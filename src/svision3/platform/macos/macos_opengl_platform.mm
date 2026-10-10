@@ -392,6 +392,9 @@ class CoreTextRasterizer : public TextRasterizer {
     ke.alt = (m & NSEventModifierFlagOption) != 0;
     ke.super = (m & NSEventModifierFlagCommand) != 0;
     switch ([event keyCode]) {
+    case 57:
+        ke.key = svision3::Key::CapsLock;
+        break;
     case 49:
         ke.key = svision3::Key::Space;
         break;

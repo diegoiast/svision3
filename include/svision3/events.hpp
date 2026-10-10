@@ -48,6 +48,7 @@ enum class Key {
     RightControl,
     LeftSuper,
     RightSuper,
+    CapsLock,
     Plus,
     Minus,
     Equals,
