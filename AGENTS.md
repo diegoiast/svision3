@@ -23,20 +23,20 @@ cmake --preset conan-debug -G Ninja
 
 1. General
     1. C++ 20 + conan for external dependencies.
-    1. Prefer readabilty over hacks.
-    1. No platform dependent code, when needed abstract to a virtual interface.
-    1. Coments should explain "why" not "what".
-    1. Avoid excesive comments. Code should be clear enough.
-    1. Comments before statment, not aside it.
-    1. Do not abuse with icons on comments.
-    1. File names are *.cpp,*.hpp (*.mm where needed)
-    1. First 2 lines will be: `// SPDX-License-Identifier: MIT` and `// SPDX-FileCopyrightText:`
-    1. Includes will be guarded by `#pragma once`.
-    1. Do not modify `todo.txt`
-    1. When working on a widget, do not modify platform code - keep modifications
+    2. Prefer readabilty over hacks.
+    3. No platform dependent code, when needed abstract to a virtual interface.
+    4. Comments should explain "why" not "what".
+    5. Avoid excesive comments. Code should be clear enough.
+    6. Comments before statment, not aside it.
+    7. Do not abuse with icons on comments.
+    8. File names are *.cpp,*.hpp (*.mm where needed)
+    9. First 2 lines will be: `// SPDX-License-Identifier: MIT` and `// SPDX-FileCopyrightText:`
+    10. Includes will be guarded by `#pragma once`.
+    11. Do not modify `todo.txt`
+    12. When working on a widget, do not modify platform code - keep modifications
        inside the widget code. If platform changes are needed - prompt developer
        to modify those things.
-    1. Painting new widgets, should be done by drawing widgets primities for this
+    13. Painting new widgets, should be done by drawing widgets primities for this
        widget (`theme->draw_button_background()`).
 1. Variables
     1. Variable names are `snake_case`.
