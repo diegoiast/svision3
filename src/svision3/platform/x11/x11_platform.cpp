@@ -495,8 +495,13 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
 
         if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
             ke.text.assign(buf, len);
-        } else if (ke.ctrl && keysym >= 'a' && keysym <= 'z') {
-            ke.text = std::string(1, static_cast<char>(keysym));
+        } else if (ke.ctrl) {
+            // Caps lock (or Shift) resolves the keysym capital; fold back to
+            // the base letter so Ctrl chords still carry their character.
+            auto ks = (keysym >= XK_A && keysym <= XK_Z) ? keysym - XK_A + XK_a : keysym;
+            if (ks >= XK_a && ks <= XK_z) {
+                ke.text = std::string(1, static_cast<char>(ks));
+            }
         }
         ke.key = keysym_to_key(keysym);
 
@@ -539,6 +544,13 @@ static void dispatch_x11_event(X11PlatformApplication::Impl *app, ::Window xwin,
 
         if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
             ke.text.assign(buf, len);
+        } else if (ke.ctrl) {
+            // Caps lock (or Shift) resolves the keysym capital; fold back to
+            // the base letter so Ctrl chords still carry their character.
+            auto ks = (keysym >= XK_A && keysym <= XK_Z) ? keysym - XK_A + XK_a : keysym;
+            if (ks >= XK_a && ks <= XK_z) {
+                ke.text = std::string(1, static_cast<char>(ks));
+            }
         }
         ke.key = keysym_to_key(keysym);
         win->handle_key(ke);

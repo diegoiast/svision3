@@ -733,8 +733,15 @@ static void keyboard_key(void *data, wl_keyboard *, uint32_t serial, uint32_t, u
     int len = xkb_state_key_get_utf8(app->xkb_st, keycode, buf, sizeof(buf));
     if (len > 0 && static_cast<unsigned char>(buf[0]) >= 32) {
         ke.text = std::string(buf, static_cast<size_t>(len));
-    } else if (ke.ctrl && sym >= XKB_KEY_a && sym <= XKB_KEY_z) {
-        ke.text = std::string(1, static_cast<char>(sym));
+    } else if (ke.ctrl) {
+        // Caps lock (or Shift) resolves the keysym capital; fold back to the
+        // base letter so Ctrl chords still carry their character.
+        auto lower = xkb_keysym_to_lower(sym);
+        if (lower >= XKB_KEY_a && lower <= XKB_KEY_z) {
+            ke.text = std::string(1, static_cast<char>(lower));
+        } else {
+            ke.text = "";
+        }
     } else {
         ke.text = ""; // Ensure text is empty if not a printable character
     }
