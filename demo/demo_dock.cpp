@@ -565,6 +565,9 @@ int main(int argc, char *argv[]) {
         .add_action(make_theme("Windows 11 Light", ThemeStyle::Win11, ColorScheme::Light))
         .add_action(make_theme("Windows 11 Dark", ThemeStyle::Win11, ColorScheme::Dark))
         .add_separator()
+        .add_action(make_theme("macOS Light", ThemeStyle::MacOS, ColorScheme::Light))
+        .add_action(make_theme("macOS Dark", ThemeStyle::MacOS, ColorScheme::Dark))
+        .add_separator()
         .add_action(make_theme("Windows 95", ThemeStyle::Win95, ColorScheme::Light));
 
     // The window opened with ThemeFactory::create(detect_system_style()), whose
