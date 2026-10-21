@@ -1,7 +1,7 @@
 {
     "activeExecutableName": "demo_declarative",
     "activeTaskName": "",
-    "build_directory": "${source_directory}/build",
+    "build_directory": "${source_directory}/build/Debug",
     "displayFilter": "",
     "executables": [
         {
