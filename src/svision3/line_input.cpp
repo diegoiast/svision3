@@ -392,9 +392,7 @@ float LineInput::icon_size() const {
     auto const &palette = Theme::current().palette;
     return palette.fonts.size + 2.0f;
 }
-float LineInput::icon_spacing() const {
-    return 4.0f;
-}
+float LineInput::icon_spacing() const { return 4.0f; }
 
 float LineInput::leading_inset() const {
     float inset = 0.0f;
@@ -661,7 +659,7 @@ void LineInput::paint_peek_icon(Painter &painter, Rect const &slot, bool hovered
 }
 
 void LineInput::paint_caps_lock_icon(Painter &painter, Rect const &slot, bool hovered,
-                                      bool pressed) const {
+                                     bool pressed) const {
     switch (caps_lock_icon_style_) {
     case CapsLockIcon::FilledCircle:
         paint_caps_lock_filled_circle(painter, slot, hovered);
@@ -719,7 +717,7 @@ void LineInput::paint_caps_lock_filled_circle(Painter &painter, Rect const &slot
 
 // The bare key glyph: an up chevron over a horizontal bar, no circle.
 void LineInput::paint_caps_lock_chevron_bar(Painter &painter, Rect const &slot,
-                                             bool hovered) const {
+                                            bool hovered) const {
     auto const &palette = Theme::current().palette;
     auto sz = slot.width;
     auto cx = slot.x + sz / 2.0f;
