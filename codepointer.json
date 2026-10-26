@@ -67,6 +67,22 @@
             },
             "name": "Unit tests",
             "runDirectory": "${source_directory}"
+        },
+        {
+            "executables": {
+                "linux": "build/Debug/task_manager",
+                "windows": "build\\Debug\\task_manager.exe"
+            },
+            "name": "Task Manager",
+            "runDirectory": "${source_directory}"
+        },
+        {
+            "executables": {
+                "linux": "build/Debug/demo_dock",
+                "windows": "build\\Debug\\demo_dock.exe"
+            },
+            "name": "Demo dock",
+            "runDirectory": "${source_directory}"
         }
     ],
     "hideFilter": ".git;.vscode;.vs;cbuild;dist;out;build;themes",
