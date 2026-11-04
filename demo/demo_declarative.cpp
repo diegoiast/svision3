@@ -212,6 +212,8 @@ int main(int argc, char *argv[]) {
 
     auto editor = ui::text_edit(EDITOR_DEFAULT_TEXT);
     auto use_native_cb = ui::checkbox("Use native dialogs").checked(true);
+
+    // FIXME: remove this weak reference
     auto use_native_cb_ptr = use_native_cb.get();
 
     auto table_model = std::make_shared<svision3::StringTableModel>(
@@ -716,6 +718,7 @@ int main(int argc, char *argv[]) {
                     .margins(ui::default_margins_no_bottom())
                     .add(ui::hbox()
                              .spacing(8)
+                             .margins({0, 0, 0, 0})
                              .add(ui::button("Open...").icon(open_icon).on_click(open_action))
                              .add(ui::button("Save As...")
                                       .on_click([&window, editor_ptr = editor.get(),
