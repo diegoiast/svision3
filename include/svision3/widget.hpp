@@ -213,14 +213,17 @@ class Widget {
         bool non_focus_input = false;
         bool command_context = false;
         bool on_top = false;
-        std::string tooltip;
         bool tooltip_markdown = false;
+        std::string tooltip;
     } state;
 
     Rect rect_;
     Size min_size_;
     Size max_size_;
+
+    // FIXME: convert to weak_reference
     Window *window_ = nullptr;
+    // FIXME: convert to weak_reference
     Widget *parent_ = nullptr;
     std::vector<Command::Ptr> commands_;
     std::optional<Color> background_color_;
