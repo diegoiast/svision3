@@ -3,7 +3,6 @@
 
 #include "svision3/theme_plasma.hpp"
 #include "svision3/button.hpp"
-#include "svision3/image_widget.hpp"
 #include "svision3/label.hpp"
 #include "svision3/layout.hpp"
 #include "svision3/painter.hpp"
@@ -24,16 +23,15 @@ class PlasmaTitleBar : public WindowTitleBar {
     void initializeTitleBar() override {
         layout = create_title_layout();
         layout->set_window(window_);
-        layout->set_spacing(8.0f);
-        layout->set_margins({8, 4, 8, 4});
+        layout->set_spacing(4.0f);
+        layout->set_margins({0, 4, 0, 4});
 
         icon_widget = new TitleBarIcon(window_);
         icon_widget->set_window(window_);
-        // Matches the titlebar buttons' own 20x20 default size_hint (see TitlebarButton) --
-        // KWin's own Breeze decoration renders the window icon close to that size, and at 16x16
-        // it visibly shrank next to it.
-        icon_widget->set_min_size({22, 22});
-        icon_widget->set_max_size({22, 22});
+        // 2px margin on every side of the icon within the title bar height.
+        auto icon_size = Theme::current().style.window_decoration.top - 4.0f;
+        icon_widget->set_min_size({icon_size, icon_size});
+        icon_widget->set_max_size({icon_size, icon_size});
         icon_widget->set_image(window_->get_icon());
 
         close_btn = new TitlebarButton(DecorationButton::Close, "Close");
@@ -53,7 +51,7 @@ class PlasmaTitleBar : public WindowTitleBar {
 
         sync_button_states();
 
-        layout->add_widget(std::unique_ptr<Widget>(icon_widget));
+        layout->add_widget(std::unique_ptr<Widget>(icon_widget), 0, Alignment::Center);
         title_label = new Label(std::string{window_->title()});
         title_label->set_alignment(Alignment::Center).set_shrinkable(true).set_elide(true);
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
@@ -102,9 +100,10 @@ Plasma6Theme::Plasma6Theme(ColorScheme scheme, std::optional<Palette> p)
     style.inline_scrollbars = false;
     style.corner_radius = 6.0f;
     style.tabWidget.tab_radius = 5.0f;
-    style.window_decoration = {32, 0, 0, 0};
+    style.window_decoration = {28, 0, 0, 0};
     style.bottom_shadow = true;
     style.chrome_lines = false;
+    close_button_red = !false;
 }
 
 std::unique_ptr<Widget> Plasma6Theme::create_title_bar(Window *window) const {
@@ -144,7 +143,7 @@ Palette Plasma6Theme::default_palette(ColorScheme scheme) const {
         p.tab_background = Color::from_rgb(0xc7c8c9);
         break;
     case ColorScheme::Dark:
-        p.window = Color::from_argb(0xFF232629);
+        p.window = Color::from_argb(0xFF202326);
         p.base = Color::from_argb(0xFF1B1E20);
         p.alternate = Color::from_argb(0xFF31363B);
         p.text = Color::from_argb(0xFFEFF0F1);
@@ -212,10 +211,21 @@ void Plasma6Theme::draw_window_button(Painter &painter, Rect const &rect, Decora
     auto hovered = state.interaction == ButtonState::Hovered;
     auto pressed = state.interaction == ButtonState::ClickedInside;
     auto center = Point{rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f};
+    auto colored_close = button == DecorationButton::Close && close_button_red;
+    auto light_scheme = palette.window.luma() > 0.5f;
 
-    if (hovered || pressed) {
+    if (colored_close) {
+        // Always-on filled close: red on light, silver/gray on dark (Breeze-style option).
+        bg = light_scheme ? palette.error : Color::from_rgb(0xb0b3b6);
+        if (pressed) {
+            bg = bg.lighten(0.1f);
+        } else if (hovered) {
+            bg = light_scheme ? bg.darken(0.08f) : bg.lighten(0.08f);
+        }
+        auto cr = std::min(rect.width, rect.height) / 2.0f;
+        painter.fill_circle(center, cr, bg);
+    } else if (hovered || pressed) {
         if (button == DecorationButton::Close) {
-            // bg = Color::from_rgb(0xe74c3c);
             bg = palette.error;
         } else if (button != DecorationButton::Menu) {
             bg = palette.text;
@@ -230,7 +240,13 @@ void Plasma6Theme::draw_window_button(Painter &painter, Rect const &rect, Decora
     }
 
     auto size = 5.0f;
-    auto fg = (hovered || pressed) ? palette.window : palette.text;
+    auto fg = palette.text;
+    if (colored_close) {
+        // FIXME: hardcoded color. Maybe put in the theme?
+        fg = light_scheme ? palette.highlighted_text : Color::from_rgb(0x232629);
+    } else if (hovered || pressed) {
+        fg = palette.window;
+    }
 
     if (button == DecorationButton::Minimize) {
         auto vd = size * 0.66f;

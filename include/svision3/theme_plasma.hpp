@@ -24,6 +24,10 @@ class Plasma6Theme : public BaseTheme {
 
     void draw_window_button(Painter &painter, Rect const &rect, DecorationButton button,
                             WidgetState const &state) const override;
+
+    // When set, the title-bar close button is always drawn as a filled circle (not only on
+    // hover). Plasma uses this: red on light schemes, silver/gray on dark.
+    bool close_button_red = false;
 };
 
 } // namespace svision3
