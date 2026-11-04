@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include "svision3/window.hpp"
-#include "svision3/layout.hpp"
 #include "svision3/label.hpp"
+#include "svision3/layout.hpp"
+#include "svision3/platform/dummy_platform.hpp"
 #include "svision3/theme.hpp"
 #include "svision3/theme_factory.hpp"
-#include "svision3/platform/dummy_platform.hpp"
+#include "svision3/window.hpp"
+#include "svision3/window_title_bar.hpp"
+#include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #ifdef SVISION3_HAS_CAIRO
 #include "svision3/painters/cairo_painter.hpp"
@@ -35,8 +37,8 @@ TEST_CASE("CSD title bar maximize button is clickable in every theme", "[window]
     // title bar shares unconditionally, WindowTitleBar::set_rect() (not overridden per theme,
     // unlike initializeTitleBar()), so coverage here for the other themes covers GNOME's layout
     // wiring too.
-    auto style = GENERATE(ThemeStyle::Win11, ThemeStyle::Win95, ThemeStyle::Plasma6,
-                          ThemeStyle::MacOS);
+    auto style =
+        GENERATE(ThemeStyle::Win11, ThemeStyle::Win95, ThemeStyle::Plasma6, ThemeStyle::MacOS);
     CAPTURE(static_cast<int>(style));
     Theme::set_current(ThemeFactory::create(style, ColorScheme::Light));
 
@@ -100,9 +102,10 @@ TEST_CASE("CSD title bar maximize button is clickable in every theme", "[window]
 // blocks_hit_test() was left commented out, so this silently regressed: double-click and window
 // drag stopped working whenever the click landed on the title text itself (as opposed to bare
 // bar background beside it) -- inconsistent because it depends on title length vs bar width.
-TEST_CASE("CSD title bar double-click-to-maximize works when clicking the title text", "[window][titlebar]") {
-    auto style = GENERATE(ThemeStyle::Win11, ThemeStyle::Win95, ThemeStyle::Plasma6,
-                          ThemeStyle::MacOS);
+TEST_CASE("CSD title bar double-click-to-maximize works when clicking the title text",
+          "[window][titlebar]") {
+    auto style =
+        GENERATE(ThemeStyle::Win11, ThemeStyle::Win95, ThemeStyle::Plasma6, ThemeStyle::MacOS);
     CAPTURE(static_cast<int>(style));
     Theme::set_current(ThemeFactory::create(style, ColorScheme::Light));
 
@@ -155,7 +158,8 @@ TEST_CASE("CSD title bar double-click-to-maximize works when clicking the title 
 // even on hover, the same small square glyph) for both DecorationButton::Maximize and ::Restore
 // -- see MacOSTheme::draw_window_button -- matching real macOS convention, where the zoom button
 // doesn't change appearance with window state. That's correct, not an instance of this bug.
-TEST_CASE("Maximize button icon changes between maximize and restore glyphs", "[window][titlebar]") {
+TEST_CASE("Maximize button icon changes between maximize and restore glyphs",
+          "[window][titlebar]") {
     auto style = GENERATE(ThemeStyle::Win11, ThemeStyle::Win95, ThemeStyle::Plasma6);
     CAPTURE(static_cast<int>(style));
     auto theme = ThemeFactory::create(style, ColorScheme::Light);
@@ -243,10 +247,10 @@ TEST_CASE("Maximize button icon changes between maximize and restore glyphs", "[
                     continue;
                 }
                 auto offset = static_cast<size_t>(py) * static_cast<size_t>(stride) +
-                             static_cast<size_t>(px) * 4;
+                              static_cast<size_t>(px) * 4;
                 if (offset + 4 <= pixels.size()) {
                     crop.insert(crop.end(), pixels.begin() + static_cast<long>(offset),
-                               pixels.begin() + static_cast<long>(offset + 4));
+                                pixels.begin() + static_cast<long>(offset + 4));
                 }
             }
         }
@@ -309,8 +313,8 @@ struct MenuTrackingPlatformGuard {
 TEST_CASE("System menu anchors to the visible window edge, not the shadow's outer edge",
           "[window][titlebar]") {
     MenuTrackingPlatformGuard guard;
-    auto style = GENERATE(ThemeStyle::Win11, ThemeStyle::Win95, ThemeStyle::Plasma6,
-                          ThemeStyle::MacOS);
+    auto style =
+        GENERATE(ThemeStyle::Win11, ThemeStyle::Win95, ThemeStyle::Plasma6, ThemeStyle::MacOS);
     CAPTURE(static_cast<int>(style));
     Theme::set_current(ThemeFactory::create(style, ColorScheme::Light));
 
@@ -340,7 +344,7 @@ TEST_CASE("System menu anchors to the visible window edge, not the shadow's oute
     // content_rect() *after* the scan and forcing the window back to restored, rather than
     // assuming the pre-scan inset still applies.
     for (float y = titlebar_top; y < titlebar_top + titlebar_h && platform_window->call_count == 0;
-        y += 1.0f) {
+         y += 1.0f) {
         for (float x = 0; x < win.size().width; x += 1.0f) {
             // Paired with a release even on a miss: TitleBarIcon::handle_mouse() fires on press
             // alone, but any other button hit along the way would otherwise be left stuck
