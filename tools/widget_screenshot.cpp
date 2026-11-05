@@ -38,6 +38,7 @@
 #include "svision3/menu.hpp"
 #include "svision3/menubar.hpp"
 #include "svision3/painters/cairo_painter.hpp"
+#include "svision3/painters/win32_painter.hpp"
 #include "svision3/platform.hpp"
 #include "svision3/platform/dummy_platform.hpp"
 #include "svision3/progress_bar.hpp"
@@ -790,7 +791,7 @@ bool render_one(Application &app, PlatformApplication &platform, std::string con
                 WidgetSpec const &spec, std::filesystem::path const &out_dir) {
     auto window = app.create_window(key, spec.canvas);
     spec.setup(*window);
-    auto icon = cairo_capture(window.get());
+/*    auto icon = cairo_capture(window.get());
     if (!icon) {
         std::cerr << "capture failed for " << key << "\n";
         return false;
@@ -801,7 +802,12 @@ bool render_one(Application &app, PlatformApplication &platform, std::string con
         return false;
     }
     std::cout << "wrote " << path << "\n";
-    return true;
+*/
+
+    auto path = (out_dir / (key + ".png")).string();
+    bool ok = window->save_to_png(path);
+    return ok;
+
 }
 
 } // namespace
@@ -815,16 +821,22 @@ int main(int argc, char **argv) {
     std::filesystem::path out_dir = argv[2];
     std::filesystem::create_directories(out_dir);
 
-    setenv("SVISION_BACKEND", "dummy", 1);
     Application app;
     auto *platform = detail::current_platform();
+#ifdef _WIN32
+    _putenv( "SVISION_BACKEND=dummy" ); // C4996
+    platform->set_rasterizer(new Win32TextRasterizer());
+    auto icon_loader = std::make_unique<XdgImageLoader>("Faenza");
+#else
+    setenv("SVISION_BACKEND", "dummy", 1);
     platform->set_rasterizer(new CairoTextRasterizer());
+#endif
+
     // Widgets like FileBrowserWidget draw real XDG icons (go-previous,
     // folder-new, ...) rather than text glyphs, so without a theme those
     // buttons render empty. Faenza is bundled in the repo -- set_theme()
     // resolves "themes/<name>" relative to the current working directory,
     // so this only works run from the repo root.
-    auto icon_loader = std::make_unique<XdgImageLoader>("Faenza");
     if (!icon_loader->theme_loaded()) {
         std::cerr << "warning: Faenza icon theme not found -- run this from the "
                     "repository root\n";
