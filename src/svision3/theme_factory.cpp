@@ -53,7 +53,7 @@ class GnomeTitleBar : public WindowTitleBar {
     }
 
     void paint(Painter &painter) {
-        auto const &pal = Theme::current().palette;
+        auto const &pal = window_->decoration_theme().palette;
         auto active = window_->is_active();
         auto bg = active ? pal.window : pal.window_inactive.value_or(pal.window);
         auto fg = active ? pal.text : pal.text_disabled;

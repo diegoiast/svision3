@@ -676,6 +676,7 @@ add_executable(tests
     tests/test_combobox.cpp
     tests/test_context_menu.cpp
     tests/test_db.cpp
+    tests/test_decoration_mode.cpp
     tests/test_events.cpp
     tests/test_label.cpp
     tests/test_dock_area.cpp

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "svision3/window.hpp"
+#include <cassert>
 #include <functional>
 #include <memory>
 #include <string_view>
@@ -32,15 +33,22 @@ class Application {
     // warning) if the value is unrecognized.
     static bool set_log_level(std::string_view name);
 
-    // Application-wide default for WindowOptions::csd, so you don't have to repeat `.csd = true`
-    // at every create_window() call site. A specific window can still override this default in
-    // either direction with an explicit `.csd = true`/`.csd = false` in the WindowOptions passed
-    // to create_window() -- only an unset `csd` field (the common case: omitting it entirely, or
-    // passing `{}`) inherits this app-wide default. A platform that lacks server-side decorations
-    // entirely (PlatformApplication::needs_csd(), e.g. GNOME/mutter's Wayland compositor) forces
-    // CSD on regardless, always winning over both. Off by default.
-    void set_force_csd(bool force);
-    bool force_csd() const;
+    // Application-wide default decoration mode for windows whose WindowOptions request Inherit.
+    // A per-window `.decoration` (or the legacy `.csd = true`) still wins. A platform that lacks
+    // server-side decorations entirely (PlatformApplication::needs_csd(), e.g. GNOME/mutter's
+    // Wayland compositor) can still force CSD over a Native request. Native by default. Applies
+    // to windows created after the call.
+    //
+    // `mode` must be concrete: the application is the root of the decoration inheritance chain,
+    // so Inherit has nothing to inherit from here. This is a precondition, and a C++ contract
+    // would be the right way to express it, but contracts are not available yet. Until they are,
+    // enforce it with a runtime assert instead.
+    void set_decoration_mode(DecorationMode mode) {
+        assert(mode != DecorationMode::Inherit &&
+               "Application::set_decoration_mode: Inherit is not a concrete mode");
+        decoration_mode_ = mode;
+    }
+    DecorationMode decoration_mode() const { return decoration_mode_; }
 
     // The Application keeps a reference for the process lifetime, so the
     // returned pointer stays valid without the caller holding on to it -- take
@@ -87,6 +95,7 @@ class Application {
     struct Impl;
     std::unique_ptr<Impl> impl_;
 
+    DecorationMode decoration_mode_ = DecorationMode::Native;
     std::vector<std::shared_ptr<Window>> windows_;
 };
 

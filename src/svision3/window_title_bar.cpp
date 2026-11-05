@@ -39,7 +39,10 @@ void TitlebarButton::paint(Painter &painter) {
         .window_active = window_ ? window_->is_active() : true,
         .checked = is_checked(),
     };
-    Theme::current().draw_window_button(painter, {0, 0, rect_.width, rect_.height}, type_, wstate);
+    // PlatformCsd keeps the platform's button glyphs even while the application theme (and so
+    // this bar's colours) changes; ThemeCsd resolves to Theme::current() here anyway.
+    auto const &theme = window_ ? window_->decoration_theme() : Theme::current();
+    theme.draw_window_button(painter, {0, 0, rect_.width, rect_.height}, type_, wstate);
 }
 
 TitleBarIcon::TitleBarIcon(Window *w) : Button(""), window_(w) {
@@ -209,12 +212,13 @@ void WindowTitleBar::sync_button_states() {
 }
 
 Size WindowTitleBar::size_hint() const {
-    auto const &m = Theme::current().Theme::current().style.window_decoration;
+    auto const &theme = window_ ? window_->decoration_theme() : Theme::current();
+    auto const &m = theme.style.window_decoration;
     return {100.0f, m.top};
 }
 
 void WindowTitleBar::paint(Painter &painter) {
-    auto const &pal = Theme::current().palette;
+    auto const &pal = window_->decoration_theme().palette;
     auto active = window_->is_active();
     auto bg = active ? pal.accent : pal.window;
     auto fg = active ? pal.highlighted_text : pal.text_disabled;

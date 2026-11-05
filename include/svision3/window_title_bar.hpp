@@ -84,11 +84,11 @@ class WindowTitleBar : public Widget {
     // so a runtime change (e.g. WindowOptions changing) is reflected without redoing layout.
     void sync_button_states();
     TitleBarIcon *icon_widget = nullptr;
-    Label *title_label;
+    Label *title_label = nullptr;
     Button *min_btn = nullptr;
     Button *max_btn = nullptr;
     Button *close_btn = nullptr;
-    HBoxLayout *layout;
+    HBoxLayout *layout = nullptr;
 
   private:
     // Restores the window and, where the platform allows a client to place its own windows,

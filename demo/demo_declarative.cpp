@@ -93,7 +93,7 @@ static void apply_theme(svision3::Application &app, svision3::Window *window) {
 
 int main(int argc, char *argv[]) {
     svision3::Application app;
-    app.set_force_csd(true);
+    app.set_decoration_mode(svision3::DecorationMode::ThemeCsd);
 
     std::string screenshot_path;
     for (int i = 1; i < argc; i++) {

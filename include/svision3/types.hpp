@@ -167,23 +167,25 @@ struct SystemFonts {
     float auto_repeat_interval = 0;
 };
 
-namespace detail {
-// Backing storage for Application::set_force_csd()/force_csd(). Declared here rather than in
-// application.hpp so WindowOptions's default member initializer for `csd` can read it without
-// types.hpp depending on application.hpp (which itself depends on window.hpp -> types.hpp).
-inline bool &default_force_csd() {
-    static bool value = false;
-    return value;
-}
-} // namespace detail
+// How a window gets its decorations. This is the "how much of the platform do we keep" axis:
+//
+//   Inherit     - use Application::decoration_mode(). Only valid in WindowOptions; an application
+//                 default (or a window's effective mode) must be concrete.
+//   Native      - the OS/WM draws them. When the platform cannot decorate at all (e.g. GNOME's
+//                 Wayland compositor without xdg-decoration) this degrades to PlatformCsd.
+//   PlatformCsd - we draw them, but the title bar follows the detected desktop: layout,
+//                 height/geometry, colours and glyphs. The content still uses Theme::current().
+//   ThemeCsd    - we draw them entirely from Theme::current(), regardless of the host desktop.
+enum class DecorationMode { Inherit, Native, PlatformCsd, ThemeCsd };
 
 struct WindowOptions {
-    // Defaults to whatever Application::set_force_csd() last set (false until called). Give an
-    // explicit `.csd = true` or `.csd = false` at a create_window() call site to override the
-    // app-wide default for just that window -- aggregate init skips this default member
-    // initializer entirely for any field given an explicit value, so an explicit false really
-    // means false even while the app-wide default is true.
-    bool csd = detail::default_force_csd();
+    // Inherit asks Application::create_window() to fill this in from
+    // Application::decoration_mode().
+    DecorationMode decoration = DecorationMode::Inherit;
+
+    // Legacy alias kept for source compatibility: `.csd = true` means DecorationMode::ThemeCsd.
+    // It wins over the application default, but an explicit `decoration` value wins over it.
+    bool csd = false;
     bool frameless = false;
     // Enforced both by the CSD title bar (hides the corresponding button, and
     // Window::minimize/maximize/start_system_move/start_system_resize become no-ops) and, where
@@ -196,6 +198,16 @@ struct WindowOptions {
     bool maximizable = true;
     bool closable = true;
 };
+
+// What WindowOptions asks for, before the platform's needs_csd() fallback is applied. The
+// application-wide default is not consulted here: Application::create_window() already replaced
+// Inherit with it for windows that don't override it.
+inline auto requested_decoration(WindowOptions const &options) -> DecorationMode {
+    if (options.decoration != DecorationMode::Inherit) {
+        return options.decoration;
+    }
+    return options.csd ? DecorationMode::ThemeCsd : DecorationMode::Inherit;
+}
 
 enum class WindowEdge {
     None,

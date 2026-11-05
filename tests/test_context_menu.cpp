@@ -66,7 +66,7 @@ TEST_CASE("ContextMenu clamps to the client area, not the CSD shadow", "[context
     Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
 
     Window win("Test", {800, 600});
-    win.set_csd_mode(true);
+    win.set_decoration_mode(DecorationMode::ThemeCsd);
     win.relayout();
 
     auto content = win.content_rect();
@@ -101,7 +101,7 @@ TEST_CASE("Menu clamps to the client area, not the CSD shadow", "[menu]") {
     Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
 
     Window win("Test", {800, 600});
-    win.set_csd_mode(true);
+    win.set_decoration_mode(DecorationMode::ThemeCsd);
     win.relayout();
 
     auto content = win.content_rect();

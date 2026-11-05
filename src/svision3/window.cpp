@@ -7,7 +7,9 @@
 #include "svision3/platform.hpp"
 #include "svision3/tab_widget.hpp"
 #include "svision3/theme.hpp"
+#include "svision3/theme_factory.hpp"
 #include "svision3/window_title_bar.hpp"
+#include <cassert>
 #include <cctype>
 #include <chrono>
 #include <nlohmann/json.hpp>
@@ -102,6 +104,9 @@ static bool dispatch_to_on_top(Widget *parent, MouseEvent const &event) {
 
 struct Window::Impl {
     std::unique_ptr<PlatformWindow> platform;
+    // Only set for PlatformCsd: the detected desktop's theme, used for the title bar's layout,
+    // colours and decoration glyphs.
+    std::unique_ptr<Theme> platform_decoration_theme;
     Window::Statistics stats;
     std::chrono::steady_clock::time_point last_log_time = std::chrono::steady_clock::now();
 
@@ -117,14 +122,43 @@ struct Window::Impl {
     Point rich_tooltip_pos;
 };
 
+static auto create_platform_decoration_theme() -> std::unique_ptr<Theme> {
+    auto const &current = Theme::current();
+    auto scheme = current.palette.window.luma() > 0.5f ? ColorScheme::Light : ColorScheme::Dark;
+    // Deliberately keeps the platform theme's own palette: PlatformCsd is meant to look like the
+    // host desktop, so switching the application theme must not recolor its title bar.
+    return ThemeFactory::create(Theme::detect_system_style(), scheme);
+}
+
+// Turns the per-window request into the mode this window will actually use. Platforms that
+// cannot decorate at all (NeedsCsd, e.g. GNOME's Wayland compositor) still get CSD, just with the
+// platform's own title-bar layout rather than the application theme's.
+static auto resolve_decoration_mode(WindowOptions &options) -> DecorationMode {
+    auto mode = requested_decoration(options);
+    // A window constructed directly, outside Application, has no application default to inherit.
+    if (mode == DecorationMode::Inherit) {
+        mode = DecorationMode::Native;
+    }
+    if (mode == DecorationMode::Native && detail::current_platform()->needs_csd()) {
+        mode = DecorationMode::PlatformCsd;
+    }
+    options.decoration = mode;
+    options.csd = (mode != DecorationMode::Native);
+    return mode;
+}
+
 Window::Window(std::string_view title, Size size, WindowOptions options)
     : title_(title), size_(size), options_(options), impl_(std::make_unique<Impl>()) {
+    decoration_mode_ = resolve_decoration_mode(options_);
+    if (decoration_mode_ == DecorationMode::PlatformCsd) {
+        impl_->platform_decoration_theme = create_platform_decoration_theme();
+    }
     if (options_.csd) {
-        auto const &m = Theme::current().style.window_decoration;
+        auto const &m = decoration_theme().style.window_decoration;
         size_.width += m.left + m.right;
         size_.height += m.top + m.bottom;
     }
-    impl_->platform = detail::current_platform()->create_window(title, size_, this, options);
+    impl_->platform = detail::current_platform()->create_window(title, size_, this, options_);
     // Seed the cached scale so handle_scale_changed() only fires on real changes,
     // even if the window is born on a high-DPI display.
     scale_ = impl_->platform->scale_factor();
@@ -286,23 +320,76 @@ static void on_theme_changed_recursive(Widget *w) {
     w->for_each_child([](Widget *child) { on_theme_changed_recursive(child); });
 }
 
+auto Window::decoration_theme() const -> Theme const & {
+    if (impl_ && impl_->platform_decoration_theme) {
+        return *impl_->platform_decoration_theme;
+    }
+    return Theme::current();
+}
+
+void Window::rebuild_chrome() {
+    if (!content_root_) {
+        return;
+    }
+    // Detach from the previous wrapper (if any) before it goes away, so content_root_ never
+    // keeps a dangling parent pointer while it is being re-wrapped.
+    content_root_->set_parent(nullptr);
+    if (options_.csd) {
+        auto layout = std::make_shared<VBoxLayout>();
+        layout->set_spacing(0);
+        layout->set_margins({0, 0, 0, 0});
+        auto title_bar = std::shared_ptr<Widget>(decoration_theme().create_title_bar(this));
+        layout->add_widget(title_bar);
+        title_bar->set_window(this);
+        layout->add_widget(content_root_, 1);
+        root_ = std::move(layout);
+    } else {
+        root_ = content_root_;
+    }
+    root_->set_window(this);
+}
+
+void Window::set_decoration_mode(DecorationMode mode) {
+    assert(mode != DecorationMode::Inherit);
+    if (mode == DecorationMode::Native && detail::current_platform()->needs_csd()) {
+        mode = DecorationMode::PlatformCsd;
+    }
+    if (mode == decoration_mode_) {
+        return;
+    }
+
+    auto const old_margins = options_.csd ? decoration_theme().style.window_decoration : Margins{};
+
+    decoration_mode_ = mode;
+    options_.decoration = mode;
+    options_.csd = (mode != DecorationMode::Native);
+
+    impl_->platform_decoration_theme.reset();
+    if (mode == DecorationMode::PlatformCsd) {
+        impl_->platform_decoration_theme = create_platform_decoration_theme();
+    }
+
+    auto const new_margins = options_.csd ? decoration_theme().style.window_decoration : Margins{};
+    if (impl_->platform && !is_maximized_) {
+        auto const dw =
+            (new_margins.left + new_margins.right) - (old_margins.left + old_margins.right);
+        auto const dh =
+            (new_margins.top + new_margins.bottom) - (old_margins.top + old_margins.bottom);
+        if (dw != 0.0f || dh != 0.0f) {
+            size_.width += dw;
+            size_.height += dh;
+            impl_->platform->set_size(size_);
+        }
+    }
+
+    rebuild_chrome();
+    relayout();
+    request_redraw("decoration mode changed");
+}
+
 void Window::on_theme_changed() {
     if (options_.csd) {
-        if (auto *layout = dynamic_cast<VBoxLayout *>(root_.get())) {
-            if (layout->items().size() >= 2) {
-                auto content = layout->release_item(1);
-                layout->clear_items();
-                auto new_layout = std::make_shared<VBoxLayout>();
-                new_layout->set_spacing(0);
-                new_layout->set_margins({0, 0, 0, 0});
-                auto title_bar = std::shared_ptr<Widget>(Theme::current().create_title_bar(this));
-                new_layout->add_widget(title_bar);
-                title_bar->set_window(this);
-                new_layout->add_widget(std::move(content), 1);
-                root_ = std::move(new_layout);
-                root_->set_window(this);
-            }
-        }
+        rebuild_chrome();
     }
     if (root_) {
         on_theme_changed_recursive(root_.get());
@@ -481,21 +568,8 @@ void Window::hide_tooltip_window() {
 
 std::weak_ptr<Widget> Window::set_root(std::shared_ptr<Widget> root) {
     auto ref = std::weak_ptr<Widget>(root);
-    if (options_.csd) {
-        auto layout = std::make_shared<VBoxLayout>();
-        layout->set_spacing(0);
-        layout->set_margins({0, 0, 0, 0});
-        auto title_bar = std::shared_ptr<Widget>(Theme::current().create_title_bar(this));
-        layout->add_widget(title_bar);
-        title_bar->set_window(this);
-        layout->add_widget(std::move(root), 1);
-        root_ = std::move(layout);
-    } else {
-        root_ = std::move(root);
-    }
-    if (root_) {
-        root_->set_window(this);
-    }
+    content_root_ = std::move(root);
+    rebuild_chrome();
 
     relayout();
     return ref;
@@ -1198,7 +1272,7 @@ void Window::handle_key(KeyEvent const &event) {
         // content_rect(), not (0, decoration.top): the raw window canvas starts at the outer
         // edge of the (invisible) CSD shadow/border, so anchoring to x=0/y=0 there instead of
         // the visible window's own edge would land the menu out past the actual window edge.
-        auto const &decoration = Theme::current().style.window_decoration;
+        auto const &decoration = decoration_theme().style.window_decoration;
         auto content = content_rect();
         platform_window()->show_system_menu({content.x, content.y + decoration.top});
         return;

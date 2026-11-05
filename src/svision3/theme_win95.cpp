@@ -37,7 +37,7 @@ class Win95TitleBar : public WindowTitleBar {
         layout->add_widget(std::unique_ptr<Widget>(icon_widget));
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
 
-        auto const &decoration = Theme::current().style.window_decoration;
+        auto const &decoration = window_->decoration_theme().style.window_decoration;
         auto btn_size = Size{decoration.top - 4.0f, decoration.top - 4.0f};
 
         min_btn = new TitlebarButton(DecorationButton::Minimize, "Minimize", btn_size);
@@ -68,7 +68,7 @@ class Win95TitleBar : public WindowTitleBar {
     }
 
     void paint(Painter &painter) override {
-        auto const &pal = Theme::current().palette;
+        auto const &pal = window_->decoration_theme().palette;
         auto active = window_->is_active();
         auto bg = active ? pal.highlight : pal.window;
         auto fg = active ? pal.highlighted_text : pal.text_disabled;

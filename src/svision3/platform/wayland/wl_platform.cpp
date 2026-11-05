@@ -1468,19 +1468,27 @@ WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
             app_->decoration_manager, xdg_toplevel_);
 
         static const zxdg_toplevel_decoration_v1_listener decoration_listener = {
-            // configure
-            [](void *data, zxdg_toplevel_decoration_v1 *decoration, uint32_t mode) {
+            // configure: the compositor's choice is final, so follow it and let the window
+            // rebuild its chrome if that changes the effective mode.
+            [](void *data, zxdg_toplevel_decoration_v1 *, uint32_t mode) {
                 auto *win = static_cast<WaylandPlatformWindow *>(data);
+                auto *owner = win->owner_;
 
                 switch (mode) {
                 case ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE:
-                    spdlog::info("Wayland compositor supports server-side decorations");
-                    win->owner_->set_csd_mode(false);
+                    if (owner->decoration_mode() != DecorationMode::Native) {
+                        spdlog::warn("Compositor chose server-side decorations; using native");
+                        owner->set_decoration_mode(DecorationMode::Native);
+                    }
                     break;
 
                 case ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:
-                    spdlog::info("Wayland compositor using client-side decorations");
-                    win->owner_->set_csd_mode(true);
+                    if (owner->decoration_mode() == DecorationMode::Native) {
+                        // We asked for native decorations but this compositor cannot provide
+                        // them; fall back to CSD with the platform's title-bar layout.
+                        spdlog::warn("Compositor requires client-side decorations");
+                        owner->set_decoration_mode(DecorationMode::PlatformCsd);
+                    }
                     break;
 
                 default:
@@ -1491,7 +1499,7 @@ WaylandPlatformWindow::WaylandPlatformWindow(WaylandPlatformApplication *app,
 
         zxdg_toplevel_decoration_v1_add_listener(toplevel_decoration, &decoration_listener, this);
 
-        auto mode = (options.csd || options.frameless)
+        auto mode = (owner_->decoration_mode() != DecorationMode::Native || options.frameless)
                         ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE
                         : ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
         zxdg_toplevel_decoration_v1_set_mode(toplevel_decoration, mode);

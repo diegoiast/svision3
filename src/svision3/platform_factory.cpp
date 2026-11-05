@@ -265,18 +265,12 @@ bool Application::set_log_level(std::string_view name) {
     return true;
 }
 
-void Application::set_force_csd(bool force) { detail::default_force_csd() = force; }
-
-bool Application::force_csd() const { return detail::default_force_csd(); }
-
 std::shared_ptr<Window> Application::create_window(std::string_view title, Size size,
                                                    WindowOptions options) {
-    if (impl_->platform->needs_csd()) {
-        // Native decorations aren't an option at all here (e.g. GNOME/mutter's Wayland
-        // compositor doesn't implement the xdg-decoration protocol); this platform mandate still
-        // always wins, unlike force_csd() (see WindowOptions::csd) which a caller can override
-        // per-window with an explicit `.csd = false`.
-        options.csd = true;
+    // A per-window choice (explicit decoration, or the legacy `.csd = true`) wins; otherwise the
+    // application-wide default applies. Window itself handles the platform's needs_csd() fallback.
+    if (options.decoration == DecorationMode::Inherit && !options.csd) {
+        options.decoration = decoration_mode_;
     }
     windows_.push_back(std::make_shared<Window>(title, size, options));
     return windows_.back();

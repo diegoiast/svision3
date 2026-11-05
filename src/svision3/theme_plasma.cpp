@@ -29,7 +29,7 @@ class PlasmaTitleBar : public WindowTitleBar {
         icon_widget = new TitleBarIcon(window_);
         icon_widget->set_window(window_);
         // 2px margin on every side of the icon within the title bar height.
-        auto icon_size = Theme::current().style.window_decoration.top - 4.0f;
+        auto icon_size = window_->decoration_theme().style.window_decoration.top - 4.0f;
         icon_widget->set_min_size({icon_size, icon_size});
         icon_widget->set_max_size({icon_size, icon_size});
         icon_widget->set_image(window_->get_icon());
@@ -61,7 +61,7 @@ class PlasmaTitleBar : public WindowTitleBar {
     }
 
     void paint(Painter &painter) override {
-        auto const &pal = Theme::current().palette;
+        auto const &pal = window_->decoration_theme().palette;
         auto active = window_->is_active();
 
         // FIXME: only reason to override this method is to modify the background

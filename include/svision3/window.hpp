@@ -22,6 +22,7 @@
 namespace svision3 {
 
 class PlatformWindow;
+class Theme;
 
 struct Popup {
     Rect bounds;
@@ -102,7 +103,18 @@ class Window {
 
     void set_options(WindowOptions options) { options_ = options; }
     WindowOptions options() const { return options_; }
-    void set_csd_mode(bool csd) { options_.csd = csd; }
+
+    // The effective decoration mode for this window (after the platform's needs_csd() fallback).
+    DecorationMode decoration_mode() const { return decoration_mode_; }
+    // Changes the mode at runtime by rebuilding the CSD chrome. Platforms that only negotiate
+    // native decorations when the window is created may keep their existing frame until then.
+    // Inherit is rejected: by the time a window exists, it already has a concrete mode.
+    void set_decoration_mode(DecorationMode mode);
+
+    // The theme that decides the CSD title bar's layout, geometry, colours and decoration glyphs.
+    // For ThemeCsd this is Theme::current(); for PlatformCsd it is the detected desktop's theme,
+    // so the title bar keeps the host's look while the application theme changes.
+    auto decoration_theme() const -> Theme const &;
 
     // Combine the requested WindowOptions with a live query of the native window/WM/compositor,
     // so an external, out-of-band change to the native window (e.g. a raw Win32/Cocoa call)
@@ -194,6 +206,8 @@ class Window {
     bool is_statistics_logging_enabled() const;
 
   private:
+    // (Re)builds root_ from content_root_, wrapping it with a CSD title bar when needed.
+    void rebuild_chrome();
     bool dispatch_key_event_recursive(Widget *w, KeyEvent const &event);
     void focus_next(bool reverse);
     void update_tooltip(Widget *under, Point mouse_pos);
@@ -211,6 +225,10 @@ class Window {
     Size size_;
     uint32_t last_serial_ = 0;
     WindowOptions options_;
+    DecorationMode decoration_mode_ = DecorationMode::Native;
+    // The caller's root widget, kept separately from root_ (which may be the CSD wrapper VBox)
+    // so switching decoration modes can re-wrap it without guessing the wrapper's structure.
+    std::shared_ptr<Widget> content_root_;
     Size min_size_;
     Size max_size_;
     // FIXME: do we really need a "root" widget?

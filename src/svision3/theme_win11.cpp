@@ -37,7 +37,7 @@ class Win11TitleBar : public WindowTitleBar {
         layout->add_widget(std::unique_ptr<Widget>(icon_widget));
         layout->add_widget(std::unique_ptr<Label>(title_label), 1);
 
-        auto const &decoration = Theme::current().Theme::current().style.window_decoration;
+        auto const &decoration = window_->decoration_theme().style.window_decoration;
         auto btn_size = Size{44, decoration.top};
 
         auto *button_layout = new HBoxLayout();
@@ -69,7 +69,7 @@ class Win11TitleBar : public WindowTitleBar {
     }
 
     void paint(Painter &painter) override {
-        auto const &pal = Theme::current().palette;
+        auto const &pal = window_->decoration_theme().palette;
         auto active = window_->is_active();
         auto bg = active ? pal.window : pal.window_inactive.value_or(pal.window);
         auto fg = active ? pal.text : pal.text_disabled;

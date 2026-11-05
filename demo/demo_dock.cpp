@@ -369,7 +369,7 @@ int main(int argc, char *argv[]) {
     }
 
     auto app = Application{};
-    app.set_force_csd(true);
+    app.set_decoration_mode(DecorationMode::PlatformCsd);
     if (!app.use_xdg_icons()) {
         auto loader = std::make_unique<XdgImageLoader>();
         loader->set_theme_path("./themes/Faenza");
