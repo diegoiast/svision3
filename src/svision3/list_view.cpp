@@ -331,7 +331,7 @@ bool ListView::handle_key(KeyEvent const &event) {
         if (event.has_accel_modifier()) {
             return false;
         }
-        auto bw = Theme::current().Theme::current().style.border_width;
+        auto bw = Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
         auto next = cursor_ ? std::min(*cursor_ + page, n - 1) : size_t{0};
@@ -352,7 +352,7 @@ bool ListView::handle_key(KeyEvent const &event) {
         if (event.has_accel_modifier()) {
             return false;
         }
-        auto bw = Theme::current().Theme::current().style.border_width;
+        auto bw = Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / item_height()));
         auto next = (cursor_ && *cursor_ >= page) ? *cursor_ - page : size_t{0};

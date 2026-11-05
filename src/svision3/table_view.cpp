@@ -797,7 +797,7 @@ bool TableView::handle_key(KeyEvent const &event) {
         if (event.has_accel_modifier()) {
             return false;
         }
-        auto bw = Theme::current().Theme::current().style.border_width;
+        auto bw = Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / row_height()));
         auto next = cursor_row_ ? std::min(*cursor_row_ + page, n - 1) : size_t{0};
@@ -817,7 +817,7 @@ bool TableView::handle_key(KeyEvent const &event) {
         if (event.has_accel_modifier()) {
             return false;
         }
-        auto bw = Theme::current().Theme::current().style.border_width;
+        auto bw = Theme::current().style.border_width;
         auto page =
             std::max(size_t{1}, static_cast<size_t>((rect_.height - bw * 2) / row_height()));
         auto next = (cursor_row_ && *cursor_row_ >= page) ? *cursor_row_ - page : size_t{0};
