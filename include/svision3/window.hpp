@@ -23,6 +23,7 @@ namespace svision3 {
 
 class PlatformWindow;
 class Theme;
+class WindowTitleBar;
 
 struct Popup {
     Rect bounds;
@@ -116,6 +117,14 @@ class Window {
     // so the title bar keeps the host's look while the application theme changes.
     auto decoration_theme() const -> Theme const &;
 
+    // Places an application widget in the CSD title bar: CsdWidgetPosition::Leading puts it before
+    // the title label, CsdWidgetPosition::Trailing after it (between the title and the window
+    // buttons on the usual layouts). The window keeps the widget and re-inserts it when the title
+    // bar is rebuilt, e.g. on a theme change. Pass nullptr to remove the widget from that slot.
+    // Ignored while decorations are native.
+    void set_csd_widget(std::shared_ptr<Widget> widget,
+                        CsdWidgetPosition position = CsdWidgetPosition::Leading);
+
     // Combine the requested WindowOptions with a live query of the native window/WM/compositor,
     // so an external, out-of-band change to the native window (e.g. a raw Win32/Cocoa call)
     // can only ever make an action *more* restricted than what was requested, never less.
@@ -208,6 +217,7 @@ class Window {
   private:
     // (Re)builds root_ from content_root_, wrapping it with a CSD title bar when needed.
     void rebuild_chrome();
+    void apply_csd_widgets();
     bool dispatch_key_event_recursive(Widget *w, KeyEvent const &event);
     void focus_next(bool reverse);
     void update_tooltip(Widget *under, Point mouse_pos);
@@ -233,6 +243,9 @@ class Window {
     Size max_size_;
     // FIXME: do we really need a "root" widget?
     std::shared_ptr<Widget> root_;
+    WindowTitleBar *title_bar_ = nullptr;
+    std::shared_ptr<Widget> leading_csd_widget_;
+    std::shared_ptr<Widget> trailing_csd_widget_;
     std::vector<std::shared_ptr<Widget>> widgets_;
     std::vector<Command::Ptr> global_commands_;
     bool is_active_ = true;

@@ -689,8 +689,8 @@ int main(int argc, char *argv[]) {
         CommandAnchor{*command_source, *main_toolbar, 0, "", CommandAnchor::Separator::After};
 
     // ------------------------------------------------------------------------
-    // The menubar, mirrored onto a button in the tab bar, for when the menubar
-    // itself is hidden. Only one of the two is ever on screen.
+    // The menubar, mirrored onto a button in the CSD title bar, for when the
+    // menubar itself is hidden. Only one of the two is ever on screen.
     //
     // Rebuilt each time it opens rather than copied once: Edit, View and Help are
     // filled from whichever widget has focus, and Project exists only while the
@@ -724,31 +724,31 @@ int main(int argc, char *argv[]) {
                            .menu(mirror_menu)
                            .w;
 
-    // Ctrl+Alt+M clears the chrome away: menubar and toolbar both go, and the tab
-    // bar grows the Menu button so everything is still reachable (Alt+M opens it).
-    // Registered on the window rather than left to the menubar's own shortcut scan,
-    // because a hidden menubar is skipped by the widget-tree dispatch -- the one
-    // command that can bring it back must not live where hiding it takes it away.
+    // Ctrl+Alt+M clears the chrome away: menubar and toolbar both go, and the
+    // title bar grows the Menu button so everything is still reachable (Alt+M
+    // opens it). Registered on the window rather than left to the menubar's own
+    // shortcut scan, because a hidden menubar is skipped by the widget-tree
+    // dispatch -- the one command that can bring it back must not live where
+    // hiding it takes it away.
     auto cmd_show_menubar = Command::create("Show Menu and &Toolbar", nullptr);
     cmd_show_menubar->set_shortcut("ctrl+alt+m");
     cmd_show_menubar->set_checkable(true);
     cmd_show_menubar->set_checked(true);
     cmd_show_menubar->set_execute_func([cmd = cmd_show_menubar.get(),
                                         weak_bar = std::weak_ptr(menubar.w), main_toolbar,
-                                        center_ref, menu_button, weak_win = std::weak_ptr(win)] {
+                                        menu_button, weak_win = std::weak_ptr(win)] {
         auto bar = weak_bar.lock();
-        auto center_ptr = center_ref.lock();
         auto win_ptr = weak_win.lock();
-        if (!bar || !center_ptr || !win_ptr) {
+        if (!bar || !win_ptr) {
             return;
         }
 
         auto show = !bar->is_visible();
         bar->set_visible(show);
         main_toolbar->set_visible(show);
-        // TabWidget lays out a leading widget whenever one is set, visible or not,
-        // so the button is swapped in and out rather than hidden.
-        center_ptr->set_leading_widget(show ? nullptr : menu_button);
+        // The button lives in the CSD title bar while the menubar is hidden; with
+        // native decorations it has nowhere to go yet, so it is simply not shown.
+        win_ptr->set_csd_widget(show ? nullptr : menu_button, CsdWidgetPosition::Leading);
         cmd->set_checked(show);
 
         win_ptr->relayout();

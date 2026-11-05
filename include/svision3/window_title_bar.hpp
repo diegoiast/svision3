@@ -64,13 +64,22 @@ class WindowTitleBar : public Widget {
     // why the minimise/maximise/close buttons never showed one despite setting it.
     Widget *widget_at(Point p) override;
     Size size_hint() const override;
-    // Exposes icon/title/buttons -- otherwise generic tree walks (debug-frame overlay,
-    // collect_focusables, etc.) stop at the bar itself and never see what's inside `layout`.
+    // Exposes icon/title/buttons -- otherwise generic tree walks (debug-frame overlay, etc.) stop
+    // at the bar itself and never see what's inside `layout`. Traversals with their own base
+    // implementation, such as collect_mnemonics(), recurse through here explicitly.
     void for_each_child(std::function<void(Widget *)> const &callback) override;
+    void collect_mnemonics(std::vector<Widget *> &out) override;
 
     // consusmers of this class should derive *this* method
     virtual void initializeTitleBar();
     void set_icon(Icon const &icon);
+
+    // Inserts an application-owned widget immediately before or after the title label. Passing
+    // nullptr removes whichever widget was previously placed in that slot. The widget is kept
+    // here so a theme rebuild starts from the same two slots.
+    void set_csd_widget(std::shared_ptr<Widget> widget,
+                        CsdWidgetPosition position = CsdWidgetPosition::Leading);
+    void clear_csd_widgets();
 
   protected:
     // Every theme override's initializeTitleBar() starts by building its own `layout`. Route that
@@ -102,6 +111,10 @@ class WindowTitleBar : public Widget {
     bool pending_move = false;
     Point press_position{};
     uint32_t press_serial = 0;
+
+    // FIXME: this is not idea, we need to re-implement this better.
+    std::shared_ptr<Widget> leading_csd_widget;
+    std::shared_ptr<Widget> trailing_csd_widget;
 };
 
 } // namespace svision3

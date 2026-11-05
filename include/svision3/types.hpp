@@ -178,6 +178,11 @@ struct SystemFonts {
 //   ThemeCsd    - we draw them entirely from Theme::current(), regardless of the host desktop.
 enum class DecorationMode { Inherit, Native, PlatformCsd, ThemeCsd };
 
+// Where an application-supplied widget sits relative to the CSD title bar's label. Leading
+// widgets go before the label (after the window icon); trailing widgets go after it, before the
+// window buttons.
+enum class CsdWidgetPosition { Leading, Trailing };
+
 struct WindowOptions {
     // Inherit asks Application::create_window() to fill this in from
     // Application::decoration_mode().

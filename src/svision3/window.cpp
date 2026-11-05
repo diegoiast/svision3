@@ -331,6 +331,10 @@ void Window::rebuild_chrome() {
     if (!content_root_) {
         return;
     }
+    if (title_bar_) {
+        title_bar_->clear_csd_widgets();
+    }
+    title_bar_ = nullptr;
     // Detach from the previous wrapper (if any) before it goes away, so content_root_ never
     // keeps a dangling parent pointer while it is being re-wrapped.
     content_root_->set_parent(nullptr);
@@ -341,12 +345,37 @@ void Window::rebuild_chrome() {
         auto title_bar = std::shared_ptr<Widget>(decoration_theme().create_title_bar(this));
         layout->add_widget(title_bar);
         title_bar->set_window(this);
+        title_bar_ = dynamic_cast<WindowTitleBar *>(title_bar.get());
         layout->add_widget(content_root_, 1);
         root_ = std::move(layout);
     } else {
         root_ = content_root_;
     }
     root_->set_window(this);
+    apply_csd_widgets();
+}
+
+void Window::apply_csd_widgets() {
+    if (!title_bar_) {
+        return;
+    }
+    title_bar_->set_csd_widget(leading_csd_widget_, CsdWidgetPosition::Leading);
+    title_bar_->set_csd_widget(trailing_csd_widget_, CsdWidgetPosition::Trailing);
+}
+
+void Window::set_csd_widget(std::shared_ptr<Widget> widget, CsdWidgetPosition position) {
+    auto leading = position == CsdWidgetPosition::Leading;
+    auto &slot = leading ? leading_csd_widget_ : trailing_csd_widget_;
+    if (slot == widget) {
+        return;
+    }
+    slot = std::move(widget);
+    if (!title_bar_) {
+        return;
+    }
+    title_bar_->set_csd_widget(slot, position);
+    relayout();
+    request_redraw("CSD widget changed");
 }
 
 void Window::set_decoration_mode(DecorationMode mode) {

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
 #include "svision3/window_title_bar.hpp"
-#include "svision3/image_widget.hpp"
+#include "svision3/layout.hpp"
 #include "svision3/painter.hpp"
 #include "svision3/platform.hpp"
 #include "svision3/theme.hpp"
@@ -18,6 +18,16 @@ namespace svision3 {
 // How far the pointer must travel from the press before a drag on a maximized window's title bar
 // is treated as "the user wants to pull this window loose" rather than as a click.
 static constexpr auto drag_threshold = 5.0f;
+
+static auto widget_index(HBoxLayout const &layout, Widget const *widget) -> int {
+    auto const &items = layout.items();
+    for (auto i = 0; i < static_cast<int>(items.size()); ++i) {
+        if (items[i].widget.get() == widget) {
+            return i;
+        }
+    }
+    return -1;
+}
 
 TitlebarButton::TitlebarButton(DecorationButton type, std::string tooltip, Size size_hint)
     : Button(""), type_(type), custom_size_hint(size_hint) {
@@ -270,12 +280,53 @@ void WindowTitleBar::for_each_child(std::function<void(Widget *)> const &callbac
     }
 }
 
+void WindowTitleBar::collect_mnemonics(std::vector<Widget *> &out) {
+    // Widget's default does nothing, and the title bar is not a layout, so without this the walk
+    // from Window::handle_key() stops here and Alt+letter never reaches a widget in the title bar.
+    for_each_child([&out](Widget *child) {
+        if (child->is_visible()) {
+            child->collect_mnemonics(out);
+        }
+    });
+}
+
 void WindowTitleBar::set_icon(Icon const &icon) {
     if (icon_widget) {
         icon_widget->set_image(icon);
     } else {
         spdlog::warn("WindowTitleBar::set_icon called but icon_widget is null!");
     }
+}
+
+void WindowTitleBar::set_csd_widget(std::shared_ptr<Widget> widget, CsdWidgetPosition position) {
+    if (!layout) {
+        return;
+    }
+    auto leading = position == CsdWidgetPosition::Leading;
+    auto &slot = leading ? leading_csd_widget : trailing_csd_widget;
+    if (slot) {
+        auto index = widget_index(*layout, slot.get());
+        if (index >= 0) {
+            layout->release_item(index);
+        }
+        slot.reset();
+    }
+    if (!widget || !title_label) {
+        return;
+    }
+
+    auto title_index = widget_index(*layout, title_label);
+    if (title_index < 0) {
+        title_index = leading ? 0 : static_cast<int>(layout->items().size());
+    }
+    widget->set_window(window_);
+    slot = widget;
+    layout->insert_widget(leading ? title_index : title_index + 1, std::move(widget));
+}
+
+void WindowTitleBar::clear_csd_widgets() {
+    set_csd_widget(nullptr, CsdWidgetPosition::Leading);
+    set_csd_widget(nullptr, CsdWidgetPosition::Trailing);
 }
 
 void WindowTitleBar::pull_loose_from_maximized(MouseEvent const &event) {

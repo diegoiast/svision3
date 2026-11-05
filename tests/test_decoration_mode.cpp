@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 Diego Iastrubni <diegoiast@gmail.com>
 
+#include "svision3/button.hpp"
 #include "svision3/label.hpp"
+#include "svision3/menu.hpp"
 #include "svision3/painter.hpp"
 #include "svision3/platform.hpp"
 #include "svision3/platform/dummy_platform.hpp"
@@ -205,6 +207,75 @@ TEST_CASE("PlatformCsd title bar icon keeps its platform size across theme chang
         }
     });
     REQUIRE(icon_size.height == Catch::Approx(platform_top - 4.0f));
+}
+
+TEST_CASE("CSD widgets stay on their side of the title across theme changes",
+          "[window][decoration]") {
+    PlatformSwap platform;
+    Theme::set_current(ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light));
+
+    WindowOptions options{};
+    options.decoration = DecorationMode::ThemeCsd;
+    Window window("Test", {400, 300}, options);
+    window.set_root(std::make_shared<Label>("hello"));
+
+    auto leading = std::make_shared<Label>("leading");
+    auto trailing = std::make_shared<Label>("trailing");
+    // The dummy rasterizer measures text as zero-width; a minimum keeps the layout observable.
+    leading->set_min_size({40, 10});
+    trailing->set_min_size({40, 10});
+    window.set_csd_widget(leading, CsdWidgetPosition::Leading);
+    window.set_csd_widget(trailing, CsdWidgetPosition::Trailing);
+    window.relayout();
+
+    CAPTURE(leading->rect().x, leading->rect().width, trailing->rect().x, trailing->rect().width,
+            leading->parent() == nullptr, trailing->parent() == nullptr);
+    REQUIRE(leading->parent() != nullptr);
+    REQUIRE(trailing->parent() != nullptr);
+    REQUIRE(leading->rect().width > 0.0f);
+    REQUIRE(trailing->rect().width > 0.0f);
+    REQUIRE(leading->rect().x < trailing->rect().x);
+
+    Theme::set_current(ThemeFactory::create(ThemeStyle::Material, ColorScheme::Light));
+    window.relayout();
+
+    REQUIRE(leading->parent() != nullptr);
+    REQUIRE(trailing->parent() != nullptr);
+    REQUIRE(leading->rect().width > 0.0f);
+    REQUIRE(trailing->rect().width > 0.0f);
+    REQUIRE(leading->rect().x < trailing->rect().x);
+
+    window.set_csd_widget(nullptr, CsdWidgetPosition::Leading);
+    REQUIRE(leading->parent() == nullptr);
+    REQUIRE(trailing->parent() != nullptr);
+}
+
+TEST_CASE("CSD title-bar widgets receive mnemonics", "[window][decoration][keynav]") {
+    PlatformSwap platform;
+    Theme::set_current(ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light));
+
+    WindowOptions options{};
+    options.decoration = DecorationMode::ThemeCsd;
+    Window window("Test", {400, 300}, options);
+    window.set_root(std::make_shared<Label>("content"));
+
+    auto menu = std::make_shared<Menu>();
+    menu->add_action("Item", [] {});
+    auto button = std::make_shared<Button>("&Menu");
+    button->set_menu(menu);
+    window.set_csd_widget(button, CsdWidgetPosition::Leading);
+    window.relayout();
+
+    REQUIRE_FALSE(window.has_popup());
+
+    KeyEvent event{};
+    event.type = KeyEvent::Type::Press;
+    event.alt = true;
+    event.text = "m";
+    window.handle_key(event);
+
+    REQUIRE(window.has_popup());
+    REQUIRE(menu->is_shown());
 }
 
 TEST_CASE("Switching decoration mode rebuilds the CSD chrome", "[window][decoration]") {
