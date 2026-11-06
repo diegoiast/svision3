@@ -96,7 +96,7 @@ Win11Theme::Win11Theme(ColorScheme scheme, std::optional<Palette> p)
     style.ringFocus.corner_radius = 4.0f;
     style.corner_radius = 9.0f;
 
-    style.button.padding = {5, 20, 5, 20};
+    style.button.padding = {5, 10, 5, 10};
     style.tabWidget.indicator_weight = {};
     style.toggle.accent_fill = true;
     style.tabWidget.tab_radius = 4.0f;
