@@ -50,8 +50,8 @@
 #include "svision3/spin_box.hpp"
 #include "svision3/splitter.hpp"
 #include "svision3/status_bar.hpp"
-#include "svision3/table_view.hpp"
 #include "svision3/tab_widget.hpp"
+#include "svision3/table_view.hpp"
 #include "svision3/text_edit.hpp"
 #include "svision3/theme_factory.hpp"
 #include "svision3/toast_widget.hpp"
@@ -316,8 +316,7 @@ std::map<std::string, WidgetSpec> build_registry() {
                                      layout->set_margins({16, 16, 16, 16});
                                      layout->add_widget(c, 0, Alignment::Start);
                                      window.set_root(layout);
-                                     c->handle_mouse(
-                                         MouseEvent{MouseEvent::Type::Press, {10, 10}});
+                                     c->handle_mouse(MouseEvent{MouseEvent::Type::Press, {10, 10}});
                                  }};
     // Three inputs stacked to show the common states at a glance: empty
     // with just a placeholder hint, filled with a value, and password mode.
@@ -373,8 +372,8 @@ std::map<std::string, WidgetSpec> build_registry() {
     reg["icon_grid"] = simple({420, 300}, [] {
         auto icon = [](std::string_view xpm) { return parse_xpm(xpm, PixelFormat::BGRA); };
         std::vector<std::pair<std::string, Icon>> items = {
-            {"Documents", icon(kIconSquareXpm)}, {"Photos", icon(kIconCircleXpm)},
-            {"Music", icon(kIconPlusXpm)},       {"Videos", icon(kIconTriangleXpm)},
+            {"Documents", icon(kIconSquareXpm)},  {"Photos", icon(kIconCircleXpm)},
+            {"Music", icon(kIconPlusXpm)},        {"Videos", icon(kIconTriangleXpm)},
             {"Downloads", icon(kIconDiamondXpm)}, {"Projects", icon(kIconRingXpm)},
         };
         auto model = std::make_shared<IconItemModel>(std::move(items));
@@ -402,143 +401,132 @@ std::map<std::string, WidgetSpec> build_registry() {
     // a stale/zero rect. Set the image up first, then fit only after the
     // window has actually laid the widget out.
     reg["image_widget"] = WidgetSpec{{420, 300}, [](Window &window) {
-                                          auto iw = std::make_shared<ImageWidget>();
-                                          iw->load("vampire-riding-a-dinozaur.png");
-                                          window.set_root(pad(iw));
-                                          iw->fit_to_widget();
-                                      }};
+                                         auto iw = std::make_shared<ImageWidget>();
+                                         iw->load("vampire-riding-a-dinozaur.png");
+                                         window.set_root(pad(iw));
+                                         iw->fit_to_widget();
+                                     }};
     // Two toasts stacked, like they'd pile up in a real window: a plain one
     // and a rich-text one with a custom background, to show both at once.
-    reg["toast_widget"] = WidgetSpec{{360, 280}, [](Window &window) {
-                                          auto layout = std::make_shared<VBoxLayout>();
-                                          layout->set_margins({16, 16, 16, 16});
-                                          layout->set_spacing(12);
+    reg["toast_widget"] = WidgetSpec{
+        {360, 280}, [](Window &window) {
+            auto layout = std::make_shared<VBoxLayout>();
+            layout->set_margins({16, 16, 16, 16});
+            layout->set_spacing(12);
 
-                                          auto toast1 = ToastBuilder{}
-                                                            .title("Saved")
-                                                            .text("Your changes have been saved.")
-                                                            .timeout(4.0f)
-                                                            .build();
-                                          layout->add_widget(
-                                              std::shared_ptr<Widget>(std::move(toast1)), 0,
-                                              Alignment::Fill);
+            auto toast1 = ToastBuilder{}
+                              .title("Saved")
+                              .text("Your changes have been saved.")
+                              .timeout(4.0f)
+                              .build();
+            layout->add_widget(std::shared_ptr<Widget>(std::move(toast1)), 0, Alignment::Fill);
 
-                                          auto toast2 = ToastBuilder{}
-                                                            .title("Update available")
-                                                            .rich_text("**v2.0** is ready to install.")
-                                                            .background(Color::rgb(0.85f, 0.93f, 1.0f))
-                                                            .timeout(8.0f)
-                                                            .build();
-                                          layout->add_widget(
-                                              std::shared_ptr<Widget>(std::move(toast2)), 0,
-                                              Alignment::Fill);
+            auto toast2 = ToastBuilder{}
+                              .title("Update available")
+                              .rich_text("**v2.0** is ready to install.")
+                              .background(Color::rgb(0.85f, 0.93f, 1.0f))
+                              .timeout(8.0f)
+                              .build();
+            layout->add_widget(std::shared_ptr<Widget>(std::move(toast2)), 0, Alignment::Fill);
 
-                                          window.set_root(layout);
-                                      }};
+            window.set_root(layout);
+        }};
 
     // ── Containers & navigation ────────────────────────────────────────
     // A 2x2 grid of the four compass orientations (skipping WestVertical/
     // EastVertical, which just rotate West/East's tab-label text) so the
     // difference is visible at a glance.
-    reg["tab_widget"] = WidgetSpec{{900, 1040}, [](Window &window) {
-                                       // Cycles through a fixed palette so every tab's content
-                                       // pane -- across every orientation in this screenshot --
-                                       // gets a visibly different color, making it obvious which
-                                       // content belongs to which tab.
-                                       static std::vector<Color> const content_colors = {
-                                           Color::rgb(0.90f, 0.55f, 0.55f),
-                                           Color::rgb(0.55f, 0.75f, 0.90f),
-                                           Color::rgb(0.60f, 0.85f, 0.60f),
-                                           Color::rgb(0.95f, 0.85f, 0.55f),
-                                           Color::rgb(0.80f, 0.65f, 0.90f),
-                                           Color::rgb(0.90f, 0.70f, 0.55f),
-                                       };
-                                       int color_index = 0;
-                                       auto make_content = [&](std::string text) {
-                                           auto label = std::make_shared<Label>(std::move(text));
-                                           label->set_background_color(
-                                               content_colors[color_index++ % content_colors.size()]);
-                                           return label;
-                                       };
-                                       // orientation_name is baked into each tab's own content
-                                       // label (e.g. "North Content") rather than a separate
-                                       // caption widget above the TabWidget, so the cell is
-                                       // self-describing from its content alone.
-                                       //
-                                       // Only the horizontal-text orientations (WestVertical /
-                                       // EastVertical) can afford long tab titles -- North/South/
-                                       // West/East get short "Tab N" titles, since on West/East
-                                       // that title is rotated and its *length* becomes the tab
-                                       // strip's length.
-                                       auto make_tabs = [&](TabOrientation o,
-                                                            std::string const &orientation_name,
-                                                            int tab_count, bool short_titles) {
-                                           auto tabs = std::make_shared<TabWidget>();
-                                           tabs->set_orientation(o);
-                                           // Closable tabs eat significant width/height in the
-                                           // West/East (vertical-label) orientations at this
-                                           // demo's small cell size, so keep it simple.
-                                           tabs->set_tabs_closable(false);
-                                           for (int i = 1; i <= tab_count; ++i) {
-                                               auto title = short_titles ? "Tab " + std::to_string(i)
-                                                                        : "Tab number " + std::to_string(i);
-                                               tabs->add_tab(title,
-                                                            make_content(orientation_name + " " + title));
-                                           }
-                                           tabs->set_current(0);
-                                           return tabs;
-                                       };
-                                       auto padded = [](std::shared_ptr<Widget> tabs) {
-                                           auto box = std::make_shared<VBoxLayout>();
-                                           box->set_margins({4, 4, 4, 4});
-                                           box->add_widget(std::move(tabs), 1, Alignment::Fill);
-                                           return box;
-                                       };
+    reg["tab_widget"] = WidgetSpec{
+        {900, 1040}, [](Window &window) {
+            // Cycles through a fixed palette so every tab's content
+            // pane -- across every orientation in this screenshot --
+            // gets a visibly different color, making it obvious which
+            // content belongs to which tab.
+            static std::vector<Color> const content_colors = {
+                Color::rgb(0.90f, 0.55f, 0.55f), Color::rgb(0.55f, 0.75f, 0.90f),
+                Color::rgb(0.60f, 0.85f, 0.60f), Color::rgb(0.95f, 0.85f, 0.55f),
+                Color::rgb(0.80f, 0.65f, 0.90f), Color::rgb(0.90f, 0.70f, 0.55f),
+            };
+            int color_index = 0;
+            auto make_content = [&](std::string text) {
+                auto label = std::make_shared<Label>(std::move(text));
+                label->set_background_color(content_colors[color_index++ % content_colors.size()]);
+                return label;
+            };
+            // orientation_name is baked into each tab's own content
+            // label (e.g. "North Content") rather than a separate
+            // caption widget above the TabWidget, so the cell is
+            // self-describing from its content alone.
+            //
+            // Only the horizontal-text orientations (WestVertical /
+            // EastVertical) can afford long tab titles -- North/South/
+            // West/East get short "Tab N" titles, since on West/East
+            // that title is rotated and its *length* becomes the tab
+            // strip's length.
+            auto make_tabs = [&](TabOrientation o, std::string const &orientation_name,
+                                 int tab_count, bool short_titles) {
+                auto tabs = std::make_shared<TabWidget>();
+                tabs->set_orientation(o);
+                // Closable tabs eat significant width/height in the
+                // West/East (vertical-label) orientations at this
+                // demo's small cell size, so keep it simple.
+                tabs->set_tabs_closable(false);
+                for (int i = 1; i <= tab_count; ++i) {
+                    auto title = short_titles ? "Tab " + std::to_string(i)
+                                              : "Tab number " + std::to_string(i);
+                    tabs->add_tab(title, make_content(orientation_name + " " + title));
+                }
+                tabs->set_current(0);
+                return tabs;
+            };
+            auto padded = [](std::shared_ptr<Widget> tabs) {
+                auto box = std::make_shared<VBoxLayout>();
+                box->set_margins({4, 4, 4, 4});
+                box->add_widget(std::move(tabs), 1, Alignment::Fill);
+                return box;
+            };
 
-                                       // A 3-row stack of horizontal Splitters, two orientations
-                                       // per row -- this also demonstrates Splitter itself. Each
-                                       // Splitter here only ever holds 2 children: cramming all 6
-                                       // into one splitter (or 3 into one column, as an earlier
-                                       // version of this did) squeezes the vertical-text
-                                       // orientations' tab strips far too short to render legibly.
-                                       auto row = [](std::shared_ptr<Widget> a, std::shared_ptr<Widget> b) {
-                                           auto s = std::make_shared<Splitter>(Orientation::Horizontal);
-                                           s->add_child(std::move(a));
-                                           s->add_child(std::move(b));
-                                           return s;
-                                       };
-                                       auto rows = std::make_shared<Splitter>(Orientation::Vertical);
-                                       rows->add_child(row(
-                                           padded(make_tabs(TabOrientation::North, "North", 4,
-                                                            /*short_titles=*/true)),
-                                           padded(make_tabs(TabOrientation::South, "South", 4,
-                                                            /*short_titles=*/true))));
-                                       rows->add_child(row(
-                                           padded(make_tabs(TabOrientation::West, "West", 4,
-                                                            /*short_titles=*/true)),
-                                           padded(make_tabs(TabOrientation::WestVertical,
-                                                            "West (horizontal text)", 4,
-                                                            /*short_titles=*/false))));
-                                       rows->add_child(row(
-                                           padded(make_tabs(TabOrientation::EastVertical,
-                                                            "East (horizontal text)", 4,
-                                                            /*short_titles=*/false)),
-                                           padded(make_tabs(TabOrientation::East, "East", 4,
-                                                            /*short_titles=*/true))));
-                                       // Splitter's "default equal-distribution ratio" for a new
-                                       // divider turns out to favor earlier children's natural
-                                       // size on first layout, not a true equal split -- pin both
-                                       // dividers to exact thirds. With short "Tab N" titles on
-                                       // North/South/West/East, every row now needs roughly the
-                                       // same amount of room.
-                                       rows->set_ratio(0, 1.0f / 3.0f);
-                                       rows->set_ratio(1, 2.0f / 3.0f);
+            // A 3-row stack of horizontal Splitters, two orientations
+            // per row -- this also demonstrates Splitter itself. Each
+            // Splitter here only ever holds 2 children: cramming all 6
+            // into one splitter (or 3 into one column, as an earlier
+            // version of this did) squeezes the vertical-text
+            // orientations' tab strips far too short to render legibly.
+            auto row = [](std::shared_ptr<Widget> a, std::shared_ptr<Widget> b) {
+                auto s = std::make_shared<Splitter>(Orientation::Horizontal);
+                s->add_child(std::move(a));
+                s->add_child(std::move(b));
+                return s;
+            };
+            auto rows = std::make_shared<Splitter>(Orientation::Vertical);
+            rows->add_child(row(padded(make_tabs(TabOrientation::North, "North", 4,
+                                                 /*short_titles=*/true)),
+                                padded(make_tabs(TabOrientation::South, "South", 4,
+                                                 /*short_titles=*/true))));
+            rows->add_child(
+                row(padded(make_tabs(TabOrientation::West, "West", 4,
+                                     /*short_titles=*/true)),
+                    padded(make_tabs(TabOrientation::WestVertical, "West (horizontal text)", 4,
+                                     /*short_titles=*/false))));
+            rows->add_child(
+                row(padded(make_tabs(TabOrientation::EastVertical, "East (horizontal text)", 4,
+                                     /*short_titles=*/false)),
+                    padded(make_tabs(TabOrientation::East, "East", 4,
+                                     /*short_titles=*/true))));
+            // Splitter's "default equal-distribution ratio" for a new
+            // divider turns out to favor earlier children's natural
+            // size on first layout, not a true equal split -- pin both
+            // dividers to exact thirds. With short "Tab N" titles on
+            // North/South/West/East, every row now needs roughly the
+            // same amount of room.
+            rows->set_ratio(0, 1.0f / 3.0f);
+            rows->set_ratio(1, 2.0f / 3.0f);
 
-                                       auto outer = std::make_shared<VBoxLayout>();
-                                       outer->set_margins({16, 16, 16, 16});
-                                       outer->add_widget(rows, 1, Alignment::Fill);
-                                       window.set_root(outer);
-                                   }};
+            auto outer = std::make_shared<VBoxLayout>();
+            outer->set_margins({16, 16, 16, 16});
+            outer->add_widget(rows, 1, Alignment::Fill);
+            window.set_root(outer);
+        }};
     reg["splitter"] = simple({420, 220}, [] {
         auto sp = std::make_shared<Splitter>(Orientation::Horizontal);
         sp->add_child(std::make_shared<Label>("Left pane"));
@@ -601,8 +589,9 @@ std::map<std::string, WidgetSpec> build_registry() {
     reg["table_view"] = simple({420, 260}, [] {
         auto model = std::make_shared<StringTableModel>(
             std::vector<std::string>{"Name", "Status", "Owner"},
-            std::vector<std::vector<std::string>>{
-                {"Build", "Passing", "ci"}, {"Deploy", "Pending", "ops"}, {"Tests", "Passing", "ci"}});
+            std::vector<std::vector<std::string>>{{"Build", "Passing", "ci"},
+                                                  {"Deploy", "Pending", "ops"},
+                                                  {"Tests", "Passing", "ci"}});
         auto table = std::make_shared<TableView>(model);
         table->set_alternating_row_colors(true);
         table->auto_fit_columns();
@@ -640,18 +629,18 @@ std::map<std::string, WidgetSpec> build_registry() {
                                  window.set_root(pad(mb));
                                  file_menu->show(&window, {24, 44});
                              }};
-    reg["context_menu"] = WidgetSpec{{320, 260}, [](Window &window) {
-                                          window.set_root(pad(std::make_shared<Label>(
-                                              "Right-click for options")));
-                                          static ContextMenu menu({
-                                              MenuItem::action("Cut", [] {}),
-                                              MenuItem::action("Copy", [] {}),
-                                              MenuItem::action("Paste", [] {}),
-                                              MenuItem::sep(),
-                                              MenuItem::action("Select All", [] {}),
-                                          });
-                                          menu.show(&window, {60, 60});
-                                      }};
+    reg["context_menu"] =
+        WidgetSpec{{320, 260}, [](Window &window) {
+                       window.set_root(pad(std::make_shared<Label>("Right-click for options")));
+                       static ContextMenu menu({
+                           MenuItem::action("Cut", [] {}),
+                           MenuItem::action("Copy", [] {}),
+                           MenuItem::action("Paste", [] {}),
+                           MenuItem::sep(),
+                           MenuItem::action("Select All", [] {}),
+                       });
+                       menu.show(&window, {60, 60});
+                   }};
     reg["toolbar"] = simple({380, 90}, [] {
         auto tb = std::make_shared<Toolbar>();
         tb->add_command(Command::create("New", [] {}));
@@ -677,7 +666,8 @@ std::map<std::string, WidgetSpec> build_registry() {
     reg["line_chart"] = simple({480, 320}, [] {
         auto chart = std::make_shared<LineChart>();
         chart->set_title("Requests/s");
-        chart->add_series({"API", Color::rgb(0.2f, 0.5f, 0.9f),
+        chart->add_series({"API",
+                           Color::rgb(0.2f, 0.5f, 0.9f),
                            {{0, 10, ""}, {1, 14, ""}, {2, 9, ""}, {3, 18, ""}, {4, 12, ""}}});
         return chart;
     });
@@ -709,7 +699,9 @@ std::map<std::string, WidgetSpec> build_registry() {
         auto chart = std::make_shared<AreaChart>();
         chart->set_title("CPU Usage");
         chart->set_y_unit_suffix("%");
-        chart->add_series({"CPU", Color::rgb(0.9f, 0.3f, 0.2f), Color::rgba(0.9f, 0.3f, 0.2f, 0.3f),
+        chart->add_series({"CPU",
+                           Color::rgb(0.9f, 0.3f, 0.2f),
+                           Color::rgba(0.9f, 0.3f, 0.2f, 0.3f),
                            {{0, 20, ""}, {1, 45, ""}, {2, 38, ""}, {3, 60, ""}}});
         return chart;
     });
@@ -727,10 +719,11 @@ std::map<std::string, WidgetSpec> build_registry() {
     reg["scatter_plot"] = simple({480, 320}, [] {
         auto chart = std::make_shared<ScatterPlot>();
         chart->set_title("Samples");
-        chart->add_series({"Set A",
-                           Color::rgb(0.2f, 0.6f, 0.9f),
-                           4.0f,
-                           {{1.2f, 3.4f, ""}, {2.1f, 1.9f, ""}, {3.0f, 4.2f, ""}, {1.8f, 2.6f, ""}}});
+        chart->add_series(
+            {"Set A",
+             Color::rgb(0.2f, 0.6f, 0.9f),
+             4.0f,
+             {{1.2f, 3.4f, ""}, {2.1f, 1.9f, ""}, {3.0f, 4.2f, ""}, {1.8f, 2.6f, ""}}});
         return chart;
     });
     reg["histogram"] = simple({480, 320}, [] {
@@ -780,8 +773,8 @@ struct ThemeEntry {
 // OS's own convention" rather than a distinct look, so it's skipped here.
 std::vector<ThemeEntry> const &supported_themes() {
     static std::vector<ThemeEntry> themes = {
-        {ThemeStyle::MacOS, "macos"},   {ThemeStyle::Material, "material"},
-        {ThemeStyle::Win11, "win11"},   {ThemeStyle::Win95, "win95"},
+        {ThemeStyle::MacOS, "macos"},     {ThemeStyle::Material, "material"},
+        {ThemeStyle::Win11, "win11"},     {ThemeStyle::Win95, "win95"},
         {ThemeStyle::Plasma6, "plasma6"}, {ThemeStyle::GNOME, "gnome"},
     };
     return themes;
@@ -791,23 +784,22 @@ bool render_one(Application &app, PlatformApplication &platform, std::string con
                 WidgetSpec const &spec, std::filesystem::path const &out_dir) {
     auto window = app.create_window(key, spec.canvas);
     spec.setup(*window);
-/*    auto icon = cairo_capture(window.get());
-    if (!icon) {
-        std::cerr << "capture failed for " << key << "\n";
-        return false;
-    }
-    auto path = (out_dir / (key + ".png")).string();
-    if (!platform.get_image_loader()->save(*icon, path)) {
-        std::cerr << "save failed for " << key << "\n";
-        return false;
-    }
-    std::cout << "wrote " << path << "\n";
-*/
+    /*    auto icon = cairo_capture(window.get());
+        if (!icon) {
+            std::cerr << "capture failed for " << key << "\n";
+            return false;
+        }
+        auto path = (out_dir / (key + ".png")).string();
+        if (!platform.get_image_loader()->save(*icon, path)) {
+            std::cerr << "save failed for " << key << "\n";
+            return false;
+        }
+        std::cout << "wrote " << path << "\n";
+    */
 
     auto path = (out_dir / (key + ".png")).string();
     bool ok = window->save_to_png(path);
     return ok;
-
 }
 
 } // namespace
@@ -823,10 +815,10 @@ int main(int argc, char **argv) {
 
     Application app;
     auto *platform = detail::current_platform();
-#ifdef _WIN32
-    _putenv( "SVISION_BACKEND=dummy" ); // C4996
-    platform->set_rasterizer(new Win32TextRasterizer());
     auto icon_loader = std::make_unique<XdgImageLoader>("Faenza");
+#ifdef _WIN32
+    _putenv("SVISION_BACKEND=dummy"); // C4996
+    platform->set_rasterizer(new Win32TextRasterizer());
 #else
     setenv("SVISION_BACKEND", "dummy", 1);
     platform->set_rasterizer(new CairoTextRasterizer());
@@ -839,7 +831,7 @@ int main(int argc, char **argv) {
     // so this only works run from the repo root.
     if (!icon_loader->theme_loaded()) {
         std::cerr << "warning: Faenza icon theme not found -- run this from the "
-                    "repository root\n";
+                     "repository root\n";
     }
     app.set_icon_provider(std::move(icon_loader));
 
