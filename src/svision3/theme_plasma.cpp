@@ -120,7 +120,7 @@ Palette Plasma6Theme::default_palette(ColorScheme scheme) const {
 
     case ColorScheme::Light:
         p.window_inactive = Color::from_rgb(0xeff0f1);
-        p.window = Color::from_rgb(0xe3e5e7);
+        p.window = Color::from_rgb(0xdee0e2);
         p.base = Color::from_rgb(0xfcfcfc);
         p.alternate = Color::from_rgb(0xeff0f1);
         p.text = Color::from_rgb(0x232629);
