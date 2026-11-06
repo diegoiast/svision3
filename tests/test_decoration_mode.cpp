@@ -84,6 +84,10 @@ TEST_CASE("WindowOptions decoration precedence", "[window][decoration]") {
     WindowOptions explicit_platform{};
     explicit_platform.decoration = DecorationMode::PlatformCsd;
     REQUIRE(requested_decoration(explicit_platform) == DecorationMode::PlatformCsd);
+
+    WindowOptions explicit_platform_palette{};
+    explicit_platform_palette.decoration = DecorationMode::PlatformCsdWithAppPalette;
+    REQUIRE(requested_decoration(explicit_platform_palette) == DecorationMode::PlatformCsdWithAppPalette);
 }
 
 TEST_CASE("Window defaults to native decorations", "[window][decoration]") {
@@ -141,6 +145,53 @@ TEST_CASE("PlatformCsd keeps platform title bar geometry across theme changes",
     REQUIRE(title_bar_height(window, content) == Catch::Approx(platform_bar));
     // Colours are the platform's too, so the app theme must not repaint the bar.
     REQUIRE(window.decoration_theme().palette.window.to_argb32() == platform_window_color);
+}
+
+TEST_CASE("PlatformCsdWithAppPalette takes geometry from platform and colours from current theme",
+          "[window][decoration]") {
+    PlatformSwap platform;
+    Theme::set_current(ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light));
+    auto platform_theme = ThemeFactory::create(Theme::detect_system_style(), ColorScheme::Light);
+    auto const platform_bar = platform_theme->style.window_decoration.top;
+    auto const theme_bar = Theme::current().style.window_decoration.top;
+    REQUIRE(platform_bar != theme_bar);
+
+    WindowOptions options{};
+    options.decoration = DecorationMode::PlatformCsdWithAppPalette;
+    Window window("Test", {400, 300}, options);
+    auto content = std::make_shared<Label>("hello");
+    window.set_root(content);
+
+    REQUIRE(window.decoration_mode() == DecorationMode::PlatformCsdWithAppPalette);
+    REQUIRE(window.options().csd);
+    REQUIRE(window.decoration_theme().style.window_decoration.top == Catch::Approx(platform_bar));
+    REQUIRE(title_bar_height(window, content) == Catch::Approx(platform_bar));
+    REQUIRE(window.decoration_theme().palette.window.to_argb32() ==
+            Theme::current().palette.window.to_argb32());
+    REQUIRE(window.decoration_theme().palette.window.to_argb32() !=
+            platform_theme->palette.window.to_argb32());
+}
+
+TEST_CASE("PlatformCsdWithAppPalette follows theme changes", "[window][decoration]") {
+    PlatformSwap platform;
+    Theme::set_current(ThemeFactory::create(ThemeStyle::Win95, ColorScheme::Light));
+    auto platform_theme = ThemeFactory::create(Theme::detect_system_style(), ColorScheme::Light);
+    auto const platform_bar = platform_theme->style.window_decoration.top;
+
+    WindowOptions options{};
+    options.decoration = DecorationMode::PlatformCsdWithAppPalette;
+    Window window("Test", {400, 300}, options);
+    window.set_root(std::make_shared<Label>("hello"));
+    REQUIRE(window.decoration_theme().palette.window.to_argb32() ==
+            Theme::current().palette.window.to_argb32());
+    auto const win95_window = window.decoration_theme().palette.window.to_argb32();
+
+    Theme::set_current(ThemeFactory::create(ThemeStyle::MacOS, ColorScheme::Light));
+    REQUIRE(window.decoration_mode() == DecorationMode::PlatformCsdWithAppPalette);
+    REQUIRE(window.decoration_theme().style.window_decoration.top == Catch::Approx(platform_bar));
+    REQUIRE(window.decoration_theme().palette.window.to_argb32() ==
+            Theme::current().palette.window.to_argb32());
+    REQUIRE(window.decoration_theme().palette.window.to_argb32() != win95_window);
 }
 
 TEST_CASE("PlatformCsd close button keeps its colour across theme changes",

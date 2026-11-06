@@ -359,6 +359,16 @@ static auto make_center_editor() {
         .highlight_current_line();
 }
 
+static auto apply_theme(ThemeStyle style, ColorScheme scheme) {
+    auto theme = ThemeFactory::create(style, scheme);
+    if (style == ThemeStyle::Win11) {
+        // patch default Windows 11 style
+        theme->palette.window = *theme->palette.window_inactive;
+        theme->palette.tab_background = theme->palette.window;
+    }
+    Theme::set_current(std::move(theme));
+}
+
 int main(int argc, char *argv[]) {
     std::string screenshot_path;
     for (int i = 1; i < argc; i++) {
@@ -369,16 +379,17 @@ int main(int argc, char *argv[]) {
     }
 
     auto app = Application{};
-    app.set_decoration_mode(DecorationMode::PlatformCsd);
+    app.set_decoration_mode(DecorationMode::PlatformCsdWithAppPalette);
     if (!app.use_xdg_icons()) {
         auto loader = std::make_unique<XdgImageLoader>();
         loader->set_theme_path("./themes/Faenza");
         app.set_icon_provider(std::move(loader));
     }
 
+    // FIXME: detect from system
+    auto scheme = ColorScheme::Light;
     auto style = Theme::detect_system_style();
-    Theme::set_current(ThemeFactory::create(style));
-
+    apply_theme(style, scheme);
     auto win = app.create_window("Dock Demo", {1200, 800});
 
     // Center: TabWidget with an editor and a picture, so the demo opens with both
@@ -466,7 +477,8 @@ int main(int argc, char *argv[]) {
         auto cmd = Command::create(std::move(name), nullptr);
         cmd->set_checkable(true);
         cmd->set_execute_func([theme_cmds, chosen = cmd.get(), style, scheme] {
-            Theme::set_current(ThemeFactory::create(style, scheme));
+            apply_theme(style,scheme);
+
             for (auto const &other : *theme_cmds) {
                 other.command->set_checked(other.command.get() == chosen);
             }

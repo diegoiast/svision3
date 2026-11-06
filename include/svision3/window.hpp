@@ -114,7 +114,9 @@ class Window {
 
     // The theme that decides the CSD title bar's layout, geometry, colours and decoration glyphs.
     // For ThemeCsd this is Theme::current(); for PlatformCsd it is the detected desktop's theme,
-    // so the title bar keeps the host's look while the application theme changes.
+    // so the title bar keeps the host's look while the application theme changes. For
+    // PlatformCsdWithAppPalette it is the detected desktop's theme for layout/geometry/glyphs,
+    // with Theme::current()->palette for colours.
     auto decoration_theme() const -> Theme const &;
 
     // Places an application widget in the CSD title bar: CsdWidgetPosition::Leading puts it before

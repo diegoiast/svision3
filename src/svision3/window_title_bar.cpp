@@ -49,8 +49,9 @@ void TitlebarButton::paint(Painter &painter) {
         .window_active = window_ ? window_->is_active() : true,
         .checked = is_checked(),
     };
-    // PlatformCsd keeps the platform's button glyphs even while the application theme (and so
-    // this bar's colours) changes; ThemeCsd resolves to Theme::current() here anyway.
+    // PlatformCsd and PlatformCsdWithAppPalette keep the platform's button glyphs even while the
+    // application theme changes; only the palette source differs. ThemeCsd resolves to
+    // Theme::current() here anyway.
     auto const &theme = window_ ? window_->decoration_theme() : Theme::current();
     theme.draw_window_button(painter, {0, 0, rect_.width, rect_.height}, type_, wstate);
 }

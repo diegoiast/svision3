@@ -175,8 +175,11 @@ struct SystemFonts {
 //                 Wayland compositor without xdg-decoration) this degrades to PlatformCsd.
 //   PlatformCsd - we draw them, but the title bar follows the detected desktop: layout,
 //                 height/geometry, colours and glyphs. The content still uses Theme::current().
+//   PlatformCsdWithAppPalette
+//               - we draw them using the detected desktop's layout, height/geometry and glyphs,
+//                 but colours come from Theme::current()->palette and follow theme changes.
 //   ThemeCsd    - we draw them entirely from Theme::current(), regardless of the host desktop.
-enum class DecorationMode { Inherit, Native, PlatformCsd, ThemeCsd };
+enum class DecorationMode { Inherit, Native, PlatformCsd, PlatformCsdWithAppPalette, ThemeCsd };
 
 // Where an application-supplied widget sits relative to the CSD title bar's label. Leading
 // widgets go before the label (after the window icon); trailing widgets go after it, before the

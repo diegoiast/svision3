@@ -104,8 +104,9 @@ static bool dispatch_to_on_top(Widget *parent, MouseEvent const &event) {
 
 struct Window::Impl {
     std::unique_ptr<PlatformWindow> platform;
-    // Only set for PlatformCsd: the detected desktop's theme, used for the title bar's layout,
-    // colours and decoration glyphs.
+    // Only set for PlatformCsd and PlatformCsdWithAppPalette: the detected desktop's theme, used
+    // for the title bar's layout, geometry and glyphs. PlatformCsd also keeps its palette;
+    // PlatformCsdWithAppPalette replaces it with Theme::current()->palette.
     std::unique_ptr<Theme> platform_decoration_theme;
     Window::Statistics stats;
     std::chrono::steady_clock::time_point last_log_time = std::chrono::steady_clock::now();
@@ -122,17 +123,28 @@ struct Window::Impl {
     Point rich_tooltip_pos;
 };
 
-static auto create_platform_decoration_theme() -> std::unique_ptr<Theme> {
+static auto uses_platform_decoration_theme(DecorationMode mode) -> bool {
+    return mode == DecorationMode::PlatformCsd || mode == DecorationMode::PlatformCsdWithAppPalette;
+}
+
+static auto create_decoration_theme(DecorationMode mode) -> std::unique_ptr<Theme> {
     auto const &current = Theme::current();
     auto scheme = current.palette.window.luma() > 0.5f ? ColorScheme::Light : ColorScheme::Dark;
-    // Deliberately keeps the platform theme's own palette: PlatformCsd is meant to look like the
-    // host desktop, so switching the application theme must not recolor its title bar.
-    return ThemeFactory::create(Theme::detect_system_style(), scheme);
+    // Deliberately keeps the platform theme's own palette for PlatformCsd: it is meant to look
+    // like the host desktop, so switching the application theme must not recolor its title bar.
+    auto theme = ThemeFactory::create(Theme::detect_system_style(), scheme);
+    if (mode == DecorationMode::PlatformCsdWithAppPalette && theme) {
+        // Keep the platform theme's style, but take the application's palette wholesale so the
+        // title bar tracks app colours and runtime theme changes.
+        theme->palette = current.palette;
+    }
+    return theme;
 }
 
 // Turns the per-window request into the mode this window will actually use. Platforms that
 // cannot decorate at all (NeedsCsd, e.g. GNOME's Wayland compositor) still get CSD, just with the
-// platform's own title-bar layout rather than the application theme's.
+// platform's own title-bar layout rather than the application theme's. App-palette platform CSD
+// is already concrete and is passed through unchanged.
 static auto resolve_decoration_mode(WindowOptions &options) -> DecorationMode {
     auto mode = requested_decoration(options);
     // A window constructed directly, outside Application, has no application default to inherit.
@@ -150,8 +162,8 @@ static auto resolve_decoration_mode(WindowOptions &options) -> DecorationMode {
 Window::Window(std::string_view title, Size size, WindowOptions options)
     : title_(title), size_(size), options_(options), impl_(std::make_unique<Impl>()) {
     decoration_mode_ = resolve_decoration_mode(options_);
-    if (decoration_mode_ == DecorationMode::PlatformCsd) {
-        impl_->platform_decoration_theme = create_platform_decoration_theme();
+    if (uses_platform_decoration_theme(decoration_mode_)) {
+        impl_->platform_decoration_theme = create_decoration_theme(decoration_mode_);
     }
     if (options_.csd) {
         auto const &m = decoration_theme().style.window_decoration;
@@ -394,8 +406,8 @@ void Window::set_decoration_mode(DecorationMode mode) {
     options_.csd = (mode != DecorationMode::Native);
 
     impl_->platform_decoration_theme.reset();
-    if (mode == DecorationMode::PlatformCsd) {
-        impl_->platform_decoration_theme = create_platform_decoration_theme();
+    if (uses_platform_decoration_theme(mode)) {
+        impl_->platform_decoration_theme = create_decoration_theme(mode);
     }
 
     auto const new_margins = options_.csd ? decoration_theme().style.window_decoration : Margins{};
@@ -417,6 +429,9 @@ void Window::set_decoration_mode(DecorationMode mode) {
 }
 
 void Window::on_theme_changed() {
+    if (decoration_mode_ == DecorationMode::PlatformCsdWithAppPalette) {
+        impl_->platform_decoration_theme = create_decoration_theme(decoration_mode_);
+    }
     if (options_.csd) {
         rebuild_chrome();
     }

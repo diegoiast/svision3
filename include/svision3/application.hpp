@@ -37,7 +37,8 @@ class Application {
     // A per-window `.decoration` (or the legacy `.csd = true`) still wins. A platform that lacks
     // server-side decorations entirely (PlatformApplication::needs_csd(), e.g. GNOME/mutter's
     // Wayland compositor) can still force CSD over a Native request. Native by default. Applies
-    // to windows created after the call.
+    // to windows created after the call. Concrete modes are Native, PlatformCsd,
+    // PlatformCsdWithAppPalette and ThemeCsd.
     //
     // `mode` must be concrete: the application is the root of the decoration inheritance chain,
     // so Inherit has nothing to inherit from here. This is a precondition, and a C++ contract
