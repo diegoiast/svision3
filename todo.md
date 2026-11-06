@@ -62,6 +62,14 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 48. [ ] Toast on windows 95 - title is not readable.
 49. [ ] Window/Layout - add - should be templated, and return a reference.
 
+
+## Bugs
+
+1. [ ] Files: start dragging inside to select. Release button outside. Move
+       mouse inside the grid widget, selection continues even though mouse is released.
+2. [ ] Hebrew () are reversed.
+
+
 ## Platform
 
 1. [x] File dialogs (open/save) - implemented via NFD internally
@@ -95,10 +103,11 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 1. [ ] Material: implement
 1. [x] Disable close/max/min buttons when needed.
 1. [x] Do not support resize or move (on popups for example, under mutter).
-1. [ ] Always use local decorations
-    1. [ ] Flag to choose to follow theme or platform for CSD
-    2. [ ] Theme palette should follow theme or platform?
-    3. [ ] API to hook into the CSD and add new widgets, or replace the titlebar (tabbar on the titlebar like chrome).
+1. [x] Always use local decorations
+    1. [x] Flag to choose to follow theme or platform for CSD
+    2. [x] Theme palette should follow theme or platform?
+    3. [x] API to hook into the CSD and add new widgets,
+    4. [ ] API to replace the titlebar (tabbar on the titlebar like chrome).
 
 ## Widgets [34/39]
 
@@ -295,6 +304,7 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 
 1. [x] Scrollbar drag is not working, instead it acts as dragging inside the main widget
 2. [x] We got round corners on the left side only
+3. [ ] double click to full screen
 
 ## LineInput Features [15/15]
 
@@ -336,12 +346,12 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 9. [x] Support for trailing/leading button.
 10. [x] Tab bar overflow (scroll when too many tabs).
 11. [x] When tab bar is selected, it has a ring around it.
-12. [ ] Tabs can have several icons at the title
 13. [x] If you add an editor to a tab widget, focus another widget and then
         window->set_foused_widget(tab) - tab becomes active, and text arrives to
         the editor, but it will have not cursor and not be "focused".
 14. [ ] Tabs should have frame/border
 15. [ ] Event to notify when a user requests to close a tab, with option to prevent it
+12. [ ] Tabs can have several icons at the title
 
 ## ListView Features [15/18]
 
@@ -389,10 +399,10 @@ Version 0.9.x will be polished until version 1.0.0 is marked as "good enough".
 ## HTML View
 
 1. [x] Monospaced fonts are not used in code block.
+5. [x] Tooltips do not use the rich view, only plain text.
 2. [ ] Monospaced blocks spacing is not ideal.
 3. [ ] Dark mode is broken - text is still black, on changing theme.
 4. [ ] Fonts are too dark/bold on Cairo.
-5. [x] Tooltips do not use the rich view, only plain text.
 6. [ ] Rich tooltips do not elide, no shrinkable option.
 7. [ ] Spacing on text is bad (# aaa1 bbb) - shows the bbb near the first word.
 
