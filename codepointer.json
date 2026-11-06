@@ -95,7 +95,7 @@
                 ],
                 "windows": [
                     "conan install . --output-folder=. --build=missing -pr:h conan-debug",
-                    "cmake --preset conan-debug -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=1"
+                    "cmake --preset conan-debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1"
                 ]
             },
             "isBuild": true,
