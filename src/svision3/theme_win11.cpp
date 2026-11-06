@@ -101,7 +101,7 @@ Win11Theme::Win11Theme(ColorScheme scheme, std::optional<Palette> p)
     style.toggle.accent_fill = true;
     style.tabWidget.tab_radius = 4.0f;
     style.chrome_lines = false;
-    style.window_decoration = {32, 0, 0, 0};
+    style.window_decoration = {28, 0, 0, 0};
 }
 
 std::unique_ptr<Widget> Win11Theme::create_title_bar(Window *window) const {
